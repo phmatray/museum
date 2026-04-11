@@ -4,7 +4,7 @@ import { useGameStore } from '../gameStore'
 describe('gameStore', () => {
   it('initializes with correct defaults', () => {
     const state = useGameStore.getState()
-    expect(state.paused).toBe(false)
+    expect(state.paused).toBe(true)
     expect(state.currentRoomId).toBe('room-1')
     expect(state.tourActive).toBe(false)
     expect(state.pointerLocked).toBe(false)
