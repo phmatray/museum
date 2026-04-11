@@ -12,7 +12,7 @@ interface GameState {
 }
 
 export const useGameStore = create<GameState>((set) => ({
-  paused: false,
+  paused: true,
   currentRoomId: 'room-1',
   tourActive: false,
   pointerLocked: false,

@@ -3,6 +3,7 @@ import { Physics } from '@react-three/rapier'
 import { KeyboardControls } from '@react-three/drei'
 import { Suspense, useMemo } from 'react'
 import { Player } from './components/Player'
+import { PointerLockCamera, PointerLockOverlay } from './components/PointerLockOverlay'
 
 enum Controls {
   forward = 'forward',
@@ -23,19 +24,23 @@ export default function App() {
   )
 
   return (
-    <KeyboardControls map={keyMap}>
-      <Canvas camera={{ fov: 75, near: 0.1, far: 1000 }}>
-        <Suspense fallback={null}>
-          <Physics>
-            <Player spawn={[0, 1, 0]} />
-            <ambientLight intensity={0.5} />
-            <mesh position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[50, 50]} />
-              <meshStandardMaterial color="#808080" />
-            </mesh>
-          </Physics>
-        </Suspense>
-      </Canvas>
-    </KeyboardControls>
+    <>
+      <PointerLockOverlay />
+      <KeyboardControls map={keyMap}>
+        <Canvas camera={{ fov: 75, near: 0.1, far: 1000 }}>
+          <Suspense fallback={null}>
+            <Physics>
+              <PointerLockCamera />
+              <ambientLight intensity={0.5} />
+              <Player spawn={[0, 1, 0]} />
+              <mesh position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[50, 50]} />
+                <meshStandardMaterial color="#808080" />
+              </mesh>
+            </Physics>
+          </Suspense>
+        </Canvas>
+      </KeyboardControls>
+    </>
   )
 }
