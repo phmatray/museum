@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import React, { useEffect, useCallback } from 'react'
 import { useThree } from '@react-three/fiber'
 import { useGameStore } from '../stores/gameStore'
 
@@ -45,6 +45,8 @@ export function PointerLockCamera() {
 export function PointerLockOverlay() {
   const paused = useGameStore((s) => s.paused)
   const setPaused = useGameStore((s) => s.setPaused)
+  const tourActive = useGameStore((s) => s.tourActive)
+  const setTourActive = useGameStore((s) => s.setTourActive)
 
   const handleClick = () => {
     const canvas = document.querySelector('canvas')
@@ -52,6 +54,12 @@ export function PointerLockOverlay() {
       canvas.requestPointerLock()
       setPaused(false)
     }
+  }
+
+  const handleStartTour = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    setTourActive(true)
+    setPaused(false)
   }
 
   if (!paused) return null
@@ -78,6 +86,50 @@ export function PointerLockOverlay() {
       <p style={{ fontSize: '0.9rem', opacity: 0.6 }}>
         WASD to move | Mouse to look | Escape to pause
       </p>
+      <button
+        onClick={handleStartTour}
+        style={{
+          marginTop: '1rem',
+          padding: '0.75rem 1.5rem',
+          fontSize: '1rem',
+          background: '#4a90d9',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer',
+        }}
+      >
+        Start Guided Tour
+      </button>
     </div>
+  )
+}
+
+export function TourExitButton() {
+  const tourActive = useGameStore((s) => s.tourActive)
+  const setTourActive = useGameStore((s) => s.setTourActive)
+
+  if (!tourActive) return null
+
+  return (
+    <button
+      onClick={() => {
+        setTourActive(false)
+      }}
+      style={{
+        position: 'fixed',
+        top: '1rem',
+        right: '1rem',
+        padding: '0.5rem 1rem',
+        background: 'rgba(0,0,0,0.7)',
+        color: 'white',
+        border: '1px solid rgba(255,255,255,0.3)',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        zIndex: 1000,
+      }}
+    >
+      Exit Tour (ESC)
+    </button>
   )
 }

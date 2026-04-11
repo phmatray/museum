@@ -1,16 +1,18 @@
 import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import { KeyboardControls } from '@react-three/drei'
-import { Suspense, useMemo } from 'react'
+import { Suspense, useMemo, useCallback } from 'react'
 import { Player } from './components/Player'
-import { PointerLockCamera, PointerLockOverlay } from './components/PointerLockOverlay'
+import { PointerLockCamera, PointerLockOverlay, TourExitButton } from './components/PointerLockOverlay'
 import { Room } from './components/Room'
+import { GuidedTour } from './components/GuidedTour'
 import museumConfig from './config/museum.json'
 import { MuseumConfig } from './types/museum'
 import { useIsMobile } from './hooks/useIsMobile'
 import { MobileControlsOverlay } from './components/MobileControls'
 import { useRoomTransition } from './hooks/useRoomTransition'
 import { Minimap } from './components/Minimap'
+import { useGameStore } from './stores/gameStore'
 
 enum Controls {
   forward = 'forward',
@@ -22,6 +24,11 @@ enum Controls {
 export default function App() {
   const isMobile = useIsMobile()
   const { triggerTransition, fadeRef } = useRoomTransition()
+
+  const handleTourComplete = useCallback(() => {
+    useGameStore.getState().setTourActive(false)
+    useGameStore.getState().setPaused(true)
+  }, [])
 
   const keyMap = useMemo(
     () => [
@@ -36,6 +43,7 @@ export default function App() {
   return (
     <>
       <PointerLockOverlay />
+      <TourExitButton />
       <Minimap config={museumConfig as MuseumConfig} />
       {isMobile && (
         <MobileControlsOverlay
@@ -53,6 +61,10 @@ export default function App() {
               {(museumConfig as MuseumConfig).rooms.map((room) => (
                 <Room key={room.id} config={room} onDoorwayEnter={triggerTransition} />
               ))}
+              <GuidedTour
+                stops={(museumConfig as MuseumConfig).tourPath}
+                onComplete={handleTourComplete}
+              />
             </Physics>
           </Suspense>
         </Canvas>
