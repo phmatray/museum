@@ -4,6 +4,9 @@ import { KeyboardControls } from '@react-three/drei'
 import { Suspense, useMemo } from 'react'
 import { Player } from './components/Player'
 import { PointerLockCamera, PointerLockOverlay } from './components/PointerLockOverlay'
+import { Room } from './components/Room'
+import museumConfig from './config/museum.json'
+import { MuseumConfig } from './types/museum'
 
 enum Controls {
   forward = 'forward',
@@ -33,10 +36,9 @@ export default function App() {
               <PointerLockCamera />
               <ambientLight intensity={0.5} />
               <Player spawn={[0, 1, 0]} />
-              <mesh position={[0, -0.5, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[50, 50]} />
-                <meshStandardMaterial color="#808080" />
-              </mesh>
+              {(museumConfig as MuseumConfig).rooms.map((room) => (
+                <Room key={room.id} config={room} onDoorwayEnter={() => {}} />
+              ))}
             </Physics>
           </Suspense>
         </Canvas>
