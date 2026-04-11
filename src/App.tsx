@@ -10,6 +10,7 @@ import { MuseumConfig } from './types/museum'
 import { useIsMobile } from './hooks/useIsMobile'
 import { MobileControlsOverlay } from './components/MobileControls'
 import { useRoomTransition } from './hooks/useRoomTransition'
+import { Minimap } from './components/Minimap'
 
 enum Controls {
   forward = 'forward',
@@ -35,6 +36,7 @@ export default function App() {
   return (
     <>
       <PointerLockOverlay />
+      <Minimap config={museumConfig as MuseumConfig} />
       {isMobile && (
         <MobileControlsOverlay
           onMove={() => {}}
