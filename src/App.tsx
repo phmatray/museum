@@ -7,6 +7,8 @@ import { PointerLockCamera, PointerLockOverlay } from './components/PointerLockO
 import { Room } from './components/Room'
 import museumConfig from './config/museum.json'
 import { MuseumConfig } from './types/museum'
+import { useIsMobile } from './hooks/useIsMobile'
+import { MobileControlsOverlay } from './components/MobileControls'
 
 enum Controls {
   forward = 'forward',
@@ -16,6 +18,8 @@ enum Controls {
 }
 
 export default function App() {
+  const isMobile = useIsMobile()
+
   const keyMap = useMemo(
     () => [
       { name: Controls.forward, keys: ['ArrowUp', 'KeyW'] },
@@ -29,6 +33,12 @@ export default function App() {
   return (
     <>
       <PointerLockOverlay />
+      {isMobile && (
+        <MobileControlsOverlay
+          onMove={() => {}}
+          onLook={() => {}}
+        />
+      )}
       <KeyboardControls map={keyMap}>
         <Canvas camera={{ fov: 75, near: 0.1, far: 1000 }}>
           <Suspense fallback={null}>
