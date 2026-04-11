@@ -9,6 +9,7 @@ import museumConfig from './config/museum.json'
 import { MuseumConfig } from './types/museum'
 import { useIsMobile } from './hooks/useIsMobile'
 import { MobileControlsOverlay } from './components/MobileControls'
+import { useRoomTransition } from './hooks/useRoomTransition'
 
 enum Controls {
   forward = 'forward',
@@ -19,6 +20,7 @@ enum Controls {
 
 export default function App() {
   const isMobile = useIsMobile()
+  const { triggerTransition, fadeRef } = useRoomTransition()
 
   const keyMap = useMemo(
     () => [
@@ -47,12 +49,24 @@ export default function App() {
               <ambientLight intensity={0.5} />
               <Player spawn={[0, 1, 0]} />
               {(museumConfig as MuseumConfig).rooms.map((room) => (
-                <Room key={room.id} config={room} onDoorwayEnter={() => {}} />
+                <Room key={room.id} config={room} onDoorwayEnter={triggerTransition} />
               ))}
             </Physics>
           </Suspense>
         </Canvas>
       </KeyboardControls>
+      <div
+        ref={fadeRef}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'black',
+          opacity: 0,
+          pointerEvents: 'none',
+          transition: 'opacity 0.5s ease',
+          zIndex: 500,
+        }}
+      />
     </>
   )
 }

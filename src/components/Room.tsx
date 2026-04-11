@@ -1,12 +1,13 @@
 import { CuboidCollider } from '@react-three/rapier'
 import { RoomConfig } from '../types/museum'
+import { Doorway } from './Doorway'
 
 interface RoomProps {
   config: RoomConfig
   onDoorwayEnter: (targetRoomId: string) => void
 }
 
-export function Room({ config, onDoorwayEnter: _onDoorwayEnter }: RoomProps) {
+export function Room({ config, onDoorwayEnter }: RoomProps) {
   const { dimensions, position, wallColor, floorColor, ceilingColor, ambientLightIntensity } = config
   const { width, height, depth } = dimensions
   const px = position.x
@@ -61,6 +62,15 @@ export function Room({ config, onDoorwayEnter: _onDoorwayEnter }: RoomProps) {
 
       {/* Floor collider */}
       <CuboidCollider position={[0, -wallThickness / 2, 0]} args={[width / 2, wallThickness / 2, depth / 2]} />
+
+      {config.doorways.map((doorway) => (
+        <Doorway
+          key={doorway.id}
+          config={doorway}
+          roomPosition={position}
+          onEnter={onDoorwayEnter}
+        />
+      ))}
     </group>
   )
 }
