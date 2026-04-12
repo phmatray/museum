@@ -179,15 +179,20 @@ export function Room({ config, onDoorwayEnter }: RoomProps) {
         <WallSegment key={i} center={seg.center} size={seg.size} color={wallColor} />
       ))}
 
-      {/* Doorway visual frames + triggers */}
-      {config.doorways.map((doorway) => (
-        <Doorway
-          key={doorway.id}
-          config={doorway}
-          roomPosition={position}
-          onEnter={onDoorwayEnter}
-        />
-      ))}
+      {/* Doorway triggers — wallAxis tells the sensor how to orient. */}
+      {config.doorways.map((doorway) => {
+        const side = getDoorwayWall(doorway, width, depth)
+        // north/south walls run along X; east/west walls run along Z
+        const wallAxis: 'x' | 'z' = side === 'north' || side === 'south' ? 'x' : 'z'
+        return (
+          <Doorway
+            key={doorway.id}
+            config={doorway}
+            wallAxis={wallAxis}
+            onEnter={onDoorwayEnter}
+          />
+        )
+      })}
     </group>
   )
 }
