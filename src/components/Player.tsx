@@ -7,7 +7,7 @@ import {
   useRapier,
   type RapierRigidBody,
 } from '@react-three/rapier'
-import type { KinematicCharacterController } from '@dimforge/rapier3d-compat'
+import { QueryFilterFlags, type KinematicCharacterController } from '@dimforge/rapier3d-compat'
 import { computeMovement } from '../hooks/usePlayerMovement'
 import { useGameStore } from '../stores/gameStore'
 
@@ -68,7 +68,8 @@ export function Player({ spawn = [0, 1, 0] }: { spawn?: [number, number, number]
       z: horizontal.z,
     }
 
-    cc.computeColliderMovement(collider, desired)
+    // Exclude sensors (like doorway triggers) so they don't block movement.
+    cc.computeColliderMovement(collider, desired, QueryFilterFlags.EXCLUDE_SENSORS)
     const corrected = cc.computedMovement()
 
     const current = rb.translation()

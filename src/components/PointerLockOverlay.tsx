@@ -108,6 +108,22 @@ export function PointerLockOverlay() {
 export function TourExitButton() {
   const tourActive = useGameStore((s) => s.tourActive)
   const setTourActive = useGameStore((s) => s.setTourActive)
+  const setPaused = useGameStore((s) => s.setPaused)
+
+  // ESC key exits the tour. We need a separate keydown listener because
+  // pointer lock isn't engaged during the tour, so the pointerlockchange
+  // handler never fires.
+  useEffect(() => {
+    if (!tourActive) return
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setTourActive(false)
+        setPaused(true)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [tourActive, setTourActive, setPaused])
 
   if (!tourActive) return null
 
@@ -115,6 +131,7 @@ export function TourExitButton() {
     <button
       onClick={() => {
         setTourActive(false)
+        setPaused(true)
       }}
       style={{
         position: 'fixed',
