@@ -1,5 +1,5 @@
 import { useGameStore } from '../stores/gameStore'
-import { MuseumConfig } from '../types/museum'
+import type { MuseumConfig } from '../types/museum'
 
 interface MinimapProps {
   config: MuseumConfig

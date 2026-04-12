@@ -1,6 +1,6 @@
 import { useRef } from 'react'
 import { CuboidCollider } from '@react-three/rapier'
-import { DoorwayConfig } from '../types/museum'
+import type { DoorwayConfig } from '../types/museum'
 
 interface DoorwayProps {
   config: DoorwayConfig

@@ -1,5 +1,5 @@
 import { CuboidCollider } from '@react-three/rapier'
-import { RoomConfig } from '../types/museum'
+import type { RoomConfig } from '../types/museum'
 import { Doorway } from './Doorway'
 
 interface RoomProps {

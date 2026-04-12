@@ -7,7 +7,7 @@ import { PointerLockCamera, PointerLockOverlay, TourExitButton } from './compone
 import { Room } from './components/Room'
 import { GuidedTour } from './components/GuidedTour'
 import museumConfig from './config/museum.json'
-import { MuseumConfig } from './types/museum'
+import type { MuseumConfig } from './types/museum'
 import { useIsMobile } from './hooks/useIsMobile'
 import { MobileControlsOverlay } from './components/MobileControls'
 import { useRoomTransition } from './hooks/useRoomTransition'

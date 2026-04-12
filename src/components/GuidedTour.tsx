@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '../stores/gameStore'
-import { TourStop } from '../types/museum'
+import type { TourStop } from '../types/museum'
 
 interface GuidedTourProps {
   stops: TourStop[]
