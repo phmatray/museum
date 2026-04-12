@@ -7,7 +7,11 @@ import {
   useRapier,
   type RapierRigidBody,
 } from '@react-three/rapier'
-import { QueryFilterFlags, type KinematicCharacterController } from '@dimforge/rapier3d-compat'
+import {
+  ActiveCollisionTypes,
+  QueryFilterFlags,
+  type KinematicCharacterController,
+} from '@dimforge/rapier3d-compat'
 import { computeMovement } from '../hooks/usePlayerMovement'
 import { useGameStore } from '../stores/gameStore'
 
@@ -97,7 +101,14 @@ export function Player({ spawn = [0, 1, 0] }: { spawn?: [number, number, number]
       colliders={false}
       enabledRotations={[false, false, false]}
     >
-      <CapsuleCollider args={[CAPSULE_HALF_HEIGHT, CAPSULE_RADIUS]} />
+      <CapsuleCollider
+        args={[CAPSULE_HALF_HEIGHT, CAPSULE_RADIUS]}
+        // The default activeCollisionTypes (DEFAULT = 15) only covers
+        // DYNAMIC_* pairs. Since the player is kinematic and doorway sensors
+        // are fixed (standalone) colliders, we need KINEMATIC_FIXED enabled
+        // for Rapier to process the pair and fire intersection events.
+        activeCollisionTypes={ActiveCollisionTypes.ALL}
+      />
     </RigidBody>
   )
 }

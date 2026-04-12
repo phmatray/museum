@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import { CuboidCollider } from '@react-three/rapier'
 import type { DoorwayConfig } from '../types/museum'
+import { useGameStore } from '../stores/gameStore'
 
 interface DoorwayProps {
   config: DoorwayConfig
@@ -41,13 +42,19 @@ export function Doorway({ config, wallAxis, onEnter }: DoorwayProps) {
         position={[0, 0, 0]}
         args={sensorArgs}
         onIntersectionEnter={() => {
-          if (!hasTriggered.current) {
-            hasTriggered.current = true
-            onEnter(config.connectsTo)
-            setTimeout(() => {
-              hasTriggered.current = false
-            }, 2000)
-          }
+          // Each doorway has two sensors at the same world position (one from
+          // each connecting room), so BOTH fire when the player crosses. Only
+          // the one whose `connectsTo` differs from the current room should
+          // actually transition — the other would try to send us back to the
+          // room we're already in.
+          const currentRoomId = useGameStore.getState().currentRoomId
+          if (currentRoomId === config.connectsTo) return
+          if (hasTriggered.current) return
+          hasTriggered.current = true
+          onEnter(config.connectsTo)
+          setTimeout(() => {
+            hasTriggered.current = false
+          }, 2000)
         }}
       />
     </group>
