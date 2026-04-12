@@ -23,7 +23,7 @@ enum Controls {
 
 export default function App() {
   const isMobile = useIsMobile()
-  const { triggerTransition, fadeRef } = useRoomTransition()
+  const { triggerTransition } = useRoomTransition()
 
   const handleTourComplete = useCallback(() => {
     useGameStore.getState().setTourActive(false)
@@ -70,18 +70,6 @@ export default function App() {
           </Suspense>
         </Canvas>
       </KeyboardControls>
-      <div
-        ref={fadeRef}
-        style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'black',
-          opacity: 0,
-          pointerEvents: 'none',
-          transition: 'opacity 0.5s ease',
-          zIndex: 500,
-        }}
-      />
     </>
   )
 }
