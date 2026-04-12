@@ -56,7 +56,8 @@ export default function App() {
           <Suspense fallback={null}>
             <Physics>
               <PointerLockCamera />
-              <ambientLight intensity={0.5} />
+              <ambientLight intensity={1.2} />
+              <hemisphereLight args={['#ffffff', '#444444', 0.8]} />
               <Player spawn={[0, 1, 0]} />
               {(museumConfig as MuseumConfig).rooms.map((room) => (
                 <Room key={room.id} config={room} onDoorwayEnter={triggerTransition} />

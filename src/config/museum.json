@@ -17,7 +17,7 @@
       "id": "room-2",
       "name": "Modern Wing",
       "dimensions": { "width": 10, "height": 4, "depth": 10 },
-      "position": { "x": 12, "y": 0, "z": 0 },
+      "position": { "x": 11, "y": 0, "z": 0 },
       "doorways": [
         { "id": "door-2-1", "position": { "x": -5, "y": 0, "z": 0 }, "connectsTo": "room-1", "width": 2, "height": 3 },
         { "id": "door-2-3", "position": { "x": 0, "y": 0, "z": 5 }, "connectsTo": "room-3", "width": 2, "height": 3 }
@@ -30,11 +30,11 @@
     {
       "id": "room-3",
       "name": "Photography Gallery",
-      "dimensions": { "width": 14, "height": 4, "depth": 8 },
-      "position": { "x": 12, "y": 0, "z": 14 },
+      "dimensions": { "width": 10, "height": 4, "depth": 8 },
+      "position": { "x": 11, "y": 0, "z": 9 },
       "doorways": [
         { "id": "door-3-2", "position": { "x": 0, "y": 0, "z": -4 }, "connectsTo": "room-2", "width": 2, "height": 3 },
-        { "id": "door-3-4", "position": { "x": 7, "y": 0, "z": 0 }, "connectsTo": "room-4", "width": 2, "height": 3 }
+        { "id": "door-3-4", "position": { "x": 5, "y": 0, "z": 0 }, "connectsTo": "room-4", "width": 2, "height": 3 }
       ],
       "wallColor": "#f0f0f0",
       "floorColor": "#8B6F47",
@@ -45,7 +45,7 @@
       "id": "room-4",
       "name": "Immersive Room",
       "dimensions": { "width": 10, "height": 5, "depth": 10 },
-      "position": { "x": 26, "y": 0, "z": 14 },
+      "position": { "x": 21, "y": 0, "z": 9 },
       "doorways": [
         { "id": "door-4-3", "position": { "x": -5, "y": 0, "z": 0 }, "connectsTo": "room-3", "width": 2, "height": 3 }
       ],
@@ -56,10 +56,10 @@
     }
   ],
   "tourPath": [
-    { "position": { "x": 0, "y": 1.7, "z": 0 }, "lookAt": { "x": 6, "y": 1.7, "z": 0 }, "pauseDuration": 8 },
-    { "position": { "x": 12, "y": 1.7, "z": 0 }, "lookAt": { "x": 12, "y": 1.7, "z": 5 }, "pauseDuration": 8 },
-    { "position": { "x": 12, "y": 1.7, "z": 14 }, "lookAt": { "x": 19, "y": 1.7, "z": 14 }, "pauseDuration": 8 },
-    { "position": { "x": 26, "y": 1.7, "z": 14 }, "lookAt": { "x": 26, "y": 1.7, "z": 19 }, "pauseDuration": 8 }
+    { "position": { "x": 0, "y": 1.7, "z": 0 }, "lookAt": { "x": 6, "y": 1.7, "z": 0 }, "pauseDuration": 5 },
+    { "position": { "x": 11, "y": 1.7, "z": 0 }, "lookAt": { "x": 11, "y": 1.7, "z": 5 }, "pauseDuration": 5 },
+    { "position": { "x": 11, "y": 1.7, "z": 9 }, "lookAt": { "x": 16, "y": 1.7, "z": 9 }, "pauseDuration": 5 },
+    { "position": { "x": 21, "y": 1.7, "z": 9 }, "lookAt": { "x": 21, "y": 1.7, "z": 14 }, "pauseDuration": 5 }
   ],
   "playerSpawn": { "x": 0, "y": 1, "z": 0 },
   "playerHeight": 1.7,

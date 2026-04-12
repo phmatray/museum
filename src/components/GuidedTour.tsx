@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react'
+import { useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '../stores/gameStore'
@@ -9,6 +9,8 @@ interface GuidedTourProps {
   onComplete: () => void
 }
 
+const SPEED = 2 // meters per second
+
 export function GuidedTour({ stops, onComplete }: GuidedTourProps) {
   const { camera } = useThree()
   const tourActive = useGameStore((s) => s.tourActive)
@@ -17,11 +19,24 @@ export function GuidedTour({ stops, onComplete }: GuidedTourProps) {
   const progress = useRef(0)
   const pauseTimer = useRef(0)
   const isPaused = useRef(false)
-
-  const speed = 2 // meters per second
+  const wasActive = useRef(false)
 
   useFrame((_, delta) => {
-    if (!tourActive || stops.length < 2) return
+    if (!tourActive || stops.length < 2) {
+      wasActive.current = false
+      return
+    }
+
+    // Reset state synchronously when the tour just became active.
+    // We can't rely on useEffect because it runs AFTER useFrame on the first frame,
+    // which means useFrame would see stale refs from a previous completed tour.
+    if (!wasActive.current) {
+      currentStopIndex.current = 0
+      progress.current = 0
+      isPaused.current = false
+      pauseTimer.current = 0
+      wasActive.current = true
+    }
 
     const idx = currentStopIndex.current
     if (idx >= stops.length - 1) {
@@ -45,7 +60,7 @@ export function GuidedTour({ stops, onComplete }: GuidedTourProps) {
     const fromPos = new THREE.Vector3(from.position.x, from.position.y, from.position.z)
     const toPos = new THREE.Vector3(to.position.x, to.position.y, to.position.z)
     const distance = fromPos.distanceTo(toPos)
-    const travelTime = distance / speed
+    const travelTime = distance / SPEED
 
     progress.current += delta / travelTime
 
@@ -63,15 +78,6 @@ export function GuidedTour({ stops, onComplete }: GuidedTourProps) {
     const lookTarget = fromLook.lerp(toLook, progress.current)
     camera.lookAt(lookTarget)
   })
-
-  useEffect(() => {
-    if (tourActive) {
-      currentStopIndex.current = 0
-      progress.current = 0
-      isPaused.current = false
-      pauseTimer.current = 0
-    }
-  }, [tourActive])
 
   return null
 }

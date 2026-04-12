@@ -17,18 +17,7 @@ export function Doorway({ config, roomPosition, onEnter }: DoorwayProps) {
 
   return (
     <group position={[worldX, worldY, worldZ]}>
-      {/* Visual doorway frame */}
-      <mesh>
-        <boxGeometry args={[config.width + 0.4, config.height + 0.2, 0.3]} />
-        <meshStandardMaterial color="#4a3728" />
-      </mesh>
-      {/* Opening (slightly darker) */}
-      <mesh position={[0, 0, 0.01]}>
-        <planeGeometry args={[config.width, config.height]} />
-        <meshStandardMaterial color="#111111" transparent opacity={0.3} />
-      </mesh>
-
-      {/* Trigger sensor */}
+      {/* Trigger sensor — detects when the player walks through the doorway */}
       <CuboidCollider
         sensor
         position={[0, 0, 0]}
