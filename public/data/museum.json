@@ -24,7 +24,7 @@
       "maxClusterSize": 14
     }
   },
-  "generatedAt": "2026-07-25T13:29:21.005Z",
+  "generatedAt": "2026-07-25T22:06:37.149Z",
   "floors": [
     {
       "id": "reserve",
@@ -70,7 +70,7 @@
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 101,
+                  "layer": 102,
                   "pinned": false
                 },
                 {
@@ -160,7 +160,7 @@
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 100,
+                  "layer": 101,
                   "pinned": false
                 },
                 {
@@ -280,7 +280,7 @@
                   "width": 1.3494850021680094,
                   "height": 0.6747425010840047,
                   "atlas": 0,
-                  "layer": 91,
+                  "layer": 92,
                   "pinned": false
                 },
                 {
@@ -300,7 +300,7 @@
                   "width": 1.1505149978319906,
                   "height": 0.5752574989159953,
                   "atlas": 0,
-                  "layer": 98,
+                  "layer": 99,
                   "pinned": false
                 },
                 {
@@ -340,7 +340,7 @@
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 96,
+                  "layer": 97,
                   "pinned": false
                 },
                 {
@@ -370,7 +370,7 @@
                   "width": 1.3494850021680094,
                   "height": 0.6747425010840047,
                   "atlas": 0,
-                  "layer": 92,
+                  "layer": 93,
                   "pinned": false
                 },
                 {
@@ -532,7 +532,7 @@
                   "width": 1.3010299956639813,
                   "height": 0.6505149978319906,
                   "atlas": 0,
-                  "layer": 105,
+                  "layer": 106,
                   "pinned": false
                 }
               ]
@@ -654,7 +654,7 @@
                   "width": 1.4515449934959719,
                   "height": 0.7257724967479859,
                   "atlas": 0,
-                  "layer": 112,
+                  "layer": 113,
                   "pinned": false
                 },
                 {
@@ -664,7 +664,7 @@
                   "width": 1.9818939136727778,
                   "height": 0.9909469568363889,
                   "atlas": 0,
-                  "layer": 106,
+                  "layer": 107,
                   "pinned": false
                 },
                 {
@@ -1367,7 +1367,7 @@
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 94,
+                  "layer": 95,
                   "pinned": false
                 }
               ]
@@ -1530,7 +1530,7 @@
         },
         {
           "id": "etage-1-south-0",
-          "name": "Typescript / Blockchain",
+          "name": "Htmx / Trading",
           "side": "south",
           "footprint": {
             "x": -5.6,
@@ -1559,33 +1559,33 @@
               "openings": [],
               "placements": [
                 {
-                  "key": "phmatray/.github",
-                  "u": 2.687371250542002,
+                  "key": "phmatray/trading-lab",
+                  "u": 2.665359843160042,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 33,
+                  "layer": 109,
                   "pinned": false
                 },
                 {
-                  "key": "Atypical-Consulting/FlowForge",
+                  "key": "Atypical-Consulting/FastComponents",
                   "u": 5.449999999999999,
                   "centerHeight": 1.45,
-                  "width": 1.1505149978319906,
-                  "height": 0.5752574989159953,
+                  "width": 1.2385606273598313,
+                  "height": 0.6192803136799157,
                   "atlas": 0,
-                  "layer": 10,
+                  "layer": 8,
                   "pinned": false
                 },
                 {
-                  "key": "phmatray/dotnet-standards",
-                  "u": 8.212628749457997,
+                  "key": "stephaneweg/MusicTracker",
+                  "u": 8.234640156839957,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 64,
+                  "layer": 115,
                   "pinned": false
                 }
               ]
@@ -1598,222 +1598,6 @@
               },
               "b": {
                 "x": -5.6,
-                "z": 15
-              },
-              "height": 4.3,
-              "kind": "side",
-              "normal": {
-                "x": 1,
-                "z": 0
-              },
-              "openings": [
-                {
-                  "kind": "door",
-                  "start": 3.5,
-                  "end": 5.5,
-                  "height": 2.1,
-                  "sill": 0
-                }
-              ],
-              "placements": [
-                {
-                  "key": "Atypical-Consulting/github-toolkit",
-                  "u": 2,
-                  "centerHeight": 1.45,
-                  "width": 1,
-                  "height": 0.5,
-                  "atlas": 0,
-                  "layer": 11,
-                  "pinned": false
-                },
-                {
-                  "key": "Atypical-Consulting/nugetkeep-releases",
-                  "u": 7,
-                  "centerHeight": 1.45,
-                  "width": 1,
-                  "height": 0.5,
-                  "atlas": 0,
-                  "layer": 19,
-                  "pinned": false
-                }
-              ]
-            },
-            {
-              "id": "etage-1-south-0-side-b",
-              "a": {
-                "x": 5.3,
-                "z": 15
-              },
-              "b": {
-                "x": 5.3,
-                "z": 6
-              },
-              "height": 4.3,
-              "kind": "side",
-              "normal": {
-                "x": -1,
-                "z": 0
-              },
-              "openings": [
-                {
-                  "kind": "door",
-                  "start": 3.5,
-                  "end": 5.5,
-                  "height": 2.1,
-                  "sill": 0
-                }
-              ],
-              "placements": [
-                {
-                  "key": "Atypical-Consulting/og-engine",
-                  "u": 2,
-                  "centerHeight": 1.45,
-                  "width": 1,
-                  "height": 0.5,
-                  "atlas": 0,
-                  "layer": 21,
-                  "pinned": false
-                },
-                {
-                  "key": "Atypical-Consulting/readme-forge",
-                  "u": 7,
-                  "centerHeight": 1.45,
-                  "width": 1,
-                  "height": 0.5,
-                  "atlas": 0,
-                  "layer": 22,
-                  "pinned": false
-                }
-              ]
-            },
-            {
-              "id": "etage-1-south-0-inner",
-              "a": {
-                "x": 5.3,
-                "z": 6
-              },
-              "b": {
-                "x": -5.6,
-                "z": 6
-              },
-              "height": 4.3,
-              "kind": "inner",
-              "normal": {
-                "x": 0,
-                "z": 1
-              },
-              "openings": [
-                {
-                  "kind": "bay",
-                  "start": 4.25,
-                  "end": 6.65,
-                  "height": 3.7,
-                  "sill": 0
-                }
-              ],
-              "placements": [
-                {
-                  "key": "phmatray/phmatray",
-                  "u": 2.375,
-                  "centerHeight": 1.45,
-                  "width": 1.1505149978319906,
-                  "height": 0.5752574989159953,
-                  "atlas": 0,
-                  "layer": 93,
-                  "pinned": false
-                },
-                {
-                  "key": "Atypical-Consulting/.github",
-                  "u": 8.524999999999999,
-                  "centerHeight": 1.45,
-                  "width": 1,
-                  "height": 0.5,
-                  "atlas": 0,
-                  "layer": 0,
-                  "pinned": false
-                }
-              ]
-            }
-          ],
-          "topics": [
-            "typescript",
-            "blockchain",
-            "github",
-            "readme",
-            "nodejs"
-          ],
-          "keys": [
-            "Atypical-Consulting/.github",
-            "Atypical-Consulting/FlowForge",
-            "Atypical-Consulting/github-toolkit",
-            "Atypical-Consulting/nugetkeep-releases",
-            "Atypical-Consulting/og-engine",
-            "Atypical-Consulting/readme-forge",
-            "phmatray/.github",
-            "phmatray/dotnet-standards",
-            "phmatray/phmatray"
-          ]
-        },
-        {
-          "id": "etage-1-south-1",
-          "name": "Htmx / Trading",
-          "side": "south",
-          "footprint": {
-            "x": 5.3,
-            "z": 6,
-            "width": 9.7,
-            "depth": 9
-          },
-          "theme": "classic",
-          "walls": [
-            {
-              "id": "etage-1-south-1-outer",
-              "a": {
-                "x": 5.3,
-                "z": 15
-              },
-              "b": {
-                "x": 15,
-                "z": 15
-              },
-              "height": 4.3,
-              "kind": "outer",
-              "normal": {
-                "x": 0,
-                "z": -1
-              },
-              "openings": [],
-              "placements": [
-                {
-                  "key": "phmatray/trading-lab",
-                  "u": 3.1538131242133893,
-                  "centerHeight": 1.45,
-                  "width": 1,
-                  "height": 0.5,
-                  "atlas": 0,
-                  "layer": 108,
-                  "pinned": false
-                },
-                {
-                  "key": "Atypical-Consulting/FastComponents",
-                  "u": 6.426906562106694,
-                  "centerHeight": 1.45,
-                  "width": 1.2385606273598313,
-                  "height": 0.6192803136799157,
-                  "atlas": 0,
-                  "layer": 8,
-                  "pinned": false
-                }
-              ]
-            },
-            {
-              "id": "etage-1-south-1-side-a",
-              "a": {
-                "x": 5.3,
-                "z": 6
-              },
-              "b": {
-                "x": 5.3,
                 "z": 15
               },
               "height": 4.3,
@@ -1849,7 +1633,223 @@
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 95,
+                  "layer": 96,
+                  "pinned": false
+                }
+              ]
+            },
+            {
+              "id": "etage-1-south-0-side-b",
+              "a": {
+                "x": 5.3,
+                "z": 15
+              },
+              "b": {
+                "x": 5.3,
+                "z": 6
+              },
+              "height": 4.3,
+              "kind": "side",
+              "normal": {
+                "x": -1,
+                "z": 0
+              },
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
+              "placements": [
+                {
+                  "key": "phmatray/aspire-samples",
+                  "u": 2,
+                  "centerHeight": 1.45,
+                  "width": 1,
+                  "height": 0.5,
+                  "atlas": 0,
+                  "layer": 39,
+                  "pinned": false
+                },
+                {
+                  "key": "phmatray/dotnet-standards",
+                  "u": 7,
+                  "centerHeight": 1.45,
+                  "width": 1,
+                  "height": 0.5,
+                  "atlas": 0,
+                  "layer": 64,
+                  "pinned": false
+                }
+              ]
+            },
+            {
+              "id": "etage-1-south-0-inner",
+              "a": {
+                "x": 5.3,
+                "z": 6
+              },
+              "b": {
+                "x": -5.6,
+                "z": 6
+              },
+              "height": 4.3,
+              "kind": "inner",
+              "normal": {
+                "x": 0,
+                "z": 1
+              },
+              "openings": [
+                {
+                  "kind": "bay",
+                  "start": 4.25,
+                  "end": 6.65,
+                  "height": 3.7,
+                  "sill": 0
+                }
+              ],
+              "placements": [
+                {
+                  "key": "phmatray/dotnet-toolbelt",
+                  "u": 2.375,
+                  "centerHeight": 1.45,
+                  "width": 1.1505149978319906,
+                  "height": 0.5752574989159953,
+                  "atlas": 0,
+                  "layer": 65,
+                  "pinned": false
+                },
+                {
+                  "key": "phmatray/music-dotnet",
+                  "u": 8.524999999999999,
+                  "centerHeight": 1.45,
+                  "width": 1.1505149978319906,
+                  "height": 0.5752574989159953,
+                  "atlas": 0,
+                  "layer": 91,
+                  "pinned": false
+                }
+              ]
+            }
+          ],
+          "topics": [
+            "htmx",
+            "trading",
+            "indicators",
+            "music",
+            "editorconfig"
+          ],
+          "keys": [
+            "Atypical-Consulting/FastComponents",
+            "Atypical-Consulting/htmx-samples",
+            "phmatray/PipeException",
+            "phmatray/aspire-samples",
+            "phmatray/dotnet-standards",
+            "phmatray/dotnet-toolbelt",
+            "phmatray/music-dotnet",
+            "phmatray/trading-lab",
+            "stephaneweg/MusicTracker"
+          ]
+        },
+        {
+          "id": "etage-1-south-1",
+          "name": "Design Patterns / Clean Architecture",
+          "side": "south",
+          "footprint": {
+            "x": 5.3,
+            "z": 6,
+            "width": 9.7,
+            "depth": 9
+          },
+          "theme": "classic",
+          "walls": [
+            {
+              "id": "etage-1-south-1-outer",
+              "a": {
+                "x": 5.3,
+                "z": 15
+              },
+              "b": {
+                "x": 15,
+                "z": 15
+              },
+              "height": 4.3,
+              "kind": "outer",
+              "normal": {
+                "x": 0,
+                "z": -1
+              },
+              "openings": [],
+              "placements": [
+                {
+                  "key": "phmatray/Mediateur",
+                  "u": 3.1538131242133893,
+                  "centerHeight": 1.45,
+                  "width": 1,
+                  "height": 0.5,
+                  "atlas": 0,
+                  "layer": 85,
+                  "pinned": false
+                },
+                {
+                  "key": "Atypical-Consulting/TheAppManager",
+                  "u": 6.426906562106694,
+                  "centerHeight": 1.45,
+                  "width": 1.2385606273598313,
+                  "height": 0.6192803136799157,
+                  "atlas": 0,
+                  "layer": 27,
+                  "pinned": false
+                }
+              ]
+            },
+            {
+              "id": "etage-1-south-1-side-a",
+              "a": {
+                "x": 5.3,
+                "z": 6
+              },
+              "b": {
+                "x": 5.3,
+                "z": 15
+              },
+              "height": 4.3,
+              "kind": "side",
+              "normal": {
+                "x": 1,
+                "z": 0
+              },
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
+              "placements": [
+                {
+                  "key": "phmatray/Antlr4Library",
+                  "u": 2,
+                  "centerHeight": 1.45,
+                  "width": 1.1505149978319906,
+                  "height": 0.5752574989159953,
+                  "atlas": 0,
+                  "layer": 36,
+                  "pinned": false
+                },
+                {
+                  "key": "phmatray/TheRightCollection",
+                  "u": 7,
+                  "centerHeight": 1.45,
+                  "width": 1.1505149978319906,
+                  "height": 0.5752574989159953,
+                  "atlas": 0,
+                  "layer": 108,
                   "pinned": false
                 }
               ]
@@ -1873,7 +1873,7 @@
               "openings": [],
               "placements": [
                 {
-                  "key": "stephaneweg/MusicTracker",
+                  "key": "phmatray/WispLang",
                   "u": 2.9498283340560034,
                   "centerHeight": 1.45,
                   "width": 1,
@@ -1883,13 +1883,13 @@
                   "pinned": false
                 },
                 {
-                  "key": "phmatray/dotnet-toolbelt",
+                  "key": "Atypical-Consulting/Ninjadog",
                   "u": 5.974914167028002,
                   "centerHeight": 1.45,
                   "width": 1.1505149978319906,
                   "height": 0.5752574989159953,
                   "atlas": 0,
-                  "layer": 65,
+                  "layer": 18,
                   "pinned": false
                 }
               ]
@@ -1921,49 +1921,49 @@
               ],
               "placements": [
                 {
-                  "key": "phmatray/aspire-samples",
+                  "key": "phmatray/Antlr4Roslyn",
                   "u": 2,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 39,
+                  "layer": 37,
                   "pinned": false
                 },
                 {
-                  "key": "phmatray/music-dotnet",
+                  "key": "Atypical-Consulting/hexagonal-dotnet",
                   "u": 7.35,
                   "centerHeight": 1.45,
                   "width": 1.1505149978319906,
                   "height": 0.5752574989159953,
                   "atlas": 0,
-                  "layer": 90,
+                  "layer": 13,
                   "pinned": false
                 }
               ]
             }
           ],
           "topics": [
-            "htmx",
-            "trading",
-            "indicators",
-            "music",
-            "lib"
+            "design-patterns",
+            "clean-architecture",
+            "parser",
+            "ddd",
+            "hexagonal-architecture"
           ],
           "keys": [
-            "Atypical-Consulting/FastComponents",
-            "Atypical-Consulting/htmx-samples",
-            "phmatray/PipeException",
-            "phmatray/aspire-samples",
-            "phmatray/dotnet-toolbelt",
-            "phmatray/music-dotnet",
-            "phmatray/trading-lab",
-            "stephaneweg/MusicTracker"
+            "Atypical-Consulting/Ninjadog",
+            "Atypical-Consulting/TheAppManager",
+            "Atypical-Consulting/hexagonal-dotnet",
+            "phmatray/Antlr4Library",
+            "phmatray/Antlr4Roslyn",
+            "phmatray/Mediateur",
+            "phmatray/TheRightCollection",
+            "phmatray/WispLang"
           ]
         },
         {
           "id": "etage-1-west-0",
-          "name": "Design Patterns / Clean Architecture",
+          "name": "Typescript / Blockchain",
           "side": "west",
           "footprint": {
             "x": -15,
@@ -1992,23 +1992,33 @@
               "openings": [],
               "placements": [
                 {
-                  "key": "phmatray/Antlr4Roslyn",
-                  "u": 4.130719686320084,
+                  "key": "Atypical-Consulting/og-engine",
+                  "u": 2.9623712505420023,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 37,
+                  "layer": 21,
                   "pinned": false
                 },
                 {
-                  "key": "Atypical-Consulting/TheAppManager",
-                  "u": 7.75,
+                  "key": "Atypical-Consulting/FlowForge",
+                  "u": 6,
                   "centerHeight": 1.45,
-                  "width": 1.2385606273598313,
-                  "height": 0.6192803136799157,
+                  "width": 1.1505149978319906,
+                  "height": 0.5752574989159953,
                   "atlas": 0,
-                  "layer": 27,
+                  "layer": 10,
+                  "pinned": false
+                },
+                {
+                  "key": "phmatray/museum",
+                  "u": 9.037628749457998,
+                  "centerHeight": 1.45,
+                  "width": 1,
+                  "height": 0.5,
+                  "atlas": 0,
+                  "layer": 90,
                   "pinned": false
                 }
               ]
@@ -2032,23 +2042,23 @@
               "openings": [],
               "placements": [
                 {
-                  "key": "phmatray/Mediateur",
+                  "key": "phmatray/.github",
                   "u": 2.9498283340560034,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 85,
+                  "layer": 33,
                   "pinned": false
                 },
                 {
-                  "key": "Atypical-Consulting/Ninjadog",
+                  "key": "phmatray/phmatray",
                   "u": 5.974914167028002,
                   "centerHeight": 1.45,
                   "width": 1.1505149978319906,
                   "height": 0.5752574989159953,
                   "atlas": 0,
-                  "layer": 18,
+                  "layer": 94,
                   "pinned": false
                 }
               ]
@@ -2072,23 +2082,23 @@
               "openings": [],
               "placements": [
                 {
-                  "key": "phmatray/WispLang",
-                  "u": 2.9498283340560034,
+                  "key": "Atypical-Consulting/readme-forge",
+                  "u": 3,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 113,
+                  "layer": 22,
                   "pinned": false
                 },
                 {
-                  "key": "Atypical-Consulting/hexagonal-dotnet",
-                  "u": 5.974914167028002,
+                  "key": "Atypical-Consulting/.github",
+                  "u": 6,
                   "centerHeight": 1.45,
-                  "width": 1.1505149978319906,
-                  "height": 0.5752574989159953,
+                  "width": 1,
+                  "height": 0.5,
                   "atlas": 0,
-                  "layer": 13,
+                  "layer": 0,
                   "pinned": false
                 }
               ]
@@ -2120,44 +2130,45 @@
               ],
               "placements": [
                 {
-                  "key": "phmatray/Antlr4Library",
+                  "key": "Atypical-Consulting/github-toolkit",
                   "u": 2.65,
                   "centerHeight": 1.45,
-                  "width": 1.1505149978319906,
-                  "height": 0.5752574989159953,
+                  "width": 1,
+                  "height": 0.5,
                   "atlas": 0,
-                  "layer": 36,
+                  "layer": 11,
                   "pinned": false
                 },
                 {
-                  "key": "phmatray/TheRightCollection",
+                  "key": "Atypical-Consulting/nugetkeep-releases",
                   "u": 9.35,
                   "centerHeight": 1.45,
-                  "width": 1.1505149978319906,
-                  "height": 0.5752574989159953,
+                  "width": 1,
+                  "height": 0.5,
                   "atlas": 0,
-                  "layer": 107,
+                  "layer": 19,
                   "pinned": false
                 }
               ]
             }
           ],
           "topics": [
-            "design-patterns",
-            "clean-architecture",
-            "parser",
-            "ddd",
-            "hexagonal-architecture"
+            "typescript",
+            "blockchain",
+            "github",
+            "readme",
+            "nodejs"
           ],
           "keys": [
-            "Atypical-Consulting/Ninjadog",
-            "Atypical-Consulting/TheAppManager",
-            "Atypical-Consulting/hexagonal-dotnet",
-            "phmatray/Antlr4Library",
-            "phmatray/Antlr4Roslyn",
-            "phmatray/Mediateur",
-            "phmatray/TheRightCollection",
-            "phmatray/WispLang"
+            "Atypical-Consulting/.github",
+            "Atypical-Consulting/FlowForge",
+            "Atypical-Consulting/github-toolkit",
+            "Atypical-Consulting/nugetkeep-releases",
+            "Atypical-Consulting/og-engine",
+            "Atypical-Consulting/readme-forge",
+            "phmatray/.github",
+            "phmatray/museum",
+            "phmatray/phmatray"
           ]
         },
         {
@@ -2563,7 +2574,7 @@
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 109,
+                  "layer": 110,
                   "pinned": false
                 }
               ]
@@ -2686,7 +2697,7 @@
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 102,
+                  "layer": 103,
                   "pinned": false
                 },
                 {
@@ -2696,7 +2707,7 @@
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 111,
+                  "layer": 112,
                   "pinned": false
                 }
               ]
@@ -2726,7 +2737,7 @@
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 97,
+                  "layer": 98,
                   "pinned": false
                 },
                 {
@@ -3564,7 +3575,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2026-03-07T00:29:17Z",
-      "pushedAt": "2026-07-25T13:04:22Z",
+      "pushedAt": "2026-07-25T21:17:15Z",
       "license": "NOASSERTION",
       "readmeExcerpt": "Cut code-reading token costs by up to 99% Most AI agents explore repositories the expensive way: open entire files > skim thousands of irrelevant lines > repeat. ASTral indexes a codebase once and lets agents retrieve only the exact symbols they need — functions, classes, methods, constants — with byte-level precision. | Task | Traditional approach | With ASTral | | Find a function | ~40,000 tokens | ~200 tokens | | Understand module API | ~15,000 tokens | ~800 tokens | | Explore repo structure | ~200,000 tokens | ~2k tokens | Index once. Query cheaply forever. Precision context beats brute-force context. ASTral Table of Contents - Cut code-reading token costs by up to 99% - Proof: Token savings in the wild - Why agents need this - How it works - Usage Examples - Tools (11) - Supported Languages - Security - Technology Stack - Best Use Cases - Installation - Configuration - Advanced Features - Not Intended For - Documentation - Origin and Attribution - License (Dual Use) - Roadmap - Contributing Structured retrieval for serious AI agents Stop dumping files into context windows. Start retrieving exactly what the agent needs. ASTral indexes a codebase once using tree-sitter AST parsi"
     },
@@ -3683,7 +3694,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2024-01-07T20:49:20Z",
-      "pushedAt": "2026-07-25T13:25:28Z",
+      "pushedAt": "2026-07-25T13:30:36Z",
       "license": "Apache-2.0",
       "readmeExcerpt": "FastComponents > Server-side Blazor components rendered as HTMX-powered HTML fragments build interactive web UIs with .NET 10 and zero client-side Blazor runtime. Table of Contents - The Problem - The Solution - Features - Tech Stack - Getting Started - Usage - Architecture - Project Structure - Roadmap - Contributing - License The Problem Building interactive web UIs with .NET typically means choosing between the full Blazor Server runtime (with WebSocket overhead and connection state) or Blazor WASM (with large download sizes). If you just want lightweight, server-rendered HTML fragments that respond to user interactions the HTMX model there is no first-class Blazor integration. You end up writing raw HTML strings or abandoning the Razor component model entirely. The Solution FastComponents bridges Blazor's server-side Razor component model with HTMX. You author components using familiar syntax with full C# support, and FastComponents renders them as plain HTML fragments served via FastEndpoints. HTMX on the client handles partial page updates no WebSocket connections, no WASM downloads, just HTTP requests and HTML responses. Features - [x] base class with all htmx attributes as "
     },
@@ -3834,15 +3845,15 @@
       "language": "C#",
       "languages": {
         "C#": 6138644,
-        "TypeScript": 6033667,
+        "TypeScript": 6034557,
         "JavaScript": 357447,
         "SCSS": 357059,
-        "HTML": 240629,
+        "HTML": 241451,
         "Rust": 207248,
         "CSS": 92879,
-        "Python": 35757,
         "Astro": 34331,
-        "Shell": 26027
+        "Java": 24958,
+        "ANTLR": 19542
       },
       "stars": 14,
       "forks": 2,
@@ -3851,7 +3862,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2026-06-15T15:23:40Z",
-      "pushedAt": "2026-07-25T13:05:06Z",
+      "pushedAt": "2026-07-25T19:02:37Z",
       "license": "Apache-2.0",
       "readmeExcerpt": "flips the variant by theme: the accent mark on a dark README, the ink mark on a light one. Koine Write your domain's ubiquitous language once, in .koi files. Koine compiles it to idiomatic, self-contained code — value objects, entities, aggregates, invariants, the whole Domain-Driven Design toolkit — in 7 languages . 25 lines of .koi → 11 files of idiomatic C# — every number in the loop is a real koine build . Try it in your browser, zero install . Table of Contents - The problem - The solution - Features - Try it in the browser - A taste of the language - Quick start (CLI) - Usage - The language - Architecture - Koine as a platform - Tooling - Koine in the AI workflow - Tech stack - Status and roadmap - Templates - Demo - Contributing - License The problem Domain-Driven Design gives you a precise vocabulary — value objects, entities, aggregates, invariants, domain events, state machines — but in C# every one of those is a pile of mechanical boilerplate: validating constructors, value equality, identity equality, defensive copies, guard clauses, repository contracts. You write it by hand for every type. Then the model drifts from the glossary on the wiki, the \"ubiquitous language\" "
     },
@@ -3945,7 +3956,7 @@
       ],
       "language": "C#",
       "languages": {
-        "C#": 746788,
+        "C#": 746812,
         "TypeScript": 149905,
         "CSS": 30878,
         "Shell": 1314,
@@ -3960,7 +3971,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2022-08-13T19:30:31Z",
-      "pushedAt": "2026-07-25T13:05:26Z",
+      "pushedAt": "2026-07-25T14:19:26Z",
       "license": "Apache-2.0",
       "readmeExcerpt": "Ninjadog > One config. Full REST API. Zero boilerplate. Quick Start Edit to define your entities: That's it. You now have a full CRUD API with endpoints, DTOs, validation, repositories, services, mappers, and OpenAPI docs — all generated from a single JSON config. Table of Contents - The Problem - Why Ninjadog? - What Gets Generated - Generated Output Examples - Features - Tech Stack - Getting Started - Usage - Architecture - Project Structure - Generators - CLI - Roadmap - Contributing - License The Problem Writing boilerplate C# code for REST APIs is repetitive and error-prone — DTOs, mappers, validators, repositories, endpoints, API clients. Developers waste hours on mechanical plumbing code that follows predictable patterns, and every layer must stay in sync whenever the domain model changes. Why Ninjadog? | | Without Ninjadog | With Ninjadog | | Code you write | ~500+ lines per entity | ~10 lines of JSON per entity | | Files to maintain | 20+ per entity | 1 config file | | Layers in sync | Manual | Automatic | | Runtime cost | Depends on approach | Zero (compile-time) | | Reflection | Often required | None | | Time to full CRUD | Hours | Seconds | Ninjadog uses template-based "
     },
@@ -4009,7 +4020,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2026-02-18T21:12:14Z",
-      "pushedAt": "2026-07-25T13:05:59Z",
+      "pushedAt": "2026-07-25T18:45:41Z",
       "license": "MIT",
       "readmeExcerpt": "RoselineMCP > Roslyn code intelligence for AI coding agents, over MCP. Give Claude, Cursor, and Copilot a semantic view of your C# solution — symbols, references, call graphs, surgical edits — so they navigate by *structure* instead of re-reading source. Measured 89% fewer tokens (median) → -1baf7a) 📖 Documentation, tool reference & the honest benchmark → Table of Contents - Why RoselineMCP - Quick Start - Features - Tech Stack - Getting Started - MCP Client Compatibility - Available Tools - Tool Annotations - Tool Compatibility Policy - Architecture - Project Structure - Security - Documentation - Roadmap - Contributing - License - Acknowledgments Why RoselineMCP Your coding agent shouldn't read a 700-line file to change one method. Source code dominates an agent's token budget, so the cheapest win is to stop feeding it whole files. RoselineMCP wraps the Roslyn compiler platform as an MCP server. Instead of dumping source into the model, it answers *structural* questions precisely — where is this symbol used, what implements this interface, who calls this method, what's the shape of this file — and it edits surgically : a member-level diff, not a whole-file rewrite. On RoselineMC"
     },
@@ -4039,7 +4050,7 @@
       "language": "HTML",
       "languages": {
         "HTML": 92966,
-        "C#": 67412,
+        "C#": 67415,
         "CSS": 20867,
         "PowerShell": 3224,
         "Shell": 2627,
@@ -4053,7 +4064,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2023-03-26T15:58:01Z",
-      "pushedAt": "2026-07-25T13:05:48Z",
+      "pushedAt": "2026-07-25T14:23:47Z",
       "license": "MIT",
       "readmeExcerpt": "SalesPitch > Generate tailored, professional sales pitches in seconds using AI — stop choosing between generic copy and hours of personalization. Table of Contents - The Problem - The Solution - Features - Tech Stack - Getting Started - Usage - Architecture - Project Structure - Roadmap - Stats - Contributing - License - Acknowledgments The Problem Writing compelling, tailored sales pitches for every prospect is time-consuming. Sales teams either write generic pitches that fail to resonate, or spend hours personalizing each one. Existing tools lack support for proven sales frameworks and multi-language output, forcing teams to manually adapt their messaging for different audiences and markets. The Solution SalesPitch uses OpenAI GPT-4 to generate tailored, professional sales pitches from minimal input via an interactive CLI. Choose from 10 proven sales frameworks, pick your target language, describe your product, and get a polished pitch in seconds. Features - [x] AI-powered pitch generation using OpenAI GPT-4o - [x] 10 proven sales pitch frameworks (AIDA, PAS, USP, Features-Benefits, Storytelling, WIIFM, Youtility, FAB, HHE, SUSPENSE) - [x] Multi-language support (French, English,"
     },
@@ -4123,7 +4134,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2026-02-17T22:21:04Z",
-      "pushedAt": "2026-07-25T13:06:01Z",
+      "pushedAt": "2026-07-25T16:04:07Z",
       "license": "MIT",
       "readmeExcerpt": "🏢 TenantKit Zero-friction multi-tenancy middleware for ASP.NET Core. Built by Atypical Consulting. Table of Contents - The Problem - The Solution - Features - Tech Stack - Packages - Quick Start - Usage - Available Resolvers - Core Contracts - Architecture - Project Structure - Roadmap - Stats - Contributing - License The Problem Every .NET SaaS application hits the multi-tenancy wall sooner or later. Existing solutions like Finbuckle.MultiTenant are powerful but heavy — they're deeply coupled to Entity Framework, assume you want per-tenant databases, and require significant configuration before you get a tenant in scope. You shouldn't need to fight your framework to know *who's asking*. The Solution TenantKit resolves the current tenant in 3 lines: Then inject anywhere: Features - [x] Header-based tenant resolution ( ) - [x] Query string tenant resolution ( ) - [x] Subdomain-based tenant resolution - [x] JWT/cookie claim-based tenant resolution - [x] Route value tenant resolution - [x] Composite resolver (try multiple strategies in order) - [x] In-memory tenant store - [x] Scoped per-request - [x] Fluent builder API for configuration - [x] Custom support (bring your own data sour"
     },
@@ -4151,7 +4162,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2024-05-02T06:14:53Z",
-      "pushedAt": "2026-07-25T13:06:06Z",
+      "pushedAt": "2026-07-25T16:04:10Z",
       "license": "MIT",
       "readmeExcerpt": "TheAppManager > A lightweight, composable module system for ASP.NET Core application startup. Table of Contents - Overview - Architecture - Why Modules? - Installation - Quick Start - Creating Modules - A Minimal Module - Module Ordering - Conditional Modules - Auto-Discovery - Multi-Assembly Scanning - Testing - Integration Testing with AppModuleTestHost - Replacing Modules in Tests - Async Support - Builder Configuration Hook - Advanced: Using AppManagerBuilder - Project Structure - Contributing - License Overview TheAppManager lets you organize your ASP.NET Core startup into independent, composable modules . Each module encapsulates its own services, middleware, and endpoints — keeping clean and making features reusable across projects. Architecture Why Modules? As ASP.NET Core applications grow, accumulates unrelated service registrations, middleware, and endpoint mappings. Modules solve this by letting each feature own its startup logic: - Composable — add, remove, or reorder modules without touching other code - Reusable — package a module in a NuGet library and share it across projects - Testable — each module can be tested in isolation with - Transparent ordering — modules "
     },
@@ -4332,7 +4343,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2026-03-23T15:27:19Z",
-      "pushedAt": "2026-07-24T21:21:18Z",
+      "pushedAt": "2026-07-25T17:13:20Z",
       "license": "MIT",
       "readmeExcerpt": "Table of Contents - Features - Install - Usage - The Reviewers - The Actionable Report - Sample Output - Manual Install - Why Legends Review? - Requirements - License - Roadmap - Contributing &#x1F525; &#x1F34E; &#x1F427; Legends Review Code reviews by Elon Musk, Steve Jobs, and Linus Torvalds. They argue until they agree. > One command. Three legendary perspectives. Zero mercy. > > Powered by Claude Code Skills. > > See it in action → Features - Four slash commands — , , for solo perspectives, plus to run all three with debate. - Three distinct personas — first-principles/business (Elon), design/DX (Jobs), and engineering rigor (Linus), each reviewing through its own lens and asking its own questions. - Cross-review debate & consensus — runs solo reviews first, then has the three legends challenge, defend, and concede before producing a unified rating and top actions. - Actionable reports in three formats — every review writes (data), (a self-contained interactive dashboard with filters, a done-checklist, and copy-paste fix prompts), and (a diffable checklist for PRs). - Report merging — regenerates or merges several solo review JSONs into one combined HTML report. - One-line inst"
     },
@@ -4348,7 +4359,7 @@
       "language": "TypeScript",
       "languages": {
         "TypeScript": 130974,
-        "C#": 111052,
+        "C#": 111055,
         "Rust": 100694,
         "HTML": 71899,
         "CSS": 15484,
@@ -4361,9 +4372,9 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2026-07-23T22:29:10Z",
-      "pushedAt": "2026-07-24T21:32:32Z",
+      "pushedAt": "2026-07-25T17:14:06Z",
       "license": "MIT",
-      "readmeExcerpt": "GitHub Toolkit Table of Contents - Tools - Features - Usage - History - License > Tools for managing your GitHub repositories at scale — skills, a desktop app, > a Renovate CLI, and a DevOps sync — consolidated in one place (full git history preserved). Tools | Path | What it is | From | | | Claude Code skills for auditing, managing and improving repositories | ★ | | | A Tauri desktop app for automating GitHub workflows | | | | A Spectre CLI to manage Renovate configurations across repos, with caching and interactive multi-select | | | | Synchronize repositories between Azure DevOps and GitHub via a Blazor Server UI | | Features - Four complementary tools — each solves a different repo-management chore - Mixed stacks — Claude Code skills, TypeScript/Tauri, and .NET/C# - One home — shared issues, discussions and history for all your GitHub tooling Usage Each tool is self-contained in its folder — open it and follow its own README. History Each folder was merged with full git history preserved ( ). The original repositories are archived and redirect here. Tech Stack - .NET 10 · .NET 9 - MudBlazor - Microsoft.TeamFoundationServer.Client - Octokit - LibGit2Sharp - Microsoft.EntityFrame"
+      "readmeExcerpt": "GitHub Toolkit Table of Contents - Tools - Features - Usage - History - License > Tools for managing your GitHub repositories at scale — skills, a desktop app, > a Renovate CLI, and a DevOps sync — consolidated in one place (full git history preserved). Tools | Path | What it is | From | | | Claude Code skills for auditing, managing and improving repositories | ★ | | | A Tauri desktop app for automating GitHub workflows | | | | A Spectre CLI to manage Renovate configurations across repos, with caching and interactive multi-select | | | | Synchronize repositories between Azure DevOps and GitHub via a Blazor Server UI | | Features - Four complementary tools — each solves a different repo-management chore - Mixed stacks — Claude Code skills, TypeScript/Tauri, and .NET/C# - One home — shared issues, discussions and history for all your GitHub tooling Usage Each tool is self-contained in its folder — open it and follow its own README. Installing the skills The 18 skills ship as a Claude Code plugin. Install them — do not copy the files: Cloning the repo only makes the skills available *while working inside *, because they live in a project-scoped directory. Installing the plugin makes t"
     },
     "Atypical-Consulting/hexagonal-dotnet": {
       "key": "Atypical-Consulting/hexagonal-dotnet",
@@ -4392,7 +4403,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2021-02-11T13:31:29Z",
-      "pushedAt": "2026-07-25T13:06:29Z",
+      "pushedAt": "2026-07-25T16:04:14Z",
       "license": "MIT",
       "readmeExcerpt": "hexagonal-dotnet > A production-ready reference implementation of Hexagonal Architecture (Ports & Adapters) in .NET, demonstrating clean separation between domain, application, and infrastructure layers. Table of Contents - The Problem - The Solution - Features - Tech Stack - Getting Started - Usage - Architecture - Project Structure - Roadmap - Contributing - License - Acknowledgments The Problem Hexagonal architecture (ports & adapters) is well-documented in theory but hard to implement cleanly in .NET. Most examples are oversimplified or tightly coupled to specific frameworks, leaving developers without a clear blueprint for structuring real-world applications with proper layer separation. The Solution hexagonal-dotnet provides a hands-on reference implementation showing how to structure a .NET application with clean separation between domain, application, and infrastructure layers. It uses an \"Ideator\" article management system as the example domain, demonstrating how ports define contracts in the domain while adapters implement them in infrastructure. Features - [x] Clean domain layer with no infrastructure dependencies - [x] Port interfaces for repository, messaging, notifica"
     },
@@ -4807,7 +4818,7 @@
       ],
       "language": "C#",
       "languages": {
-        "C#": 43828
+        "C#": 43840
       },
       "stars": 0,
       "forks": 0,
@@ -4816,7 +4827,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2025-06-13T12:18:29Z",
-      "pushedAt": "2026-07-25T13:07:22Z",
+      "pushedAt": "2026-07-25T14:23:51Z",
       "license": "MIT",
       "readmeExcerpt": "AutoTestId Table of Contents - Features - Installation - Usage - How It Works - Command Reference - Development - Tech Stack - License - Contributing A .NET tool for automatically adding attributes to Razor components for improved testability. Features - Automatic test-id injection : Adds attributes to root-level HTML elements in Razor files - Multiple processing modes : Process single files, folders, projects, or entire solutions - Smart detection : Only processes files that need updates - Preserve formatting : Maintains your existing code formatting and indentation - Replace existing : Updates existing attributes if present - Dry-run mode : Preview changes before applying them - Beautiful CLI : User-friendly command-line interface with progress reporting Installation Or build from source: Usage Process a Single File Process a Folder Process a Project Process a Solution How It Works AutoTestId processes Razor files and adds attributes to all root-level HTML elements: Before: After: The test-id value is derived from the component filename (without extension) by default. Command Reference Global Options - - Show help information - - Show version information File Command Process a si"
     },
@@ -4889,7 +4900,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2026-02-13T16:56:34Z",
-      "pushedAt": "2026-07-25T13:07:35Z",
+      "pushedAt": "2026-07-25T15:59:47Z",
       "license": "MIT",
       "readmeExcerpt": "Autonomous Agent Table of Contents - Overview - Technology Stack - Project Structure - Getting Started - Configuration - Architecture - Git Workflow - Development Roadmap - License - Contributing An autonomous AI developer system that can automatically resolve GitHub issues by orchestrating Claude Code CLI and GitHub API through a visual workflow interface. Overview This project provides a desktop application (built with Tauri + React) similar to n8n that enables workflow automation for AI-powered development tasks. The system can autonomously: 1. Sync a configurable GitHub repository 2. Read issues from the repository 3. Plan solutions using Claude Code 4. Create git worktrees and branches 5. Apply solutions via Claude Code 6. Commit changes with conventional commits + gitmoji 7. Create pull requests A pre-built \"Autonomous Developer\" workflow template is included that implements this full pipeline out of the box. Features - Visual workflow editor — A drag-and-drop, DAG-based canvas (built on ) for composing automation pipelines out of GitHub, Git, Claude, and control-flow nodes. - Autonomous issue-to-PR pipeline — The bundled \"Autonomous Developer\" template syncs a repo, reads is"
     },
@@ -4920,7 +4931,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2025-06-15T17:49:09Z",
-      "pushedAt": "2026-07-25T13:07:42Z",
+      "pushedAt": "2026-07-25T15:59:52Z",
       "license": "MIT",
       "readmeExcerpt": "Belgium VAT Checker API Table of Contents - Features - Prerequisites - Getting Started - Docker Deployment - API Endpoints - Belgian VAT Number Format - Architecture - Error Handling - Configuration - Testing - Limitations - Handling VIES Service Unavailability A .NET 9 Web API for validating Belgian and EU VAT numbers using the VIES (VAT Information Exchange System) service. Features - ✅ Validate Belgian VAT numbers with checksum verification - ✅ Validate any EU country VAT numbers via VIES - ✅ Real-time validation against official EU databases - ✅ Resilient HTTP client with retry policies and circuit breaker (Polly) - ✅ RESTful API with OpenAPI/Swagger documentation - ✅ Comprehensive unit tests with FakeItEasy and Shouldly - ✅ CORS support for web applications Prerequisites - .NET 9 SDK (for local development) - Docker (for containerized deployment) - Visual Studio 2022 or VS Code (optional) Getting Started 1. Clone the repository: 2. Restore dependencies: 3. Build the solution: 4. Run tests: 5. Run the API: The API will start on (or ). Docker Deployment Quick Start with Docker 1. Build the Docker image: 2. Run the container: 3. Access the API: - HTTP: http://localhost:5000 - HTT"
     },
@@ -5430,7 +5441,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2021-11-24T17:09:39Z",
-      "pushedAt": "2026-07-25T13:09:02Z",
+      "pushedAt": "2026-07-25T16:04:18Z",
       "license": "BSD-3-Clause",
       "readmeExcerpt": "Geometrix Table of Contents - 🚀 Live Demo - ✨ Features - 🚀 Quick Start - 🛠️ Tech Stack - 📦 Getting Started - 🧪 Usage - 📖 API Reference - 🎨 Use Cases - 🗺️ Roadmap - 🤝 Contributing - 📄 License - 🙏 Acknowledgments Geometrix is a modern .NET 10 REST API for generating beautiful, customizable geometric patterns and abstract art. Create unique visual designs programmatically using mirror symmetry, cellular patterns, color themes, and seeded randomization — perfect for generative art, avatars, backgrounds, and creative applications. 🚀 Live Demo Try the live API at: https://geometrix.garry-ai.cloud Explore the interactive Swagger documentation: https://geometrix.garry-ai.cloud/swagger ✨ Features - 🎨 Customizable Patterns : Control mirror power, cell size, colors, and more - 🌈 Color Themes : Built-in color schemes or custom foreground/background colors - 🎲 Seeded Generation : Reproducible patterns using seeds - 💾 Image Export : Save generated images as PNG files - 🔄 RESTful API : Simple HTTP endpoints for integration - ⚡ High Performance : Built on .NET 10 with async/await - 🐳 Container Ready : Kubernetes deployment included - 📖 OpenAPI/Swagger : Interactive API documenta"
     },
@@ -5588,7 +5599,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2025-09-30T20:27:38Z",
-      "pushedAt": "2026-07-25T13:09:44Z",
+      "pushedAt": "2026-07-25T16:04:22Z",
       "license": "MIT",
       "readmeExcerpt": "Mediateur Table of Contents - ✨ Features - 📦 Installation - 🚀 Quick Start - 📚 Core Concepts - 🎯 How It Works - 🔍 Compile-Time Diagnostics - 🔥 Performance - 🎨 Advanced Features - 📊 Comparison with MediatR - 🛠️ Building from Source - 📖 Examples - Tech Stack - 🤝 Contributing - 📄 License - 🙏 Acknowledgments - 📧 Contact A zero-reflection , compile-time mediator pattern implementation for .NET using source generators. A high-performance, AOT-friendly alternative to MediatR. ✨ Features - ✅ Zero Runtime Reflection - All routing is generated at compile-time - ✅ AOT Compatible - Full NativeAOT support for minimal deployments - ✅ High Performance - 2-5x faster than reflection-based mediators - ✅ Type-Safe - Compiler-verified request→handler mappings - ✅ Compile-Time Diagnostics - Roslyn analyzer catches common issues during build - ✅ ValueTask Throughout - Zero-allocation async paths where possible - ✅ Pub/Sub Support - Multiple handlers per notification - ✅ Async Streaming - IAsyncEnumerable support for streaming data - ✅ Result Pattern - Error handling without exceptions - ✅ Modern Extensions - Fluent API with retry, timeout, and safe execution - ✅ Validation Attributes - Buil"
     },
@@ -5842,7 +5853,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2025-11-29T10:08:21Z",
-      "pushedAt": "2026-07-25T13:13:27Z",
+      "pushedAt": "2026-07-25T16:04:25Z",
       "license": "MIT",
       "readmeExcerpt": "PipeException Table of Contents - Features - Requirements - Installation - Quick Start - Building from Source - Tech Stack - License - Contributing A fluent validation and guard clause library for .NET using pipe operators and C# extensions. Features - Pipe Operator Validation : Use the operator for inline validation - Fluent Chaining : Chain multiple validations together seamlessly - Custom Exception Types : Choose which exception to throw after validation - Built-in Validators : Common validators for strings, collections, nullables, and numeric types - Modern C# Syntax : Leverages C# extension methods for clean, readable code Requirements - .NET 10.0 or later Installation Quick Start Basic Validation Chained Validations Choose Exception Type Built-in Validators Building from Source Tech Stack - .NET 10 - xunit.v3 - xunit.runner.visualstudio - Nuke.Common Roadmap Planned work and known limitations are tracked in the open issues. Contributions toward them are welcome. License This project is licensed under the MIT License - see the LICENSE file for details. Contributing Contributions are welcome! Please feel free to submit a Pull Request."
     },
@@ -6135,7 +6146,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2026-02-19T22:18:24Z",
-      "pushedAt": "2026-07-25T13:12:14Z",
+      "pushedAt": "2026-07-25T16:00:11Z",
       "license": "MIT",
       "readmeExcerpt": "VatBe 🇧🇪 Table of Contents - Features - Installation - Quick Start - Belgian VAT Rates (2026) - Tech Stack - License - Contributing > Belgian VAT & enterprise number toolkit for .NET Features - ✅ KBO/BCE enterprise number validation — Modulus 97 check digit, accepts all formats ( , , etc.) - ✅ Belgian VAT number (BTW/TVA) — parse, validate, format - ✅ VAT rate lookup — all 4 Belgian rates (0%, 6%, 12%, 21%) with 25+ product/service categories - ✅ VAT calculator — excl→incl, incl→excl (reverse), multi-rate invoice totals - ✅ VIES integration — validate EU VAT numbers via the official EU VIES REST API - ✅ Fluent extension methods — ergonomic API for everyday .NET code - ✅ DI-ready — for Installation Quick Start Enterprise Number (KBO/BCE) VAT Numbers (BTW/TVA) VAT Rate Lookup VAT Calculation Multi-Rate Invoice VIES Validation Belgian VAT Rates (2026) | Rate | Categories | | 0% | Used goods, exports outside EU | | 6% | Basic food, medicine, books, newspapers, hotels, public transport, renovation of buildings >10 years | | 12% | Restaurant food, coal, margarine, certain social housing | | 21% | Standard — electronics, clothing, SaaS/digital services, alcohol, new real estate | Tech S"
     },
@@ -6181,8 +6192,8 @@
       "language": "HTML",
       "languages": {
         "HTML": 144623,
-        "Shell": 26898,
-        "Python": 25691
+        "Python": 50219,
+        "Shell": 26898
       },
       "stars": 0,
       "forks": 0,
@@ -6191,7 +6202,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2026-07-22T21:18:10Z",
-      "pushedAt": "2026-07-24T21:18:52Z",
+      "pushedAt": "2026-07-25T19:02:12Z",
       "license": "MIT",
       "readmeExcerpt": "AI Migration Kit Table of Contents - Proven in production - Prerequisites - Install - Quickstart - The audit product — - The pipeline - The issue/PR lifecycle skills - Safety rails - Repository layout - Proof it works - Tech Stack - Contributing > « Mise à niveau complète, parfaite, facile et rapide de n'importe quelle application legacy » — powered by RoselineMCP . A Claude Code plugin that upgrades legacy .NET applications through a seven-phase, gate-verified pipeline that ends in verified production. RoselineMCP (a Roslyn-powered MCP server) is the engine for every C# analysis and transformation step: solution diagnostics, bulk code fixes, surgical member edits, safe renames, and impact analysis via references and call graphs. - Complete — from first assessment to a verified migration report, not just a csproj bump. - Verified — every phase ends at a gate (build, tests, diagnostics baseline); a red gate stops the pipeline. - Easy — one command: . Start read-only with . - Fast — mechanical fixes are applied in bulk with Roslyn code fixes; agent time is spent only on judgment calls. Features - Seven-phase gated pipeline — Assess → Baseline → Retarget → Remediate → Modernize → Veri"
     },
@@ -6571,7 +6582,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2025-05-28T21:03:20Z",
-      "pushedAt": "2026-07-25T13:12:46Z",
+      "pushedAt": "2026-07-25T16:04:29Z",
       "license": "MIT",
       "readmeExcerpt": "🧬 Lenia - Artificial Life Simulation Table of Contents - ✨ Features - 🎮 Demo - 🛠️ Technologies - 🚀 Getting Started - 🎯 Usage - 🔬 About Lenia - 🏗️ Architecture - ⚡ Performance Optimizations - 🗺️ Roadmap - 🤝 Contributing - 📝 License - 🙏 Acknowledgments - 📚 References - 🐛 Issues & Support A high-performance, real-time implementation of Lenia - a fascinating continuous cellular automaton that creates complex, lifelike patterns. Built with Blazor WebAssembly and MudBlazor for a modern, interactive web experience. ✨ Features 🚀 High-Performance Engine - 60 FPS Target : Optimized for smooth real-time simulation - Adaptive Quality : Automatically adjusts processing quality to maintain performance - Multi-threaded Processing : Utilizes all CPU cores for maximum speed - Scalable Grid : Dynamic grid sizing from 24×24 to 128×128 - Memory Optimized : Efficient algorithms with minimal allocations 🎨 Modern UI - Dark Theme : Professional dark interface with custom purple accent - Real-time Metrics : Live FPS, update time, and render time monitoring - Responsive Design : Works beautifully on desktop and mobile - Material Design : Clean, intuitive interface using MudBlazor components -"
     },
@@ -6633,6 +6644,34 @@
       "pushedAt": "2018-03-15T13:35:41Z",
       "license": null,
       "readmeExcerpt": "TODO LIST # * Mailto : le lien est bleu alors qu'il devrait être jaune."
+    },
+    "phmatray/museum": {
+      "key": "phmatray/museum",
+      "owner": "phmatray",
+      "name": "museum",
+      "title": "museum",
+      "description": "",
+      "url": "https://github.com/phmatray/museum",
+      "homepage": null,
+      "topics": [],
+      "language": "TypeScript",
+      "languages": {
+        "TypeScript": 1320395,
+        "Python": 25230,
+        "HTML": 1186,
+        "JavaScript": 616,
+        "CSS": 350
+      },
+      "stars": 0,
+      "forks": 0,
+      "openIssues": 1,
+      "isFork": false,
+      "isArchived": false,
+      "isTemplate": false,
+      "createdAt": "2026-07-24T21:53:44Z",
+      "pushedAt": "2026-07-25T22:02:27Z",
+      "license": null,
+      "readmeExcerpt": "React + TypeScript + Vite This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules. Currently, two official plugins are available: - @vitejs/plugin-react uses Oxc - @vitejs/plugin-react-swc uses SWC React Compiler The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see this documentation. Expanding the ESLint configuration If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules: You can also install eslint-plugin-react-x and eslint-plugin-react-dom for React-specific lint rules:"
     },
     "phmatray/music-dotnet": {
       "key": "phmatray/music-dotnet",
@@ -6786,7 +6825,7 @@
       "isArchived": false,
       "isTemplate": false,
       "createdAt": "2026-02-17T23:12:04Z",
-      "pushedAt": "2026-07-25T13:13:22Z",
+      "pushedAt": "2026-07-25T16:04:32Z",
       "license": "MIT",
       "readmeExcerpt": "tsh.ai ☕ Table of Contents - What's inside - Newsletter - Stack - Run locally - Deploy (k8s) - Projects featured - DNS (for Philippe) - Contributing Features - Weekly newsletter capture — the homepage \"Le Chai du Dev\" signup form ( in ) with inline email validation, a loading state, and a success confirmation once subscribed. - Content-rich landing page — hero, a \"Ce que tu vas recevoir\" benefits grid (.NET tips, AI-agent practice, Atypical Consulting behind-the-scenes), a recent-projects showcase, and an about/stats section, all on one Blazor Server route. - Newsletter archive ( ) — dedicated page previewing upcoming issue topics while the first send is being prepared. - OSS project showcase ( ) — detailed cards for TaLibStandard, FormCraft, TenantKit, and NuGetPulse, plus a preview of the in-progress agent-orchestration library. - Hand-rolled \"Chai\" design system — a dedicated design system (amber/cream/soft-violet palette, custom radii/shadows/typography tokens) plus accessible, decorative SVGs (chai cup, cinnamon sticks, star anise). - Container-native CI/CD — GitHub Actions builds and tests on .NET 10, pushes a Docker image to GHCR, then rolls it out to a k3s cluster (Traefik "
     },
@@ -6838,7 +6877,7 @@
       },
       "stars": 0,
       "forks": 0,
-      "openIssues": 0,
+      "openIssues": 1,
       "isFork": false,
       "isArchived": false,
       "isTemplate": false,
@@ -6849,7 +6888,7 @@
     }
   },
   "stats": {
-    "artworkCount": 100,
+    "artworkCount": 101,
     "roomCount": 17,
     "floorCount": 4,
     "excludedCount": 15,

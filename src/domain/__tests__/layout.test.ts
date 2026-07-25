@@ -6,7 +6,7 @@
  * altitude, aucune normale ne pointe vers le dehors, et la rampe reste montable
  * même sur une configuration absurde.
  *
- * Le dernier bloc rejoue tout ça sur le catalogue réel — 115 dépôts, clusterisés
+ * Le dernier bloc rejoue tout ça sur le catalogue réel — les dépôts, clusterisés
  * par le vrai `clusterArtworks` : c'est la seule preuve qui vaille.
  */
 /// <reference types="node" />
@@ -954,7 +954,7 @@ describe('déterminisme', () => {
 
 // ── Sur le catalogue réel ────────────────────────────────────────────────
 
-describe('sur les 115 dépôts réels du catalogue', () => {
+describe('sur les dépôts réels du catalogue', () => {
   // `import.meta.url` n'est pas un chemin fichier sous l'environnement jsdom :
   // on repart de la racine du projet, qui est le répertoire de travail de vitest.
   const catalogue = JSON.parse(

@@ -5,7 +5,7 @@ import brut from '../../../public/data/catalogue.json'
 import type { Artwork, Catalogue } from '../types'
 
 // ── Corpus réel ──────────────────────────────────────────────────────────
-// 115 dépôts effectivement récupérés sur GitHub. Tout ce qui compte ici — le
+// Les dépôts effectivement récupérés sur GitHub. Tout ce qui compte ici — le
 // déséquilibre des topics, les descriptions bilingues, les dépôts sans aucun
 // topic — n'existe que sur du vrai corpus.
 
@@ -71,7 +71,11 @@ describe('vectorisation sur le corpus réel', () => {
   const v = vectorize(REELS)
 
   it('mesure bien le déséquilibre du corpus', () => {
-    expect(v.n).toBe(115)
+    // La TAILLE du corpus n'est pas une propriété du code : la CI refetch le
+    // catalogue depuis GitHub à chaque publication. Figée à 115, cette ligne a
+    // cassé le premier déploiement le jour où un dépôt public de plus est
+    // apparu. Les ratios ci-dessous, eux, disent quelque chose du corpus.
+    expect(v.n).toBe(REELS.length)
     // Le problème que l'IDF doit régler, chiffré : `dotnet` est partout.
     expect(v.df.get('dotnet')! / v.n).toBeGreaterThan(0.5)
     expect(v.df.get('mudblazor')! / v.n).toBeLessThan(0.1)
@@ -167,7 +171,7 @@ describe('bornes de taille sur le corpus réel', () => {
       { minSize: 2, maxSize: 6 },
       { minSize: 3, maxSize: 10 },
       { minSize: 5, maxSize: 20 },
-      { minSize: 1, maxSize: 115 },
+      { minSize: 1, maxSize: REELS.length },
     ]) {
       const obtenus = clusterArtworks(REELS, opts)
       expect(toutesLesCles(obtenus)).toEqual(REELS.map((a) => a.key).sort())

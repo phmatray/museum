@@ -10,7 +10,7 @@
  *  2. RIEN NE BLOQUE. Clé orpheline, salle inexistante, atlas absent, catalogue
  *     vide : chacun de ces cas produit un avertissement et un musée.
  *
- * Le dernier bloc rejoue tout sur le catalogue réel — 115 dépôts effectivement
+ * Le dernier bloc rejoue tout sur le catalogue réel — les dépôts effectivement
  * récupérés sur GitHub. C'est la seule preuve qui vaille : les corpus inventés
  * n'ont ni topics déséquilibrés, ni dépôts sans description, ni forks archivés.
  */
@@ -565,7 +565,7 @@ describe('formatPlan', () => {
 
 // ── Corpus réel ──────────────────────────────────────────────────────────
 
-describe('derive — 115 dépôts réels', () => {
+describe('derive — le catalogue réel, quelle que soit sa taille', () => {
   const CONFIG_REELLE = config({
     name: 'Atypical Museum',
     owners: ['phmatray', 'Atypical-Consulting'],
@@ -575,19 +575,45 @@ describe('derive — 115 dépôts réels', () => {
   const reel = (c: Curation = curation()): Museum =>
     derive({ catalogue: CATALOGUE_REEL, curation: c, config: CONFIG_REELLE, atlas })
 
-  it('retrouve les trois nombres annoncés par le spec : 115, 100, 72', () => {
+  /**
+   * ── Ce test figeait 115, 100, 72 et 28. Il a cassé la première publication ──
+   *
+   * Le catalogue N'EST PAS une fixture : la CI le refetch depuis l'API GitHub à
+   * chaque publication, et un cron le refait chaque nuit. Le jour où un dépôt
+   * public de plus est apparu — 116 au lieu de 115 —, quatre tests sont tombés
+   * et le déploiement s'est arrêté avant le build. Un test qui échoue parce que
+   * son auteur a créé un dépôt ne mesure pas le code : il mesure le calendrier.
+   *
+   * Ce qui doit rester vrai quelle que soit la taille du corpus, ce sont les
+   * ÉGALITÉS entre ses parts. On les vérifie donc, plus les bornes de bon sens
+   * qui attraperaient un catalogue vide ou un filtre devenu fou.
+   */
+  it('partitionne le catalogue réel sans en perdre ni en inventer', () => {
     const s = selectArtworks({ catalogue: CATALOGUE_REEL, curation: curation(), config: CONFIG_REELLE })
-    expect(CATALOGUE_REEL.artworks).toHaveLength(115)
-    expect(s.kept).toHaveLength(100)
-    expect(s.gallery).toHaveLength(72)
-    expect(s.vault).toHaveLength(28)
+    const total = CATALOGUE_REEL.artworks.length
+
+    // Un vrai portefeuille, pas un catalogue vide ni un doublement suspect.
+    expect(total).toBeGreaterThan(50)
+    expect(s.kept.length).toBeGreaterThan(total / 2)
+    expect(s.kept.length).toBeLessThanOrEqual(total)
+
+    // La partition est exacte : rien ne tombe entre la galerie et la réserve.
+    expect(s.gallery.length + s.vault.length).toBe(s.kept.length)
+    expect(s.kept.length + s.excludedCount).toBe(total)
+
+    // La réserve reçoit exactement les forks et les archivés retenus — c'est la
+    // règle du §7, et elle se vérifie sur le corpus plutôt que sur un nombre.
+    expect(s.vault.map((a) => a.key).sort()).toEqual(
+      s.kept.filter((a) => a.isFork || a.isArchived).map((a) => a.key).sort(),
+    )
   })
 
-  it('accroche les 100 dépôts retenus, une fois chacun', () => {
+  it('accroche chaque dépôt retenu une fois, et rien d’autre', () => {
+    const s = selectArtworks({ catalogue: CATALOGUE_REEL, curation: curation(), config: CONFIG_REELLE })
     const m = reel()
     const accrochees = clesAccrochees(m)
-    expect(accrochees).toHaveLength(100)
-    expect(new Set(accrochees).size).toBe(100)
+    expect(accrochees).toHaveLength(s.kept.length)
+    expect(new Set(accrochees).size).toBe(s.kept.length)
     expect([...accrochees].sort()).toEqual(Object.keys(m.artworks).sort())
   })
 
@@ -653,9 +679,14 @@ describe('derive — 115 dépôts réels', () => {
   })
 
   it('imprime un plan lisible du bâtiment réel', () => {
-    const texte = formatPlan(reel())
+    const m = reel()
+    const texte = formatPlan(m)
     expect(texte).toContain('Atypical Museum')
-    expect(texte).toContain('115 dépôts · 100 retenus')
+    // La ligne de comptage est construite à partir du musée obtenu, pas d'un
+    // nombre figé : c'est le FORMAT qu'on vérifie, pas la taille du portefeuille.
+    expect(texte).toContain(
+      `${CATALOGUE_REEL.artworks.length} dépôts · ${m.stats.artworkCount} retenus`,
+    )
     expect(texte.split('\n').length).toBeGreaterThan(40)
   })
 })

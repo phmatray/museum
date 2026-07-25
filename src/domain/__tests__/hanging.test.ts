@@ -2,12 +2,12 @@
  * Tests de l'accrochage (§ 7.4).
  *
  * L'invariant central est le non-chevauchement : il est vérifié après presque
- * chaque scénario, y compris sur les 115 dépôts réels de
+ * chaque scénario, y compris sur les dépôts réels de
  * `public/data/catalogue.json` — pas sur des jeux d'essai inventés.
  */
 import { describe, expect, it } from 'vitest'
 
-// Les 115 dépôts réellement récupérés : les invariants sont vérifiés dessus,
+// Les dépôts réellement récupérés : les invariants sont vérifiés dessus,
 // pas sur des jeux d'essai inventés. Importé plutôt que lu par `node:fs` pour
 // que le fichier de test reste typé sans les définitions Node.
 import catalogueJson from '../../../public/data/catalogue.json'
@@ -441,7 +441,7 @@ describe('hangWall — totalité', () => {
     expectInsideWall(wall, placements)
   })
 
-  it('ne perd aucune œuvre réelle sur les 115 dépôts, quelle que soit la salle', () => {
+  it('ne perd aucune œuvre réelle sur le catalogue, quelle que soit la salle', () => {
     for (const length of [6, 8, 12, 20]) {
       const wall = makeWall(`w-${length}`, length)
       const placements = hangWall(wall, realEntries)
@@ -554,7 +554,7 @@ describe('hangRoom', () => {
     expect(hung.walls.every((w) => w.placements.length === 0)).toBe(true)
   })
 
-  it('accroche les 115 dépôts réels sans chevauchement et sans perte en salle de 12 m', () => {
+  it('accroche les dépôts réels sans chevauchement et sans perte en salle de 12 m', () => {
     const room = makeRoom('grande', [
       makeWall('nord', 12),
       makeWall('est', 12),
