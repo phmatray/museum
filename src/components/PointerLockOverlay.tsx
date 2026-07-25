@@ -75,7 +75,13 @@ export function PointerLockOverlay() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'rgba(0,0,0,0.7)',
+        // Dégradé plutôt qu'un voile uniforme : à 0,7 d'opacité sur toute la
+        // surface, la PREMIÈRE image du musée était assombrie de 70 % avant même
+        // que la 3D n'entre en jeu — la moitié de l'impression « trop sombre »
+        // venait de là. Le dégradé ne charge que la bande centrale, là où le
+        // texte a besoin de contraste, et laisse voir le bâtiment autour.
+        background:
+          'radial-gradient(ellipse at center, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.55) 35%, rgba(0,0,0,0.18) 70%, rgba(0,0,0,0.06) 100%)',
         color: 'white',
         zIndex: 1000,
         cursor: 'pointer',
@@ -141,7 +147,13 @@ export function TourExitButton() {
         top: '1rem',
         right: '1rem',
         padding: '0.5rem 1rem',
-        background: 'rgba(0,0,0,0.7)',
+        // Dégradé plutôt qu'un voile uniforme : à 0,7 d'opacité sur toute la
+        // surface, la PREMIÈRE image du musée était assombrie de 70 % avant même
+        // que la 3D n'entre en jeu — la moitié de l'impression « trop sombre »
+        // venait de là. Le dégradé ne charge que la bande centrale, là où le
+        // texte a besoin de contraste, et laisse voir le bâtiment autour.
+        background:
+          'radial-gradient(ellipse at center, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.55) 35%, rgba(0,0,0,0.18) 70%, rgba(0,0,0,0.06) 100%)',
         color: 'white',
         border: '1px solid rgba(255,255,255,0.3)',
         borderRadius: '4px',
