@@ -1,0 +1,102 @@
+name: Construire et publier le musée
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Rafraîchit le catalogue chaque nuit : les dépôts bougent, le musée suit.
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Une seule publication à la fois, mais on ne coupe pas une publication en
+# cours : un déploiement Pages interrompu laisse le site dans un état bancal.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      # Les médias sont l'étape lente (un téléchargement par dépôt). On les
+      # garde d'un build à l'autre ; build-media ne retélécharge que ce qui a
+      # changé dans le catalogue.
+      - name: Restaurer le cache des médias
+        uses: actions/cache@v4
+        with:
+          path: public/media
+          key: media-${{ runner.os }}-${{ hashFiles('public/data/catalogue.json') }}
+          restore-keys: media-${{ runner.os }}-
+
+      # Le catalogue du dernier build réussi sert de filet : si l'API GitHub
+      # est en panne, on republie avec les données de la veille plutôt que de
+      # casser le site.
+      - name: Restaurer le dernier catalogue connu
+        uses: actions/cache@v4
+        with:
+          path: public/data/catalogue.json
+          key: catalogue-${{ github.run_id }}
+          restore-keys: catalogue-
+
+      - name: Récupérer les dépôts
+        id: fetch
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run fetch
+
+      - name: Signaler la dégradation
+        if: steps.fetch.outcome == 'failure'
+        run: |
+          echo "::warning::Récupération GitHub en échec — publication avec le catalogue précédent."
+          test -f public/data/catalogue.json || {
+            echo "::error::Aucun catalogue de repli disponible, impossible de construire."
+            exit 1
+          }
+
+      - name: Construire les médias
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run media
+
+      - name: Dériver le musée
+        run: npm run derive
+
+      - name: Vérifier
+        run: |
+          npm run lint
+          npx vitest run
+
+      - name: Construire le site
+        env:
+          # phmatray.github.io/museum/ → le site n'est pas à la racine du domaine.
+          BASE_PATH: /${{ github.event.repository.name }}/
+        run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
