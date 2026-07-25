@@ -1,9 +1,10 @@
 /**
- * LOT 2 — Une salle.
+ * LOT 2/3 — Une salle.
  *
  * Ce composant NE DÉCIDE RIEN : `domain/layout.ts` a posé les murs,
- * `builders/wall.ts` les a transformés en triangles, il ne reste qu'à les
- * accrocher au graphe de scène et à leur donner un collider.
+ * `builders/wall.ts` les a transformés en triangles, `scene/lighting.ts` a
+ * décidé de quoi ils ont l'air ; il ne reste qu'à les accrocher au graphe de
+ * scène et à leur donner un collider.
  *
  * ── Pourquoi une salle n'a ni sol ni plafond à elle ──
  *
@@ -28,10 +29,10 @@
  */
 import { useEffect, useMemo } from 'react'
 import { RigidBody, TrimeshCollider } from '@react-three/rapier'
-import * as THREE from 'three'
 
 import { buildWall } from '../builders/wall'
-import type { Room, ThemeId } from '../domain/types'
+import type { Room } from '../domain/types'
+import { createWallMaterial } from './lighting'
 
 export interface RoomMeshProps {
   room: Room
@@ -39,39 +40,27 @@ export interface RoomMeshProps {
   elevation: number
 }
 
-/**
- * Couleur des murs par thème.
- *
- * Les thèmes viennent de la curation (`RoomOverride.theme`) et sont pour
- * l'instant la seule variation visuelle entre deux salles : le lot 2 ne rend
- * aucune œuvre, sans cela toutes les salles seraient rigoureusement identiques
- * et on ne saurait pas où l'on est. Un matériau par salle, pas par mur — quatre
- * murs partagent le même, ce qui divise par quatre le nombre de matériaux.
- */
-const THEME_WALL_COLOR: Record<ThemeId, string> = {
-  classic: '#e6dfd2',
-  modern: '#f1f1ef',
-  // Les deux thèmes sombres restent bien plus clairs que ce que leur nom
-  // suggère : sous deux lumières seulement, un mur à 20 % de gris tombe au noir
-  // pur dès qu'il n'est pas dans le puits de lumière, et la salle devient une
-  // grotte où l'on ne distingue plus les angles. Mesuré à l'écran.
-  immersive: '#575e69',
-  vault: '#635d54',
-}
-
 export function RoomMesh({ room, elevation }: RoomMeshProps) {
   // `buildWall` est pur et déterministe : le mémoriser sur l'identité de la
   // salle suffit, et évite de reconstruire soixante murs à chaque rendu.
   const walls = useMemo(() => room.walls.map((wall) => buildWall(wall)), [room])
 
-  const material = useMemo(
+  /**
+   * UN MATÉRIAU PAR MUR, et non plus un par salle.
+   *
+   * Les flaques de lumière du §9.2 sont peintes à l'aplomb des accrochages : ce
+   * sont donc des uniformes par mur, et deux murs de la même salle n'ont pas les
+   * mêmes. Ce n'est PAS une régression de budget — il y avait déjà un mesh, donc
+   * un draw call, par mur ; seul le nombre d'objets `Material` change. Le nombre
+   * de PROGRAMMES, lui, reste à un grâce au `customProgramCacheKey` constant de
+   * `createWallMaterial`, ce qui est la seule chose que le §9 compte.
+   */
+  const materials = useMemo(
     () =>
-      new THREE.MeshStandardMaterial({
-        color: THEME_WALL_COLOR[room.theme],
-        roughness: 0.92,
-        metalness: 0,
-      }),
-    [room.theme],
+      room.walls.map((wall) =>
+        createWallMaterial({ theme: room.theme, wall, elevation }),
+      ),
+    [room, elevation],
   )
 
   // Les géométries et matériaux construits à la main ne sont PAS libérés par
@@ -80,9 +69,9 @@ export function RoomMesh({ room, elevation }: RoomMeshProps) {
   useEffect(() => {
     return () => {
       for (const wall of walls) wall.geometry.dispose()
-      material.dispose()
+      for (const material of materials) material.dispose()
     }
-  }, [walls, material])
+  }, [walls, materials])
 
   return (
     <RigidBody
@@ -96,7 +85,7 @@ export function RoomMesh({ room, elevation }: RoomMeshProps) {
           key={room.walls[i].id}
           name={room.walls[i].id}
           geometry={built.geometry}
-          material={material}
+          material={materials[i]}
           castShadow
           receiveShadow
         />

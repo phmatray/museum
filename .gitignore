@@ -18,6 +18,12 @@ dist-ssr
 public/media/*
 !public/media/atlas.json
 
+# Assets CC0 récupérés par tools/fetch-assets.ts : matières, HDRI, végétation.
+# ~31 Mo de binaires. Le dépôt est public : un manifeste versionné et un
+# téléchargement reproductible valent mieux qu'un historique git obèse.
+public/assets/*
+!public/assets/CREDITS.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

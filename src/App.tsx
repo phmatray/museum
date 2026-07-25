@@ -11,6 +11,7 @@ import { useIsMobile } from './hooks/useIsMobile'
 import { MobileControlsOverlay } from './components/MobileControls'
 import { Minimap } from './components/Minimap'
 import { useGameStore } from './stores/gameStore'
+import { VisitorTracker } from './hooks/useRoomTransition'
 
 // Objet constant plutôt qu'`enum` : `erasableSyntaxOnly` interdit les enums,
 // qui émettent du code au lieu de disparaître au strip des types.
@@ -93,14 +94,17 @@ function Museum() {
                 voidY={voidY}
               />
               {/*
-                La visite guidée n'a plus d'itinéraire : `tourPath` vivait dans
-                l'ancien `config/museum.json`, que le bâtiment dérivé remplace.
-                Le lot 3 la reconstruira à partir des accrochages — une visite
-                d'un musée vide n'aurait rien à montrer. En attendant, elle rend
-                la main immédiatement (voir `GuidedTour`) plutôt que de figer le
-                joueur dans une visite sans étape.
+                La visite guidée DÉRIVE son itinéraire du bâtiment (lot 3,
+                `domain/tour.ts`) : plus rien à saisir à la main, et un dépôt qui
+                entre ou sort du catalogue déplace le parcours tout seul.
               */}
-              <GuidedTour stops={[]} onComplete={handleTourComplete} />
+              <GuidedTour onComplete={handleTourComplete} />
+              {/*
+                Le suivi du visiteur alimente le plan et `currentRoomId`. Il vit
+                dans le canvas parce qu'il lit la caméra à chaque image ; il ne
+                rend rien.
+              */}
+              <VisitorTracker museum={museum} />
             </Physics>
           </Suspense>
         </Canvas>

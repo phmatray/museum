@@ -439,8 +439,8 @@ Tous purs, tous dans `builders/`, tous testables sans canvas.
 | Draw calls | **< 150** | instancing + texture array |
 | Triangles | < 500 k | procédural pur, aucun asset importé |
 | VRAM textures | < 150 Mo | `DataArrayTexture` 256×128 (32 Mo par atlas de 256), haute définition à la demande |
-| Lumières temps réel | **≤ 4** | tout le reste est peint dans le matériau |
-| Shadow maps | 1 | la verrière zénithale seule |
+| Lumières temps réel | **≤ 12, dont ≤ 2 avec ombre** | révisé — voir §9.4 |
+| Shadow maps | ≤ 2 | la verrière zénithale, plus la salle courante |
 | Chargement initial | < 5 Mo | `museum.json` + array + géométrie ; les WebP suivent |
 | Images par seconde | ≥ 60 bureau, ≥ 30 mobile | mesuré, pas estimé |
 
@@ -482,6 +482,24 @@ Deux niveaux de détail :
 256 projecteurs avec ombres ne tournent dans aucun navigateur, et sans DCC il n'y a pas de lightmap possible. Mais la signature visuelle d'un spot se réduit à deux choses **peintes** : une ellipse douce sur le mur et une surbrillance sur la toile.
 
 Conservés en temps réel : 1 hémisphérique, 1 directionnelle pour la verrière (seule à projeter des ombres), 1 à 2 lumières locales dans la salle du joueur. Tout le reste passe par le matériau.
+
+### 9.4 Photoréalisme — révision du 2026-07-25
+
+Le rendu du lot 2 s'est révélé plat et sombre à l'écran : aplats de couleur, aucune texture, aucune carte d'environnement, aucune occlusion ambiante. **Le budget de 4 lumières était calibré pour 200 œuvres visibles simultanément ; la mesure réelle donne 82 draw calls, avec une marge considérable.** Il est donc relevé.
+
+**Occlusion ambiante — la correction la plus importante.** Sans creusement des angles, la géométrie s'aplatit en une masse uniforme et les coins disparaissent. C'est le défaut dominant du lot 2. Correction par **SSAO** (`@react-three/postprocessing`), pas par baking : le bâtiment est génératif, ses UV changent à chaque build. `Concrete034` d'ambientCG ne livre d'ailleurs aucune carte d'AO, ce qui rend le SSAO obligatoire plutôt qu'optionnel.
+
+**Matières PBR.** Fini les aplats. Six matières CC0 d'ambientCG en 1K, récupérées par `tools/fetch-assets.ts` : béton banché (murs extérieurs, dalles, rampes), plâtre et plâtre peint (salles), parquet, marbre (rez-de-chaussée et atrium), métal (garde-corps, cadres). Cartes couleur, normale et rugosité — le déplacement et la métallicité sont écartés, sans tessellation ni variation de métallicité utile.
+
+**Éclairage basé image.** Un HDRI d'intérieur neutre (`brown_photostudio_02`, Poly Haven, CC0) alimente `scene.environment`. Il ne compte pas au budget de lumières : rien n'entre dans le graphe, c'est un uniforme lu par des shaders existants. Sans lui, tout ce qui est métallique réfléchit le noir.
+
+**Éclairage multi-sources.** Le plafond passe de 4 à **12 lumières temps réel, dont 2 au plus projettent une ombre**. Règle de répartition : la directionnelle de la verrière (avec ombre) est permanente ; les autres sont **allouées dynamiquement aux salles proches du joueur** et éteintes ailleurs, le culling par étage servant déjà de sélecteur. Une salle éloignée ne consomme aucune lumière — c'est ce qui rend le plafond tenable quel que soit le nombre de salles.
+
+**Épaisseur des murs et embrasures.** L'épaisseur passe de 0,20 m à **0,32 m**, cohérente avec du béton banché. Surtout, chaque ouverture reçoit une **embrasure** — les quatre faces de la tranche du mur, visibles depuis la porte. Sans elle, un mur percé lit comme du carton découpé, quelle que soit son épaisseur réelle. Ajout également des **plinthes** au pied des murs et d'un **chanfrein** sur les arêtes vives : une arête parfaitement nette ne capte aucune lumière et trahit le procédural au premier coup d'œil.
+
+**Végétation.** Quatre plantes en pot CC0 (Poly Haven), instanciées et disposées par le générateur dans les angles de salle et au pourtour de l'atrium. Ce n'est pas décoratif : une plante donne une **échelle humaine** à un volume, et sa silhouette organique casse l'orthogonalité qui signe le procédural.
+
+**Poids.** Les assets bruts pèsent 31 Mo. Ils sont réencodés en WebP au build, comme les images OG, et ne sont pas versionnés — `tools/fetch-assets.ts` les récupère, la CI les met en cache.
 
 ### 9.3 Culling
 
