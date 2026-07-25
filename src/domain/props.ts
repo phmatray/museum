@@ -110,8 +110,10 @@ export const PROP_METRICS: Record<PropId, PropMetrics> = {
   banc: { radius: 0.827, minY: 0, maxY: 0.45 },
   socle: { radius: 0.318, minY: 0, maxY: 1.05 },
   // Ancré sur le PLAN DE PLAFOND : la platine affleure la dalle, le corps pend
-  // en dessous.
-  projecteur: { radius: 0.078, minY: -0.215, maxY: 0.06 },
+  // en dessous. Le rayon vaut une fois et demie celui du fût parce que la tête
+  // est INCLINÉE de 28° vers la cimaise — la pièce déborde de son propre axe,
+  // et c'est ce débord que `RECUL_RAIL` doit pouvoir absorber.
+  projecteur: { radius: 0.123, minY: -0.22, maxY: 0 },
   jardiniere: { radius: 0.495, minY: 0, maxY: 0.5 },
   // L'anthurium est un buisson bas et TRÈS étalé : son rayon dépasse sa
   // hauteur. C'est ce qui en fait un bon casseur d'angle droit, et ce qui

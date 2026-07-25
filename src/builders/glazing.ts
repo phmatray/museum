@@ -112,6 +112,34 @@ export function creerVitrage(): THREE.MeshPhysicalMaterial {
   })
 }
 
+/**
+ * Le verre du GARDE-CORPS. Même famille que la vitre, réglé différemment.
+ *
+ * Une fenêtre a pour métier de disparaître : on la traverse du regard, et si on
+ * la remarque c'est qu'elle est sale. Un garde-corps a le métier inverse — il
+ * doit se voir, sinon il n'arrête personne et le visiteur lit un vide non
+ * protégé. D'où une opacité relevée de 0,16 à 0,26 et une teinte franchement
+ * verte : c'est la couleur réelle du feuilleté vu par la tranche, et c'est le
+ * signal que l'œil associe au verre de sécurité.
+ *
+ * `depthWrite` reste à faux. Le panneau est traversé du regard par tout ce que
+ * l'atrium contient — l'escalier, la dalle du bas, les étages d'en face — et
+ * écrire la profondeur ferait disparaître derrière un voile vert exactement ce
+ * que le passage au verre était censé rendre visible.
+ */
+export function creerVitrageGardeCorps(): THREE.MeshPhysicalMaterial {
+  return new THREE.MeshPhysicalMaterial({
+    color: '#cfe3dd',
+    transparent: true,
+    opacity: 0.26,
+    roughness: 0.05,
+    metalness: 0,
+    side: THREE.DoubleSide,
+    envMapIntensity: 2.2,
+    depthWrite: false,
+  })
+}
+
 /** Concatène des `PlaneGeometry` : mêmes attributs, même ordre, toujours. */
 function fusionner(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   const noms = ['position', 'normal', 'uv'] as const

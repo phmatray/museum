@@ -145,6 +145,59 @@ export function surUneAllee(allees: Allee[], x: number, z: number, rayon = 0): b
   return allees.some((s) => distanceSegment(s.a, s.b, x, z) < s.largeur / 2 + rayon)
 }
 
+// ── Découpe ──────────────────────────────────────────────────────────────
+
+/**
+ * Le CADRE qui reste d'un rectangle quand on y perce une emprise.
+ *
+ * ── Le défaut que cette fonction existe pour empêcher ──
+ *
+ * Le parvis et la pelouse étaient deux rectangles PLEINS, centrés sur le
+ * bâtiment et plus grands que lui. Ils passaient donc sous le musée : le parvis
+ * de gravier, posé 1,5 cm au-dessus du plancher du rez-de-chaussée, recouvrait
+ * intégralement la dalle. Tout ce qu'on croyait être le sol du hall et des
+ * salles du rez-de-chaussée — le motif de galets qu'on voyait sur toutes les
+ * captures depuis le début — était le gravier des allées du PARC, vu de
+ * l'intérieur du bâtiment.
+ *
+ * Le défaut est resté invisible parce qu'il ne casse rien : la dalle existe,
+ * son collider porte le visiteur, sa matière est chargée et posée. Elle est
+ * seulement cachée, par un maillage que rien ne rattachait au bâtiment. Changer
+ * la matière du sol n'avait aucun effet visible — c'est ce silence qui a fini
+ * par le trahir, en cachant la dalle seule pour voir ce qu'elle peignait.
+ *
+ * Rend de 0 à 4 rectangles. Zéro si le trou avale tout ; le rectangle intact si
+ * les deux sont disjoints. La découpe est en croix (bandes hautes et basses sur
+ * toute la largeur, bandes latérales entre les deux) : les pièces ne se
+ * recouvrent jamais, ce qui compte pour une surface transparente ou éclairée.
+ */
+export function couronne(exterieur: Rect, trou: Rect): Rect[] {
+  const eX2 = exterieur.x + exterieur.width
+  const eZ2 = exterieur.z + exterieur.depth
+  // Le trou est borné par l'extérieur : un trou qui déborde ne doit pas
+  // produire de bande de largeur négative.
+  const tX1 = Math.max(exterieur.x, trou.x)
+  const tZ1 = Math.max(exterieur.z, trou.z)
+  const tX2 = Math.min(eX2, trou.x + trou.width)
+  const tZ2 = Math.min(eZ2, trou.z + trou.depth)
+
+  if (tX2 <= tX1 || tZ2 <= tZ1) return [exterieur]
+
+  const pieces: Rect[] = []
+  const ajouter = (x: number, z: number, width: number, depth: number): void => {
+    if (width > EPS_DECOUPE && depth > EPS_DECOUPE) pieces.push({ x, z, width, depth })
+  }
+
+  ajouter(exterieur.x, exterieur.z, exterieur.width, tZ1 - exterieur.z)
+  ajouter(exterieur.x, tZ2, exterieur.width, eZ2 - tZ2)
+  ajouter(exterieur.x, tZ1, tX1 - exterieur.x, tZ2 - tZ1)
+  ajouter(tX2, tZ1, eX2 - tX2, tZ2 - tZ1)
+  return pieces
+}
+
+/** En deçà, une bande n'est plus une surface : c'est un artefact de calcul. */
+const EPS_DECOUPE = 1e-6
+
 // ── Tracé ────────────────────────────────────────────────────────────────
 
 /**

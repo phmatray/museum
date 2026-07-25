@@ -99,6 +99,23 @@ def cube(nom, taille, position):
     return o
 
 
+def cylindre(nom, rayon, hauteur, position, segments=16, rotation=(0, 0, 0)):
+    """
+    Cylindre à faible comptage de segments.
+
+    Le défaut de Blender est 32 : c'est le double de ce qu'un objet de onze
+    centimètres, vu à trois mètres cinquante, peut montrer. Seize segments
+    donnent un contour dont l'œil ne lit pas les facettes à cette distance, et
+    le chanfrein qui suit accroche déjà la lumière sur l'arête de bouche.
+    """
+    bpy.ops.mesh.primitive_cylinder_add(
+        radius=rayon, depth=hauteur, location=position, vertices=segments, rotation=rotation
+    )
+    o = bpy.context.active_object
+    o.name = nom
+    return o
+
+
 def fusionner(objets, nom):
     """Fusionne en un seul objet — un prop = un mesh = une instance à l'usage."""
     bpy.ops.object.select_all(action="DESELECT")
@@ -140,10 +157,36 @@ def socle():
     """
     Socle d'exposition, blanc mat. 0,45 × 0,45 × 1,05 m — hauteur qui met un
     petit objet à hauteur de regard sans dominer la salle.
+
+    ── Le retrait de pied, et pourquoi il change tout ──
+
+    Vu dans Blender pour la première fois, ce socle était un carton : un pavé
+    blanc posé à même le sol, sans aucun détail entre la matière et le plancher.
+    Le socle de musée réel ne touche jamais le sol par sa face pleine — il
+    repose sur une plinthe en retrait de quinze millimètres, et cette ombre
+    continue de quatre centimètres le fait FLOTTER. C'est le seul détail qui
+    sépare un socle d'exposition d'une caisse, et il coûte huit faces.
+
+    Le retrait doit rester dans l'ombre propre de l'objet : à quinze
+    millimètres, aucune lumière rasante de la salle n'y entre, et la ligne se
+    lit noire depuis n'importe quel angle. Plus profond, elle deviendrait une
+    fente ; moins, elle disparaîtrait sous le chanfrein.
     """
     blanc = matiere("Prop_SocleBlanc", (0.90, 0.89, 0.87), 0.75)
-    s = cube("Socle", (0.45, 0.45, 1.05), (0, 0, 0.525))
-    s.data.materials.append(blanc)
+    RETRAIT = 0.015
+    H_PLINTHE = 0.04
+
+    corps = cube("corps", (0.45, 0.45, 1.05 - H_PLINTHE), (0, 0, H_PLINTHE + (1.05 - H_PLINTHE) / 2))
+    corps.data.materials.append(blanc)
+
+    plinthe = cube(
+        "plinthe",
+        (0.45 - 2 * RETRAIT, 0.45 - 2 * RETRAIT, H_PLINTHE),
+        (0, 0, H_PLINTHE / 2),
+    )
+    plinthe.data.materials.append(blanc)
+
+    s = fusionner([corps, plinthe], "Socle")
     chanfreiner(s, largeur=0.003)
     return s
 
@@ -156,22 +199,68 @@ def projecteur():
     l'éclairage des toiles est peint dans le matériau de mur. Mais un plafond de
     musée sans rail de projecteurs se remarque immédiatement. C'est un objet qui
     justifie visuellement une lumière qui n'existe pas.
+
+    ── L'INCLINAISON est tout ce qui compte ──
+
+    À trois mètres cinquante sous un plafond, cette pièce fait vingt-cinq pixels
+    de haut : aucun détail de modelé n'y survit, seule la SILHOUETTE parle. Or
+    la version précédente pendait à la verticale — et un cylindre vertical au
+    plafond, à cette taille, se lit comme un détecteur de fumée. Un projecteur
+    de musée est incliné vers la cimaise ; c'est cette diagonale, et elle seule,
+    qui le rend identifiable.
+
+    `poserLeRail` oriente déjà chaque tête pour que son +Z local vise le mur (il
+    applique un lacet de `atan2(−normal.x, −normal.z)`). L'inclinaison se fait
+    donc ici, en local, vers +Z — et elle est juste dans toutes les salles sans
+    que le poseur ait à en connaître l'existence.
+
+    Le corps était aussi un CUBE portant une lentille plus large que lui : la
+    tête débordait de son propre fût, ce qui ne ressemblait à rien de connu. Un
+    fût cylindrique dont la bouche est légèrement évasée est la forme réelle, et
+    elle coûte moins de faces que le cube chanfreiné qu'elle remplace.
     """
     metal = matiere("Prop_AcierNoir", (0.08, 0.08, 0.09), 0.42, metallique=0.85)
     verre = matiere("Prop_Reflecteur", (0.92, 0.90, 0.82), 0.15, metallique=0.7)
 
-    corps = cube("corps", (0.09, 0.09, 0.20), (0, 0, -0.10))
-    corps.data.materials.append(metal)
+    INCLINAISON = math.radians(28)
+    L_FUT = 0.155
+    Z_PIVOT = -0.062
 
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.055, depth=0.02, location=(0, 0, -0.205))
-    lentille = bpy.context.active_object
-    lentille.name = "lentille"
-    lentille.data.materials.append(verre)
+    # L'embase plaquée au plafond, puis la tige courte qui porte la tête. Les
+    # deux restent verticales : c'est l'articulation qui s'incline, pas le rail.
+    embase = cylindre("embase", 0.048, 0.014, (0, 0, -0.007))
+    embase.data.materials.append(metal)
 
-    tige = cube("tige", (0.03, 0.03, 0.06), (0, 0, 0.03))
+    tige = cylindre("tige", 0.013, 0.055, (0, 0, -0.0415))
     tige.data.materials.append(metal)
 
-    p = fusionner([corps, lentille, tige], "Projecteur")
+    # La tête. Son axe part du pivot et descend vers le mur ; tout ce qui suit
+    # se place le long de cet axe pour rester solidaire quel que soit l'angle.
+    dz = -math.cos(INCLINAISON)
+    dy = math.sin(INCLINAISON)
+
+    def sur_axe(distance):
+        """Point à `distance` du pivot, le long de l'axe de la tête."""
+        return (0, dy * distance, Z_PIVOT + dz * distance)
+
+    fut = cylindre("fut", 0.040, L_FUT, sur_axe(L_FUT / 2), rotation=(INCLINAISON, 0, 0))
+    fut.data.materials.append(metal)
+
+    # L'évasement de bouche : une bague de huit millimètres, à peine plus large
+    # que le fût. Elle donne l'arête vive qui accroche un filet de spéculaire et
+    # signe le bord de la tête contre le plafond clair.
+    bague = cylindre("bague", 0.047, 0.012, sur_axe(L_FUT - 0.006), rotation=(INCLINAISON, 0, 0))
+    bague.data.materials.append(metal)
+
+    # La lentille, EN RETRAIT dans la bouche. À fleur elle brillerait comme un
+    # bouton ; enfoncée de dix millimètres, elle ne se voit que depuis l'axe —
+    # c'est-à-dire depuis l'œuvre, exactement comme un vrai réflecteur.
+    lentille = cylindre(
+        "lentille", 0.034, 0.006, sur_axe(L_FUT - 0.014), rotation=(INCLINAISON, 0, 0)
+    )
+    lentille.data.materials.append(verre)
+
+    p = fusionner([embase, tige, fut, bague, lentille], "Projecteur")
     chanfreiner(p, largeur=0.002)
     return p
 
@@ -200,7 +289,28 @@ def jardiniere():
 
     ext.name = "Jardiniere"
     chanfreiner(ext, largeur=0.005)
-    return ext
+
+    # ── Le substrat, et pourquoi il manquait ──
+    #
+    # Regardée de près pour la première fois, cette jardinière était un bac gris
+    # OUVERT ET VIDE. Un contenant vide ne se lit pas comme du mobilier de
+    # musée : il se lit comme du mobilier pas fini. La plante Poly Haven qu'on
+    # pose dedans flotte au-dessus d'un trou.
+    #
+    # Le substrat n'est pas une décoration, c'est ce qui referme l'objet. Il est
+    # sombre et très rugueux — une écorce de paillage, pas de la terre humide :
+    # sous l'éclairage zénithal du musée, une surface mate sombre disparaît
+    # proprement dans l'ombre du bac, alors qu'une terre à 0,6 de rugosité y
+    # attraperait un reflet qui trahirait le plan.
+    #
+    # Il s'arrête sept centimètres sous la lèvre : au ras, on verrait le disque
+    # entier depuis toute la salle et le bac perdrait sa profondeur.
+    paillis = matiere("Prop_Paillis", (0.13, 0.10, 0.08), 0.95)
+    terre = cube("substrat", (0.60, 0.60, 0.02), (0, 0, 0.43))
+    terre.data.materials.append(paillis)
+
+    j = fusionner([ext, terre], "Jardiniere")
+    return j
 
 
 PROPS = [banc, socle, projecteur, jardiniere]

@@ -19,7 +19,8 @@ import { BLIND_GALLERY_NAME } from '../layout'
 
 import { FRAME_BORDER, FRAME_DEPTH } from '../../builders/artwork'
 import { WALL_THICKNESS } from '../../builders/wall'
-import type { Boite } from '../props'
+import type { Boite, PropId } from '../props'
+import { lireGltf, metriquesDuNoeud } from './glbBounds'
 import {
   PROP_IDS,
   PROP_METRICS,
@@ -585,6 +586,49 @@ describe('placeProps — cas limites', () => {
   it('ne pose ni banc ni socle dans une salle exiguë', () => {
     const resultat = placeProps(musee([salle('couloir', 0, 0, 20, 3)]))
     expect(resultat.some((p) => p.id === 'banc')).toBe(false)
+  })
+
+  /**
+   * `PROP_METRICS` dit de lui-même être « mesuré sur les GLB eux-mêmes ». Rien
+   * ne le maintenait vrai : le kit se reconstruit par
+   * `tools/blender/build-props.py`, et la première refonte d'un prop — le
+   * projecteur passant d'un fût vertical à une tête inclinée — a fait grandir
+   * son emprise de 0,078 à 0,123 m sans qu'aucun test ne bronche. Une emprise
+   * sous-estimée ne casse rien : elle laisse un prop entrer dans un mur, et ça
+   * ne se voit qu'à l'écran, depuis le bon angle, si on passe par là.
+   *
+   * Seuls les quatre props du kit sont couverts : les plantes viennent de
+   * `plants-lod.glb`, dont les nœuds portent les noms de Poly Haven
+   * (`anthurium_botany_01_a`…) et non les `PropId` du domaine. Les rattacher
+   * demanderait une table de correspondance qui serait, elle aussi, à maintenir
+   * à la main — donc exactement le défaut qu'on ferme ici.
+   */
+  it('porte les emprises réellement mesurées sur museum-kit.glb', () => {
+    const kit = lireGltf(`${process.cwd()}/public/assets/props/museum-kit.glb`)
+    const NOEUDS: Partial<Record<PropId, string>> = {
+      banc: 'Banc',
+      socle: 'Socle',
+      jardiniere: 'Jardiniere',
+      projecteur: 'Projecteur',
+    }
+
+    for (const [id, nom] of Object.entries(NOEUDS) as [PropId, string][]) {
+      const mesure = metriquesDuNoeud(kit, nom)
+      expect(mesure, `${nom} absent de museum-kit.glb`).not.toBeNull()
+      if (mesure === null) continue
+
+      const table = PROP_METRICS[id]
+      // Le millimètre : en deçà, on ferait échouer le test sur du bruit de
+      // quantification Draco ; au-delà, on laisserait passer un chanfrein.
+      expect(table.radius, `${id}.radius`).toBeGreaterThanOrEqual(mesure.rayon - 0.001)
+      expect(table.minY, `${id}.minY`).toBeLessThanOrEqual(mesure.minY + 0.001)
+      expect(table.maxY, `${id}.maxY`).toBeGreaterThanOrEqual(mesure.maxY - 0.001)
+
+      // Et pas trop grand non plus : une emprise généreuse ne plante rien dans
+      // un mur, mais elle écarte les props les uns des autres sans raison et
+      // finit par vider les salles. Dix centimètres de marge, pas plus.
+      expect(table.radius, `${id}.radius trop généreux`).toBeLessThanOrEqual(mesure.rayon + 0.1)
+    }
   })
 
   it('rend des emprises cohérentes avec les métriques', () => {

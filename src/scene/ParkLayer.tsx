@@ -27,7 +27,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { RigidBody } from '@react-three/rapier'
 
-import { planterParc } from '../domain/park'
+import { couronne, planterParc } from '../domain/park'
 import type { Allee, EspeceParc, PlantationParc } from '../domain/park'
 import type { Rect } from '../domain/types'
 import { parkAssetsResource } from './parkAssets'
@@ -57,8 +57,25 @@ export function ParkLayer({ footprint, elevation }: ParkLayerProps) {
   const herbe = useMatiere('herbe', repetitionMetrique(REGLAGE_MATIERE.herbe.motif))
   const gravier = useMatiere('gravier', repetitionMetrique(REGLAGE_MATIERE.gravier.motif))
 
-  const sol = useMemo(() => geometrieSol(parc.terrain), [parc.terrain])
-  const allees = useMemo(() => geometrieAllees(parc.allees, parc.parvis), [parc.allees, parc.parvis])
+  /*
+    Le parc est PERCÉ de l'emprise du bâtiment.
+
+    Sans cette découpe, la pelouse et le parvis passent SOUS le musée. Le parvis
+    de gravier, posé 1,5 cm au-dessus du plancher du rez-de-chaussée, recouvrait
+    alors la dalle sur toute sa surface : le sol du hall et des salles du
+    rez-de-chaussée était le gravier des allées, et la matière de la dalle —
+    chargée, posée, correcte — n'était visible nulle part.
+
+    L'emprise est prise TELLE QUELLE, sans marge : le mur d'enceinte est sur la
+    limite, et le gravier doit venir jusqu'à son nu extérieur. Une marge y
+    ouvrirait une bande d'herbe le long de la façade, sous laquelle on verrait
+    la tranche de la dalle.
+  */
+  const sol = useMemo(() => geometrieSol(couronne(parc.terrain, footprint)), [parc.terrain, footprint])
+  const allees = useMemo(
+    () => geometrieAllees(parc.allees, couronne(parc.parvis, footprint)),
+    [parc.allees, parc.parvis, footprint],
+  )
 
   useEffect(() => {
     return () => {
@@ -157,24 +174,27 @@ function grouperParEspece(
  * Une `PlaneGeometry` porte des UV normalisés : la même pelouse s'y étirerait
  * sur 110 m et se lirait comme une nappe verte unie.
  */
-function geometrieSol(terrain: Rect): THREE.BufferGeometry {
-  const g = new THREE.BoxGeometry(terrain.width, EPAISSEUR_SOL, terrain.depth)
-  g.translate(
-    terrain.x + terrain.width / 2,
-    -EPAISSEUR_SOL / 2,
-    terrain.z + terrain.depth / 2,
-  )
-  metriserUv(g)
-  return g
+function geometrieSol(pieces: readonly Rect[]): THREE.BufferGeometry {
+  const morceaux = pieces.map((p) => {
+    const g = new THREE.BoxGeometry(p.width, EPAISSEUR_SOL, p.depth)
+    g.translate(p.x + p.width / 2, -EPAISSEUR_SOL / 2, p.z + p.depth / 2)
+    return g
+  })
+  // `fusionner` métrise déjà les UV de chaque morceau : c'est ce qui garde la
+  // même échelle d'herbe sur les quatre bandes qu'elle avait sur la pelouse
+  // pleine, alors qu'elles n'ont plus ni la même largeur ni la même origine.
+  return fusionner(morceaux)
 }
 
 /** Le parvis et les allées, en un seul maillage — donc un seul draw call. */
-function geometrieAllees(allees: Allee[], parvis: Rect): THREE.BufferGeometry {
+function geometrieAllees(allees: Allee[], parvis: readonly Rect[]): THREE.BufferGeometry {
   const morceaux: THREE.BufferGeometry[] = []
 
-  const dalle = new THREE.BoxGeometry(parvis.width, RELIEF_ALLEE, parvis.depth)
-  dalle.translate(parvis.x + parvis.width / 2, RELIEF_ALLEE / 2, parvis.z + parvis.depth / 2)
-  morceaux.push(dalle)
+  for (const p of parvis) {
+    const dalle = new THREE.BoxGeometry(p.width, RELIEF_ALLEE, p.depth)
+    dalle.translate(p.x + p.width / 2, RELIEF_ALLEE / 2, p.z + p.depth / 2)
+    morceaux.push(dalle)
+  }
 
   for (const a of allees) {
     const dx = a.b.x - a.a.x

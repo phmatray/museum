@@ -11,8 +11,8 @@ Récupérés par `node tools/fetch-assets.ts`, non versionnés.
 | Plaster001 | ambientCG | CC0 | murs de salle, thème classic |
 | PaintedPlaster017 | ambientCG | CC0 | murs de salle, thème modern |
 | WoodFloor007 | ambientCG | CC0 | sols des salles |
-| Marble012 | ambientCG | CC0 | sol du rez-de-chaussée et de l’atrium |
-| Metal063 | ambientCG | CC0 | garde-corps, mains courantes, cadres |
+| Terrazzo005 | ambientCG | CC0 | sol du rez-de-chaussée et de l’atrium |
+| Metal032 | ambientCG | CC0 | mains courantes, cadres |
 | Grass004 | ambientCG | CC0 | pelouse du parc |
 | Gravel023 | ambientCG | CC0 | allées et parvis du parc |
 | brown_photostudio_02 | Poly Haven | CC0 | carte d'environnement, spéculaire |

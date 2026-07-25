@@ -25,6 +25,8 @@ import {
   RAILING_HEIGHT,
   SLAB_GROUP_SHELL,
   SLAB_GROUP_TOP,
+  RAILING_GROUP_HANDRAIL,
+  RAILING_GROUP_PANEL,
   buildRailing,
   buildSlab,
 } from '../slab'
@@ -441,6 +443,44 @@ describe('buildRailing', () => {
     // 6 m de côté, plus la demi-section de la main courante de chaque bord.
     expect(s.x).toBeCloseTo(6.08, 4)
     expect(s.z).toBeCloseTo(6.08, 4)
+  })
+
+  /**
+   * Le panneau est en verre, la main courante en métal : deux matières, donc
+   * deux groupes, et l'ordre des index doit les rendre CONTIGUS.
+   *
+   * Le mode de panne est silencieux dans les deux sens. Sans groupes, three
+   * ignore le tableau de matériaux et peint tout avec le premier — le
+   * couronnement devient invisible. Avec des plages qui se chevauchent ou qui
+   * ne couvrent pas tout l'index, une partie du garde-corps n'est simplement
+   * pas dessinée. Ni l'un ni l'autre ne lève quoi que ce soit.
+   */
+  it('sépare le verre du panneau et le métal de la main courante', () => {
+    const { geometry } = buildRailing(perimeter, RAILING_HEIGHT)
+    const groupes = [...geometry.groups].sort((a, b) => a.start - b.start)
+
+    expect(groupes.map((g) => g.materialIndex)).toEqual([
+      RAILING_GROUP_PANEL,
+      RAILING_GROUP_HANDRAIL,
+    ])
+    // Contiguës, sans trou ni recouvrement, et couvrant tout l'index : c'est ce
+    // qui garantit que chaque triangle est peint une fois et une seule.
+    expect(groupes[0].start).toBe(0)
+    expect(groupes[1].start).toBe(groupes[0].count)
+    expect(groupes[0].count + groupes[1].count).toBe(geometry.getIndex()!.count)
+
+    // Le panneau va du sol jusque sous la main courante, celle-ci le couronne.
+    const pos = geometry.getAttribute('position')
+    const index = geometry.getIndex()!
+    const yMax = (g: { start: number; count: number }): number => {
+      let m = -Infinity
+      for (let i = g.start; i < g.start + g.count; i += 1) {
+        m = Math.max(m, pos.getY(index.getX(i)))
+      }
+      return m
+    }
+    expect(yMax(groupes[0])).toBeLessThan(RAILING_HEIGHT)
+    expect(yMax(groupes[1])).toBeCloseTo(RAILING_HEIGHT, 4)
   })
 
   it('a un collider : sans lui, le garde-corps est décoratif et le joueur tombe', () => {

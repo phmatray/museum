@@ -100,11 +100,45 @@ const TOP_FACING = 0.5
 /** Hauteur réglementaire d'un garde-corps, main courante comprise. */
 export const RAILING_HEIGHT = 1.1
 
-/** Épaisseur du panneau. Assez fin pour être discret, assez épais pour exister. */
-const RAILING_THICKNESS = 0.06
+/**
+ * Épaisseur du panneau.
+ *
+ * 21 mm : c'est l'épaisseur réelle d'un feuilleté 10+10 de garde-corps, et
+ * depuis que le panneau est en VERRE l'épaisseur se voit — c'est elle qui donne
+ * la tranche vert pâle sur le chant, le seul endroit où une vitre montre sa
+ * matière. Les 60 mm précédents étaient l'épaisseur d'un bahut plein, dont
+ * personne n'aurait pu dire de quoi il était fait.
+ */
+const RAILING_THICKNESS = 0.021
 
 /** Section carrée de la main courante, qui couronne le panneau. */
 const HANDRAIL_SIZE = 0.08
+
+/**
+ * Index de groupe du PANNEAU — la vitre.
+ *
+ * ── Pourquoi le garde-corps est passé en verre ──
+ *
+ * La vue d'entrée du musée est barrée, sur toute sa largeur, par un bandeau
+ * opaque de 1,10 m : le garde-corps de la trémie. Il masquait exactement ce que
+ * le hall est censé donner à voir — le vide central, l'escalier, les étages. Et
+ * il portait `Metal063`, un acier ROUILLÉ : sur vingt mètres de panneau, les
+ * traînées d'oxyde s'étiraient en un dégradé bleu-orange qui lisait comme du
+ * corten. Un musée contemporain n'a pas de corten autour de son atrium.
+ *
+ * Un garde-corps de verre est aussi la réponse ARCHITECTURALE juste : il est
+ * réglementaire, il est ce qu'on met réellement autour d'un vide qu'on veut
+ * montrer, et il rend au hall la profondeur que le bandeau lui prenait.
+ *
+ * Le panneau et la main courante étaient déjà deux boîtes distinctes ; il ne
+ * manquait que les groupes pour leur donner deux matières. La main courante
+ * RESTE métallique — une vitre sans couronnement se lit comme une erreur de
+ * rendu, et c'est le métal qui dit où finit le verre.
+ */
+export const RAILING_GROUP_PANEL = 0
+
+/** Index de groupe de la main courante. */
+export const RAILING_GROUP_HANDRAIL = 1
 
 /**
  * Quantum de soudure des sommets du collider, en mètres. Les positions sont
@@ -297,7 +331,11 @@ export function buildRailing(
   }
 
   const panelHeight = height - HANDRAIL_SIZE
-  const parts: THREE.BufferGeometry[] = []
+  // Deux listes et non une : la fusion doit produire des plages d'index
+  // CONTIGUËS par matière, sinon un groupe ne peut pas les décrire. Alterner
+  // panneau/main courante comme avant obligerait à un groupe par segment.
+  const panneaux: THREE.BufferGeometry[] = []
+  const mains: THREE.BufferGeometry[] = []
 
   /*
     LE GARDE-CORPS S'OUVRE LÀ OÙ L'ESCALIER ARRIVE.
@@ -327,10 +365,10 @@ export function buildRailing(
     const cx = (segment.a.x + segment.b.x) / 2
     const cz = (segment.a.z + segment.b.z) / 2
 
-    parts.push(
+    panneaux.push(
       orientedBox(length, panelHeight, RAILING_THICKNESS, cx, panelHeight / 2, cz, yaw),
     )
-    parts.push(
+    mains.push(
       orientedBox(
         length,
         HANDRAIL_SIZE,
@@ -343,7 +381,24 @@ export function buildRailing(
     )
   }
 
-  const geometry = mergeIndexed(parts)
+  const geometry = mergeIndexed([...panneaux, ...mains])
+  const indicesPanneaux = panneaux.reduce((n, p) => n + (p.getIndex()?.count ?? 0), 0)
+  const indicesMains = mains.reduce((n, p) => n + (p.getIndex()?.count ?? 0), 0)
+  if (indicesPanneaux > 0) {
+    geometry.addGroup(0, indicesPanneaux, RAILING_GROUP_PANEL)
+  }
+  if (indicesMains > 0) {
+    geometry.addGroup(indicesPanneaux, indicesMains, RAILING_GROUP_HANDRAIL)
+  }
+
+  /*
+    Le COLLIDER, lui, ignore les groupes — et il le doit.
+
+    Le verre est traversé par la lumière, pas par le visiteur. Un garde-corps
+    dont on ne rendrait solide que la main courante laisserait tomber dans le
+    vide quiconque marche à moins de 1,02 m du sol, c'est-à-dire tout le monde.
+    La trimesh porte donc panneaux ET couronnement, exactement comme avant.
+  */
   return { geometry, collider: toTrimesh(geometry), segments: ouverts }
 }
 

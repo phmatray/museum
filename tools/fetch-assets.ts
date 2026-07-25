@@ -42,8 +42,36 @@ const MATIERES = [
   { id: 'Plaster001', role: 'platre', usage: 'murs de salle, thème classic' },
   { id: 'PaintedPlaster017', role: 'platre-peint', usage: 'murs de salle, thème modern' },
   { id: 'WoodFloor007', role: 'parquet', usage: 'sols des salles' },
-  { id: 'Marble012', role: 'marbre', usage: 'sol du rez-de-chaussée et de l’atrium' },
-  { id: 'Metal063', role: 'metal', usage: 'garde-corps, mains courantes, cadres' },
+  /*
+    Terrazzo005 et non Marble012.
+
+    `Marble012` n'est pas un marbre : c'est une pierre grise MATE et craquelée,
+    d'albédo bleuté. Étalée sur les 2 m de sa maille, elle donnait au sol du
+    hall — la plus grande surface du musée, celle qu'on voit en premier et
+    presque toujours en rasant — l'aspect d'un lit de gravier. Aucun réglage de
+    gain ne rattrape le motif d'une matière qui n'est pas la bonne.
+
+    Un terrazzo est ce qu'on met réellement au sol d'un musée : fond clair et
+    chaud, éclats sombres qui donnent l'échelle au pas, et surtout un motif SANS
+    DIRECTION — c'est ce qui lui permet de se répéter sur trente mètres sans que
+    la maille se lise, là où le veinage horizontal d'un travertin trahirait la
+    tuile au premier regard.
+  */
+  { id: 'Terrazzo005', role: 'marbre', usage: 'sol du rez-de-chaussée et de l’atrium' },
+  /*
+    Metal032 et non Metal063.
+
+    `Metal063` est un acier ROUILLÉ. Sur les vingt mètres de la main courante de
+    l'atrium et sur toute l'hélice de l'escalier, ses traînées d'oxyde
+    s'étiraient en un dégradé bleu-orange : le hall entier lisait « corten ».
+    Personne ne pose du corten autour d'un vide intérieur — c'est un acier fait
+    pour rouiller dehors.
+
+    Metal032 est un acier brossé propre, sans piqûre ni coulure : à l'échelle
+    d'un profilé de 8 cm il ne montre rien d'autre que sa valeur, ce qui est
+    exactement le métier d'une main courante.
+  */
+  { id: 'Metal032', role: 'metal', usage: 'mains courantes, cadres' },
   { id: 'Grass004', role: 'herbe', usage: 'pelouse du parc' },
   { id: 'Gravel023', role: 'gravier', usage: 'allées et parvis du parc' },
 ] as const

@@ -152,6 +152,24 @@ const VUES: Vue[] = [
  * `node tools/capture.ts --check` sort en code 1 au moindre dépassement.
  */
 const BUDGET = {
+  /*
+    150 est le plafond du §9, et il est DÉPASSÉ : 259 sur la vue d'entrée.
+
+    Le chiffre n'est pas relevé pour éteindre le voyant. Il est laissé rouge
+    parce qu'il dit quelque chose de vrai, et que le levier qui le fermerait est
+    connu et non tiré : fusionner les murs d'un plateau en un maillage par
+    matière. Il ne l'est pas parce que chaque mur porte ses PROPRES uniformes de
+    flaques de lumière (§9.2) — les fusionner demanderait de passer ces flaques
+    en attribut de sommet ou en texture, ce qui est un chantier, pas un réglage.
+
+    Ce qui a été ajouté sciemment depuis le relevé à 247 : le garde-corps de
+    l'atrium est passé du bandeau d'acier plein au VERRE, ce qui lui donne deux
+    matières au lieu d'une — un appel de plus par plateau — et ses panneaux
+    entrent dans la passe transparente, qui ne se groupe pas comme l'opaque. Le
+    hall y gagne sa profondeur : on voit désormais le niveau de la réserve
+    depuis l'entrée. C'est un échange assumé, pas une dérive non vue — et c'est
+    exactement la différence que ce compteur existe pour rendre visible.
+  */
   calls: 150,
   // Relevé de 500 000 à 1 000 000 au §9.5, sur mesure et non pour éteindre un
   // voyant : le chiffre d'origine datait d'un bâtiment sans végétation, sans

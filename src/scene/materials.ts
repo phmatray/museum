@@ -174,29 +174,63 @@ export const REGLAGE_MATIERE: Record<MatiereId, ReglageMatiere> = {
   platre: { gain: 1.25, roughness: 1, metalness: 0, rebond: 0.14, motif: 3.2 },
   'platre-peint': { gain: 1.45, roughness: 1, metalness: 0, rebond: 0.14, motif: 3.2 },
   parquet: { gain: 1.2, roughness: 0.9, metalness: 0, rebond: 0.2, motif: 3 },
-  // Deux corrections mesurées à l'écran. La carte de rugosité du marbre plafonne
-  // à 0,07 : brut, le sol devient un miroir et le bâtiment s'y reflète en
-  // double — on le dépolit d'un facteur 2,5. Et son albédo tire vers le bleu
-  // (172, 173, 182) : sous un ciel bleu et une hémisphérique bleutée, le
-  // rez-de-chaussée virait à la patinoire. Un gain plus sage et une teinte
-  // chaude le ramènent à un marbre d'intérieur.
+  /**
+   * Le sol du hall et de l'atrium — la plus grande surface du musée.
+   *
+   * Les trois réglages ont été REMESURÉS au passage de `Marble012` à
+   * `Terrazzo005` (voir `tools/fetch-assets.ts` pour le pourquoi du changement
+   * de carte). Aucun des trois ne pouvait être conservé, et le motif est celui
+   * qui comptait le plus :
+   *
+   *  - `gain` : l'albédo passe de 172 à 193, soit 0,415 → 0,535 en linéaire.
+   *    Garder 1,3 aurait éclairci le sol de 29 % et fait brûler le hall sous le
+   *    puits de lumière. 1,0 rend la même valeur qu'avant.
+   *  - `roughness` : la carte de `Marble012` plafonnait à 0,07 — d'où le
+   *    facteur 2,5 qui l'empêchait de devenir un miroir. Celle du terrazzo est
+   *    déjà à 0,25 de moyenne ; le même facteur la porterait à 0,62, c'est-à-dire
+   *    un sol brut de décoffrage. 1,3 donne 0,33, le poli d'un terrazzo entretenu.
+   *  - `teinte` : elle n'existait que pour corriger la dominante BLEUE de
+   *    `Marble012` (172, 173, 182 — le bleu devant le rouge). Le terrazzo est
+   *    déjà chaud (193, 188, 184, dans l'ordre inverse) : lui appliquer la même
+   *    correction le ferait virer à l'ocre. On la retire.
+   *
+   * `motif` à 0,90 m et non 2 : c'est la maille qui donne la TAILLE DES ÉCLATS,
+   * et à 2 m ils faisaient huit centimètres — du gravier, pas du terrazzo. À
+   * 0,90 m ils tombent à trois centimètres et demi, le calibre d'un terrazzo à
+   * gros granulat. La contrepartie serait une tuile qui se répète tous les
+   * 90 cm sur trente mètres de hall ; elle ne se voit pas, parce que le motif
+   * n'a AUCUNE structure à grande échelle — c'est précisément pour ça qu'un
+   * terrazzo a été préféré à un travertin, dont le veinage horizontal aurait
+   * dessiné la grille au premier regard.
+   */
   marbre: {
-    gain: 1.3,
-    roughness: 2.5,
+    gain: 1.0,
+    roughness: 1.3,
     metalness: 0,
     rebond: 0.24,
-    motif: 2,
-    teinte: '#fff3e4',
+    motif: 0.9,
   },
   /**
-   * Le garde-corps de l'atrium. `metalness` était à 0,6 sur une couleur sombre :
-   * un métal n'a PAS de diffus, il ne rend que ce qu'il réfléchit, et il ne
-   * réfléchissait qu'un dégradé d'ambiance discret — le garde-corps sortait
-   * presque noir sur un tiers de la vue d'entrée (constaté à l'écran, lot 3).
-   * Un aluminium anodisé de garde-corps est d'abord une surface CLAIRE : on
-   * descend la métallicité et on remonte franchement l'albédo.
+   * Les mains courantes et les cadres. Depuis que le panneau du garde-corps est
+   * en verre et que la rive de l'escalier est en béton, cette matière ne
+   * couvre plus que des PROFILÉS de huit centimètres — ce qui change ses
+   * réglages autant que le changement de carte.
+   *
+   * `metalness` reste bas pour la raison d'origine : un métal n'a pas de
+   * diffus, il ne rend que ce qu'il réfléchit, et l'environnement du bâtiment
+   * est volontairement discret (intensité 0,45) — à 0,6 le profilé sortait
+   * presque noir.
+   *
+   * `roughness` tombe de 3,2 à 1,0 : le facteur compensait la carte très polie
+   * de `Metal063` (0,13 de moyenne). Celle de `Metal032` est déjà à 0,41, et la
+   * multiplier par trois donnerait un profilé sablé. Brut, c'est de l'acier
+   * brossé.
+   *
+   * `motif` à 0,5 m : le grain d'un métal brossé est millimétrique. Étalé sur
+   * deux mètres il ne restait qu'un aplat — sur une pièce de huit centimètres
+   * de section, la maille doit être du même ordre que la pièce.
    */
-  metal: { gain: 2.3, roughness: 3.2, metalness: 0.22, rebond: 0.3, motif: 2 },
+  metal: { gain: 1.8, roughness: 1.0, metalness: 0.22, rebond: 0.3, motif: 0.5 },
   // Le parc. Motifs LARGES : une pelouse dont on voit la tuile se répéter tous
   // les deux mètres se lit comme une moquette. À 6 m, la récurrence tombe sous
   // l'horizon de perception depuis la hauteur d'œil.

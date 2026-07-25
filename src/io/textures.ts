@@ -96,8 +96,12 @@ export const SOURCE_AMBIENTCG: Record<MatiereId, string> = {
   platre: 'Plaster001',
   'platre-peint': 'PaintedPlaster017',
   parquet: 'WoodFloor007',
-  marbre: 'Marble012',
-  metal: 'Metal063',
+  // L'identifiant du domaine reste `marbre` alors que la source est un
+  // terrazzo : c'est le rôle qui nomme la matière ici, pas la carrière. Le
+  // renommer ferait toucher une dizaine de fichiers pour ne rien changer au
+  // rendu — et l'en-tête dit déjà que ce niveau d'indirection existe pour ça.
+  marbre: 'Terrazzo005',
+  metal: 'Metal032',
   herbe: 'Grass004',
   gravier: 'Gravel023',
 }

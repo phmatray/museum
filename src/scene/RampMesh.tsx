@@ -49,12 +49,24 @@ export function RampMesh({ ramp }: RampMeshProps) {
     () => repetitionMetrique(REGLAGE_MATIERE.beton.motif),
     [],
   )
-  const repetitionMetal = useMemo(
-    () => repetitionMetrique(REGLAGE_MATIERE.metal.motif),
-    [],
-  )
   const deckMaterial = useMatiere('beton', repetition, { rebond: 0.34 })
-  const railingMaterial = useMatiere('metal', repetitionMetal)
+  /*
+    LA RIVE EST DU BÉTON, PAS DU MÉTAL.
+
+    Elle portait `metal`, c'est-à-dire un acier ROUILLÉ étiré sur toute
+    l'hélice : depuis l'entrée, l'escalier était un ruban bleu-orange enroulé
+    autour du hall, et rien dans le bâtiment ne justifiait cette matière.
+
+    Une rive pleine et continue n'est pas un garde-corps rapporté — c'est le
+    LIMON de l'escalier, la même pièce coulée que le tablier qu'elle borde.
+    Elle prend donc sa matière, et l'escalier redevient un objet unique plutôt
+    qu'une dalle blanche cerclée d'un profilé.
+
+    Elle garde son propre `rebond` : sa face intérieure surplombe le vide de
+    l'hélice et ne reçoit rien du dessous, contrairement à la sous-face du
+    tablier qui, elle, est ce qu'on regarde depuis la réserve.
+  */
+  const railingMaterial = useMatiere('beton', repetition, { rebond: 0.2 })
 
   // `buildRamp` ne lève jamais : une rampe aberrante sort avec une géométrie
   // vide et un message. Sans cette remontée, l'anomalie n'existerait nulle part

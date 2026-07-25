@@ -45,7 +45,7 @@ import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 
 import { RAILING_HEIGHT, buildLanding, buildRailing, buildSlab } from '../builders/slab'
-import { buildGlazing, creerVitrage } from '../builders/glazing'
+import { buildGlazing, creerVitrage, creerVitrageGardeCorps } from '../builders/glazing'
 import { buildWall } from '../builders/wall'
 import { floorBox, shadowSweptBox } from '../domain/culling'
 import { landingsForFloor } from '../domain/landings'
@@ -210,9 +210,9 @@ export function FloorMesh({
     [roofMaterial, coqueMaterial],
   )
 
-  // Le garde-corps, lui, est fait de `BoxGeometry` : ses UV sont un carré unité
+  // La MAIN COURANTE est faite de `BoxGeometry` : ses UV sont un carré unité
   // par face, la répétition doit donc être proportionnelle aux dimensions. Les
-  // panneaux n'ayant pas tous la même longueur, on cale l'échelle sur la moyenne
+  // tronçons n'ayant pas tous la même longueur, on cale l'échelle sur la moyenne
   // — l'écart résiduel sur un métal brossé est invisible, contrairement à
   // l'étirement d'un facteur cinq qu'on aurait en ignorant le problème.
   const repetitionRailing = useMemo(() => {
@@ -228,7 +228,19 @@ export function FloorMesh({
       motif: REGLAGE_MATIERE.metal.motif,
     })
   }, [slab])
-  const railingMaterial = useMatiere('metal', repetitionRailing)
+  const handrailMaterial = useMatiere('metal', repetitionRailing)
+
+  // Le PANNEAU est en verre (voir `RAILING_GROUP_PANEL`). Il ne porte aucune
+  // carte : une vitre n'a ni grain ni relief, et lui coller la normale d'un
+  // métal brossé lui donnerait une texture de dépoli qu'on ne veut pas.
+  const glassMaterial = useMemo(() => creerVitrageGardeCorps(), [])
+  useEffect(() => () => glassMaterial.dispose(), [glassMaterial])
+
+  // L'ordre suit les index de groupe posés par `buildRailing`.
+  const railingMaterials = useMemo(
+    () => [glassMaterial, handrailMaterial],
+    [glassMaterial, handrailMaterial],
+  )
 
   // ── Fermeture du pourtour ──────────────────────────────────────────────
   //
@@ -334,7 +346,13 @@ export function FloorMesh({
 
         {railing && (
           <>
-            <mesh geometry={railing.geometry} material={railingMaterial} castShadow receiveShadow />
+            {/*
+              Pas de `castShadow` : une vitre qui projette une ombre PLEINE est
+              pire qu'une vitre sans ombre — elle dessine au sol de l'atrium le
+              bandeau opaque qu'on vient justement de supprimer. La carte
+              d'ombres de three ne connaît pas la transparence par alpha.
+            */}
+            <mesh geometry={railing.geometry} material={railingMaterials} receiveShadow />
             <TrimeshCollider args={[railing.collider.vertices, railing.collider.indices]} />
           </>
         )}
