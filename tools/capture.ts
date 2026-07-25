@@ -112,6 +112,27 @@ const VUES: Vue[] = [
   },
 ]
 
+// ── Budget (§9 et §12) ───────────────────────────────────────────────────
+
+/**
+ * Les plafonds du §9, et le test de non-régression que le §12 exigeait.
+ *
+ * Ce contrôle n'existait pas, et c'est très exactement ce qui a laissé le budget
+ * passer de 83 à 239 draw calls sans que rien ne s'allume : chaque lot ajoutait
+ * sa part, aucun ne voyait le total. Il vit ici plutôt que dans vitest parce
+ * qu'un draw call n'existe pas sans contexte WebGL — le compter dans un test
+ * unitaire reviendrait à compter des maillages, c'est-à-dire à mesurer ce qu'on
+ * croit avoir écrit et non ce que le GPU dessine.
+ *
+ * `node tools/capture.ts --check` sort en code 1 au moindre dépassement.
+ */
+const BUDGET = {
+  calls: 150,
+  triangles: 500_000,
+  lights: 12,
+  shadowCasters: 2,
+} as const
+
 // ── Mesures ──────────────────────────────────────────────────────────────
 
 interface Mesure {
@@ -264,12 +285,46 @@ async function main() {
 
     await writeFile(
       resolve(OUT, 'rapport.json'),
-      `${JSON.stringify({ url, viewport: VIEWPORT, rapports, erreurs }, null, 2)}\n`,
+      `${JSON.stringify({ url, viewport: VIEWPORT, budget: BUDGET, rapports, erreurs }, null, 2)}\n`,
     )
     console.log(`\n${vues.length} captures + rapport.json → .captures/`)
     if (erreurs.length > 0) {
       console.log(`\n${erreurs.length} erreur(s) console :`)
       for (const e of erreurs.slice(0, 10)) console.log(`  ${e}`)
+    }
+
+    // Le budget se juge sur la vue la PLUS CHÈRE, jamais sur la moyenne : c'est
+    // celle-là que le visiteur paie en images par seconde.
+    // `?? 0` serait un piège : une clé absente du relevé passerait pour zéro et
+    // afficherait un vert sur un plafond jamais mesuré. C'est arrivé une fois,
+    // sur `lights` et `shadowCasters`. Une mesure manquante devient donc
+    // `Infinity` — elle échoue bruyamment au lieu de rassurer à tort.
+    const pire = (k: keyof Mesure): number =>
+      Math.max(
+        ...rapports.map((r) => {
+          const v = r.mesure?.[k]
+          return typeof v === 'number' ? v : Infinity
+        }),
+      )
+    const pires: Record<keyof typeof BUDGET, number> = {
+      calls: pire('calls'),
+      triangles: pire('triangles'),
+      lights: pire('lights'),
+      shadowCasters: pire('shadowCasters'),
+    }
+    const depassements = (Object.keys(BUDGET) as (keyof typeof BUDGET)[])
+      .filter((k) => pires[k] > BUDGET[k])
+      .map((k) => `  ${k.padEnd(14)} ${pires[k]} > ${BUDGET[k]}`)
+
+    console.log('\nbudget §9, sur la vue la plus chère :')
+    for (const k of Object.keys(BUDGET) as (keyof typeof BUDGET)[]) {
+      const ok = pires[k] <= BUDGET[k]
+      console.log(`  ${ok ? '✓' : '✗'} ${k.padEnd(14)} ${String(pires[k]).padStart(7)} / ${BUDGET[k]}`)
+    }
+
+    if (depassements.length > 0 && process.argv.includes('--check')) {
+      console.error(`\n${depassements.length} dépassement(s) :\n${depassements.join('\n')}`)
+      process.exitCode = 1
     }
   } finally {
     await browser?.close()

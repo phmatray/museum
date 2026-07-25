@@ -120,7 +120,21 @@ export function RoomMesh({ room, elevation }: RoomMeshProps) {
           name={room.walls[i].id}
           geometry={built.geometry}
           material={materials[i]}
-          castShadow
+          /*
+            SEULE L'ENVELOPPE PROJETTE L'OMBRE DU SOLEIL.
+
+            La passe de shadow map était le poste dominant du budget : 82 draw
+            calls sur 239, parce que les soixante-huit murs du bâtiment y
+            passaient. Or le soleil est la seule source qui projette (§9.2), il
+            vient de l'extérieur, et l'enveloppe l'arrête : une cloison
+            intérieure ne peut ombrer que ce que le mur de façade a déjà mis
+            dans l'ombre. Elle coûtait un draw call par image pour ne rien
+            changer à un seul pixel.
+
+            `receiveShadow` reste vrai partout : une cloison, elle, se trouve
+            bel et bien dans l'ombre portée par la façade et par les dalles.
+          */
+          castShadow={room.walls[i].kind === 'outer'}
           receiveShadow
         />
       ))}

@@ -124,10 +124,25 @@ function SceneDebugHandle({ culling }: { culling: FloorCulling }) {
             gl.info.autoReset = false
             gl.info.reset()
             requestAnimationFrame(() => {
+              // Les lumières et les porteurs d'ombre voyagent AVEC les draw
+              // calls, dans un seul relevé. Séparés, un contrôle de budget
+              // pouvait lire une clé absente, la comprendre comme zéro et
+              // afficher un vert sur un plafond jamais vérifié — c'est
+              // précisément ce qui est arrivé.
+              let lights = 0
+              let shadowCasters = 0
+              scene.traverse((o) => {
+                const l = o as unknown as { isLight?: boolean; castShadow?: boolean }
+                if (!l.isLight) return
+                lights++
+                if (l.castShadow) shadowCasters++
+              })
               const releve = {
                 calls: gl.info.render.calls,
                 triangles: gl.info.render.triangles,
                 frame: gl.info.render.frame,
+                lights,
+                shadowCasters,
               }
               gl.info.autoReset = true
               resolve(releve)

@@ -58,7 +58,6 @@ export interface PropPiece {
 export type PropAssets = ReadonlyMap<PropId, readonly PropPiece[]>
 
 export const KIT_PATH = 'assets/props/museum-kit.glb'
-export const PLANTS_DIR = 'assets/plants/'
 export const DRACO_PATH = 'draco/'
 
 /**
@@ -89,29 +88,43 @@ export const NOEUDS_DU_KIT: Record<string, PropId> = {
  * `ESPECES` et son drapeau `autoportante`), sans quoi le feuillage flotterait à
  * quelques centimètres du sol.
  */
-export interface EspeceGltf {
+export interface EspeceGlb {
   id: PropId
-  fichier: string
-  /** Le sujet à extraire. Absent du fichier ⇒ on prend la scène entière. */
-  noeud: string
+  /**
+   * Les nœuds du sujet dans `plants-lod.glb`. Plusieurs quand le sujet est
+   * réparti sur ses pièces — pot, feuillage, terre.
+   *
+   * DOIT rester synchronisée avec `GARDES` de `tools/blender/decimate-plants.py`,
+   * qui décide de ce que le fichier contient. Un test le vérifie.
+   */
+  noeuds: readonly string[]
 }
 
-export const ESPECES_GLTF: readonly EspeceGltf[] = [
-  { id: 'plante-01', fichier: 'anthurium_botany_01.gltf', noeud: 'anthurium_botany_01_a' },
-  { id: 'plante-02', fichier: 'calathea_orbifolia_01.gltf', noeud: 'calathea_orbifolia_01_a' },
-  { id: 'plante-03', fichier: 'potted_plant_02.gltf', noeud: 'potted_plant_02' },
-  { id: 'plante-04', fichier: 'potted_plant_04.gltf', noeud: 'potted_plant_04' },
+export const ESPECES_GLB: readonly EspeceGlb[] = [
+  { id: 'plante-01', noeuds: ['anthurium_botany_01_a'] },
+  { id: 'plante-02', noeuds: ['calathea_orbifolia_01_a'] },
+  { id: 'plante-03', noeuds: ['potted_plant_02_leaves', 'potted_plant_02_pot'] },
+  {
+    id: 'plante-04',
+    noeuds: ['potted_plant_04_pot', 'potted_plant_04_plant', 'potted_plant_04_ground'],
+  },
 ]
 
 /**
- * Les sous-maillages écartés à la lecture.
+ * La végétation allégée, produite par `tools/blender/decimate-plants.py`.
  *
- * `potted_plant_02_dirt` est un relevé de terreau de 34 600 sommets — plus que
- * tout le reste des props RÉUNIS — pour un disque de terre de trente
- * centimètres, entièrement caché par le pot et le feuillage. Le charger
- * coûterait le tiers du budget géométrique du calque pour zéro pixel.
+ * On ne lit plus les glTF de Poly Haven directement, et pour deux raisons
+ * mesurées. Ce sont des modèles de RENDU HORS LIGNE : leurs quatre sujets
+ * pesaient 46 100 triangles et 8,4 Mo de cartes 1K, or le musée en instancie 16
+ * à 21 par espèce — 780 000 triangles à l'écran, 98 % du budget géométrique,
+ * pour des sujets d'1,20 m vus entre 2 et 8 m. Et ce sont des PLANCHES : le
+ * fichier de l'anthurium contient six sujets, celui du calathéa cinq, dont un
+ * seul était instancié — les autres étaient téléchargés puis jetés.
+ *
+ * Blender en extrait les seuls sujets utiles, les ramène à 3 500 triangles
+ * chacun et leurs cartes à 512 : 14 700 triangles et 1,53 Mo, en un fichier.
  */
-const REBUTS = new Set(['potted_plant_02_dirt'])
+export const PLANTS_LOD = 'assets/plants/plants-lod.glb'
 
 // ── Chargement ───────────────────────────────────────────────────────────
 
@@ -153,18 +166,28 @@ async function chargerTout(base: string): Promise<PropAssets> {
     if (piece !== null) pieces.set(id, [piece])
   }
 
-  await Promise.all(
-    ESPECES_GLTF.map(async ({ id, fichier, noeud }) => {
-      const modele = await gltf.loadAsync(`${base}${PLANTS_DIR}${fichier}`)
-      // `potted_plant_02` et `potted_plant_04` ne sont pas des planches : leur
-      // fichier ne contient qu'un sujet, réparti sur plusieurs nœuds (pot,
-      // feuillage, terre). Faute de nœud portant le nom de l'espèce, on prend
-      // la scène entière — c'est exactement le sujet.
-      const sujet = modele.scene.getObjectByName(noeud) ?? modele.scene
-      const lots = lotsTextures(sujet)
-      if (lots.length > 0) pieces.set(id, lots)
-    }),
-  )
+  // UN seul fichier pour les quatre espèces, contre quatre glTF et leurs
+  // vingt-quatre cartes séparées auparavant.
+  const flore = await gltf.loadAsync(`${base}${PLANTS_LOD}`)
+  for (const { id, noeuds } of ESPECES_GLB) {
+    // Un sujet réparti sur plusieurs nœuds est regroupé sous un porteur commun :
+    // `lotsTextures` prend une racine et parcourt ce qui pend dessous.
+    const porteur = new THREE.Group()
+    for (const nom of noeuds) {
+      const noeud = flore.scene.getObjectByName(nom)
+      if (noeud === undefined) {
+        console.warn(`plants-lod.glb : nœud « ${nom} » introuvable`)
+        continue
+      }
+      // Le nœud garde sa transformation MONDE : le détacher de sa hiérarchie
+      // sans la cuire replacerait la pièce à l'origine, et un pot se retrouverait
+      // séparé de son feuillage.
+      noeud.updateWorldMatrix(true, false)
+      porteur.add(noeud)
+    }
+    const lots = lotsTextures(porteur)
+    if (lots.length > 0) pieces.set(id, lots)
+  }
 
   // Le décodeur garde un worker vivant tant qu'on ne le libère pas, et plus
   // rien ne sera décodé après ce point.
@@ -249,7 +272,6 @@ function lotsTextures(noeud: THREE.Object3D): PropPiece[] {
 
   noeud.traverse((objet) => {
     if (!(objet instanceof THREE.Mesh)) return
-    if (REBUTS.has(objet.name)) return
     const materiau = premierMateriau(objet)
     if (materiau === null) return
     const geometrie = (objet.geometry as THREE.BufferGeometry).clone()
