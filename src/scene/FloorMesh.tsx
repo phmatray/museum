@@ -48,6 +48,7 @@ import { RAILING_HEIGHT, buildRailing, buildSlab } from '../builders/slab'
 import { buildGlazing, creerVitrage } from '../builders/glazing'
 import { buildWall } from '../builders/wall'
 import { floorBox, shadowSweptBox } from '../domain/culling'
+import { landingsForFloor } from '../domain/landings'
 import type { Floor, Museum, Vec2 } from '../domain/types'
 import { ArtworkLayer } from './ArtworkLayer'
 import { RoomMesh } from './RoomMesh'
@@ -102,12 +103,24 @@ export function FloorMesh({
   // Pas de trémie, pas de garde-corps : au niveau le plus bas la dalle est
   // pleine, et poser un garde-corps de zéro segment coûterait un draw call pour
   // un maillage vide.
+  // Le garde-corps S'OUVRE là où l'escalier arrive. Sans ça il ceinture la
+  // trémie sur tout son périmètre — et comme l'escalier est DANS la trémie, il
+  // devient inaccessible : c'est exactement ce qui se passait, et aucun test de
+  // géométrie ne pouvait l'attraper, chaque pièce étant juste séparément.
+  const paliers = useMemo(
+    () =>
+      landingsForFloor(museum, floor.elevation).map((p) => ({
+        centre: p.position,
+        rayon: p.rayon,
+      })),
+    [museum, floor.elevation],
+  )
   const railing = useMemo(
     () =>
       slab.railingSegments.length > 0
-        ? buildRailing(slab.railingSegments, RAILING_HEIGHT)
+        ? buildRailing(slab.railingSegments, RAILING_HEIGHT, paliers)
         : null,
-    [slab],
+    [slab, paliers],
   )
 
   // La toiture reprend exactement la découpe de la dalle : l'atrium reste

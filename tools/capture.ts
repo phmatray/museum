@@ -120,6 +120,16 @@ const VUES: Vue[] = [
     preuve: 'depuis un passage : la vue sur le parc, et la vitre qui la porte',
   },
   {
+    // Le palier du rez-de-chaussée : l'escalier démarre en (−4,8 ; 0), dans la
+    // trémie. On se place à 3 m à l'ouest, à hauteur d'œil, et on regarde le
+    // départ. Si le garde-corps est continu, l'escalier est inaccessible — c'est
+    // ce que cette vue est là pour dire.
+    nom: 'palier',
+    de: [-8.2, 1.7, 0],
+    vers: [-3.5, 0.4, 0],
+    preuve: "le palier : le garde-corps doit s'ouvrir devant la première marche",
+  },
+  {
     nom: 'plafond',
     de: [0, 1.7, -10],
     vers: [0, 6, -10],

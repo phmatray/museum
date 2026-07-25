@@ -59,6 +59,14 @@ export interface SlabResult {
 export interface RailingResult {
   geometry: THREE.BufferGeometry
   collider: TrimeshCollider
+  /**
+   * Les tronçons RÉELLEMENT posés, trémies de passage déduites.
+   *
+   * Rendus parce qu'ils sont la seule mesure honnête de ce que le garde-corps
+   * protège : le nombre de sommets ne le dit pas — découper un segment en deux
+   * en AJOUTE, alors même que la longueur protégée diminue.
+   */
+  segments: RailingSegment[]
 }
 
 // ── Constantes ───────────────────────────────────────────────────────────
@@ -214,9 +222,73 @@ function groupByFacing(geometry: THREE.BufferGeometry): void {
  * Le résultat est un seul maillage : un garde-corps de quatre côtés doit coûter
  * un draw call, pas quatre (budget de rendu, spec §9).
  */
+/**
+ * Une TRÉMIE dans le garde-corps : l'endroit où l'escalier arrive, et où il faut
+ * donc pouvoir passer.
+ *
+ * Un cercle de centre `centre` et de rayon `rayon` : tout ce qui tombe dedans
+ * est retiré du garde-corps. Un cercle et non un segment, parce que l'escalier
+ * aborde la dalle sous un angle quelconque et qu'aucun côté de la trémie n'est
+ * privilégié.
+ */
+export interface RailingGap {
+  centre: Vec2
+  rayon: number
+}
+
+/**
+ * Découpe un segment de garde-corps par les trémies, et rend ce qui reste.
+ *
+ * On travaille en abscisse le long du segment : chaque trémie y projette un
+ * intervalle, on retire l'union de ces intervalles.
+ */
+function decouperSegment(segment: RailingSegment, gaps: RailingGap[]): RailingSegment[] {
+  const dx = segment.b.x - segment.a.x
+  const dz = segment.b.z - segment.a.z
+  const longueur = Math.hypot(dx, dz)
+  if (longueur <= MIN_EXTENT) return []
+  const ux = dx / longueur
+  const uz = dz / longueur
+
+  const trous: [number, number][] = []
+  for (const g of gaps) {
+    // Distance du centre à la droite support, et abscisse de sa projection.
+    const t = (g.centre.x - segment.a.x) * ux + (g.centre.z - segment.a.z) * uz
+    const px = segment.a.x + ux * t
+    const pz = segment.a.z + uz * t
+    const d = Math.hypot(g.centre.x - px, g.centre.z - pz)
+    if (d >= g.rayon) continue
+    // Demi-corde de l'intersection cercle/droite.
+    const demi = Math.sqrt(g.rayon * g.rayon - d * d)
+    trous.push([t - demi, t + demi])
+  }
+  if (trous.length === 0) return [segment]
+
+  trous.sort((p, q) => p[0] - q[0])
+  const restants: RailingSegment[] = []
+  const au = (t: number): Vec2 => ({ x: segment.a.x + ux * t, z: segment.a.z + uz * t })
+  let curseur = 0
+  for (const [lo, hi] of trous) {
+    if (lo > curseur + MIN_EXTENT) restants.push({ a: au(curseur), b: au(Math.min(lo, longueur)) })
+    curseur = Math.max(curseur, hi)
+    if (curseur >= longueur) break
+  }
+  if (longueur - curseur > MIN_EXTENT) restants.push({ a: au(curseur), b: au(longueur) })
+
+  // Un moignon plus court qu'un passage d'homme n'est pas un garde-corps, c'est
+  // un obstacle : on le jette plutôt que de le laisser en travers de l'accès.
+  return restants.filter(
+    (s) => Math.hypot(s.b.x - s.a.x, s.b.z - s.a.z) > MIN_RAILING_SEGMENT,
+  )
+}
+
+/** En dessous, un tronçon de garde-corps gêne le passage sans rien protéger. */
+const MIN_RAILING_SEGMENT = 0.35
+
 export function buildRailing(
   segments: RailingSegment[],
   height: number,
+  gaps: RailingGap[] = [],
 ): RailingResult {
   if (height <= HANDRAIL_SIZE) {
     throw new RangeError(
@@ -227,7 +299,22 @@ export function buildRailing(
   const panelHeight = height - HANDRAIL_SIZE
   const parts: THREE.BufferGeometry[] = []
 
-  for (const segment of segments) {
+  /*
+    LE GARDE-CORPS S'OUVRE LÀ OÙ L'ESCALIER ARRIVE.
+
+    Sans ça il ceinture la trémie sur tout son périmètre — et comme l'escalier
+    hélicoïdal est DANS la trémie, il devient purement et simplement
+    inaccessible. Constaté sur le musée réel : la première marche est en
+    (−4,8 ; 0), le vide va de −6 à 6, et le visiteur se tenait derrière
+    1,10 m de garde-corps continu. Il n'y avait aucun moyen de monter d'un étage.
+
+    C'est le genre de défaut qu'aucun test de géométrie n'attrape : chaque pièce
+    était juste, c'est leur RENCONTRE qui ne l'était pas.
+  */
+  const ouverts =
+    gaps.length === 0 ? segments : segments.flatMap((s) => decouperSegment(s, gaps))
+
+  for (const segment of ouverts) {
     const dx = segment.b.x - segment.a.x
     const dz = segment.b.z - segment.a.z
     const length = Math.hypot(dx, dz)
@@ -257,7 +344,7 @@ export function buildRailing(
   }
 
   const geometry = mergeIndexed(parts)
-  return { geometry, collider: toTrimesh(geometry) }
+  return { geometry, collider: toTrimesh(geometry), segments: ouverts }
 }
 
 // ── Outils géométriques ──────────────────────────────────────────────────
