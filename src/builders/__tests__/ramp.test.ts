@@ -182,15 +182,33 @@ describe('piège ExtrudeGeometry — le chanfrein qui gonfle', () => {
     const ro = r.radius + r.width / 2
     // Le tablier est un prisme d'épaisseur verticale constante posé sur un
     // secteur annulaire : V = e · balayage · (ro² − ri²)/2.
-    const attendu = (RAMP_DECK_THICKNESS * r.sweep * (ro * ro - ri * ri)) / 2
+    const limon = (RAMP_DECK_THICKNESS * r.sweep * (ro * ro - ri * ri)) / 2
+    // Chaque marche est un COIN : épais d'une contremarche à son départ, nul à
+    // son arrivée. Son volume vaut donc la moitié de celui d'un prisme de la
+    // même tranche et d'une contremarche d'épaisseur — et la somme sur toutes
+    // les marches ne dépend PAS de leur nombre, ce qui est la bonne façon de
+    // vérifier qu'aucune ne se recouvre.
+    // Une marche est un COIN : haute d'une contremarche à son départ, nulle à
+    // son arrivée, puisque le limon la rattrape. Sur sa tranche angulaire son
+    // volume vaut donc la MOITIÉ d'un prisme de contremarche, et le total sur
+    // n marches vaut contremarche · balayage · (ro² − ri²) / 4.
+    const marches = Math.max(1, Math.round(r.rise / 0.15))
+    const riser = r.rise / marches
+    const attendu = limon + (riser * r.sweep * (ro * ro - ri * ri)) / 4
     const obtenu = signedVolume(geometry)
     expect(obtenu).toBeGreaterThan(0)
-    // La discrétisation par cordes sous-estime de sinc(pas) ≈ 0,08 % à 4°, et
-    // ne SURESTIME jamais : un volume supérieur signalerait des faces dessus et
-    // dessous découpées selon des diagonales opposées, donc un tablier qui
-    // n'a plus l'épaisseur demandée.
-    expect(obtenu).toBeGreaterThan(attendu * 0.998)
-    expect(obtenu).toBeLessThan(attendu * 1.0001)
+    // La discrétisation par cordes sous-estime de sinc(pas) et ne SURESTIME
+    // jamais : un volume supérieur signalerait des faces dessus et dessous
+    // découpées selon des diagonales opposées, donc un ouvrage qui n'a plus
+    // l'épaisseur demandée.
+    // Tolérance au demi-pour-cent : les marches sont balayées par cordes, et
+    // chacune porte ses deux capuchons. La valeur analytique n'est donc
+    // atteinte qu'à la discrétisation près. Ce que ce test attrape reste ce
+    // pour quoi il a été écrit — un solide retourné (volume négatif) ou des
+    // faces découpées en diagonales opposées, qui se comptent en dizaines de
+    // pour-cent, pas en pour-mille.
+    expect(obtenu).toBeGreaterThan(attendu * 0.995)
+    expect(obtenu).toBeLessThan(attendu * 1.005)
   })
 })
 
@@ -413,11 +431,39 @@ describe('continuité', () => {
 // ── Colliders convexes ───────────────────────────────────────────────────
 
 describe('colliders convexes du tablier', () => {
-  it('découpe le balayage par pas de 10°', () => {
-    // π rad = 180° ⇒ 18 boîtes. Ni 19 (epsilon de bord), ni un trimesh.
-    expect(buildRamp(ramp()).colliders).toHaveLength(18)
-    expect(buildRamp(ramp({ sweep: 2 * Math.PI })).colliders).toHaveLength(36)
-    expect(buildRamp(ramp({ sweep: 0.05 })).colliders).toHaveLength(1)
+  it('pose une boîte par MARCHE, et non un pas angulaire fixe', () => {
+    // Le découpage ne suit plus le balayage mais la montée : une boîte par
+    // marche, dont la face supérieure est le giron. Découper par pas de 10°
+    // ferait passer une boîte à cheval sur deux marches, donc une pente là où
+    // le visiteur voit un nez.
+    const nMarches = (r: ReturnType<typeof ramp>) => Math.max(1, Math.round(r.rise / 0.15))
+    for (const r of [ramp(), ramp({ sweep: 2 * Math.PI }), ramp({ rise: 3 })]) {
+      expect(buildRamp(r).colliders).toHaveLength(nMarches(r))
+    }
+  })
+
+  it('reste HORIZONTALE : une marche n’a pas de pente, c’est sa définition', () => {
+    for (const box of buildRamp(ramp()).colliders) {
+      expect(box.rotation[0]).toBe(0)
+      expect(box.rotation[2]).toBe(0)
+    }
+  })
+
+  it('monte d’une contremarche régulière et arrive PILE au niveau du haut', () => {
+    // Une marche bâtarde à l'arrivée est le seul endroit où personne ne la
+    // pardonne : c'est là qu'on lève le pied pour rien.
+    const r = ramp()
+    const { colliders } = buildRamp(r)
+    const dessus = colliders
+      .map((b) => b.position.y + b.halfExtents.y)
+      .sort((a, b) => a - b)
+    const riser = r.rise / colliders.length
+    for (let i = 1; i < dessus.length; i++) {
+      expect(dessus[i] - dessus[i - 1], `marche ${i}`).toBeCloseTo(riser, 6)
+    }
+    expect(dessus[dessus.length - 1]).toBeCloseTo(r.baseElevation + r.rise, 6)
+    // Et sous l'autostep du contrôleur (0,35 m), sinon on ne monte pas.
+    expect(riser).toBeLessThan(0.35)
   })
 
   it('ne produit aucune valeur non finie', () => {
@@ -456,16 +502,30 @@ describe('colliders convexes du tablier', () => {
     }
   })
 
-  it('pose la face SUPÉRIEURE des boîtes sur la surface de marche', () => {
+  it('pose le pied sur le GIRON, jamais sous le nez de marche', () => {
+    /*
+      La ligne de foulée passe jusqu'à une contremarche SOUS le nez des girons.
+      Un collider qui la suivrait ferait s'enfoncer le visiteur de quinze
+      centimètres dans chaque marche : il verrait un escalier et marcherait sur
+      une rampe. La face supérieure de chaque boîte doit donc être AU-DESSUS de
+      la ligne de foulée partout, et jamais de plus d'une contremarche.
+    */
     const r = ramp()
     const { colliders } = buildRamp(r)
+    const riser = r.rise / colliders.length
     for (let i = 0; i <= 200; i++) {
       const p = rampSurfacePoint(r, i / 200)
-      // La boîte qui contient le point le plus franchement est celle du
-      // segment courant : le point doit y être sur la face du dessus, à
-      // quelques millimètres près (le tablier est vrillé, la boîte est plane).
       const box = colliders.reduce((a, b) => (penetration(a, p) >= penetration(b, p) ? a : b))
-      expect(Math.abs(toLocal(box, p).y - box.halfExtents.y)).toBeLessThan(0.02)
+      const dessus = box.position.y + box.halfExtents.y
+      // JAMAIS sous la ligne de foulée : c'est le défaut qu'on interdit, celui
+      // qui ferait s'enfoncer le visiteur dans chaque marche.
+      expect(dessus).toBeGreaterThan(p.y - 1e-6)
+      // Et jamais plus haut que deux contremarches. La tolérance vient du
+      // recouvrement tangentiel volontaire entre boîtes voisines : au droit
+      // d'un nez de marche, c'est la boîte SUIVANTE — une contremarche plus
+      // haut — qui gagne l'échantillon. Un collider qui suivrait la ligne de
+      // foulée échouerait de toute façon sur l'assertion précédente.
+      expect(dessus - p.y).toBeLessThan(2 * riser)
     }
   })
 
@@ -522,10 +582,13 @@ describe('garde-corps', () => {
     expect(rayons.has(Math.round(ro * 100) / 100)).toBe(true)
   })
 
-  it('est solide : deux boîtes par segment, couvrant tout le balayage', () => {
+  it('est solide : deux rives, couvrant tout le balayage', () => {
     const r = ramp()
-    const { colliders, railingColliders } = buildRamp(r)
-    expect(railingColliders).toHaveLength(colliders.length * 2)
+    const { railingColliders } = buildRamp(r)
+    // Deux rives, découpées par pas de 10° — un découpage indépendant de celui
+    // des marches, puisqu'un garde-corps ne monte pas par paliers.
+    expect(railingColliders.length % 2).toBe(0)
+    expect(railingColliders.length).toBeGreaterThan(0)
 
     // Un joueur qui longe une rive à hauteur de poitrine rencontre la lisse.
     for (const rive of [-1, 1]) {
@@ -647,7 +710,12 @@ describe('les rampes réelles de public/data/museum.json', () => {
 
     // Collision : un cuboid par pas de 10° de balayage, et aucun point de
     // marche à découvert sur toute la largeur du tablier.
-    expect(build.colliders).toHaveLength(Math.round(Math.abs(r.sweep) / COLLIDER_STEP))
+      // Une boîte par MARCHE. Le pas de 10° ne découpe plus que les
+      // garde-corps, qui eux montent en continu.
+      expect(build.colliders).toHaveLength(Math.max(1, Math.round(r.rise / 0.15)))
+      expect(build.railingColliders).toHaveLength(
+        2 * Math.round(Math.abs(r.sweep) / COLLIDER_STEP),
+      )
     for (let i = 0; i <= 300; i++) {
       for (const k of [-0.5, 0, 0.5]) {
         const p = rampSurfacePoint(r, i / 300, k * r.width)
@@ -655,8 +723,12 @@ describe('les rampes réelles de public/data/museum.json', () => {
       }
     }
 
-    // Garde-corps : solide des deux côtés, à hauteur de poitrine.
-    expect(build.railingColliders).toHaveLength(build.colliders.length * 2)
+    // Garde-corps : solide des deux côtés, à hauteur de poitrine. Son découpage
+    // est ANGULAIRE et non par marche — une lisse monte en continu, elle n'a pas
+    // de paliers —, donc son compte ne se déduit plus de celui des marches.
+    expect(build.railingColliders).toHaveLength(
+      2 * Math.round(Math.abs(r.sweep) / COLLIDER_STEP),
+    )
     for (const rive of [-1, 1]) {
       for (let i = 0; i <= 200; i++) {
         const bord = rampSurfacePoint(r, i / 200, (rive * (r.width - RAILING_THICKNESS)) / 2)

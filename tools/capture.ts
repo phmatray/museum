@@ -105,6 +105,12 @@ const VUES: Vue[] = [
     sansPostFx: true,
   },
   {
+    nom: 'escalier',
+    de: [6.5, 2.2, 6.5],
+    vers: [0, 1.2, 0],
+    preuve: "l'escalier hélicoïdal : girons et contremarches, pas un plan incliné",
+  },
+  {
     nom: 'plafond',
     de: [0, 1.7, -10],
     vers: [0, 6, -10],

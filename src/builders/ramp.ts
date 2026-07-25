@@ -76,8 +76,34 @@ export interface RampBuild {
 
 // ── Constantes de construction ───────────────────────────────────────────
 
-/** Épaisseur du tablier. Une dalle de béton, pas une feuille de papier. */
+/** Épaisseur du limon. Une dalle de béton, pas une feuille de papier. */
 export const RAMP_DECK_THICKNESS = 0.25
+
+/**
+ * Hauteur de marche visée.
+ *
+ * ── Pourquoi cet ouvrage a des marches ──
+ *
+ * Il était lisse, et se nommait « rampe ». Mesuré sur le musée réel : 4,70 m de
+ * montée pour 15,08 m d'arc, soit **17,3° — 31 % de dénivelé**. Une rampe
+ * accessible plafonne à 6 % ; à 31 % on est cinq fois au-dessus, et personne ne
+ * construit ça. Un plan incliné à 31 % qu'on gravit à pied, dans un bâtiment
+ * par ailleurs réaliste, se lit immédiatement comme une incohérence : c'est un
+ * escalier auquel on a oublié les marches.
+ *
+ * 15 cm de contremarche pour 48 cm de giron : c'est un ESCALIER MONUMENTAL, la
+ * proportion des emmarchements de musée et de palais, et c'est exactement ce
+ * que 31 % de pente veut dire quand on la traduit en marches. Un escalier
+ * courant (17/28) exigerait une pente de 60 %, donc un tout autre bâtiment.
+ */
+const TARGET_RISER = 0.15
+
+/**
+ * En dessous, l'ouvrage est trop plat pour être marché : une contremarche de
+ * quelques centimètres est un piège, pas une marche. On le laisse alors lisse —
+ * ce qui est le bon geste, puisqu'à cette pente c'est une vraie rampe.
+ */
+const MIN_RISER = 0.08
 
 /** Pas angulaire du maillage : 4°, soit 45 stations sur un demi-tour. */
 const GEOMETRY_STEP = (4 * Math.PI) / 180
@@ -246,7 +272,14 @@ interface SweptProfile {
  * de toutes les faces avec lui — d'où `flip`, sans quoi le tablier serait
  * retourné et invisible en `FrontSide`.
  */
-function sweepSolid(mesh: MeshBuffer, ramp: Ramp, profile: SweptProfile, steps: number): void {
+function sweepSolid(
+  mesh: MeshBuffer,
+  ramp: Ramp,
+  profile: SweptProfile,
+  steps: number,
+  t0 = 0,
+  t1 = 1,
+): void {
   const flip = ramp.sweep < 0
 
   const station = (t: number): [Vec3, Vec3, Vec3, Vec3] => {
@@ -268,12 +301,12 @@ function sweepSolid(mesh: MeshBuffer, ramp: Ramp, profile: SweptProfile, steps: 
     ]
   }
 
-  let prev = station(0)
+  let prev = station(t0)
   // Capuchon de départ : sa normale regarde vers l'arrière, boucle inversée.
   pushQuad(mesh, prev[3], prev[2], prev[1], prev[0], flip)
 
   for (let i = 1; i <= steps; i++) {
-    const cur = station(i / steps)
+    const cur = station(t0 + ((t1 - t0) * i) / steps)
     for (let k = 0; k < 4; k++) {
       const l = (k + 1) % 4
       // k = 0 est le dessous (intérieur→extérieur), k = 2 le dessus
@@ -435,13 +468,60 @@ export function buildRamp(ramp: Ramp): RampBuild {
     )
   }
 
-  // ── Tablier ──
+  // ── Limon : la dalle hélicoïdale qui porte les marches ──
+  //
+  // Sa face supérieure suit la ligne de foulée ; c'est sur elle que les marches
+  // sont coulées, et sa sous-face reste lisse — c'est exactement ainsi qu'un
+  // escalier hélicoïdal en béton est fait, et c'est aussi ce qui garde
+  // l'intrados soigné qu'on voit depuis l'atrium.
   const deckTop = (t: number): number => ramp.baseElevation + ramp.rise * t
   const deckBottom = (t: number): number => deckTop(t) - RAMP_DECK_THICKNESS
 
   const geometrySteps = stepsFor(sweepAbs, GEOMETRY_STEP)
   const deck: MeshBuffer = { positions: [], indices: [] }
   sweepSolid(deck, ramp, { innerRadius, outerRadius, bottom: deckBottom, top: deckTop }, geometrySteps)
+
+  // ── Marches ──
+  //
+  // Le nombre est choisi pour que la contremarche tombe au plus près de la
+  // cible SANS jamais laisser de reste : `rise / n` exactement, si bien que la
+  // dernière marche arrive PILE au niveau du plancher supérieur. Un arrondi
+  // laisserait une marche bâtarde à l'arrivée, qui est le seul endroit où
+  // personne ne la pardonne.
+  const marches = Math.max(1, Math.round(ramp.rise / TARGET_RISER))
+  const riser = ramp.rise / marches
+  const aDesMarches = riser >= MIN_RISER
+
+  if (aDesMarches) {
+    // Assez de stations pour que le nez de marche reste un arc et non une
+    // corde : au moins trois par marche, sans descendre sous le pas du maillage.
+    const parMarche = Math.max(3, Math.ceil(geometrySteps / marches))
+    for (let i = 0; i < marches; i++) {
+      const t0 = i / marches
+      const t1 = (i + 1) / marches
+      const dessus = ramp.baseElevation + (i + 1) * riser
+      sweepSolid(
+        deck,
+        ramp,
+        {
+          innerRadius,
+          outerRadius,
+          // La marche est un COIN : épaisse d'une contremarche à son départ,
+          // nulle à son arrivée, puisque le limon la rattrape. C'est la forme
+          // exacte du coffrage, et elle ne laisse aucun vide sous le giron.
+          bottom: deckTop,
+          top: () => dessus,
+        },
+        parMarche,
+        t0,
+        t1,
+      )
+    }
+  } else {
+    warnings.push(
+      `rampe ${ramp.id} : pente de ${(100 * ramp.rise) / (sweepAbs * ramp.radius)} %, trop douce pour des marches — laissée en plan incliné`,
+    )
+  }
 
   // ── Garde-corps ──
   //
@@ -503,16 +583,18 @@ export function buildRamp(ramp: Ramp): RampBuild {
     // segment de 10°, l'écart atteint (width/2)·sin(demi)·sin(pente), soit
     // ~1,6 cm sur la rampe réelle. C'est un ordre de grandeur en dessous de
     // l'autostep du contrôleur, qui l'avale sans que le joueur le sente.
-    const surface = rampSurfacePoint(ramp, tm, boxRadius - ramp.radius)
-    colliders.push({
-      position: {
-        x: surface.x - (RAMP_DECK_THICKNESS / 2) * up.x,
-        y: surface.y - (RAMP_DECK_THICKNESS / 2) * up.y,
-        z: surface.z - (RAMP_DECK_THICKNESS / 2) * up.z,
-      },
-      rotation: [0, yaw, pitch],
-      halfExtents: { x: halfTangential, y: RAMP_DECK_THICKNESS / 2, z: halfRadial },
-    })
+    if (!aDesMarches) {
+      const surface = rampSurfacePoint(ramp, tm, boxRadius - ramp.radius)
+      colliders.push({
+        position: {
+          x: surface.x - (RAMP_DECK_THICKNESS / 2) * up.x,
+          y: surface.y - (RAMP_DECK_THICKNESS / 2) * up.y,
+          z: surface.z - (RAMP_DECK_THICKNESS / 2) * up.z,
+        },
+        rotation: [0, yaw, pitch],
+        halfExtents: { x: halfTangential, y: RAMP_DECK_THICKNESS / 2, z: halfRadial },
+      })
+    }
 
     // Les garde-corps ne sont pas inclinés : un garde-corps est vertical, seuls
     // son arase haute et son pied suivent la pente. On rallonge donc la boîte
@@ -535,6 +617,49 @@ export function buildRamp(ramp: Ramp): RampBuild {
         },
         rotation: [0, yaw, 0],
         halfExtents: { x: halfTangential, y: halfHeight, z: (rMax - rMin) / 2 },
+      })
+    }
+  }
+
+  // ── Colliders de marche ──
+  //
+  // Une boîte HORIZONTALE par marche, dont la face supérieure est le giron.
+  // Pas une boîte inclinée suivant la ligne de foulée : celle-ci passe jusqu'à
+  // une contremarche SOUS le nez des girons, et le visiteur s'y enfoncerait de
+  // quinze centimètres dans chaque marche — il verrait un escalier et
+  // marcherait sur une rampe.
+  //
+  // Le contrôleur cinématique les monte sans rien de plus : son autostep est
+  // réglé à 0,35 m, soit plus du double d'une contremarche de 0,15 m.
+  if (aDesMarches) {
+    const demiMarche = sweepAbs / marches / 2
+    const cosDemi = Math.cos(demiMarche)
+    const interieurMarche = innerRadius * cosDemi
+    const rayonMarche = (interieurMarche + outerRadius) / 2
+    const demiRadialMarche = (outerRadius - interieurMarche) / 2
+    const demiTangentMarche = outerRadius * Math.sin(demiMarche) + COLLIDER_OVERLAP
+
+    for (let i = 0; i < marches; i++) {
+      const tm = (i + 0.5) / marches
+      const angle = ramp.startAngle + ramp.sweep * tm
+      const dessus = ramp.baseElevation + (i + 1) * riser
+      // La boîte descend d'une contremarche ET de l'épaisseur du limon : elle
+      // rejoint ainsi celle d'en dessous sans laisser de fente au nez, là où le
+      // pied se pose.
+      const epaisseur = riser + RAMP_DECK_THICKNESS
+      colliders.push({
+        position: {
+          x: ramp.centre.x + rayonMarche * Math.cos(angle),
+          y: dessus - epaisseur / 2,
+          z: ramp.centre.z + rayonMarche * Math.sin(angle),
+        },
+        // Aucune pente : une marche est HORIZONTALE, c'est sa définition.
+        rotation: [0, yawAt(angle, sens), 0],
+        halfExtents: {
+          x: demiTangentMarche,
+          y: epaisseur / 2,
+          z: demiRadialMarche,
+        },
       })
     }
   }
