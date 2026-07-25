@@ -33,6 +33,12 @@ import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import { buildWall } from '../builders/wall'
 import type { Room } from '../domain/types'
 import { createWallMaterial } from './lighting'
+import {
+  appliquerCartes,
+  matiereDeMur,
+  repetitionDeMatiere,
+  useCartes,
+} from './materials'
 
 export interface RoomMeshProps {
   room: Room
@@ -40,10 +46,29 @@ export interface RoomMeshProps {
   elevation: number
 }
 
+/**
+ * Échelle du béton, la seule matière commune à toutes les salles.
+ *
+ * `buildWall` extrude une `Shape` : three y applique son `WorldUVGenerator`, qui
+ * recopie les coordonnées du plan du mur — en MÈTRES — dans l'UV. La répétition
+ * ne dépend donc PAS des dimensions du mur, et c'est exactement ce qui fait
+ * qu'un mur d'enceinte de 38 m et une cloison de 7 m montrent le même béton, à
+ * la même échelle. Voir `materials.repetitionMonde`.
+ */
+const REPETITION_BETON = repetitionDeMatiere('beton')
+
 export function RoomMesh({ room, elevation }: RoomMeshProps) {
   // `buildWall` est pur et déterministe : le mémoriser sur l'identité de la
   // salle suffit, et évite de reconstruire soixante murs à chaque rendu.
   const walls = useMemo(() => room.walls.map((wall) => buildWall(wall)), [room])
+
+  // Deux matières par salle au plus (spec §9.4) : le béton banché du mur
+  // d'enceinte, qui est de la structure et se montre, et le plâtre du thème pour
+  // les cloisons. Les cartes sont MUTUALISÉES au niveau du module — vingt salles
+  // du même thème partagent les mêmes images décodées et la même texture GPU.
+  const matiereTheme = matiereDeMur('inner', room.theme)
+  const cartesTheme = useCartes(matiereTheme, repetitionDeMatiere(matiereTheme))
+  const cartesBeton = useCartes('beton', REPETITION_BETON)
 
   /**
    * UN MATÉRIAU PAR MUR, et non plus un par salle.
@@ -57,10 +82,19 @@ export function RoomMesh({ room, elevation }: RoomMeshProps) {
    */
   const materials = useMemo(
     () =>
-      room.walls.map((wall) =>
-        createWallMaterial({ theme: room.theme, wall, elevation }),
-      ),
-    [room, elevation],
+      room.walls.map((wall) => {
+        const material = createWallMaterial({ theme: room.theme, wall, elevation })
+        // La palette du thème reste le NIVEAU d'albédo — `appliquerCartes`
+        // multiplie, il n'écrase pas. La carte n'apporte que le grain et le
+        // relief, ce pour quoi on est venu la chercher.
+        const matiere = matiereDeMur(wall.kind, room.theme)
+        return appliquerCartes(
+          material,
+          matiere === 'beton' ? cartesBeton : cartesTheme,
+          matiere,
+        )
+      }),
+    [room, elevation, cartesBeton, cartesTheme],
   )
 
   // Les géométries et matériaux construits à la main ne sont PAS libérés par

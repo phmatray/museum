@@ -1,12 +1,15 @@
 /**
- * Tests du constructeur de murs (spec §8).
+ * Tests du constructeur de murs (spec §8, révisé §9.4).
  *
- * Trois familles d'assertions, dans cet ordre d'importance :
+ * Quatre familles d'assertions, dans cet ordre d'importance :
  *
  *  - les deux pièges d'`ExtrudeGeometry` : cotes réelles mesurées sur la
  *    BOUNDING BOX 3D, et indices non vides sur le collider ;
  *  - la matière : aire de face conservée, ouvertures réellement traversables
  *    sur toute l'épaisseur, faces orientées vers la salle ;
+ *  - le relief du §9.4 : embrasure à quatre faces, plinthe, chanfrein — c'est
+ *    ce qui distingue un mur d'un carton découpé, et rien de tout cela ne se
+ *    voit sur une aire ou sur une bounding box ;
  *  - le musée réel de `public/data/museum.json`, construit mur par mur.
  *
  * Aucun canvas : tout se joue sur les tampons de `BufferGeometry`.
@@ -17,7 +20,15 @@ import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import type { Museum, Opening, Wall } from '../../domain/types'
 import type { BuiltWall } from '../wall'
-import { WALL_THICKNESS, buildWall, wallLength, wallMatrix } from '../wall'
+import {
+  CHAMFER,
+  PLINTH_HEIGHT,
+  PLINTH_PROJECTION,
+  WALL_THICKNESS,
+  buildWall,
+  wallLength,
+  wallMatrix,
+} from '../wall'
 
 // ── Fabriques et outils de mesure ────────────────────────────────────────
 
@@ -66,6 +77,69 @@ function trianglesLocaux(wall: Wall, built: BuiltWall): THREE.Triangle[] {
 
 function normaleMonde(wall: Wall): THREE.Vector3 {
   return new THREE.Vector3(wall.normal.x, 0, wall.normal.z).normalize()
+}
+
+/**
+ * Signe de l'axe `w` local par rapport à la salle. `buildWall` garde toujours un
+ * repère DIRECT et décale l'extrusion plutôt que de la mirroiter : `w` regarde
+ * donc la salle une fois sur deux. Multiplier par ce signe ramène toutes les
+ * mesures dans un repère où « plus w est grand, plus on est dans la salle ».
+ */
+function sensInterieur(wall: Wall): number {
+  const ex = new THREE.Vector3(wall.b.x - wall.a.x, 0, wall.b.z - wall.a.z).normalize()
+  const ez = new THREE.Vector3(-ex.z, 0, ex.x)
+  return ez.dot(normaleMonde(wall)) >= 0 ? 1 : -1
+}
+
+/** Une facette mesurée dans le repère canonique du mur. */
+interface Facette {
+  /** Centre, en `(u, v, w)`, `w` croissant vers la salle. */
+  centre: THREE.Vector3
+  /** Normale, dans le même repère. */
+  normale: THREE.Vector3
+  aire: number
+}
+
+function facettes(wall: Wall, built: BuiltWall): Facette[] {
+  const sens = sensInterieur(wall)
+  return trianglesLocaux(wall, built).map((t) => {
+    const n = t.getNormal(new THREE.Vector3())
+    const c = t.getMidpoint(new THREE.Vector3())
+    return {
+      centre: new THREE.Vector3(c.x, c.y, sens * c.z),
+      normale: new THREE.Vector3(n.x, n.y, sens * n.z),
+      aire: t.getArea(),
+    }
+  })
+}
+
+/** Aire cumulée des facettes retenues par le prédicat. */
+function aire(fs: Facette[], garde: (f: Facette) => boolean): number {
+  return fs.filter(garde).reduce((s, f) => s + f.aire, 0)
+}
+
+/** Vrai si la normale pointe dans la direction voulue, à 1 % près. */
+function regarde(f: Facette, x: number, y: number, z: number): boolean {
+  return f.normale.dot(new THREE.Vector3(x, y, z)) > 0.99
+}
+
+/**
+ * Facette du jambage droit d'une embrasure, à `u` près, regardant vers `sens`.
+ * On exclut ce qui saille devant la face du mur : la plinthe retourne dans
+ * l'embrasure et y pose son propre about, qui n'est pas de la tranche de mur.
+ */
+function jambage(f: Facette, u: number, sens: number): boolean {
+  return regarde(f, sens, 0, 0) && Math.abs(f.centre.x - u) < 1e-4 && f.centre.z < WALL_THICKNESS
+}
+
+/** Facette du linteau d'une ouverture donnée : horizontale, tournée vers le bas. */
+function linteau(f: Facette, o: Opening): boolean {
+  return (
+    regarde(f, 0, -1, 0) &&
+    Math.abs(f.centre.y - (o.height - CHAMFER)) < 1e-4 &&
+    f.centre.x > o.start &&
+    f.centre.x < o.end
+  )
 }
 
 /**
@@ -118,37 +192,58 @@ function trianglesDansLaBoite(wall: Wall, built: BuiltWall, boite: THREE.Box3): 
 
 // ── Piège n°1 : le biseau ────────────────────────────────────────────────
 
-describe('bevelEnabled', () => {
-  it('donne un mur aux cotes exactes : 10 × 4 × 0,2', () => {
+describe('cotes et biseau', () => {
+  /**
+   * Ce que le chanfrein du §9.4 fait aux cotes, et pourquoi ce n'est pas un
+   * dérapage : le biseau de three pose les DEUX FACES sur le contour écrit et
+   * dilate le CŒUR de `bevelSize`. Les faces vues restent donc exactement
+   * `10 × 4`, mais la bounding box, qui mesure le cœur, gagne 3 mm de chaque
+   * côté en `u` et en `v`. Ce débord tombe dans la dalle et dans le mur voisin,
+   * où il est invisible ; l'épaisseur, elle, doit rester juste au millimètre.
+   */
+  it('donne un mur aux cotes exactes : 10 × 4 × 0,32, chanfrein compris', () => {
     const { geometry } = buildWall(mur())
     geometry.computeBoundingBox()
     const bb = geometry.boundingBox!
     const taille = bb.getSize(new THREE.Vector3())
 
-    expect(taille.x).toBeCloseTo(10, 4)
-    expect(taille.y).toBeCloseTo(4, 4)
-    expect(taille.z).toBeCloseTo(WALL_THICKNESS, 4)
+    expect(taille.x).toBeCloseTo(10 + 2 * CHAMFER, 4)
+    expect(taille.y).toBeCloseTo(4 + 2 * CHAMFER, 4)
+    // La plinthe est le SEUL élément qui saille de l'emprise du mur.
+    expect(taille.z).toBeCloseTo(WALL_THICKNESS + PLINTH_PROJECTION, 4)
 
     // Et posé au bon endroit : de `a`, vers l'intérieur, depuis le plancher.
-    expect(bb.min.x).toBeCloseTo(0, 4)
-    expect(bb.min.y).toBeCloseTo(0, 4)
+    expect(bb.min.x).toBeCloseTo(-CHAMFER, 4)
+    expect(bb.min.y).toBeCloseTo(-CHAMFER, 4)
     expect(bb.max.z).toBeCloseTo(0, 4)
-    expect(bb.min.z).toBeCloseTo(-WALL_THICKNESS, 4)
+    expect(bb.min.z).toBeCloseTo(-WALL_THICKNESS - PLINTH_PROJECTION, 4)
+  })
+
+  it('les FACES, elles, sont exactement à 0 et à l’épaisseur', () => {
+    // C'est la cote qui compte pour le reste du bâtiment : l'accrochage des
+    // œuvres, les cartels et la jonction avec le mur mitoyen la lisent tous.
+    const w = mur()
+    const fs = facettes(w, buildWall(w))
+    expect(aire(fs, (f) => regarde(f, 0, 0, 1) && Math.abs(f.centre.z - WALL_THICKNESS) < 1e-4))
+      .toBeCloseTo(10 * 4, 3)
+    expect(aire(fs, (f) => regarde(f, 0, 0, -1) && Math.abs(f.centre.z) < 1e-4))
+      .toBeCloseTo(10 * 4, 3)
   })
 
   it('reste exact quand le mur est percé', () => {
     const { geometry } = buildWall(mur({ openings: [porte(4, 6)] }))
     geometry.computeBoundingBox()
     const taille = geometry.boundingBox!.getSize(new THREE.Vector3())
-    expect(taille.x).toBeCloseTo(10, 4)
-    expect(taille.y).toBeCloseTo(4, 4)
-    expect(taille.z).toBeCloseTo(WALL_THICKNESS, 4)
+    expect(taille.x).toBeCloseTo(10 + 2 * CHAMFER, 4)
+    expect(taille.y).toBeCloseTo(4 + 2 * CHAMFER, 4)
+    expect(taille.z).toBeCloseTo(WALL_THICKNESS + PLINTH_PROJECTION, 4)
   })
 
-  it('témoin : le défaut de three débordait bien de 0,2 m par direction', () => {
-    // Ce test ne teste pas notre code, il documente le piège : si un jour
-    // three change ce défaut, les assertions ci-dessus resteront valides mais
-    // celle-ci tombera, et on saura pourquoi le commentaire n'a plus lieu d'être.
+  it('témoin : le biseau par défaut de three est hors de toute proportion', () => {
+    // Ce test ne teste pas notre code, il documente le piège : le biseau de
+    // three vaut 0,2 m si on ne le règle pas — soixante-six fois notre
+    // chanfrein. Si un jour ce défaut change, celle-ci tombera et on saura
+    // pourquoi le commentaire de `wall.ts` n'a plus lieu d'être.
     const forme = new THREE.Shape([
       new THREE.Vector2(0, 0),
       new THREE.Vector2(10, 0),
@@ -160,7 +255,7 @@ describe('bevelEnabled', () => {
     const taille = piege.boundingBox!.getSize(new THREE.Vector3())
     expect(taille.x).toBeCloseTo(10.2, 4)
     expect(taille.y).toBeCloseTo(4.2, 4)
-    expect(taille.z).toBeCloseTo(0.6, 4) // trois fois l'épaisseur demandée
+    expect(taille.z).toBeCloseTo(WALL_THICKNESS + 0.4, 4)
   })
 })
 
@@ -338,15 +433,30 @@ describe('orientation', () => {
       for (const p of [t.a, t.b, t.c]) {
         const d = p.clone().sub(base).dot(n)
         expect(d).toBeGreaterThan(-1e-4)
-        expect(d).toBeLessThan(WALL_THICKNESS + 1e-4)
+        // La plinthe saille : c'est la seule chose qui dépasse la face.
+        expect(d).toBeLessThan(WALL_THICKNESS + PLINTH_PROJECTION + 1e-4)
       }
     }
   })
 
+  /**
+   * Le volume signé est le seul test qui attrape un repère indirect : une
+   * géométrie miroir a exactement les mêmes aires, la même bounding box, et un
+   * volume NÉGATIF. On ne peut plus l'exiger au millimètre cube depuis que le
+   * chanfrein dilate le cœur et que la plinthe s'ajoute — mais un débord de 1 %
+   * suffit largement à distinguer « un peu plus de matière » de « tout à
+   * l'envers ».
+   */
+  function volumeNominal(aireDeFace: number, longueurPlinthe: number): number {
+    return aireDeFace * WALL_THICKNESS + longueurPlinthe * PLINTH_HEIGHT * PLINTH_PROJECTION
+  }
+
   it('volume signé positif : aucun miroir, aucune face retournée', () => {
     const w = mur({ openings: [porte(4, 6)] })
-    const attendu = (40 - 2 * 2.1) * WALL_THICKNESS
-    expect(volumeSigne(buildWall(w))).toBeCloseTo(attendu, 3)
+    const attendu = volumeNominal(40 - 2 * 2.1, 10 - 2)
+    const mesure = volumeSigne(buildWall(w))
+    expect(mesure).toBeGreaterThan(attendu)
+    expect(mesure).toBeLessThan(attendu * 1.01)
   })
 
   it('normale opposée : le mur bascule de l’autre côté, sans miroir', () => {
@@ -358,9 +468,179 @@ describe('orientation', () => {
     built.geometry.computeBoundingBox()
     const bb = built.geometry.boundingBox!
     expect(bb.min.z).toBeCloseTo(0, 4)
-    expect(bb.max.z).toBeCloseTo(WALL_THICKNESS, 4)
-    expect(volumeSigne(built)).toBeCloseTo((40 - 2 * 2.1) * WALL_THICKNESS, 3)
+    expect(bb.max.z).toBeCloseTo(WALL_THICKNESS + PLINTH_PROJECTION, 4)
+    const attendu = volumeNominal(40 - 2 * 2.1, 10 - 2)
+    expect(volumeSigne(built)).toBeGreaterThan(attendu)
+    expect(volumeSigne(built)).toBeLessThan(attendu * 1.01)
     expect(aireFaceInterieure(w, built)).toBeCloseTo(40 - 2 * 2.1, 3)
+  })
+})
+
+// ── §9.4 : embrasure, plinthe, chanfrein ─────────────────────────────────
+
+/**
+ * Le relief. Rien de ce qui suit ne se voit sur une aire ni sur une bounding
+ * box : un mur sans embrasure a exactement la même face percée et la même
+ * emprise qu'un mur qui en a une. C'est pourtant la seule chose qui le
+ * distingue d'un carton découpé, d'où ce bloc entier de mesures de facettes.
+ */
+describe('embrasure (spec §9.4)', () => {
+  const w = mur({ openings: [porte(4, 6)] })
+  const built = buildWall(w)
+  const fs = facettes(w, built)
+  const o = w.openings[0]
+
+  // Le chanfrein mange 3 mm à chaque bout de la tranche : la partie droite de
+  // l'embrasure est d'autant moins profonde.
+  const profondeurDroite = WALL_THICKNESS - 2 * CHAMFER
+
+  it('montre le jambage gauche sur toute la tranche', () => {
+    // Face verticale qui regarde VERS l'ouverture, donc vers les u croissants.
+    const a = aire(fs, (f) => jambage(f, o.start + CHAMFER, 1))
+    expect(a).toBeCloseTo(o.height * profondeurDroite, 4)
+  })
+
+  it('montre le jambage droit sur toute la tranche', () => {
+    const a = aire(fs, (f) => jambage(f, o.end - CHAMFER, -1))
+    expect(a).toBeCloseTo(o.height * profondeurDroite, 4)
+  })
+
+  it('montre le linteau sur toute la tranche', () => {
+    // Face horizontale qui regarde vers le BAS, donc vers l'ouverture.
+    const a = aire(fs, (f) => linteau(f, o))
+    expect(a).toBeCloseTo((o.end - o.start - 2 * CHAMFER) * profondeurDroite, 4)
+  })
+
+  it('ne montre AUCUN seuil : l’ouverture descend au plancher', () => {
+    // Régression : tant que les ouvertures étaient des `Shape.holes`, three
+    // fermait leur arête basse par une facette horizontale à `v = 0`,
+    // EXACTEMENT coplanaire avec la face supérieure de la dalle. Résultat, du
+    // z-fighting dans chaque porte du bâtiment. L'encoche du contour ne peut
+    // plus la produire, et ce test le vérifie plutôt que de l'espérer.
+    const parasites = fs.filter(
+      (f) =>
+        Math.abs(f.centre.y) < 1e-3 &&
+        Math.abs(f.normale.y) > 0.9 &&
+        f.centre.x > o.start &&
+        f.centre.x < o.end,
+    )
+    expect(parasites).toHaveLength(0)
+  })
+
+  it('oriente ses trois faces VERS le vide de l’ouverture', () => {
+    // Une embrasure retournée se voit « à travers » : le joueur devine
+    // l'intérieur du mur par la porte. Le produit scalaire avec la direction
+    // qui va du centre de l'ouverture vers la facette doit donc être négatif.
+    const centre = new THREE.Vector2((o.start + o.end) / 2, o.height / 2)
+    const tranche = fs.filter(
+      (f) =>
+        f.centre.z > CHAMFER &&
+        f.centre.z < WALL_THICKNESS - CHAMFER &&
+        f.centre.x > o.start - 1e-3 &&
+        f.centre.x < o.end + 1e-3 &&
+        f.centre.y < o.height - 1e-3 &&
+        Math.abs(f.normale.z) < 0.5,
+    )
+    expect(tranche.length).toBeGreaterThan(0)
+    for (const f of tranche) {
+      const versLaFacette = new THREE.Vector2(f.centre.x, f.centre.y).sub(centre).normalize()
+      const n = new THREE.Vector2(f.normale.x, f.normale.y).normalize()
+      expect(versLaFacette.dot(n)).toBeLessThan(0)
+    }
+  })
+
+  it('en pose une sur CHACUNE des ouvertures d’un mur multiple', () => {
+    const multiple = mur({
+      b: { x: 38, z: 0 },
+      height: 4.3,
+      openings: [porte(3.5, 5.5), { kind: 'bay', start: 17.8, end: 20.2, height: 3.7 }, porte(32.5, 34.5)],
+    })
+    const fm = facettes(multiple, buildWall(multiple))
+    for (const ouv of multiple.openings) {
+      const gauche = aire(fm, (f) => jambage(f, ouv.start + CHAMFER, 1))
+      const droit = aire(fm, (f) => jambage(f, ouv.end - CHAMFER, -1))
+      const dessus = aire(fm, (f) => linteau(f, ouv))
+      expect(gauche, `${ouv.kind} gauche`).toBeCloseTo(ouv.height * profondeurDroite, 4)
+      expect(droit, `${ouv.kind} droit`).toBeCloseTo(ouv.height * profondeurDroite, 4)
+      expect(dessus, `${ouv.kind} linteau`).toBeCloseTo(
+        (ouv.end - ouv.start - 2 * CHAMFER) * profondeurDroite,
+        4,
+      )
+    }
+  })
+})
+
+describe('plinthe (spec §9.4)', () => {
+  const w = mur({ openings: [porte(4, 6)] })
+  const built = buildWall(w)
+  const fs = facettes(w, built)
+
+  /** Facettes de la face vue de la plinthe : le plan le plus avancé du mur. */
+  const face = (f: Facette): boolean =>
+    regarde(f, 0, 0, 1) && Math.abs(f.centre.z - (WALL_THICKNESS + PLINTH_PROJECTION)) < 1e-4
+
+  it('court au pied du mur, interrompue par la porte', () => {
+    expect(aire(fs, face)).toBeCloseTo((10 - 2) * PLINTH_HEIGHT, 4)
+  })
+
+  it('fait bien 12 cm de haut et part du plancher', () => {
+    const hauteurs = fs.filter(face).flatMap((f) => [f.centre.y])
+    expect(Math.min(...hauteurs)).toBeGreaterThan(0)
+    expect(Math.max(...hauteurs)).toBeLessThan(PLINTH_HEIGHT)
+    // La face vue est un bandeau plein : son aire ne peut valoir longueur ×
+    // hauteur que si elle va exactement de 0 à PLINTH_HEIGHT.
+    const bande = aire(fs, (f) => face(f) && f.centre.y < PLINTH_HEIGHT / 2)
+    expect(bande).toBeCloseTo(aire(fs, face) / 2, 4)
+  })
+
+  it('saille de 2 cm et de rien d’autre', () => {
+    const enAvant = fs.filter((f) => f.centre.z > WALL_THICKNESS + 1e-4)
+    expect(enAvant.length).toBeGreaterThan(0)
+    for (const f of enAvant) {
+      expect(f.centre.z).toBeLessThan(WALL_THICKNESS + PLINTH_PROJECTION + 1e-4)
+      // Rien ne saille au-dessus de la plinthe : ce serait une corniche.
+      expect(f.centre.y).toBeLessThan(PLINTH_HEIGHT + CHAMFER + 1e-4)
+    }
+  })
+
+  it('ne traverse aucune porte', () => {
+    const dansLaPorte = fs.filter(
+      (f) => f.centre.z > WALL_THICKNESS + 1e-4 && f.centre.x > 4.02 && f.centre.x < 5.98,
+    )
+    expect(dansLaPorte).toHaveLength(0)
+  })
+})
+
+describe('chanfrein (spec §9.4)', () => {
+  it('adoucit les arêtes de l’embrasure par une facette à 45°', () => {
+    const w = mur({ openings: [porte(4, 6)] })
+    const fs = facettes(w, buildWall(w))
+    // Une facette de chanfrein de jambage regarde à la fois vers l'ouverture
+    // (±u) et vers une face du mur (±w), à parts égales.
+    const biais = fs.filter(
+      (f) =>
+        Math.abs(Math.abs(f.normale.x) - Math.SQRT1_2) < 0.02 &&
+        Math.abs(Math.abs(f.normale.z) - Math.SQRT1_2) < 0.02 &&
+        f.centre.x > 4 - 1e-3 &&
+        f.centre.x < 6 + 1e-3,
+    )
+    // Quatre : deux jambages, deux faces de mur.
+    expect(biais.length).toBeGreaterThanOrEqual(4)
+    // Largeur de la facette : le chanfrein pris en diagonale.
+    const largeur = aire(fs, (f) => biais.includes(f)) / (4 * 2.1)
+    expect(largeur).toBeCloseTo(CHAMFER * Math.SQRT2, 3)
+  })
+
+  it('adoucit aussi l’arête haute de la plinthe', () => {
+    const w = mur()
+    const fs = facettes(w, buildWall(w))
+    const biais = fs.filter(
+      (f) =>
+        Math.abs(f.normale.y - Math.SQRT1_2) < 0.02 &&
+        Math.abs(f.normale.z - Math.SQRT1_2) < 0.02 &&
+        f.centre.z > WALL_THICKNESS,
+    )
+    expect(biais.length).toBeGreaterThan(0)
   })
 })
 
@@ -377,6 +657,22 @@ describe('cas dégénérés', () => {
   it('hauteur nulle : idem, sans exception', () => {
     expect(() => buildWall(mur({ height: 0 }))).not.toThrow()
     expect(buildWall(mur({ height: 0 })).collider.vertices.length).toBe(0)
+  })
+
+  it('ouverture pleine hauteur JOINTIVE d’une porte normale', () => {
+    // Le cas qui pince le contour : la coupe franche sépare le mur en deux
+    // morceaux, et le second commence EXACTEMENT sur le jambage de la porte
+    // voisine. Un escalier mal amorcé y produirait une arête de longueur nulle,
+    // que la triangulation avale sans rien dire.
+    const w = mur({ openings: [porte(3, 5, 4), porte(5, 7)] })
+    const built = buildWall(w)
+    expect(aireFaceInterieure(w, built)).toBeCloseTo(40 - 2 * 4 - 2 * 2.1, 3)
+    for (const t of triangles(built)) expect(t.getArea()).toBeGreaterThan(1e-7)
+    for (const v of built.collider.vertices) expect(Number.isFinite(v)).toBe(true)
+    // La porte de 2,1 m garde son linteau et ses deux jambages.
+    const fs = facettes(w, built)
+    expect(aire(fs, (f) => linteau(f, w.openings[1]))).toBeGreaterThan(0)
+    expect(aire(fs, (f) => jambage(f, 7 - CHAMFER, -1))).toBeGreaterThan(0)
   })
 
   it('ouverture d’épaisseur nulle : ignorée', () => {
@@ -427,17 +723,19 @@ describe('musée réel (public/data/museum.json)', () => {
     }
   })
 
-  it('respecte les cotes du plan : longueur × hauteur × 0,2', () => {
+  it('respecte les cotes du plan : longueur × hauteur × 0,32', () => {
     for (const w of murs) {
       const built = buildWall(w)
       built.geometry.computeBoundingBox()
       const taille = built.geometry.boundingBox!.getSize(new THREE.Vector3())
       // Tous les murs du musée sont alignés sur les axes : la boîte du monde
-      // porte donc directement les trois cotes, à l'ordre près.
+      // porte donc directement les trois cotes, à l'ordre près. Le chanfrein
+      // dilate le cœur de 3 mm dans le plan du mur, la plinthe saille dans
+      // l'épaisseur : les deux sont attendus, tout le reste serait un dérapage.
       const cotes = [taille.x, taille.y, taille.z].sort((a, b) => a - b)
-      expect(cotes[0], w.id).toBeCloseTo(WALL_THICKNESS, 3)
-      expect(cotes[1], w.id).toBeCloseTo(Math.min(w.height, wallLength(w)), 3)
-      expect(cotes[2], w.id).toBeCloseTo(Math.max(w.height, wallLength(w)), 3)
+      expect(cotes[0], w.id).toBeCloseTo(WALL_THICKNESS + PLINTH_PROJECTION, 3)
+      expect(cotes[1], w.id).toBeCloseTo(Math.min(w.height, wallLength(w)) + 2 * CHAMFER, 3)
+      expect(cotes[2], w.id).toBeCloseTo(Math.max(w.height, wallLength(w)) + 2 * CHAMFER, 3)
     }
   })
 

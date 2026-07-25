@@ -74,8 +74,12 @@ export const CARTEL_GAP = 0.1
  * mais `domain/` ne peut pas l'importer sans traîner `three` avec lui. La valeur
  * est donc un PARAMÈTRE de `collectCartels`, que la scène renseigne depuis la
  * constante réelle ; ce défaut ne sert qu'aux tests et à un appel isolé.
+ *
+ * DUPLICATION ASSUMÉE, À TENIR À LA MAIN : 0,32 m d'épaisseur (§9.4) plus un
+ * centimètre de relief. Si `WALL_THICKNESS` rebouge, ce nombre doit suivre,
+ * sans quoi les cartels de test s'enfoncent dans le mur au lieu de s'y poser.
  */
-export const DEFAULT_FACE_OFFSET = 0.21
+export const DEFAULT_FACE_OFFSET = 0.33
 
 /** US-2.4 : le panneau riche n'apparaît que très près. */
 export const PANEL_MAX_DISTANCE = 2.5

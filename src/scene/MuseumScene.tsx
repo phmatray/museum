@@ -7,22 +7,31 @@
  * cela vit dans `domain/` et `builders/`. Ce qu'il décide, ce sont les seules
  * choses qui n'existent que pour l'écran : la lumière et le fond.
  *
- * ── Éclairage (spec §9.2) : deux lumières, pas deux cent cinquante-six ──
+ * ── Éclairage (spec §9.4) : trois lumières permanentes, neuf allouées ──
  *
- * Le budget est de 4 lumières temps réel et d'UNE shadow map. Le bâtiment en
- * consomme DEUX, et le lot 3 n'en a ajouté aucune :
+ * Le budget est de 12 lumières temps réel et de DEUX shadow maps (§9.4, qui
+ * révise les 4 du §9.2). Ce fichier ne porte que les TROIS permanentes ; les
+ * neuf autres sont allouées aux salles proches par `RoomLights` et ne coûtent
+ * rien aux salles lointaines.
  *
  *  - une `hemisphereLight`, qui donne le ciel et le rebond du sol. Elle ne
- *    projette pas d'ombre et ne coûte rien ;
- *  - une `directionalLight` pour la verrière zénithale, seule à porter la
- *    shadow map. C'est elle qui fait exister le puits de lumière de l'atrium :
+ *    projette pas d'ombre et ne coûte rien. Elle a BAISSÉ depuis le lot 3 : à
+ *    2,9 elle était le seul éclairage de l'intérieur et écrasait tout à la même
+ *    valeur ; à 1,15, elle laisse aux sources locales de quoi révéler un angle ;
+ *  - une `directionalLight` pour la verrière zénithale, première des deux
+ *    shadow maps. C'est elle qui fait exister le puits de lumière de l'atrium :
  *    la toiture du dernier niveau est percée de la même trémie que la dalle, le
- *    faisceau descend donc par le vide central jusqu'au rez-de-chaussée.
+ *    faisceau descend donc par le vide central jusqu'au rez-de-chaussée ;
+ *  - une `directionalLight` de REBOND, posée SOUS le bâtiment et visant vers le
+ *    haut. Toutes les autres sources sont zénithales : sans elle, les faces
+ *    tournées vers le bas — dessous des dalles, dessous de la rampe — ne
+ *    reçoivent aucune lumière directe et forment la masse noire qui occupait le
+ *    bas de la vue d'entrée. Voir `REBOND` dans `lighting.ts`.
  *
- * Tout le reste de l'ambiance — flaques de lumière sur les murs, lèche-mur,
- * dégradé du puits de lumière — est PEINT dans le matériau de mur, voir
- * `lighting.ts`. Pas de lumière par œuvre : jamais. Les deux lumières de marge
- * restent disponibles pour un besoin qui ne soit pas décoratif.
+ * Les flaques de lumière sur les murs et le lèche-mur restent PEINTS dans le
+ * matériau (§9.2, `lighting.ts`) : ils sont gratuits, et la lumière calculée
+ * fait autre chose qu'eux — elle révèle la géométrie, ce qu'un motif plaqué sur
+ * une face ne peut pas faire. Pas de lumière par œuvre : jamais.
  *
  * ── Rendu des tons ──
  *
@@ -48,11 +57,18 @@ import type { Museum, Rect, Vec2 } from '../domain/types'
 import { floorAbove, museumResource } from '../io/loadMuseum'
 import { CartelLayer } from './CartelLayer'
 import { FloorMesh } from './FloorMesh'
+import { PropsLayer } from './PropsLayer'
 import { RampMesh } from './RampMesh'
+import { RoomLights } from './RoomLights'
 import type { FloorCulling } from './floorCulling'
 import { FloorCullingContext, useFloorCullingRegistry } from './floorCulling'
 import {
+  AMBIANCE,
+  BUDGET_LUMIERES,
+  BUDGET_OMBRES,
   ENVIRONMENT_INTENSITY,
+  REBOND,
+  SOLEIL,
   TONE_EXPOSURE,
   TONE_MAPPING,
   buildAmbientEnvironment,
@@ -92,9 +108,35 @@ function SceneDebugHandle({ culling }: { culling: FloorCulling }) {
       gl,
       scene,
       camera,
+      /**
+       * Mesure HONNÊTE des draw calls, sur une image entière.
+       *
+       * `gl.info` se remet à zéro à chaque `render()`, et le composeur de
+       * post-traitement en fait plusieurs par image : `stats().calls` ne lit
+       * donc plus que la dernière passe plein écran, et rapporte 1. On coupe la
+       * remise à zéro automatique, on encadre UNE image, et on rétablit. Le
+       * total inclut toutes les passes, shadow maps comprises — c'est ce que la
+       * carte dessine réellement, pas ce que la scène contient.
+       */
+      mesure: () =>
+        new Promise<Record<string, number>>((resolve) => {
+          requestAnimationFrame(() => {
+            gl.info.autoReset = false
+            gl.info.reset()
+            requestAnimationFrame(() => {
+              const releve = {
+                calls: gl.info.render.calls,
+                triangles: gl.info.render.triangles,
+                frame: gl.info.render.frame,
+              }
+              gl.info.autoReset = true
+              resolve(releve)
+            })
+          })
+        }),
       stats: () => {
-        // Le budget du §9 plafonne les lumières TEMPS RÉEL à 4 et les shadow
-        // maps à 1. Les compter ici, dans le graphe rendu, est la seule mesure
+        // Le budget du §9.4 plafonne les lumières TEMPS RÉEL à 12 et les shadow
+        // maps à 2. Les compter ici, dans le graphe rendu, est la seule mesure
         // qui ne mente pas : relire le JSX ne dirait rien de ce qu'un autre
         // composant aurait pu ajouter.
         let lights = 0
@@ -113,6 +155,9 @@ function SceneDebugHandle({ culling }: { culling: FloorCulling }) {
           geometries: gl.info.memory.geometries,
           lights,
           shadowCasters,
+          // Les plafonds du §9.4, à côté de la mesure : un chiffre seul ne dit
+          // pas s'il est bon.
+          budget: { lights: BUDGET_LUMIERES, shadowCasters: BUDGET_OMBRES },
           toneMapping: gl.toneMapping,
           exposure: gl.toneMappingExposure,
           // Quel plateau est encore dessiné, et à quel niveau le registre croit
@@ -230,16 +275,18 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
 
       {/*
         Le sol de l'hémisphérique est volontairement CLAIR (et non un gris
-        sombre « réaliste ») : c'est la seule lumière qui atteigne l'intérieur
-        des salles, que la dalle du dessus prive complètement du soleil. Avec un
-        sol sombre, tout ce qui n'est pas dans le puits de lumière tombe au noir
-        — vérifié à l'écran, ce n'est pas une précaution théorique.
+        sombre « réaliste ») : c'est lui qui éclaire les faces tournées vers le
+        bas, qu'aucune source zénithale n'atteint jamais.
 
         Elle est le PLANCHER d'exposition du bâtiment : ce qu'elle donne, aucune
-        salle ne descend en dessous. Le relief, lui, vient des flaques peintes de
-        `lighting.ts` — c'est pour ça qu'on peut la monter sans aplatir l'image.
+        salle ne descend en dessous. Le §9.4 l'a fait BAISSER de 2,9 à 1,15 —
+        voir `AMBIANCE` : un plancher trop haut donne un bâtiment uniformément
+        clair, où deux murs perpendiculaires sortent à la même valeur. Ce qui
+        manquait au lot 3 n'était pas de la lumière, c'était de l'écart.
       */}
-      <hemisphereLight args={['#dbe6f5', '#dcd8d0', 2.9]} />
+      <hemisphereLight
+        args={[AMBIANCE.ciel, AMBIANCE.sol, AMBIANCE.intensite]}
+      />
 
       {/*
         La seule ombre du bâtiment. La caméra d'ombre est ORTHOGRAPHIQUE et
@@ -248,13 +295,16 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
         trop grande, la résolution s'effondre et les contours deviennent des
         escaliers.
 
-        Son intensité est descendue de 2,1 à 1,5 : à 2,1 les façades extérieures
-        et la toiture partaient en blanc pur — le bâtiment était SUREXPOSÉ dehors
-        et noir dedans en même temps. Ce qui manquait n'était pas du soleil.
+        Son intensité était descendue de 2,1 à 1,5 au lot 3, quand elle devait
+        cohabiter avec une hémisphérique à 2,9 : à 2,1 les façades et la toiture
+        partaient en blanc pur. L'hémisphérique ayant baissé à 1,15, elle remonte
+        à 1,8 (`SOLEIL`) — c'est elle, désormais, qui doit faire la différence
+        entre le plein soleil de la toiture et le fond d'une salle.
       */}
       <directionalLight
         castShadow
-        intensity={1.5}
+        color={SOLEIL.couleur}
+        intensity={SOLEIL.intensite}
         position={sun.position}
         shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0008}
@@ -265,6 +315,38 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
         shadow-camera-near={1}
         shadow-camera-far={sun.far}
       />
+
+      {/*
+        LE REBOND (§9.4) — la troisième permanente, et la correction du défaut
+        le plus visible après les angles.
+
+        Une directionnelle posée SOUS le bâtiment et visant l'origine : sa
+        lumière voyage vers le HAUT, donc elle n'atteint QUE les faces tournées
+        vers le bas. Dessous des dalles, dessous de la rampe, dessous des bancs :
+        tout ce que le soleil, les plafonniers et le puits — tous zénithaux — ne
+        pouvaient structurellement pas éclairer, et qui tombait au noir.
+
+        Sans ombre : un rebond diffus n'en projette pas, et les deux shadow maps
+        du budget sont dépensées ailleurs. Sa teinte est celle du sol qui la
+        renvoie, marbre et parquet, donc chaude.
+      */}
+      <directionalLight
+        color={REBOND.couleur}
+        intensity={REBOND.intensite}
+        position={sun.bounce}
+      />
+
+      {/*
+        Les NEUF lumières allouées (§9.4) : le projecteur de la salle courante
+        — seconde et dernière shadow map —, cinq plafonniers réaffectés aux
+        salles proches, et trois sources dans le puits de l'atrium.
+
+        Elles sont montées ICI, à la racine du bâtiment, et non dans `RoomMesh` :
+        une lumière par salle serait une lumière par salle, c'est-à-dire dix-sept
+        pour ce musée et cent pour le suivant. C'est un POOL de taille fixe qui
+        se déplace, ce qui rend le plafond du §9 indépendant du nombre de salles.
+      */}
+      <RoomLights museum={museum} culling={culling} />
 
       <FloorCullingContext.Provider value={culling}>
         {floors.map((floor) => (
@@ -300,6 +382,21 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
         temps de précharger sa police.
       */}
       <CartelLayer museum={museum} />
+
+      {/*
+        Le mobilier et la végétation (§9.4) : bancs, socles, jardinières,
+        plantes et rail de projecteurs.
+
+        UNE seule couche pour tout le bâtiment, comme les cartels et pour une
+        raison mesurée, pas par facilité : découpés par étage, les mêmes deux
+        cent cinquante props coûtaient 32 draw calls au lieu de 9, sans jamais
+        rien économiser — les quatre plateaux sont dans le frustum en même temps
+        depuis presque n'importe où (voir l'en-tête de `PropsLayer`).
+
+        Aucune lumière n'entre ici. Les projecteurs du plafond sont des objets ;
+        l'éclairage des toiles reste peint dans le shader (§9.2).
+      */}
+      <PropsLayer museum={museum} />
     </>
   )
 }
@@ -308,6 +405,11 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
 
 interface SunSetup {
   position: [number, number, number]
+  /**
+   * Position de la lumière de rebond, sous le bâtiment. Elle vise l'origine
+   * comme le soleil : sa direction de propagation est donc exactement opposée.
+   */
+  bounce: [number, number, number]
   /** Demi-côté de la caméra d'ombre orthographique, en mètres. */
   halfExtent: number
   far: number
@@ -354,6 +456,11 @@ function sunSetup(museum: Museum): SunSetup {
 
   return {
     position,
+    // Très légèrement décalée en x/z plutôt que rigoureusement verticale : une
+    // directionnelle exactement alignée sur l'axe y rend son vecteur `up`
+    // dégénéré dans three, ce qui n'a pas d'incidence sans ombre mais rendrait
+    // le jour où quelqu'un lui en donnerait une.
+    bounce: [rayon * 0.1, bas - rayon * REBOND.profondeur, rayon * 0.15],
     drift: { x: position[0] / position[1], z: position[2] / position[1] },
     base: bas,
     // Le bâtiment tourne autour de l'origine : la caméra d'ombre doit contenir

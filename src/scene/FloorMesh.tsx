@@ -50,6 +50,12 @@ import type { Floor, Museum, Vec2 } from '../domain/types'
 import { ArtworkLayer } from './ArtworkLayer'
 import { RoomMesh } from './RoomMesh'
 import { useRegisterFloor } from './floorCulling'
+import {
+  REGLAGE_MATIERE,
+  matiereDeDalle,
+  repetitionMonde,
+  useMatiere,
+} from './materials'
 
 export interface FloorMeshProps {
   floor: Floor
@@ -109,18 +115,51 @@ export function FloorMesh({
     [isTopFloor, floor.footprint, floor.slabHoles],
   )
 
-  const materials = useMemo(
-    () => ({
-      slab: new THREE.MeshStandardMaterial({ color: '#8f8b83', roughness: 0.95 }),
-      railing: new THREE.MeshStandardMaterial({
-        color: '#6d7176',
-        roughness: 0.4,
-        metalness: 0.6,
-      }),
-      roof: new THREE.MeshStandardMaterial({ color: '#c9c3b6', roughness: 0.9 }),
-    }),
-    [],
-  )
+  // ── Matières (§9.4) ────────────────────────────────────────────────────
+  //
+  // La dalle et la toiture sortent d'`ExtrudeGeometry`, dont three fabrique les
+  // UV en MÈTRES : leur répétition ne dépend pas de leurs dimensions, et une
+  // dalle de 38 m montre exactement le même marbre qu'une de 7 m.
+  //
+  // Le `rebond` est ce qui sauve la vue d'entrée. Une dalle a une face tournée
+  // vers le bas — le plafond du niveau d'en dessous — que les deux lumières du
+  // bâtiment, toutes deux zénithales, n'atteignent jamais : elle tombait au noir
+  // et occupait le bas du champ dès l'entrée. On y peint le rebond du sol, qui
+  // dans la réalité l'éclaire et qu'aucun rendu direct ne calcule.
+  const matiereDalle = matiereDeDalle(floor.level)
+  // La répétition omise : `useMatiere` prend alors l'échelle propre de la
+  // matière — une banche de béton de 2,6 m, une tuile de parquet de 3 m.
+  const slabMaterial = useMatiere(matiereDalle, undefined, { rebond: 0.34 })
+  // La toiture est le seul béton du bâtiment en PLEIN SOLEIL. Au niveau
+  // d'albédo des murs intérieurs — qui, eux, ne reçoivent que de l'indirect et
+  // ont besoin d'être relevés — elle partait en blanc pur : mesuré à l'écran,
+  // la dalle de couverture était une tache sans matière, texture comprise. On
+  // l'assombrit donc, ce qui est aussi ce qu'est une toiture réelle : du béton
+  // lessivé par la pluie, jamais du béton neuf.
+  const roofMaterial = useMatiere('beton', undefined, {
+    rebond: 0.34,
+    teinte: '#b0aba2',
+  })
+
+  // Le garde-corps, lui, est fait de `BoxGeometry` : ses UV sont un carré unité
+  // par face, la répétition doit donc être proportionnelle aux dimensions. Les
+  // panneaux n'ayant pas tous la même longueur, on cale l'échelle sur la moyenne
+  // — l'écart résiduel sur un métal brossé est invisible, contrairement à
+  // l'étirement d'un facteur cinq qu'on aurait en ignorant le problème.
+  const repetitionRailing = useMemo(() => {
+    const segments = slab.railingSegments
+    const longueur =
+      segments.length > 0
+        ? segments.reduce(
+            (somme, s) => somme + Math.hypot(s.b.x - s.a.x, s.b.z - s.a.z),
+            0,
+          ) / segments.length
+        : 1
+    return repetitionMonde(longueur, RAILING_HEIGHT, {
+      motif: REGLAGE_MATIERE.metal.motif,
+    })
+  }, [slab])
+  const railingMaterial = useMatiere('metal', repetitionRailing)
 
   // ── Culling (§9.3) ─────────────────────────────────────────────────────
   //
@@ -146,14 +185,15 @@ export function FloorMesh({
 
   // Rien de ce qui est construit ici n'est libéré par R3F : il ne dispose que ce
   // qu'il a créé lui-même en JSX.
+  // Les matériaux, eux, sont libérés par `useMatiere` : ils survivent à un
+  // changement d'échelle de leur texture, pas à un démontage.
   useEffect(() => {
     return () => {
       slab.geometry.dispose()
       railing?.geometry.dispose()
       roof?.dispose()
-      for (const material of Object.values(materials)) material.dispose()
     }
-  }, [slab, railing, roof, materials])
+  }, [slab, railing, roof])
 
   return (
     <group ref={groupe} name={`floor:${floor.id}`}>
@@ -163,12 +203,12 @@ export function FloorMesh({
         position={[0, floor.elevation, 0]}
         name={`slab:${floor.id}`}
       >
-        <mesh geometry={slab.geometry} material={materials.slab} receiveShadow castShadow />
+        <mesh geometry={slab.geometry} material={slabMaterial} receiveShadow castShadow />
         <TrimeshCollider args={[slab.collider.vertices, slab.collider.indices]} />
 
         {railing && (
           <>
-            <mesh geometry={railing.geometry} material={materials.railing} castShadow receiveShadow />
+            <mesh geometry={railing.geometry} material={railingMaterial} castShadow receiveShadow />
             <TrimeshCollider args={[railing.collider.vertices, railing.collider.indices]} />
           </>
         )}
@@ -180,7 +220,7 @@ export function FloorMesh({
         // servirait qu'à ralentir les requêtes de Rapier.
         <mesh
           geometry={roof}
-          material={materials.roof}
+          material={roofMaterial}
           // `buildSlab` fait pendre l'épaisseur SOUS son origine : on remonte
           // donc d'une épaisseur pour que le dessous de la toiture affleure
           // exactement le plafond du niveau.

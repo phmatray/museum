@@ -1,20 +1,60 @@
 /**
- * LOT 2 — Murs percés (spec §7.3 et §8).
+ * LOT 2 — Murs percés (spec §7.3 et §8), révisé au LOT 4 pour le §9.4.
  *
  * Un mur est un segment `[a, b]` du plan xz monté sur `height` mètres, dans
  * lequel les ouvertures découpent des passages. On le fabrique À PLAT — un
  * `THREE.Shape` dans le repère du mur, `u` = distance depuis `a`, `v` = hauteur
- * au-dessus du plancher — puis on l'extrude de 0,2 m et on redresse le tout dans
- * le monde. Raisonner à plat est ce qui rend les ouvertures triviales : ce sont
- * des rectangles alignés sur les axes, pas des volumes à soustraire.
+ * au-dessus du plancher — puis on l'extrude de `WALL_THICKNESS` et on redresse
+ * le tout dans le monde. Raisonner à plat est ce qui rend les ouvertures
+ * triviales : ce sont des encoches alignées sur les axes, pas des volumes à
+ * soustraire.
+ *
+ * ── Ce que le §9.4 a changé, et POURQUOI ──
+ *
+ *  1. ÉPAISSEUR 0,20 → 0,32 m. Vingt centimètres, c'est une cloison ; le musée
+ *     est en béton banché. Surtout, une tranche trop fine ne se voit pas depuis
+ *     une porte, et un mur dont on ne voit jamais la tranche lit comme du carton
+ *     découpé quelle que soit sa cote réelle.
+ *
+ *  2. OUVERTURES EN ENCOCHE, plus en trou. Toutes nos ouvertures descendent au
+ *     plancher (`Opening` n'a pas d'allège), donc leur arête basse est confondue
+ *     avec celle du mur. Les traiter comme des `Shape.holes` faisait produire à
+ *     `ExtrudeGeometry` une facette horizontale parasite à `v = 0` en travers de
+ *     chaque porte, EXACTEMENT coplanaire avec la face supérieure de la dalle :
+ *     du z-fighting dans toutes les portes du bâtiment. En découpant l'encoche
+ *     dans le CONTOUR, cette facette n'existe plus, et le seuil est réellement
+ *     libre. Une ouverture qui monte jusqu'au plafond ne laisse aucun linteau :
+ *     elle sépare alors le mur en plusieurs morceaux, chacun sa `Shape`.
+ *
+ *  3. CHANFREIN de 3 mm sur toutes les arêtes vives, via le biseau
+ *     d'`ExtrudeGeometry` — le même mécanisme qui était le piège n°1 ci-dessous,
+ *     ici enfin utilisé pour ce qu'il sait faire. Une arête parfaitement nette ne
+ *     capte aucune lumière : elle rend le même pixel quel que soit l'éclairage et
+ *     trahit le procédural au premier coup d'œil. Trois millimètres suffisent à
+ *     lui donner une facette à 45° qui, elle, accroche.
+ *
+ *     Le biseau de three place les DEUX FACES sur le contour tel qu'on l'écrit et
+ *     dilate le CŒUR de `bevelSize` — pas l'inverse. Conséquence heureuse : les
+ *     faces du mur restent exactement `length × height`, l'accrochage des œuvres
+ *     et l'aire percée sont inchangés au millimètre près, et seul le cœur déborde
+ *     de 3 mm dans le volume des voisins (dalle, mur d'à côté), où il est par
+ *     construction invisible. La bounding box, elle, mesure le cœur : elle vaut
+ *     donc `length + 2·CHAMFER` sur `height + 2·CHAMFER`.
+ *
+ *  4. PLINTHE de 12 cm sur la face intérieure. Une jonction mur/sol nette et
+ *     sans plinthe est un des signaux les plus forts du procédural : dans un
+ *     bâtiment réel, quelque chose vient toujours masquer ce joint. Elle est
+ *     interrompue au droit des ouvertures, et fait partie de la même géométrie —
+ *     donc du même draw call.
  *
  * ── Les deux pièges d'`ExtrudeGeometry` (spec §8), tous deux SILENCIEUX ──
  *
- *  1. `bevelEnabled` vaut VRAI par défaut. Sans `bevelEnabled: false`, un mur
- *     demandé en 10 × 4 × 0,2 sort en 10,2 × 4,2 × 0,6 : il déborde de l'emprise,
- *     il est trois fois trop épais, et les murs voisins ne joignent plus. Aucun
- *     test d'aire en 2D ne le voit — l'aire de la face reste juste. Seule la
- *     BOUNDING BOX 3D l'attrape, d'où le test qui l'exige au millimètre.
+ *  1. `bevelEnabled` vaut VRAI par défaut, avec un biseau de 0,2 m : un mur
+ *     demandé en 10 × 4 × 0,2 sortait en 10,2 × 4,2 × 0,6. On l'active désormais
+ *     volontairement, mais avec des cotes explicites (`CHAMFER`) et une
+ *     profondeur diminuée d'autant, pour que l'épaisseur totale reste juste.
+ *     Aucun test d'aire en 2D ne verrait un biseau qui dérape — seule la
+ *     BOUNDING BOX 3D l'attrape, d'où les tests qui l'exigent au millimètre.
  *
  *  2. La géométrie sort NON INDEXÉE (`geometry.index === null`), alors que
  *     `ColliderDesc.trimesh(vertices, indices)` de Rapier exige un tableau
@@ -31,6 +71,8 @@
  * part et d'autre : les deux volumes se touchent sans se recouvrir. Un mur
  * centré sur la frontière, lui, ferait coïncider exactement deux faces coplanaires
  * et donnerait le z-fighting classique sur toutes les cloisons du bâtiment.
+ * La plinthe, elle, saille de `PLINTH_PROJECTION` AU-DELÀ de la face intérieure :
+ * c'est le seul élément qui dépasse de l'emprise du mur.
  *
  * ── Repère de sortie ──
  *
@@ -42,13 +84,38 @@
  * tampons, octet pour octet.
  */
 import * as THREE from 'three'
-import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { Opening, Wall } from '../domain/types'
 
 // ── Constantes ───────────────────────────────────────────────────────────
 
-/** Épaisseur d'un mur, en mètres (spec §8). */
-export const WALL_THICKNESS = 0.2
+/** Épaisseur d'un mur, en mètres (spec §9.4). Béton banché, pas cloison. */
+export const WALL_THICKNESS = 0.32
+
+/**
+ * Chanfrein des arêtes vives, en mètres (spec §9.4).
+ *
+ * Trois millimètres : assez pour qu'une facette à 45° existe et prenne la
+ * lumière rasante, assez peu pour ne jamais se lire comme un pan coupé.
+ */
+export const CHAMFER = 0.003
+
+/** Hauteur de la plinthe au pied de la face intérieure, en mètres. */
+export const PLINTH_HEIGHT = 0.12
+
+/** Saillie de la plinthe devant la face intérieure, en mètres. */
+export const PLINTH_PROJECTION = 0.02
+
+/**
+ * De combien la plinthe s'enfonce DANS le mur, en mètres.
+ *
+ * Elle pourrait affleurer, mais son dos serait alors exactement coplanaire avec
+ * la face du mur : deux surfaces confondues, latentes en z-fighting le jour où
+ * un matériau passera en `DoubleSide`, et une face intérieure dont l'aire
+ * mesurée ne serait plus celle du mur. Cinq millimètres de recouvrement coûtent
+ * zéro pixel — le dos est dans la matière — et suppriment le problème.
+ */
+const PLINTH_EMBED = 0.005
 
 /**
  * Tolérance géométrique. En deçà, deux cotes sont la même : c'est ce qui évite
@@ -56,6 +123,17 @@ export const WALL_THICKNESS = 0.2
  * triangulation ne saurait rien faire.
  */
 const EPS = 1e-6
+
+/**
+ * Épaisseur minimale d'un linteau. En dessous, on considère que l'ouverture
+ * monte au plafond et on SÉPARE le mur en deux morceaux.
+ *
+ * Le seuil ne peut pas être `EPS` : le chanfrein mange `CHAMFER` de chaque côté
+ * du bandeau restant. Un linteau de 2 mm biseauté deux fois est une bande
+ * d'épaisseur négative, c'est-à-dire un contour qui se croise lui-même — et
+ * `ExtrudeGeometry` ne s'en plaint pas, il sort des triangles retournés.
+ */
+const MIN_LINTEL = 4 * CHAMFER
 
 // ── Contrat public ───────────────────────────────────────────────────────
 
@@ -148,10 +226,10 @@ interface Step {
  * Profil d'un groupe d'ouvertures qui se touchent, c'est-à-dire l'enveloppe de
  * leurs hauteurs — le « skyline ».
  *
- * Deux ouvertures qui se chevauchent ne peuvent PAS devenir deux trous : deux
- * contours sécants font échouer la triangulation en silence et l'aire percée
- * n'est plus celle qu'on croit. On les fusionne donc en un seul contour en
- * escalier, ce qui est exactement leur union.
+ * Deux ouvertures qui se chevauchent ne peuvent PAS devenir deux encoches
+ * indépendantes : leurs contours se croiseraient et la triangulation échouerait
+ * en silence, l'aire percée n'étant alors plus celle qu'on croit. On les fusionne
+ * donc en un seul escalier, ce qui est exactement leur union.
  */
 function skyline(rects: Step[]): Step[] {
   const bornes = [...new Set(rects.flatMap((r) => [r.from, r.to]))].sort((a, b) => a - b)
@@ -182,10 +260,11 @@ function skyline(rects: Step[]): Step[] {
  *
  * `Opening` n'a pas d'allège : une ouverture part TOUJOURS du plancher et monte
  * à `height`. C'est vrai des portes comme des baies, et c'est ce qui fait qu'une
- * ouverture est une encoche du contour et non un trou flottant — son arête basse
- * est confondue avec celle du mur. `Earcut`, sous `ExtrudeGeometry`, sait ponter
- * ce cas sans produire de triangle dégénéré ; c'est vérifié par les tests, y
- * compris sur les vingt murs percés du musée réel.
+ * ouverture est une ENCOCHE du contour et non un trou flottant — son arête basse
+ * est confondue avec celle du mur. Le jour où le modèle gagnera une allège, il
+ * faudra rouvrir de vrais `Shape.holes` ET leur donner un seuil ; le §9.4 le
+ * prévoit (« le seuil pour les baies qui ne descendent pas au sol »), le modèle
+ * de données pas encore.
  */
 function openingGroups(openings: Opening[], length: number, height: number): Step[][] {
   const rects: Step[] = openings
@@ -217,38 +296,113 @@ function openingGroups(openings: Opening[], length: number, height: number): Ste
 }
 
 /**
- * Le mur à plat : contour rectangulaire, une encoche par groupe d'ouvertures.
- *
- * Le contour est parcouru dans le sens TRIGONOMÉTRIQUE. `ExtrudeGeometry`
- * n'harmonise l'orientation des trous que lorsqu'il a dû retourner le contour ;
- * partir en sens horaire laisserait donc les trous dans un sens arbitraire et
- * les faces de leurs jambages seraient retournées.
+ * Un morceau de mur d'un seul tenant : `[from, to]`, avec les encoches qu'il
+ * porte. Une ouverture qui monte au plafond ne laisse pas de linteau, donc pas
+ * de matière au-dessus d'elle : elle CASSE le mur en deux morceaux, qu'on ne
+ * peut pas décrire par un contour unique sans le pincer.
  */
-function wallShape(length: number, height: number, groups: Step[][]): THREE.Shape {
-  const shape = new THREE.Shape()
-  shape.moveTo(0, 0)
-  shape.lineTo(length, 0)
-  shape.lineTo(length, height)
-  shape.lineTo(0, height)
-  shape.closePath()
+interface Piece {
+  from: number
+  to: number
+  steps: Step[]
+}
 
-  for (const steps of groups) {
-    const trou = new THREE.Path()
-    trou.moveTo(steps[0].from, 0)
-    trou.lineTo(steps[steps.length - 1].to, 0)
-    // Retour par le haut, de droite à gauche, en suivant l'escalier.
-    for (let i = steps.length - 1; i >= 0; i--) {
-      trou.lineTo(steps[i].to, steps[i].h)
-      trou.lineTo(steps[i].from, steps[i].h)
-    }
-    trou.closePath()
-    shape.holes.push(trou)
+function wallPieces(length: number, height: number, groups: Step[][]): Piece[] {
+  const pieces: Piece[] = []
+  let debut = 0
+  let steps: Step[] = []
+
+  const fermer = (fin: number): void => {
+    if (fin - debut > EPS) pieces.push({ from: debut, to: fin, steps })
+    steps = []
   }
 
-  return shape
+  for (const marches of groups.flat()) {
+    if (height - marches.h < MIN_LINTEL) {
+      fermer(marches.from) // coupe franche : rien ne relie les deux bords
+      debut = marches.to
+    } else {
+      steps.push(marches)
+    }
+  }
+  fermer(length)
+
+  return pieces
+}
+
+/**
+ * Le contour d'un morceau, parcouru dans le sens TRIGONOMÉTRIQUE : escalier du
+ * bas (le plancher, remonté au droit de chaque ouverture), montant droit, retour
+ * par le haut. Partir en sens horaire donnerait des faces retournées.
+ *
+ * Toutes les cotes sont VRAIES : c'est le biseau d'`ExtrudeGeometry` qui, seul,
+ * dilatera le cœur de `CHAMFER`. Écrire ici des cotes déjà corrigées ferait
+ * flotter les faces du mur de 3 mm au-dessus du sol, et le §9.4 y gagnerait un
+ * jour de traque de fentes lumineuses.
+ */
+function pieceShape(piece: Piece, height: number): THREE.Shape {
+  // Le profil bas : une hauteur par intervalle, 0 sur le plein.
+  const profil: Step[] = []
+  let u = piece.from
+  for (const s of piece.steps) {
+    if (s.from - u > EPS) profil.push({ from: u, to: s.from, h: 0 })
+    profil.push(s)
+    u = s.to
+  }
+  if (piece.to - u > EPS) profil.push({ from: u, to: piece.to, h: 0 })
+
+  const points: THREE.Vector2[] = [new THREE.Vector2(piece.from, profil[0].h)]
+  for (let i = 1; i < profil.length; i++) {
+    points.push(new THREE.Vector2(profil[i].from, profil[i - 1].h))
+    points.push(new THREE.Vector2(profil[i].from, profil[i].h))
+  }
+  points.push(new THREE.Vector2(piece.to, profil[profil.length - 1].h))
+  points.push(new THREE.Vector2(piece.to, height))
+  points.push(new THREE.Vector2(piece.from, height))
+
+  return new THREE.Shape(points)
+}
+
+/**
+ * Les tronçons de plinthe : le complément des ouvertures sur `[0, length]`.
+ * Une plinthe qui traverserait une porte serait la première chose qu'on
+ * remarque en la franchissant.
+ */
+function plinthSpans(length: number, groups: Step[][]): Array<[number, number]> {
+  const spans: Array<[number, number]> = []
+  let u = 0
+  for (const marches of groups) {
+    const from = marches[0].from
+    const to = marches[marches.length - 1].to
+    if (from - u > EPS) spans.push([u, from])
+    u = Math.max(u, to)
+  }
+  if (length - u > EPS) spans.push([u, length])
+  return spans
 }
 
 // ── Assemblage ───────────────────────────────────────────────────────────
+
+/**
+ * Extrusion chanfreinée, en cotes vraies.
+ *
+ * `depth` est la profondeur TOTALE voulue : le biseau en consomme `CHAMFER` à
+ * chaque extrémité, on ne demande donc à three que le reste. Le résultat occupe
+ * `w ∈ [−CHAMFER, depth − CHAMFER]`, ce que l'appelant recale.
+ */
+function extrudeChanfreine(shapes: THREE.Shape[], depth: number): THREE.ExtrudeGeometry {
+  return new THREE.ExtrudeGeometry(shapes, {
+    depth: depth - 2 * CHAMFER,
+    steps: 1,
+    // ── Piège n°1 (spec §8) : le biseau par défaut vaut 0,2 m. Ici il est
+    // choisi, et compensé sur `depth` pour que l'épaisseur totale reste juste.
+    bevelEnabled: true,
+    bevelThickness: CHAMFER,
+    bevelSize: CHAMFER,
+    bevelOffset: 0,
+    bevelSegments: 1,
+  })
+}
 
 /** Mur dégénéré : rien à dessiner, mais un collider valide et vide. */
 function emptyWall(): BuiltWall {
@@ -266,30 +420,65 @@ function emptyWall(): BuiltWall {
  *
  * La géométrie est indexée — c'est une condition de survie du collider — et le
  * collider relit ses tampons : une seule source de vérité pour ce qu'on voit et
- * pour ce qu'on heurte.
+ * pour ce qu'on heurte. Corps et plinthe sont fusionnés AVANT indexation : un
+ * mur reste un seul `BufferGeometry`, donc un seul draw call, ce que le budget
+ * du §9 compte.
  */
 export function buildWall(wall: Wall): BuiltWall {
   const frame = wallFrame(wall)
   if (frame.length < EPS || wall.height <= EPS) return emptyWall()
 
   const groups = openingGroups(wall.openings, frame.length, wall.height)
-  const shape = wallShape(frame.length, wall.height, groups)
-
-  const brute = new THREE.ExtrudeGeometry(shape, {
-    depth: WALL_THICKNESS,
-    // ── Piège n°1 (spec §8) : sans ça, +0,2 m dans chaque direction. ──
-    bevelEnabled: false,
-    steps: 1,
-  })
+  const pieces = wallPieces(frame.length, wall.height, groups)
+  if (pieces.length === 0) return emptyWall() // entièrement percé : plus de mur
 
   // L'extrusion part toujours vers `+z` local. Quand cet axe regarde le dos du
-  // mur, on recule la plaque d'une épaisseur pour qu'elle s'enfonce du côté de
-  // la salle. Miroir interdit : il retournerait toutes les faces.
-  if (frame.ez.dot(frame.inward) < 0) brute.translate(0, 0, -WALL_THICKNESS)
+  // mur, on RECULE les plaques au lieu de les mirroiter : un miroir retournerait
+  // toutes les faces et inverserait le collider.
+  const versLInterieur = frame.ez.dot(frame.inward) >= 0 ? 1 : -1
+
+  const morceaux: THREE.BufferGeometry[] = []
+
+  const corps = extrudeChanfreine(
+    pieces.map((p) => pieceShape(p, wall.height)),
+    WALL_THICKNESS,
+  )
+  // Sortie brute en `[−CHAMFER, T − CHAMFER]` : on la recale sur `[0, T]` ou
+  // `[−T, 0]` selon le côté que regarde `ez`.
+  corps.translate(0, 0, versLInterieur > 0 ? CHAMFER : CHAMFER - WALL_THICKNESS)
+  morceaux.push(corps)
+
+  const spans = plinthSpans(frame.length, groups)
+  if (spans.length > 0 && wall.height > PLINTH_HEIGHT) {
+    const plinthe = extrudeChanfreine(
+      spans.map(([from, to]) =>
+        new THREE.Shape([
+          new THREE.Vector2(from, 0),
+          new THREE.Vector2(to, 0),
+          new THREE.Vector2(to, PLINTH_HEIGHT),
+          new THREE.Vector2(from, PLINTH_HEIGHT),
+        ]),
+      ),
+      PLINTH_PROJECTION + PLINTH_EMBED,
+    )
+    // Sa face vue est à `T + PLINTH_PROJECTION` du segment, son dos noyé de
+    // `PLINTH_EMBED` dans le mur.
+    plinthe.translate(
+      0,
+      0,
+      versLInterieur > 0
+        ? WALL_THICKNESS - PLINTH_EMBED + CHAMFER
+        : CHAMFER - WALL_THICKNESS - PLINTH_PROJECTION,
+    )
+    morceaux.push(plinthe)
+  }
+
+  const brute = morceaux.length === 1 ? morceaux[0] : mergeGeometries(morceaux, false)!
+  if (morceaux.length > 1) for (const m of morceaux) m.dispose()
 
   // ── Piège n°2 (spec §8) : `ExtrudeGeometry` ne produit aucun index. ──
   // La soudure garde les arêtes vives — deux sommets de normales différentes ne
-  // fusionnent pas — donc l'ombrage à facettes du mur est intact.
+  // fusionnent pas — donc les facettes du chanfrein restent lisibles.
   const geometry = mergeVertices(brute)
   brute.dispose()
   geometry.applyMatrix4(wallMatrix(wall))

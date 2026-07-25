@@ -6,6 +6,7 @@ import { Player } from './components/Player'
 import { PointerLockCamera, PointerLockOverlay, TourExitButton } from './components/PointerLockOverlay'
 import { GuidedTour } from './components/GuidedTour'
 import { MuseumScene } from './scene/MuseumScene'
+import { PostProcessing } from './scene/PostProcessing'
 import { museumResource, resolveSpawn, voidFloorY } from './io/loadMuseum'
 import { useIsMobile } from './hooks/useIsMobile'
 import { MobileControlsOverlay } from './components/MobileControls'
@@ -106,6 +107,21 @@ function Museum() {
               */}
               <VisitorTracker museum={museum} />
             </Physics>
+            {/*
+              Le post-traitement (spec §9.4). HORS de `<Physics>` : il ne
+              déclare aucun corps rigide, et le groupe R3F que monte le
+              composeur n'a rien à faire dans le monde de Rapier.
+
+              Il prend la main sur la boucle de rendu (`useFrame` à priorité 1),
+              d'où sa place APRÈS la scène et le joueur : R3F exécute les
+              `useFrame` par priorité croissante, si bien que la caméra est déjà
+              recalée sur le visiteur quand le composeur rend l'image.
+
+              Il est DANS le `<Suspense>` du canvas parce qu'il lit la scène
+              chargée : monté avant elle, son `RenderPass` capturerait un
+              bâtiment vide et sa première image serait un fond nu.
+            */}
+            <PostProcessing />
           </Suspense>
         </Canvas>
       </KeyboardControls>

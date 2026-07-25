@@ -34,3 +34,7 @@ public/assets/*
 *.njsproj
 *.sln
 *.sw?
+
+# Captures de constat visuel : 55 Mo de PNG en 2880x1800, regenerables a la
+# demande. Le depot est public, elles ne valent pas leur poids dans lhistorique.
+.captures/
