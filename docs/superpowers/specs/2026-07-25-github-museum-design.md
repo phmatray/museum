@@ -499,6 +499,30 @@ Le rendu du lot 2 s'est révélé plat et sombre à l'écran : aplats de couleur
 
 **Végétation.** Quatre plantes en pot CC0 (Poly Haven), instanciées et disposées par le générateur dans les angles de salle et au pourtour de l'atrium. Ce n'est pas décoratif : une plante donne une **échelle humaine** à un volume, et sa silhouette organique casse l'orthogonalité qui signe le procédural.
 
+### 9.5 Le parc, et la révision du budget géométrique — 2026-07-25
+
+**Le musée n'avait aucun sol.** Il flottait sur un fond de ciel, ce qui le faisait lire comme une maquette posée sur une table. Un bâtiment n'a d'échelle que par ce qui l'entoure. Terrain de 110 × 110 m, parvis, allée périphérique bouclée, quatre accès, et des sujets semés sur une **grille jitterée** — un tirage uniforme fait des grappes et des clairières que l'œil lit comme une erreur.
+
+**Fenêtres.** `Opening` gagne une **allège**. Sans elle toute ouverture partait du plancher : « fenêtre » était inexprimable. Les jours ne percent que les **passages** et les murs de fermeture, jamais une salle de collection — on regarde les œuvres dans les salles et dehors en circulant, et surtout percer une salle lui retirerait de la cimaise, ce qui ferait grandir l'atrium pour compenser, ce qui rallonge les côtés, ce qui ajoute des fenêtres : une boucle qui ne converge pas.
+
+**Le budget de triangles passe de 500 000 à 1 000 000.** Ce n'est pas un plafond qu'on lève pour éteindre un voyant rouge — c'est la même correction qu'au §9.4 pour les lumières, et pour la même raison : **le chiffre d'origine a été écrit avant que la chose qu'il compte n'existe.** 500 000 datait d'un bâtiment sans végétation, sans parc et sans sol.
+
+Ce que la mesure dit, et qui justifie le nouveau chiffre :
+
+| Poste | Triangles | Remarque |
+|---|--:|---|
+| Bâtiment seul (murs, dalles, escalier, œuvres) | ~16 000 | jamais le problème |
+| Végétation d'intérieur, 69 sujets | ~256 000 | déjà ramenée de 780 000 |
+| Parc, ~20 sujets | ~440 000 | 22 000 par arbre |
+| Mobilier, luminaires | ~50 000 | |
+| **Total, vue la plus chère** | **~938 000** | **60 im/s tenues, mesurées en 2880×1800 DPR 2** |
+
+Les trois leviers ont été tirés avant d'en arriver là : décimation par sujet et non globale (le sujet est ce qui est instancié, un triangle y vaut vingt à l'écran), cartes ramenées à 512, et sujets inutilisés retirés des planches Poly Haven — au total 6 693 844 triangles de source pour 65 000 conservés, soit **1 %**.
+
+Le levier restant serait des **impostors** pour les sujets lointains. Il n'est pas tiré, et c'est une décision, pas un oubli : sa complexité — atlas de vues, sélection par distance, transition — ne se justifie pas quand la contrainte réelle (60 im/s) est tenue avec de la marge. Il redeviendra le bon geste si le parc double.
+
+**Le budget de draw calls, lui, reste à 150 et reste dépassé** (~210). Il n'est pas révisé : contrairement aux triangles, aucune mesure ne justifie de le lever. La décomposition montre où ils partent — chaîne de post-traitement ~43, passe d'ombres ~47 après restriction aux murs d'enveloppe, scène de base ~81 — et le levier évident (fusionner les murs d'un même niveau en un maillage par matériau) n'a pas encore été tiré.
+
 **Poids.** Les assets bruts pèsent 31 Mo. Ils sont réencodés en WebP au build, comme les images OG, et ne sont pas versionnés — `tools/fetch-assets.ts` les récupère, la CI les met en cache.
 
 ### 9.3 Culling
@@ -552,7 +576,11 @@ Dégradation gracieuse : si le fetch échoue, le `catalogue.json` du dernier bui
 - **`schema/`** — cas limites : curation orpheline, version inconnue, JSON malformé, tous avec un message d'erreur exploitable.
 - **`io/`** — le client GitHub testé sur des réponses figées, pagination et 202 compris.
 - **`scene/`** — pas de test unitaire. Validation par capture d'écran via Chrome DevTools et par mesure d'images par seconde.
-- **Budget de performance** — un test de non-régression compte les draw calls sur une scène de référence et échoue au-delà de 150.
+- **Budget de performance** — `node tools/capture.ts --check` mesure une scène de référence sur **six points de vue** et sort en code 1 au moindre dépassement. Il est jugé sur la vue la **plus chère**, jamais sur la moyenne : c'est celle-là que le visiteur paie en images par seconde.
+
+  Ce contrôle a longtemps été décrit ici sans exister, et c'est très exactement ce qui a laissé le budget passer de 83 à 239 draw calls sans que rien ne s'allume : chaque lot ajoutait sa part, aucun ne voyait le total. Il vit dans le harnais de capture et non dans vitest parce qu'un draw call **n'existe pas sans contexte WebGL** — le compter dans un test unitaire reviendrait à compter des maillages, c'est-à-dire à mesurer ce qu'on croit avoir écrit plutôt que ce que le GPU dessine.
+
+  Piège à connaître : une mesure manquante vaut `Infinity` et non zéro. Deux plafonds — lumières et porteurs d'ombre — ont affiché un vert sans avoir jamais été mesurés, parce que le relevé ne portait pas ces clés et que le contrôle lisait `?? 0`.
 
 ## 13. Découpage en lots
 

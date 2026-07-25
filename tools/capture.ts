@@ -143,7 +143,12 @@ const VUES: Vue[] = [
  */
 const BUDGET = {
   calls: 150,
-  triangles: 500_000,
+  // Relevé de 500 000 à 1 000 000 au §9.5, sur mesure et non pour éteindre un
+  // voyant : le chiffre d'origine datait d'un bâtiment sans végétation, sans
+  // parc et sans sol. Le bâtiment seul pèse 16 000 triangles ; tout le reste est
+  // de la végétation, déjà ramenée de 6 693 844 à 65 000 de géométrie unique.
+  // Les 60 im/s sont tenues en 2880×1800 DPR 2.
+  triangles: 1_000_000,
   lights: 12,
   shadowCasters: 2,
 } as const
