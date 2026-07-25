@@ -161,6 +161,24 @@ interface Releve {
   distance: number
   yMin: number
   yMax: number
+  /**
+   * Plus grande VITESSE VERTICALE apparente de l'œil, en m/s, mesurée d'une
+   * image à l'autre.
+   *
+   * ── Pourquoi une vitesse et non un saut ──
+   *
+   * La première version relevait le saut brut en millimètres. Elle était
+   * ININTERPRÉTABLE : trois exécutions du même parcours ont donné 19, 36 et
+   * 56 mm, parce qu'un maximum sur dix mille images attrape le pire À-COUP
+   * D'AFFICHAGE, pas le comportement de l'œil. Une image qui dure 60 ms au lieu
+   * de 8 laisse légitimement monter de sept fois plus.
+   *
+   * Divisée par la durée de l'image, la grandeur redevient une propriété du
+   * contrôleur : monter l'escalier à 1,8 m/s sur une pente à 31 % produit
+   * 0,55 m/s, quelle que soit la cadence. Un giron de 15 cm avalé en une image
+   * de 8 ms en produirait 18.
+   */
+  vitesseVerticaleMax: number
   verdict: 'OK' | 'ÉCHEC'
   pourquoi: string[]
 }
@@ -182,6 +200,45 @@ async function attendreScene(page: Page): Promise<void> {
     const o = document.querySelector('[data-museum-overlay="accueil"]')
     if (o) o.style.display = 'none'
     window.__MUSEUM__.demarrer()
+
+    // Échantillonneur par IMAGE. Il tourne dans la page parce que c'est le seul
+    // endroit d'où l'on voit chaque image : depuis Node, le meilleur relevé
+    // possible est celui d'un aller-retour CDP, soit une dizaine d'images.
+    const cam = window.__MUSEUM__.camera
+    window.__SAUTS__ = { precedent: cam.position.y, t: performance.now(), max: 0, n: 0 }
+    const tic = () => {
+      const s = window.__SAUTS__
+      const maintenant = performance.now()
+      const dt = (maintenant - s.t) / 1000
+      const dy = Math.abs(cam.position.y - s.precedent)
+      /*
+        On écarte trois choses, et la troisième est un défaut de CET
+        instrument.
+
+        Le premier relevé, qui suit le recalage initial de la caméra. Les
+        téléportations — le filet anti-vide déplace de plusieurs mètres. Et les
+        intervalles de moins de 4 ms : aucun affichage ne rend à plus de
+        250 im/s, un tel intervalle signifie donc que cet échantillonneur et la
+        boucle de rendu se sont croisés — deux relevés encadrant un seul rendu. Mesuré : des pics à 13 m/s sur des intervalles de 1,3 ms,
+        c'est-à-dire un mouvement d'image entière divisé par un dixième d'image.
+        C'était l'instrument qui mentait, pas le contrôleur.
+      */
+      if (s.n > 0 && dy < 0.5 && dt > 0.004) {
+        const v = dy / dt
+        if (v > s.max) {
+          s.max = v
+          s.ou = { x: +cam.position.x.toFixed(2), y: +cam.position.y.toFixed(2), z: +cam.position.z.toFixed(2) }
+          s.sens = cam.position.y > s.precedent ? 'montee' : 'descente'
+          s.dt = +(dt * 1000).toFixed(1)
+          s.dy = +(dy * 1000).toFixed(1)
+        }
+      }
+      s.precedent = cam.position.y
+      s.t = maintenant
+      s.n++
+      requestAnimationFrame(tic)
+    }
+    requestAnimationFrame(tic)
   })()`)
 }
 
@@ -245,6 +302,11 @@ async function jouer(page: Page, p: Parcours, rampes: RampeLue[]): Promise<Relev
   const trace: Position[] = []
   const depart = await ou(page)
   trace.push(depart)
+  // Remise à zéro APRÈS la mise en place : le recalage initial de la caméra est
+  // une téléportation, pas un pas.
+  await page.evaluate(
+    '(() => { const s = window.__SAUTS__; s.max = 0; s.n = 0; s.t = performance.now() })()',
+  )
 
   for (const ordre of developper(p.ordres, rampes)) {
     if (ordre.faire === 'regarder') {
@@ -341,6 +403,35 @@ async function jouer(page: Page, p: Parcours, rampes: RampeLue[]): Promise<Relev
     )
   }
 
+  const vitesseVerticaleMax = (await page.evaluate(
+    '(() => window.__SAUTS__.max)()',
+  )) as number
+  if (process.env.MUSEUM_DEBUG_SAUT) {
+    console.log('  pic vertical :', await page.evaluate('(() => JSON.stringify(window.__SAUTS__))()'))
+  }
+
+  /*
+    Le confort de montée est RAPPORTÉ, pas érigé en critère — et c'est une
+    décision prise sur les chiffres, pas par prudence.
+
+    Le témoin a été joué : `VITESSE_OEIL_MAX` portée à 999 m/s, c'est-à-dire
+    l'œil collé au corps comme avant.
+
+        avec limite (4 tirs)   1,95 · 2,25 · 2,30 · 2,83 m/s
+        sans limite (3 tirs)   2,21 · 3,45 · 3,91 m/s
+
+    L'écrêtage est donc réel — le pire cas tombe d'un quart — mais les deux
+    distributions SE CHEVAUCHENT. Un seuil placé entre elles échouerait au
+    hasard sur une machine chargée, et un harnais qui échoue au hasard finit par
+    ne plus être lu. On imprime la valeur, et c'est la SÉRIE qui se compare, pas
+    un tir isolé.
+
+    Ce chiffre dément au passage la prédiction de départ. L'escalier hélicoïdal
+    ne produisait PAS de saut d'un giron entier : ses colliders de marche se
+    recouvrent assez pour que Rapier étale la montée. Le lissage corrige des
+    à-coups de deux à trois centimètres, pas de quinze.
+  */
+
   return {
     parcours: p.nom,
     preuve: p.preuve,
@@ -350,6 +441,7 @@ async function jouer(page: Page, p: Parcours, rampes: RampeLue[]): Promise<Relev
     distance,
     yMin,
     yMax,
+    vitesseVerticaleMax,
     verdict: pourquoi.length === 0 ? 'OK' : 'ÉCHEC',
     pourquoi,
   }
@@ -417,6 +509,9 @@ async function main() {
       `   de (${r.depart.x.toFixed(1)}, ${r.depart.y.toFixed(2)}, ${r.depart.z.toFixed(1)})` +
         ` à (${r.arrivee.x.toFixed(1)}, ${r.arrivee.y.toFixed(2)}, ${r.arrivee.z.toFixed(1)})` +
         ` · ${r.distance.toFixed(1)} m parcourus · y de ${r.yMin.toFixed(2)} à ${r.yMax.toFixed(2)}`,
+    )
+    console.log(
+      `   vitesse verticale max de l'œil : ${r.vitesseVerticaleMax.toFixed(2)} m/s`,
     )
     for (const raison of r.pourquoi) console.log(`   ⚠ ${raison}`)
   }

@@ -60,6 +60,14 @@ import { floorAbove, museumResource } from '../io/loadMuseum'
 import { CartelLayer } from './CartelLayer'
 import { FloorMesh } from './FloorMesh'
 import { ParkLayer } from './ParkLayer'
+/*
+  Hauteur de l'œil au-dessus des pieds, pour que `ouSuisJe()` rende une position
+  de VISITEUR et non de caméra. IMPORTÉE, jamais recopiée : la valeur est
+  définie avec le corps du visiteur, et l'avoir écrite deux fois a déjà produit
+  un relevé faux de 1,10 m — un visiteur resté au rez-de-chaussée semblait avoir
+  monté une marche.
+*/
+import { HAUTEUR_OEIL } from '../components/Player'
 import { PropsLayer } from './PropsLayer'
 import { RampMesh } from './RampMesh'
 import { RoomLights } from './RoomLights'
@@ -76,18 +84,6 @@ import {
   TONE_MAPPING,
   buildAmbientEnvironment,
 } from './lighting'
-
-/**
- * Hauteur de l'œil au-dessus des pieds, pour que `ouSuisJe()` rende une position
- * de VISITEUR et non de caméra. Doit suivre `Player.tsx` : la caméra y est posée
- * à `y + PLAYER_HEIGHT − CAPSULE_HALF_HEIGHT` au-dessus du centre de la capsule.
- */
-// PLAYER_HEIGHT (1,70) − CAPSULE_HALF_HEIGHT (0,50) place la caméra 1,20 m
-// au-dessus du CENTRE de la capsule, lui-même à FEET_OFFSET (0,80) au-dessus des
-// pieds. L'œil est donc à 2,00 m des pieds — et non 0,90, qui était la première
-// valeur écrite d'instinct. Elle décalait tout relevé de 1,10 m, si bien qu'un
-// visiteur resté au rez-de-chaussée semblait avoir monté une marche.
-const HAUTEUR_OEIL = 2.0
 
 /** Charge le musée puis le rend. À placer sous un `<Suspense>`. */
 export function MuseumScene() {
