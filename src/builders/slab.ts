@@ -63,6 +63,32 @@ export interface RailingResult {
 
 // ── Constantes ───────────────────────────────────────────────────────────
 
+/**
+ * Index de groupe de la face SUPÉRIEURE de la dalle — le sol du niveau.
+ *
+ * Une dalle a deux faces que rien ne rapproche : on marche sur l'une, l'autre
+ * est le plafond du niveau du dessous. Un seul matériau pour les deux donnait un
+ * plafond en lames de parquet et un bandeau de bois en façade sur toute la
+ * hauteur du bâtiment — le défaut visuel dominant du premier jet.
+ *
+ * `ExtrudeGeometry` ne sait pas les distinguer : ses deux groupes natifs sont
+ * « les capots » (dessus ET dessous confondus) et « les côtés ». On refait donc
+ * le découpage sur le signe de la normale.
+ */
+export const SLAB_GROUP_TOP = 0
+
+/** Index de groupe de la tranche et de la sous-face : un seul et même béton. */
+export const SLAB_GROUP_SHELL = 1
+
+/**
+ * Seuil de classement d'un triangle en « tourné vers le haut ». Les faces d'une
+ * dalle extrudée sont franchement axiales — normale à ±1 en Y, ou strictement
+ * horizontale — donc n'importe quelle valeur entre 0 et 1 séparerait les mêmes
+ * triangles. On prend 0,5 pour que le classement reste juste si un jour la dalle
+ * gagne une pente.
+ */
+const TOP_FACING = 0.5
+
 /** Hauteur réglementaire d'un garde-corps, main courante comprise. */
 export const RAILING_HEIGHT = 1.1
 
@@ -133,12 +159,48 @@ export function buildSlab(footprint: Rect, holes: Rect[], thickness: number): Sl
   geometry.translate(0, -thickness, 0)
 
   indexSequentially(geometry)
+  groupByFacing(geometry)
 
   return {
     geometry,
     collider: toTrimesh(geometry),
     railingSegments: usableHoles.flatMap(rectPerimeter),
   }
+}
+
+/**
+ * Range les triangles en deux groupes de matériau : dessus d'abord, tranche et
+ * sous-face ensuite.
+ *
+ * Un groupe est une PLAGE CONTIGUË de l'index, pas un ensemble : séparer les
+ * deux faces impose donc de réordonner l'index. C'est sans effet ailleurs — les
+ * positions et les normales ne bougent pas, et le collider ne lit que l'ensemble
+ * des triangles, pas leur ordre.
+ */
+function groupByFacing(geometry: THREE.BufferGeometry): void {
+  const index = geometry.getIndex()
+  const normal = geometry.getAttribute('normal')
+  if (!index || !normal) return
+
+  const dessus: number[] = []
+  const coque: number[] = []
+
+  for (let i = 0; i < index.count; i += 3) {
+    const a = index.getX(i)
+    const b = index.getX(i + 1)
+    const c = index.getX(i + 2)
+    // Moyenne des trois normales de sommet plutôt que la normale géométrique :
+    // elle est déjà calculée, et sur des faces planes les deux coïncident.
+    const ny = (normal.getY(a) + normal.getY(b) + normal.getY(c)) / 3
+    ;(ny > TOP_FACING ? dessus : coque).push(a, b, c)
+  }
+
+  geometry.setIndex(new THREE.BufferAttribute(new Uint32Array([...dessus, ...coque]), 1))
+  // `ExtrudeGeometry` a posé ses propres groupes (capots / côtés) : les laisser
+  // en place ferait rendre la dalle deux fois, avec les mauvaises plages.
+  geometry.clearGroups()
+  geometry.addGroup(0, dessus.length, SLAB_GROUP_TOP)
+  geometry.addGroup(dessus.length, coque.length, SLAB_GROUP_SHELL)
 }
 
 // ── Garde-corps ──────────────────────────────────────────────────────────

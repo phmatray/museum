@@ -160,9 +160,70 @@ function toGeometry(mesh: MeshBuffer): THREE.BufferGeometry {
   // `ColliderDesc.trimesh`, et le piège n°2 du spec §8.
   geometry.setIndex(new THREE.BufferAttribute(new Uint32Array(mesh.indices), 1))
   geometry.computeVertexNormals()
+  projeterUvEnBoite(geometry)
   geometry.computeBoundingBox()
   geometry.computeBoundingSphere()
   return geometry
+}
+
+/**
+ * Projette des UV en MÈTRES depuis la position, sur l'axe dominant de chaque
+ * normale.
+ *
+ * ── Pourquoi ce n'est pas facultatif ──
+ *
+ * Le balayage hélicoïdal ne produisait que des positions. Une géométrie sans
+ * attribut `uv` n'échantillonne pas « rien » : elle échantillonne le texel
+ * (0, 0), c'est-à-dire un aplat de la couleur du coin haut-gauche de la carte.
+ * Toute matière texturée posée sur la rampe sortait donc en aplat, ce qui est
+ * précisément ce à quoi ressemblait le garde-corps.
+ *
+ * ── Pourquoi une projection et pas un vrai dépliage ──
+ *
+ * Le dépliage naturel d'une hélice est (abscisse curviligne, position dans le
+ * profil). Il faudrait le porter à travers tout le balayage, alors qu'une rampe
+ * en béton n'a pas de motif directionnel : sur du béton banché et du métal
+ * brossé, la projection en boîte est indiscernable d'un dépliage — ses coutures
+ * ne tombent que là où la normale change d'axe dominant, c'est-à-dire sur des
+ * arêtes vives déjà marquées.
+ *
+ * Les UV sont en mètres, comme ceux d'`ExtrudeGeometry` : l'échelle se règle
+ * ensuite avec `repetitionMetrique`, sans que l'appelant ait à savoir d'où vient
+ * la géométrie.
+ */
+function projeterUvEnBoite(geometry: THREE.BufferGeometry): void {
+  const position = geometry.getAttribute('position')
+  const normal = geometry.getAttribute('normal')
+  if (!position || !normal) return
+
+  const uv = new Float32Array(position.count * 2)
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i)
+    const y = position.getY(i)
+    const z = position.getZ(i)
+    const ax = Math.abs(normal.getX(i))
+    const ay = Math.abs(normal.getY(i))
+    const az = Math.abs(normal.getZ(i))
+
+    let u: number
+    let v: number
+    if (ay >= ax && ay >= az) {
+      // Face horizontale — le tablier. On la déplie à plat, vue de dessus.
+      u = x
+      v = z
+    } else if (ax >= az) {
+      // Face tournée vers ±X : la hauteur reste en V, pour qu'un motif
+      // directionnel monte bien à la verticale.
+      u = z
+      v = y
+    } else {
+      u = x
+      v = y
+    }
+    uv[i * 2] = u
+    uv[i * 2 + 1] = v
+  }
+  geometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
 }
 
 // ── Balayage hélicoïdal ──────────────────────────────────────────────────

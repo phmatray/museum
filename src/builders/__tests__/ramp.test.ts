@@ -194,6 +194,66 @@ describe('piège ExtrudeGeometry — le chanfrein qui gonfle', () => {
   })
 })
 
+/**
+ * Une géométrie SANS attribut `uv` n'échantillonne pas « rien » : elle
+ * échantillonne le texel (0, 0). Toute matière texturée posée dessus sort donc
+ * en aplat, silencieusement. C'est ce qui faisait du garde-corps de la rampe la
+ * dernière masse noire du musée.
+ */
+describe('coordonnées de texture', () => {
+  it('le tablier et le garde-corps portent tous deux un attribut uv', () => {
+    const build = buildRamp(ramp())
+    for (const g of [build.geometry, build.railingGeometry]) {
+      const uv = g.getAttribute('uv')
+      expect(uv).toBeDefined()
+      expect(uv.count).toBe(g.getAttribute('position').count)
+      expect(uv.itemSize).toBe(2)
+    }
+  })
+
+  it('les uv sont MÉTRIQUES : ils suivent la taille réelle, pas un carré unité', () => {
+    // Un carré unité sortirait avec une étendue de 1 quelle que soit la rampe.
+    // Ici la projection est en mètres, donc l'étendue vaut l'emprise : ~19,8 m
+    // pour une rampe de rayon extérieur 9,9.
+    const r = ramp()
+    const uv = buildRamp(r).geometry.getAttribute('uv')
+    let min = Infinity
+    let max = -Infinity
+    for (let i = 0; i < uv.count; i++) {
+      min = Math.min(min, uv.getX(i))
+      max = Math.max(max, uv.getX(i))
+    }
+    expect(max - min).toBeGreaterThan(2 * (r.radius + r.width / 2) - 1)
+  })
+
+  it('aucun uv n’est NaN : un seul contaminerait toute la matrice de texture', () => {
+    const build = buildRamp(ramp())
+    for (const g of [build.geometry, build.railingGeometry]) {
+      const uv = g.getAttribute('uv')
+      for (let i = 0; i < uv.count; i++) {
+        expect(Number.isFinite(uv.getX(i))).toBe(true)
+        expect(Number.isFinite(uv.getY(i))).toBe(true)
+      }
+    }
+  })
+
+  it('la hauteur reste en V sur les faces verticales du garde-corps', () => {
+    // Sinon un motif directionnel — béton banché, métal brossé — part en
+    // travers sur un garde-corps qui est justement ce qu'on voit de plus près.
+    const g = buildRamp(ramp()).railingGeometry
+    const position = g.getAttribute('position')
+    const normal = g.getAttribute('normal')
+    const uv = g.getAttribute('uv')
+    let verticales = 0
+    for (let i = 0; i < position.count; i++) {
+      if (Math.abs(normal.getY(i)) > 0.5) continue
+      verticales++
+      expect(uv.getY(i)).toBeCloseTo(position.getY(i), 6)
+    }
+    expect(verticales).toBeGreaterThan(0)
+  })
+})
+
 describe('piège ExtrudeGeometry — la géométrie non indexée', () => {
   it('indexe explicitement en Uint32Array, le format exigé par ColliderDesc.trimesh', () => {
     const { geometry, railingGeometry } = buildRamp(ramp())

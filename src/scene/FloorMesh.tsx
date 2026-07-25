@@ -126,10 +126,28 @@ export function FloorMesh({
   // bâtiment, toutes deux zénithales, n'atteignent jamais : elle tombait au noir
   // et occupait le bas du champ dès l'entrée. On y peint le rebond du sol, qui
   // dans la réalité l'éclaire et qu'aucun rendu direct ne calcule.
+  //
+  // DEUX matériaux, dans l'ordre des groupes posés par `buildSlab` : on marche
+  // sur le premier, le second est la tranche et le plafond du niveau d'en
+  // dessous. Une seule matière pour les deux donnait un plafond en lames de
+  // parquet dans toute la vue d'accueil, et un bandeau de bois faisant le tour
+  // de la façade à chaque niveau.
   const matiereDalle = matiereDeDalle(floor.level)
   // La répétition omise : `useMatiere` prend alors l'échelle propre de la
   // matière — une banche de béton de 2,6 m, une tuile de parquet de 3 m.
-  const slabMaterial = useMatiere(matiereDalle, undefined, { rebond: 0.34 })
+  const dessusMaterial = useMatiere(matiereDalle, undefined, { rebond: 0 })
+  // La coque, elle, garde le `rebond` : c'est elle qui porte la sous-face, la
+  // seule surface du bâtiment que les lumières zénithales n'atteignent jamais.
+  // Sans ce rebond peint elle tombe au noir et occupe le bas du champ dès
+  // l'entrée. Un plafond de musée est du béton clair, pas du parquet.
+  const coqueMaterial = useMatiere('beton', undefined, {
+    rebond: 0.34,
+    teinte: '#cfcac2',
+  })
+  const slabMaterials = useMemo(
+    () => [dessusMaterial, coqueMaterial],
+    [dessusMaterial, coqueMaterial],
+  )
   // La toiture est le seul béton du bâtiment en PLEIN SOLEIL. Au niveau
   // d'albédo des murs intérieurs — qui, eux, ne reçoivent que de l'indirect et
   // ont besoin d'être relevés — elle partait en blanc pur : mesuré à l'écran,
@@ -140,6 +158,14 @@ export function FloorMesh({
     rebond: 0.34,
     teinte: '#b0aba2',
   })
+  // La toiture porte les deux mêmes groupes que la dalle, et son dessous est le
+  // plafond du dernier étage : lui laisser le béton lessivé de l'extérieur y
+  // ferait un plafond gris sale. Il reçoit donc la coque claire, comme les
+  // autres plafonds du bâtiment.
+  const roofMaterials = useMemo(
+    () => [roofMaterial, coqueMaterial],
+    [roofMaterial, coqueMaterial],
+  )
 
   // Le garde-corps, lui, est fait de `BoxGeometry` : ses UV sont un carré unité
   // par face, la répétition doit donc être proportionnelle aux dimensions. Les
@@ -203,7 +229,7 @@ export function FloorMesh({
         position={[0, floor.elevation, 0]}
         name={`slab:${floor.id}`}
       >
-        <mesh geometry={slab.geometry} material={slabMaterial} receiveShadow castShadow />
+        <mesh geometry={slab.geometry} material={slabMaterials} receiveShadow castShadow />
         <TrimeshCollider args={[slab.collider.vertices, slab.collider.indices]} />
 
         {railing && (
@@ -220,7 +246,7 @@ export function FloorMesh({
         // servirait qu'à ralentir les requêtes de Rapier.
         <mesh
           geometry={roof}
-          material={roofMaterial}
+          material={roofMaterials}
           // `buildSlab` fait pendre l'épaisseur SOUS son origine : on remonte
           // donc d'une épaisseur pour que le dessous de la toiture affleure
           // exactement le plafond du niveau.

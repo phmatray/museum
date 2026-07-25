@@ -175,10 +175,29 @@ function SceneDebugHandle({ culling }: { culling: FloorCulling }) {
       setCulling: (actif: boolean) => {
         culling.setActive(actif)
       },
-      /** Place la caméra en survol pour juger le bâtiment d'un coup d'œil. */
-      survol: (x = 46, y = 34, z = 46) => {
+      /**
+       * Place la caméra et lui donne un point à viser.
+       *
+       * La cible est un paramètre, et pas le centre du bâtiment en dur : la
+       * moitié des vues qui prouvent quelque chose ne regardent pas le centre.
+       * Juger un angle de salle, une embrasure ou une sous-face de dalle demande
+       * de viser exactement ce point-là — avec un `lookAt` figé, ces vues sont
+       * simplement impossibles à cadrer, et c'est ce qui a manqué au premier jeu
+       * de captures. Par défaut, le survol d'ensemble d'avant.
+       *
+       * (22, 14, 22) et non (46, 34, 46) : le bâtiment fait 30 × 30 × 14 m, il
+       * sortait minuscule au centre du cadre depuis 75 m.
+       */
+      survol: (
+        x = 22,
+        y = 14,
+        z = 22,
+        cx = 0,
+        cy = 4,
+        cz = 0,
+      ) => {
         camera.position.set(x, y, z)
-        camera.lookAt(0, 6, 0)
+        camera.lookAt(cx, cy, cz)
         camera.updateProjectionMatrix()
       },
     }

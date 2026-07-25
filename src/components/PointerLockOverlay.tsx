@@ -69,6 +69,11 @@ export function PointerLockOverlay() {
 
   return (
     <div
+      // Repère stable pour `tools/capture.ts`, qui doit escamoter cet écran
+      // avant de mesurer la luminance de la scène — il couvre tout le cadre.
+      // Le retirer par un clic est impossible en headless : le clic demande le
+      // verrouillage du pointeur, que Chrome refuse hors interaction réelle.
+      data-museum-overlay="accueil"
       style={{
         position: 'fixed',
         inset: 0,

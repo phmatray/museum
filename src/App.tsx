@@ -84,7 +84,27 @@ function Museum() {
           façon par `PCFShadowMap` en écrivant un avertissement à chaque
           démarrage. Autant demander directement ce qu'on obtient.
         */}
-        <Canvas shadows="percentage" camera={{ fov: 75, near: 0.1, far: 1000 }}>
+        <Canvas
+          shadows="percentage"
+          camera={{ fov: 75, near: 0.1, far: 1000 }}
+          gl={{
+            /**
+             * EN DÉVELOPPEMENT SEULEMENT, et pour une raison précise.
+             *
+             * Sans ce drapeau, le tampon de dessin d'un canvas WebGL est
+             * invalidé dès que la frame est composée : `drawImage(canvas)` et
+             * `toDataURL()` rendent alors une image entièrement NOIRE. Ce n'est
+             * pas une panne visible — la page s'affiche parfaitement, seule la
+             * relecture est vide — et `tools/capture.ts` mesurait donc « 100 %
+             * de pixels noirs » sur un musée parfaitement éclairé.
+             *
+             * Le coût est réel (le tampon ne peut plus être recyclé entre deux
+             * images), d'où la restriction au développement : en production
+             * personne ne relit le canvas.
+             */
+            preserveDrawingBuffer: import.meta.env.DEV,
+          }}
+        >
           <Suspense fallback={null}>
             <Physics>
               <PointerLockCamera />

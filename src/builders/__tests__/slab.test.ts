@@ -21,7 +21,13 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import * as THREE from 'three'
 
-import { RAILING_HEIGHT, buildRailing, buildSlab } from '../slab'
+import {
+  RAILING_HEIGHT,
+  SLAB_GROUP_SHELL,
+  SLAB_GROUP_TOP,
+  buildRailing,
+  buildSlab,
+} from '../slab'
 import type { RailingSegment, TrimeshCollider } from '../slab'
 import type { Museum, Rect } from '../../domain/types'
 
@@ -145,6 +151,86 @@ const rect = (x: number, z: number, width: number, depth: number): Rect => ({
   z,
   width,
   depth,
+})
+
+/**
+ * Aire des triangles d'un groupe de matériau, projetée sur le plan horizontal.
+ * Une face verticale y compte pour zéro : c'est ce qui distingue le dessus et le
+ * dessous (aire pleine) de la tranche (aire nulle).
+ */
+function groupHorizontalArea(
+  geometry: THREE.BufferGeometry,
+  groupIndex: number,
+): number {
+  const group = geometry.groups.find((g) => g.materialIndex === groupIndex)
+  if (!group) return 0
+  const position = geometry.getAttribute('position')
+  const index = geometry.getIndex()!
+  let area = 0
+  for (let i = group.start; i < group.start + group.count; i += 3) {
+    const p = [0, 1, 2].map((k) => {
+      const id = index.getX(i + k)
+      return new THREE.Vector2(position.getX(id), position.getZ(id))
+    })
+    area += Math.abs(
+      (p[1].x - p[0].x) * (p[2].y - p[0].y) - (p[2].x - p[0].x) * (p[1].y - p[0].y),
+    ) / 2
+  }
+  return area
+}
+
+// ── Groupes de matériau ──────────────────────────────────────────────────
+
+/**
+ * Le dessus d'une dalle est le sol d'un niveau, son dessous est le plafond du
+ * niveau d'en dessous. Un seul matériau pour les deux donnait un plafond en
+ * lames de parquet dans la vue d'accueil et un bandeau de bois en façade.
+ */
+describe('buildSlab — groupes de matériau', () => {
+  it('sépare le dessus de la coque en deux groupes, et deux seulement', () => {
+    const { geometry } = buildSlab(rect(-10, -10, 20, 20), [rect(-3, -3, 6, 6)], 0.4)
+    const indices = geometry.groups.map((g) => g.materialIndex).sort()
+    expect(indices).toEqual([SLAB_GROUP_TOP, SLAB_GROUP_SHELL])
+  })
+
+  it('les groupes pavent l’index sans trou ni recouvrement', () => {
+    // Un groupe est une plage contiguë : s'ils ne se touchent pas exactement,
+    // des triangles ne sont rendus par AUCUN matériau et disparaissent.
+    const { geometry } = buildSlab(rect(-10, -10, 20, 20), [rect(-3, -3, 6, 6)], 0.4)
+    const groups = [...geometry.groups].sort((a, b) => a.start - b.start)
+    expect(groups[0].start).toBe(0)
+    for (let i = 1; i < groups.length; i++) {
+      expect(groups[i].start).toBe(groups[i - 1].start + groups[i - 1].count)
+    }
+    const last = groups[groups.length - 1]
+    expect(last.start + last.count).toBe(geometry.getIndex()!.count)
+  })
+
+  it('le groupe du dessus ne porte QUE la face supérieure', () => {
+    // 364 m² d'emprise utile. La face du dessus seule les couvre une fois ; si
+    // le dessous s'y était glissé, on en compterait 728.
+    const { geometry } = buildSlab(rect(-10, -10, 20, 20), [rect(-3, -3, 6, 6)], 0.4)
+    expect(groupHorizontalArea(geometry, SLAB_GROUP_TOP)).toBeCloseTo(364, 3)
+  })
+
+  it('le groupe de la coque porte le dessous, donc la même aire projetée', () => {
+    // La tranche est verticale : son aire projetée est nulle. Ce qui reste dans
+    // ce groupe à l'horizontale est exactement la sous-face.
+    const { geometry } = buildSlab(rect(-10, -10, 20, 20), [rect(-3, -3, 6, 6)], 0.4)
+    expect(groupHorizontalArea(geometry, SLAB_GROUP_SHELL)).toBeCloseTo(364, 3)
+  })
+
+  it('le réordonnancement de l’index ne perd aucun triangle', () => {
+    // Séparer les groupes impose de réordonner l'index. Le collider lit
+    // l'ensemble des triangles : en perdre un ouvrirait un trou dans le sol.
+    const { geometry, collider } = buildSlab(
+      rect(-10, -10, 20, 20),
+      [rect(-3, -3, 6, 6)],
+      0.4,
+    )
+    expect(collider.indices.length).toBe(geometry.getIndex()!.count)
+    expect(collider.indices.length % 3).toBe(0)
+  })
 })
 
 // ── Aire ─────────────────────────────────────────────────────────────────

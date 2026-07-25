@@ -120,6 +120,19 @@ export interface ThemePalette {
  * terre, et aucun puits de lumière ne l'atteint. Sombre y est une information,
  * pas un accident.
  */
+/**
+ * Le béton de l'enceinte : une seule teinte pour tout le bâtiment, thèmes
+ * compris.
+ *
+ * Choisie entre le plus clair et le plus sombre des thèmes (#eeece7 et #7f7768)
+ * plutôt qu'à l'un des deux bouts : l'enveloppe doit lire comme du béton banché,
+ * ni comme du plâtre blanc ni comme un mur de cave.
+ */
+const BETON_ENCEINTE = '#cec8bc'
+
+/** Le béton brut est plus mat que n'importe quel enduit de salle. */
+const RUGOSITE_ENCEINTE = 0.95
+
 export const THEME_PALETTE: Record<ThemeId, ThemePalette> = {
   classic: {
     wall: '#ded4c2',
@@ -389,8 +402,19 @@ export function createWallMaterial({
   }
 
   const material = new THREE.MeshStandardMaterial({
-    color: palette.wall,
-    roughness: palette.roughness,
+    // Un mur d'enceinte n'appartient pas à la salle qui se trouve derrière lui.
+    //
+    // La teinte du thème était appliquée à TOUS les murs, mur de façade compris.
+    // Vue de l'extérieur, l'enveloppe devenait donc un patchwork : un panneau
+    // taupe pour la réserve, un blanc pour le rez-de-chaussée, un crème pour les
+    // étages, avec les joints entre salles lisibles en façade. Un bâtiment ne
+    // change pas de matériau parce qu'on a changé de salle à l'intérieur.
+    //
+    // L'enceinte reçoit donc UNE teinte, celle du bâtiment. C'est déjà ce que
+    // `matiereDeMur` supposait en renvoyant 'beton' pour tout mur `outer` : la
+    // carte était bien du béton, seul le niveau d'albédo trahissait le thème.
+    color: wall.kind === 'outer' ? BETON_ENCEINTE : palette.wall,
+    roughness: wall.kind === 'outer' ? RUGOSITE_ENCEINTE : palette.roughness,
     metalness: 0,
   })
 
