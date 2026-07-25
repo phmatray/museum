@@ -29,10 +29,15 @@ Ce socle est conservé. Ce qui change : le modèle de données devient multi-ét
 | Portée | **Générique dès le départ** | Aucune donnée en dur, y compris la taxonomie manuelle existante |
 | Éditeur | Plan 2D (réglage) + accrochage in-3D | Un plan se règle en vue de dessus, un accrochage se juge à hauteur d'œil |
 
-### Signal disponible (mesuré sur le corpus de référence, 256 dépôts publiables)
+### Signal disponible
 
-- 252/256 ont des topics, 256/256 ont une description → le clustering automatique a de la matière.
-- Les topics sont **très déséquilibrés** : `dotnet` 194, `csharp` 167, `blazor` 90. Un regroupement par topic dominant produirait une salle géante et des placards. **La pondération IDF est donc structurante, pas cosmétique.**
+Mesuré sur `public/data/catalogue.json`, produit par `tools/fetch-github.ts` le 2026-07-25 pour `phmatray` + `Atypical-Consulting`, `privacy: PUBLIC`. **115 dépôts publics, 100 hors forks, 72 hors forks et archives.**
+
+> Une version antérieure de ce spec annonçait 256 dépôts et 98 % de couverture en topics. Ces chiffres venaient de `repos.json`, un audit des clones **locaux** qui incluait les dépôts privés. Ils ne sont reproductibles sur aucun périmètre atteignable en CI. Les chiffres ci-dessous le sont.
+
+- **79 % ont des topics** (57/72), **98 % une description** (71/72), un seul dépôt n'a ni l'un ni l'autre. Le clustering a de la matière, mais pas pour tout le monde — d'où l'usage de plusieurs sources de termes, pas des seuls topics.
+- Les topics restent **très déséquilibrés** : `dotnet` 62 %, `csharp` 55 %, `blazor` 15 %. Un regroupement par topic dominant produirait une salle géante et des placards. **La pondération IDF est donc structurante, pas cosmétique.**
+- **La distribution d'étoiles est très creuse** : médiane 0, 40 dépôts sur 72 à zéro étoile, maximum 4338. Conséquence pour §7.4 : la grande majorité des cadres sort à la taille plancher (1,00 m de large), et le plus grand atteint 2,82 m. La contrainte de capacité est donc moins tendue que ne le suggère la plage théorique.
 - `opengraph.githubassets.com/<hash>/<owner>/<repo>` renvoie un PNG 1200×600 pour tout dépôt public, avec un hash arbitraire (vérifié : HTTP 200, 100–500 Ko). Chaque dépôt a donc déjà sa toile, sans travail de création.
 
 ## 3. Architecture des modules
@@ -234,7 +239,9 @@ interface Ramp {
 ## 5. Pipeline de données
 
 ```
-1. SOURCE      API GitHub, fetch au build dans l'Action, GITHUB_TOKEN (5000 req/h)
+1. SOURCE      API GitHub, fetch au build dans l'Action, GITHUB_TOKEN
+              (1000 req/h ET 1000 points/h PAR DÉPÔT, compteurs REST et
+               GraphQL séparés — pas 5000, c'est un jeton d'Action)
    │           GraphQL paginé : repos, topics, langages, README, activité de commits
    ▼
 2. CATALOGUE   public/data/catalogue.json   généré · jetable · écrasé chaque nuit
@@ -311,10 +318,23 @@ Déterministe, sans dépendance d'apprentissage automatique, ~200 lignes dans `d
 | Niveau | Contenu | Règle |
 |---|---|---|
 | −1 | Réserve | archivés et forks ; accrochage dense, éclairage minimal, une seule grande salle |
-| 0 | Salle d'honneur | les `featured` de la curation, complétés jusqu'à 12 par le score `stars × 2 + récence` |
+| 0 | Salle d'honneur | les `featured` de la curation, complétés jusqu'à 12 par le score `honneur` décroissant |
 | 1+ | Collections | clusters par taille décroissante, `roomsPerFloor` par niveau |
 
-`floorCount = 1 + ceil(clusters / roomsPerFloor) + (réserve ? 1 : 0)`. Le bâtiment prend la forme du compte : 5 dépôts donnent un plateau unique, 2000 donnent une tour.
+```
+honneur(repo) = clamp(2 × log10(1 + stars), 0, 3)        notoriété, bornée à 3
+              + max(0, 1 − joursDepuis(pushedAt) / 365)  récence, dans [0,1]
+
+joursDepuis() se mesure depuis catalogue.generatedAt, JAMAIS depuis l'horloge
+du build : le score doit être reproductible à partir du seul catalogue.
+Égalité → départage par clé alphabétique, comme en §6.
+```
+
+Sans bornes explicites, additionner des étoiles brutes et une récence donne une somme dominée par le terme le plus grand : le score se réduit à un tri par étoiles, ou à un tri par date, selon les unités. Les deux termes sont donc normalisés dans des plages comparables.
+
+Un dépôt `featured` reste dans le corpus de clustering — `N` et les IDF de §6 sont inchangés — mais son **accrochage est exclusif** : il est accroché en salle d'honneur et retiré des murs de sa salle thématique.
+
+`floorCount = 1 + ceil(clusters / roomsPerFloor) + (réserve ? 1 : 0)`, avec `roomsPerFloor` borné à ≥ 1. Le bâtiment prend la forme du compte : 5 dépôts donnent un plateau unique, 2000 donnent une tour.
 
 `elevation` est **calculée** : `elevation(n) = Σ(ceilingHeight + slabThickness)` sur les niveaux inférieurs. Jamais saisie, donc deux étages ne peuvent pas se chevaucher.
 
@@ -327,11 +347,25 @@ Partition des côtés, sans recouvrement aux angles :
 - **Est** et **Ouest** ne couvrent que la profondeur de l'atrium : `atriumD`
 
 Allocation :
-1. Trier les clusters par poids décroissant, répartir en 4 bacs (les côtés) par remplissage du bac le moins chargé — déterministe.
-2. Dans chaque côté, subdiviser la longueur proportionnellement au poids, avec un plancher à `minRoomWidth`.
-3. **Vérification de capacité** : pour chaque salle, `wallCapacity(room) ≥ taille du cluster`. Si une salle est trop petite, agrandir l'atrium de 2 m et reprendre en 1. Maximum 10 itérations ; au-delà, réduire `maxClusterSize` et relancer le clustering.
 
-Cette boucle est ce qui rend l'accrochage **total** : quand on arrive au mur, la place est déjà garantie.
+1. Longueurs courantes : `len(N) = len(S) = atriumW + 2·roomDepth` ; `len(E) = len(O) = atriumD`.
+2. **Capacité du bac** : `maxRooms(côté) = floor(len(côté) / minRoomWidth)`. Trier les clusters par poids décroissant, affecter chaque cluster au bac le moins chargé **parmi ceux dont `nbSalles < maxRooms`**. Égalité tranchée dans l'ordre fixe N, E, S, O. Si aucun bac n'est éligible, agrandir l'atrium de 2 m et reprendre en 1.
+   *Sans cette contrainte, un remplissage « bac le moins chargé » peut affecter à un côté plus de salles que sa longueur n'en admet au plancher `minRoomWidth` — et la subdivision de l'étape 3 devient infaisable sans que rien ne le détecte.*
+3. Subdiviser chaque côté proportionnellement au poids, plancher à `minRoomWidth`. Toujours faisable après l'étape 2.
+4. **Faisabilité de l'accrochage** — en longueur, par segment, jamais en cardinal :
+   - calculer les largeurs **réelles** `w_i = clamp(0,50 + 0,25·log10(1 + stars_i), 0,50, 1,60) × aspect_i` de toutes les œuvres du cluster (les étoiles sont connues : elles viennent du catalogue) ;
+   - énumérer les segments utiles des 4 murs selon la règle **exacte** de §7.4 ;
+   - tenter un placement *first-fit decreasing* : œuvres triées par `w_i` décroissant, un segment accepte une œuvre tant que `Σw + (n+1)·écartMin ≤ L_seg` ;
+   - la salle passe si et seulement si **toutes** les œuvres sont placées.
+   - **Ce placement d'essai est conservé et sert directement d'affectation œuvre→segment à §7.4.** Une seule source de vérité : deux algorithmes séparés finiraient par diverger.
+
+   Si une salle échoue, agrandir l'atrium de 2 m et reprendre en 1. Maximum 10 itérations ; au-delà, réduire `maxClusterSize` et relancer le clustering.
+
+Une capacité exprimée en **nombre d'œuvres** ne peut pas fonctionner : la place consommée dépend des étoiles, et varie d'un facteur 3 entre une œuvre à 0 étoile (1,00 m) et une à 25 000 étoiles (3,20 m). Une même salle de 14 m accueille 13 œuvres dans un cas et 5 dans l'autre. C'est parce que le contrôle utilise les largeurs réelles **et la même règle de pavage que §7.4** que l'accrochage est réellement total.
+
+Un total agrégé sur la salle (`Σ segments ≥ Σ largeurs`) ne suffit pas non plus : il ignore la granularité. Un mur offrant 8,6 m répartis en segments de 1,5 / 1,8 / 5,3 m n'accueille aucune œuvre de 2 m dans ses deux premiers segments.
+
+**Invariant d'enveloppe : les 4 côtés de l'anneau existent toujours.** Un côté dont le bac est vide — cas courant, le rez-de-chaussée n'a qu'une salle d'honneur et `roomsPerFloor` peut être inférieur à 4 — reçoit une **galerie aveugle** : une salle occupant toute la longueur du côté, sans cluster ni placement, produite par le même `buildRoom`, avec mur `inner` sans baie ni porte. Elle n'est pas nommée dans les cartels ni comptée dans `stats.roomCount`. Sans cet invariant, un côté vide laisse la dalle sans garde-corps ni mur, et le joueur tombe.
 
 ### 7.3 Murs et baies
 
@@ -342,25 +376,36 @@ Les murs `side` mitoyens entre deux salles voisines portent une porte de 2 m cen
 ### 7.4 Accrochage
 
 ```
-Pour un mur de longueur L :
-  utile = L − 2×0.5 (marges d'angle) − Σ(largeur des ouvertures)
-  Les segments utiles sont les intervalles entre ouvertures ≥ 1.2 m.
-
 Taille d'une œuvre :
   h = clamp(0.50 + 0.25 × log10(1 + stars), 0.50, 1.60)
-  w = h × aspect  (2.0 pour les OG images GitHub)
+  w = h × aspect        aspect = 2.0 pour les OG images GitHub, mais une image
+                        fournie par la curation peut valoir 1.0 ou 3.0 : ne
+                        JAMAIS coder 2.0 en dur.
+
+Segment utile — seuil DÉRIVÉ, jamais figé :
+  wMin = 0.50 × aspect                       1.00 m à l'aspect 2.0
+  un segment est utile ssi L_seg ≥ wMin + 2 × écartMin      soit 2.20 m au défaut
+
+Capacité d'un segment (même règle qu'en §7.2, une seule définition) :
+  capacité(segment, w) = max(0, floor((L_seg − écartMin) / (w + écartMin)))
 
 Répartition sur un segment :
-  reste = longueurSegment − Σw
-  écart = reste / (n + 1)
-  si écart < 0.60 → réduire toutes les tailles de 10 % et recommencer (max 5 fois)
-  si écart > 2.50 → écart = 2.50 et centrer le groupe
-  Les œuvres sont ordonnées par étoiles décroissantes depuis le centre du mur
-  vers les bords (l'œil se pose au centre).
+  écart = (L_seg − Σw) / (n + 1)
+  si écart < écartMin → réduire toutes les tailles de 10 % et recommencer,
+                        MAX 5 fois ; passé les 5 essais, poser autant d'œuvres
+                        que la capacité l'autorise et RENVOYER LE RESTE à
+                        l'appelant. Ne jamais laisser deux cadres se chevaucher,
+                        et ne jamais lever d'exception.
+  si écart > écartMax → plafonner à écartMax et centrer le groupe
 
+Ordre : par étoiles décroissantes DEPUIS LE CENTRE du mur vers les bords.
 Hauteur d'axe : 1.45 m (standard muséal, 57 pouces), sauf override.
 Les placements `pinned` sont posés d'abord et exclus de la répartition.
 ```
+
+Le seuil de segment utile est **dérivé de `wMin`, pas constant**. Un seuil figé à 1,20 m déclarerait utiles des segments où rien ne peut tenir : une seule œuvre demande `wMin + 2 × écartMin`, soit 2,20 m au défaut.
+
+La branche terminale de la boucle de réduction doit être explicite. Après cinq réductions les cadres ne font plus que 59 % de leur taille voulue, ce qui annule le signal étoiles→taille ; au-delà, on renvoie le surplus plutôt que de continuer à rétrécir. En pratique cette branche ne doit jamais être atteinte : c'est le contrôle de faisabilité de §7.2 qui garantit la place, la réduction n'est qu'une marge de confort.
 
 ### 7.5 Rampe
 
@@ -374,13 +419,18 @@ Collision : décomposition en segments convexes (un `cuboid` incliné par pas de
 
 | Constructeur | Entrée | Sortie | Test |
 |---|---|---|---|
-| `buildSlab` | footprint + trous | `BufferGeometry` (`Shape` + `.holes` → `ExtrudeGeometry`) + collider trimesh | trémie 6×6 dans 20×20 → aire = 364 m², aucun collider au-dessus du vide |
+| `buildSlab` | footprint + trous | `BufferGeometry` (`Shape` + `.holes` → `ExtrudeGeometry({ depth, bevelEnabled: false })`) + collider trimesh | trémie 6×6 dans 20×20 → aire = 364 m², aucun collider au-dessus du vide |
 | `buildRailing` | périmètre de trou | garde-corps 1,1 m, main courante | périmètre d'une trémie 6×6 = 24 m |
 | `buildWall` | segment + ouvertures | mur troué (`Shape` + `.holes`) + collider | somme des aires d'ouvertures conservée |
 | `buildRamp` | `Ramp` | plancher extrudé + garde-corps + colliders convexes | pente < 40° pour toute config |
 | `buildRoom` | `Room` | groupe : sol, plafond, 4 murs, baie | 4 murs, aucun chevauchement |
 
 Tous purs, tous dans `builders/`, tous testables sans canvas.
+
+**Piège `ExtrudeGeometry` — deux défauts silencieux**, qui touchent `buildSlab`, `buildWall` et `buildRamp` :
+
+- **`bevelEnabled` vaut `true` par défaut** (`bevelThickness` 0,2 ; `bevelSize` 0,1). Sans `bevelEnabled: false`, une dalle demandée en 20×20×0,4 sort avec 20,2 m d'emprise et **0,8 m d'épaisseur** — le double. Aucun test d'aire en 2D ne le détecte : il faut tester la *bounding box* en 3D.
+- **La géométrie produite n'est pas indexée** (`geometry.index === null`), alors que `ColliderDesc.trimesh(vertices, indices)` de Rapier exige un `Uint32Array` d'indices. Il faut donc indexer explicitement, ou générer la séquence `0..n-1`, sinon le collider est vide et **le joueur traverse le sol**.
 
 ## 9. Rendu et budget de performance
 
@@ -458,7 +508,9 @@ Le bouton **Régénérer** est le test de santé de l'architecture : s'il perd d
 
 Plugin Vite `museumDevWrite()`, actif seulement quand `command === 'serve'`. Il expose `POST /__museum/curation` qui valide par le schéma zod puis écrit `curation.json` avec un formatage stable (clés triées, 2 espaces) pour que les diffs git restent lisibles.
 
-**Limite assumée : on ne cure pas depuis le site déployé.** Le flux est forker → `npm run dev` → curer → commiter → l'Action publie. Repli en production : l'éditeur tourne en brouillon `localStorage` avec un bouton « Proposer ces changements » qui ouvre l'éditeur web GitHub sur `curation.json` pré-rempli — curation sans backend et sans clone, valable pour n'importe quel fork.
+**Limite assumée : on ne cure pas depuis le site déployé.** Le flux est forker → `npm run dev` → curer → commiter → l'Action publie.
+
+Le site déployé **n'embarque aucun code d'éditeur** — la contrainte `import.meta.env.DEV` ci-dessus l'exclut du bundle, il ne peut donc pas y exister de « mode brouillon en production ». Il expose seulement un lien statique « Proposer une correction » vers `https://github.com/<owner>/<repo>/edit/main/curation.json`, qui ouvre l'éditeur web GitHub et déclenche le fork automatiquement. Ce lien n'est pas pré-rempli : le paramètre `value` n'est honoré qu'à la *création* d'un fichier (`/new/<branche>?filename=&value=`), il est ignoré à l'édition d'un fichier existant, et le contenu transiterait en GET. C'est un `<a>` dans le chrome de l'interface, pas dans `editor/` : rien ne rentre dans le bundle ni dans le budget du §9.
 
 ## 11. Intégration continue
 
@@ -506,7 +558,7 @@ Le **lot 0 précède tout** : il dérisque le seul pari technique. Le **lot 4 pr
 | ~~`KTX2Loader` ne gère pas les array textures compressées~~ | **écarté** | Lot 0 : chemin `DataArrayTexture` validé, aucun encodeur requis |
 | Clustering IDF produisant des salles absurdes | moyenne | Overrides de curation ; le nommage se corrige en une ligne de JSON |
 | 256 œuvres > budget de draw calls malgré l'instancing | faible | Baies étroites déjà choisies ; culling par étage ; réduire `roomsPerFloor` |
-| Quota GitHub dépassé en CI | faible | `GITHUB_TOKEN` = 5000 req/h ; cache ; dégradation gracieuse |
+| Quota GitHub dépassé en CI | faible | `GITHUB_TOKEN` = **1000 req/h et 1000 pts/h par dépôt**, pas 5000 ; budget mesuré ~10 pts GraphQL pour 115 dépôts (pages de 25) ; cache ; dégradation gracieuse |
 | Poids des médias au-delà des 5 Mo initiaux | moyenne | Array seule au chargement (17 Mo mais unique et compressée) ; WebP par proximité |
 | La rampe piège le joueur | faible | Pente 9° ; test automatique < 40° ; garde-corps à collision |
 
