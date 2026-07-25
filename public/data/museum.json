@@ -439,6 +439,7 @@
           ]
         }
       ],
+      "enclosure": [],
       "slabHoles": [],
       "footprint": {
         "x": -15,
@@ -547,7 +548,7 @@
                 "z": -6
               },
               "height": 4.3,
-              "kind": "side",
+              "kind": "outer",
               "normal": {
                 "x": 1,
                 "z": 0
@@ -577,7 +578,7 @@
                 "z": -15
               },
               "height": 4.3,
-              "kind": "side",
+              "kind": "outer",
               "normal": {
                 "x": -1,
                 "z": 0
@@ -701,6 +702,65 @@
             "phmatray/lenia",
             "phmatray/webassembly-demo"
           ]
+        }
+      ],
+      "enclosure": [
+        {
+          "id": "enclos-s--15",
+          "a": {
+            "x": -15,
+            "z": 15
+          },
+          "b": {
+            "x": 15,
+            "z": 15
+          },
+          "height": 4.3,
+          "kind": "outer",
+          "normal": {
+            "x": 0,
+            "z": -1
+          },
+          "openings": [],
+          "placements": []
+        },
+        {
+          "id": "enclos-o--6",
+          "a": {
+            "x": -15,
+            "z": -6
+          },
+          "b": {
+            "x": -15,
+            "z": 15
+          },
+          "height": 4.3,
+          "kind": "outer",
+          "normal": {
+            "x": 1,
+            "z": 0
+          },
+          "openings": [],
+          "placements": []
+        },
+        {
+          "id": "enclos-e--6",
+          "a": {
+            "x": 15,
+            "z": 15
+          },
+          "b": {
+            "x": 15,
+            "z": -6
+          },
+          "height": 4.3,
+          "kind": "outer",
+          "normal": {
+            "x": -1,
+            "z": 0
+          },
+          "openings": [],
+          "placements": []
         }
       ],
       "slabHoles": [
@@ -1063,7 +1123,7 @@
                 "z": -15
               },
               "height": 4.3,
-              "kind": "side",
+              "kind": "outer",
               "normal": {
                 "x": -1,
                 "z": 0
@@ -1663,7 +1723,7 @@
                 "z": 6
               },
               "height": 4.3,
-              "kind": "side",
+              "kind": "outer",
               "normal": {
                 "x": -1,
                 "z": 0
@@ -1991,7 +2051,7 @@
                 "z": -6
               },
               "height": 4.3,
-              "kind": "side",
+              "kind": "outer",
               "normal": {
                 "x": 1,
                 "z": 0
@@ -2083,7 +2143,7 @@
                 "z": 15
               },
               "height": 4.3,
-              "kind": "side",
+              "kind": "outer",
               "normal": {
                 "x": 1,
                 "z": 0
@@ -2134,6 +2194,7 @@
           "keys": []
         }
       ],
+      "enclosure": [],
       "slabHoles": [
         {
           "x": -6,
@@ -2526,7 +2587,7 @@
                 "z": -6
               },
               "height": 4.3,
-              "kind": "side",
+              "kind": "outer",
               "normal": {
                 "x": 1,
                 "z": 0
@@ -2637,7 +2698,7 @@
                 "z": -15
               },
               "height": 4.3,
-              "kind": "side",
+              "kind": "outer",
               "normal": {
                 "x": -1,
                 "z": 0
@@ -2802,7 +2863,7 @@
                 "z": 15
               },
               "height": 4.3,
-              "kind": "side",
+              "kind": "outer",
               "normal": {
                 "x": 1,
                 "z": 0
@@ -2821,7 +2882,7 @@
                 "z": 6
               },
               "height": 4.3,
-              "kind": "side",
+              "kind": "outer",
               "normal": {
                 "x": -1,
                 "z": 0
@@ -2945,6 +3006,7 @@
           "keys": []
         }
       ],
+      "enclosure": [],
       "slabHoles": [
         {
           "x": -6,

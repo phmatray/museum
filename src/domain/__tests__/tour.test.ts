@@ -121,6 +121,7 @@ function niveau(id: string, level: number, rooms: Room[]): Floor {
     elevation: level * 4.7,
     ceilingHeight: 4.3,
     rooms,
+    enclosure: [],
     slabHoles: [],
     footprint: { x: -15, z: -15, width: 30, depth: 30 },
   }

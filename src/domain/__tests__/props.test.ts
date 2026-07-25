@@ -558,6 +558,7 @@ describe('placeProps — cas limites', () => {
         elevation: 0,
         ceilingHeight: 4.3,
         rooms,
+        enclosure: [],
         slabHoles: [],
         footprint: { x: -20, z: -20, width: 40, depth: 40 },
       },

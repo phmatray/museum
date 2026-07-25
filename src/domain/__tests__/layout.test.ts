@@ -1030,3 +1030,168 @@ describe('sur les 115 dépôts réels du catalogue', () => {
     expect(JSON.stringify(plan)).toBe(a)
   })
 })
+
+// ── Fermeture du pourtour ────────────────────────────────────────────────
+
+/**
+ * Un musée doit être un bâtiment CLOS. Ce n'était pas le cas : les murs
+ * d'enceinte naissent des salles, et un niveau à une seule salle laissait donc
+ * trois côtés à l'air libre. Le visiteur apparaissait sur une terrasse.
+ */
+describe('pourtour', () => {
+  const EPS = 1e-6
+
+  /** Les quatre arêtes de l'emprise : axe parcouru, coordonnée fixe, extension. */
+  function aretes(f: Rect) {
+    const xM = f.x + f.width
+    const zM = f.z + f.depth
+    return [
+      { axe: 'x' as const, fixe: f.z, de: f.x, a: xM },
+      { axe: 'x' as const, fixe: zM, de: f.x, a: xM },
+      { axe: 'z' as const, fixe: f.x, de: f.z, a: zM },
+      { axe: 'z' as const, fixe: xM, de: f.z, a: zM },
+    ]
+  }
+
+  /** Longueur d'arête réellement murée, en fusionnant les recouvrements. */
+  function couverture(murs: Wall[], arete: ReturnType<typeof aretes>[number]): number {
+    const segments: [number, number][] = []
+    for (const w of murs) {
+      const sur =
+        arete.axe === 'x'
+          ? Math.abs(w.a.z - arete.fixe) < EPS && Math.abs(w.b.z - arete.fixe) < EPS
+          : Math.abs(w.a.x - arete.fixe) < EPS && Math.abs(w.b.x - arete.fixe) < EPS
+      if (!sur) continue
+      const u0 = arete.axe === 'x' ? w.a.x : w.a.z
+      const u1 = arete.axe === 'x' ? w.b.x : w.b.z
+      if (Math.abs(u1 - u0) < EPS) continue
+      segments.push([Math.min(u0, u1), Math.max(u0, u1)])
+    }
+    segments.sort((p, q) => p[0] - q[0])
+    let total = 0
+    let curseur = arete.de
+    for (const [lo, hi] of segments) {
+      if (hi > curseur) {
+        total += Math.min(hi, arete.a) - Math.max(lo, curseur)
+        curseur = Math.max(curseur, hi)
+      }
+    }
+    return total
+  }
+
+  const plan = planBuilding({
+    // Un seul cluster : le cas qui cassait. Le rez-de-chaussée n'a qu'une salle
+    // d'honneur, qui ne couvre qu'un côté sur quatre.
+    clusters: clusters(6),
+    featured: ['acme/x'],
+    vault: ['acme/f1'],
+    config: config(),
+  })
+
+  it('chaque niveau est clos sur ses quatre côtés', () => {
+    for (const floor of plan.floors) {
+      const murs = [...floor.rooms.flatMap((r) => r.walls), ...floor.enclosure]
+      for (const arete of aretes(floor.footprint)) {
+        const attendu = arete.a - arete.de
+        expect(couverture(murs, arete), `${floor.id} côté ${arete.axe}=${arete.fixe}`).toBeCloseTo(
+          attendu,
+          6,
+        )
+      }
+    }
+  })
+
+  it('le rez-de-chaussée à une seule salle reçoit bien des murs de fermeture', () => {
+    // Sans ça le test précédent pourrait passer parce que les salles couvrent
+    // déjà tout, et ne rien prouver du mécanisme de fermeture.
+    const rdc = plan.floors.find((f) => f.level === 0)!
+    expect(rdc.rooms).toHaveLength(1)
+    expect(rdc.enclosure.length).toBeGreaterThan(0)
+  })
+
+  it('les murs de fermeture ne recouvrent aucun mur de salle', () => {
+    // Deux murs coplanaires sur toute la façade seraient le z-fighting le plus
+    // visible du bâtiment.
+    for (const floor of plan.floors) {
+      const salles = floor.rooms.flatMap((r) => r.walls)
+      for (const arete of aretes(floor.footprint)) {
+        const cSalles = couverture(salles, arete)
+        const cEnclos = couverture(floor.enclosure, arete)
+        const cTotal = couverture([...salles, ...floor.enclosure], arete)
+        expect(cTotal, `${floor.id} côté ${arete.axe}=${arete.fixe}`).toBeCloseTo(
+          cSalles + cEnclos,
+          6,
+        )
+      }
+    }
+  })
+
+  it('les murs de fermeture ne portent ni œuvre ni ouverture', () => {
+    // Ils ferment le volume, ils n'exposent pas — et une ouverture y donnerait
+    // sur le vide.
+    for (const floor of plan.floors) {
+      for (const wall of floor.enclosure) {
+        expect(wall.placements).toHaveLength(0)
+        expect(wall.openings).toHaveLength(0)
+        expect(wall.kind).toBe('outer')
+      }
+    }
+  })
+
+  it('aucun mur MITOYEN ne subsiste sur le pourtour', () => {
+    // Un mur mitoyen posé sur le pourtour est un mur de façade : laissé en
+    // `side`, il recevait le plâtre teinté du thème de sa salle et l'enveloppe
+    // devenait un patchwork.
+    for (const floor of plan.floors) {
+      for (const room of floor.rooms) {
+        for (const wall of room.walls) {
+          if (wall.kind !== 'side') continue
+          const surBord = aretes(floor.footprint).some((arete) =>
+            arete.axe === 'x'
+              ? Math.abs(wall.a.z - arete.fixe) < EPS && Math.abs(wall.b.z - arete.fixe) < EPS
+              : Math.abs(wall.a.x - arete.fixe) < EPS && Math.abs(wall.b.x - arete.fixe) < EPS,
+          )
+          expect(surBord, `${wall.id} est mitoyen ET sur le pourtour`).toBe(false)
+        }
+      }
+    }
+  })
+
+  /**
+   * L'accrochage n'a pas lieu dans `planBuilding` : il vient de `hanging.ts`, et
+   * seul le musée dérivé porte des œuvres. Ces deux invariants se vérifient donc
+   * sur lui, pas sur un plan de test.
+   */
+  const reel = JSON.parse(
+    readFileSync(resolve(__dirname, '../../../public/data/museum.json'), 'utf8'),
+  ) as { floors: { id: string; footprint: Rect; rooms: Room[]; enclosure: Wall[] }[] }
+
+  it('la requalification ne décroche aucune œuvre', () => {
+    // Plusieurs murs requalifiés portent des toiles — changer une étiquette ne
+    // doit pas les faire disparaître de l'accrochage.
+    const surPourtourAvecOeuvres = reel.floors.flatMap((floor) =>
+      floor.rooms
+        .flatMap((r) => r.walls)
+        .filter(
+          (w) =>
+            w.placements.length > 0 &&
+            aretes(floor.footprint).some((arete) =>
+              arete.axe === 'x'
+                ? Math.abs(w.a.z - arete.fixe) < EPS && Math.abs(w.b.z - arete.fixe) < EPS
+                : Math.abs(w.a.x - arete.fixe) < EPS && Math.abs(w.b.x - arete.fixe) < EPS,
+            ),
+        ),
+    )
+    expect(surPourtourAvecOeuvres.length).toBeGreaterThan(0)
+    for (const w of surPourtourAvecOeuvres) expect(w.kind).toBe('outer')
+  })
+
+  it('le musée réel est clos à tous les niveaux', () => {
+    for (const floor of reel.floors) {
+      const murs = [...floor.rooms.flatMap((r) => r.walls), ...floor.enclosure]
+      for (const arete of aretes(floor.footprint)) {
+        expect(couverture(murs, arete), `${floor.id}`).toBeCloseTo(arete.a - arete.de, 4)
+      }
+    }
+  })
+})

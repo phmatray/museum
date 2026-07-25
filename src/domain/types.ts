@@ -219,6 +219,23 @@ export interface Floor {
   elevation: number
   ceilingHeight: number
   rooms: Room[]
+  /**
+   * Les murs qui ferment le pourtour de la dalle là où AUCUNE salle ne le fait.
+   *
+   * Les murs d'enceinte naissent des salles : chaque salle de l'anneau porte le
+   * sien sur sa propre longueur. Rien ne garantissait donc que le pourtour soit
+   * clos, et il ne l'était pas — mesuré sur le musée réel : le rez-de-chaussée
+   * fermé à 25 %, les étages à 70 %. Un niveau à une seule salle laissait trois
+   * côtés à l'air libre, et les faces est et ouest n'avaient de mur que sur les
+   * 12 m de l'atrium, pour 30 m de côté. Conséquences visibles : le visiteur
+   * apparaissait sur une terrasse à ciel ouvert, et les CLOISONS intérieures se
+   * voyaient de l'extérieur, ce qui donnait à la façade son aspect de patchwork.
+   *
+   * Ces murs-ci ne portent aucune œuvre : ils ferment le volume, ils n'exposent
+   * pas. Ils appartiennent au niveau et non à une salle, parce qu'ils bouchent
+   * précisément ce qu'aucune salle ne revendique.
+   */
+  enclosure: Wall[]
   /** Trémies. L'atrium en est une, présente à tous les niveaux sauf le plus bas. */
   slabHoles: Rect[]
   /** Emprise de la dalle de ce niveau. */

@@ -73,6 +73,7 @@ function niveau(over: Partial<Floor> & { id: string; level: number }): Floor {
     elevation: over.level * 4.7,
     ceilingHeight: 4.3,
     rooms: [],
+    enclosure: [],
     slabHoles: [],
     footprint: rect(-15, -15, 30, 30),
     ...over,

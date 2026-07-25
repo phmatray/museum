@@ -45,15 +45,20 @@ import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 
 import { RAILING_HEIGHT, buildRailing, buildSlab } from '../builders/slab'
+import { buildWall } from '../builders/wall'
 import { floorBox, shadowSweptBox } from '../domain/culling'
 import type { Floor, Museum, Vec2 } from '../domain/types'
 import { ArtworkLayer } from './ArtworkLayer'
 import { RoomMesh } from './RoomMesh'
+import { createWallMaterial } from './lighting'
 import { useRegisterFloor } from './floorCulling'
 import {
   REGLAGE_MATIERE,
+  appliquerCartes,
   matiereDeDalle,
+  repetitionDeMatiere,
   repetitionMonde,
+  useCartes,
   useMatiere,
 } from './materials'
 
@@ -132,6 +137,9 @@ export function FloorMesh({
   // dessous. Une seule matière pour les deux donnait un plafond en lames de
   // parquet dans toute la vue d'accueil, et un bandeau de bois faisant le tour
   // de la façade à chaque niveau.
+  // Le béton est mutualisé au niveau du module : la dalle, la fermeture du
+  // pourtour et les murs d'enceinte des salles partagent une seule texture GPU.
+  const cartesBeton = useCartes('beton', repetitionDeMatiere('beton'))
   const matiereDalle = matiereDeDalle(floor.level)
   // La répétition omise : `useMatiere` prend alors l'échelle propre de la
   // matière — une banche de béton de 2,6 m, une tuile de parquet de 3 m.
@@ -187,6 +195,35 @@ export function FloorMesh({
   }, [slab])
   const railingMaterial = useMatiere('metal', repetitionRailing)
 
+  // ── Fermeture du pourtour ──────────────────────────────────────────────
+  //
+  // `domain/layout.ts` a calculé ce que les salles laissent ouvert sur le
+  // pourtour ; il ne reste qu'à le construire. Ces murs sont hors du groupe de
+  // CONTENU, avec la dalle et la toiture : ce sont eux qui donnent au bâtiment
+  // sa silhouette et sa façade, et les masquer quand on masque les œuvres
+  // rouvrirait le bâtiment à chaque fois qu'on s'en éloigne.
+  const enclosure = useMemo(
+    () => floor.enclosure.map((wall) => buildWall(wall)),
+    [floor.enclosure],
+  )
+  // UN matériau pour toute la fermeture d'un niveau : ces murs n'ont ni œuvre ni
+  // flaque de lumière, donc aucun uniforme qui leur soit propre — contrairement
+  // aux murs de salle, où c'est l'accrochage qui impose un matériau par mur.
+  //
+  // Le thème passé n'a pas d'effet visible : `createWallMaterial` force la
+  // teinte et la rugosité de l'enceinte dès que `kind` vaut 'outer', et les
+  // autres uniformes du thème ne servent qu'aux flaques, qu'un mur sans
+  // accrochage n'a pas.
+  const enclosureMaterial = useMemo(() => {
+    const gabarit = floor.enclosure[0]
+    if (!gabarit) return null
+    return appliquerCartes(
+      createWallMaterial({ theme: 'modern', wall: gabarit, elevation: floor.elevation }),
+      cartesBeton,
+      'beton',
+    )
+  }, [floor.enclosure, floor.elevation, cartesBeton])
+
   // ── Culling (§9.3) ─────────────────────────────────────────────────────
   //
   // La boîte est calculée UNE fois, au montage : un plateau ne bouge pas. Elle
@@ -218,8 +255,10 @@ export function FloorMesh({
       slab.geometry.dispose()
       railing?.geometry.dispose()
       roof?.dispose()
+      for (const wall of enclosure) wall.geometry.dispose()
+      enclosureMaterial?.dispose()
     }
-  }, [slab, railing, roof])
+  }, [slab, railing, roof, enclosure, enclosureMaterial])
 
   return (
     <group ref={groupe} name={`floor:${floor.id}`}>
@@ -239,6 +278,39 @@ export function FloorMesh({
           </>
         )}
       </RigidBody>
+
+      {enclosureMaterial && enclosure.length > 0 && (
+        <RigidBody
+          type="fixed"
+          colliders={false}
+          position={[0, floor.elevation, 0]}
+          name={`enclos:${floor.id}`}
+        >
+          {enclosure.map((built, i) => (
+            <mesh
+              key={floor.enclosure[i].id}
+              name={floor.enclosure[i].id}
+              geometry={built.geometry}
+              material={enclosureMaterial}
+              castShadow
+              receiveShadow
+            />
+          ))}
+          {/*
+            Avec collider, et ce n'est pas optionnel : sans lui la façade
+            redevient franchissable et le joueur sort du bâtiment par le côté
+            qu'on vient précisément de fermer.
+          */}
+          {enclosure.map((built, i) =>
+            built.collider.indices.length === 0 ? null : (
+              <TrimeshCollider
+                key={floor.enclosure[i].id}
+                args={[built.collider.vertices, built.collider.indices]}
+              />
+            ),
+          )}
+        </RigidBody>
+      )}
 
       {roof && (
         // Pas de collider : la toiture est à 4,3 m au-dessus du plancher, hors

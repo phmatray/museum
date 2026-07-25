@@ -605,6 +605,160 @@ function ringRoomWalls(
   return specs.map((s) => finalizeWall(s, centre, ceilingHeight))
 }
 
+// ── Fermeture du pourtour ────────────────────────────────────────────────
+
+/**
+ * Les quatre arêtes de l'emprise, chacune avec l'axe le long duquel elle court
+ * et la coordonnée fixe sur l'axe perpendiculaire.
+ */
+function footprintEdges(
+  footprint: Rect,
+): { id: string; axis: 'x' | 'z'; fixe: number; de: number; a: number }[] {
+  const xMin = round(footprint.x)
+  const xMax = round(footprint.x + footprint.width)
+  const zMin = round(footprint.z)
+  const zMax = round(footprint.z + footprint.depth)
+  return [
+    { id: 'n', axis: 'x', fixe: zMin, de: xMin, a: xMax },
+    { id: 's', axis: 'x', fixe: zMax, de: xMin, a: xMax },
+    { id: 'o', axis: 'z', fixe: xMin, de: zMin, a: zMax },
+    { id: 'e', axis: 'z', fixe: xMax, de: zMin, a: zMax },
+  ]
+}
+
+/**
+ * Complément d'une union d'intervalles dans `[de, a]` : ce qui reste à couvrir.
+ *
+ * Les intervalles arrivent en désordre et peuvent se chevaucher — deux salles
+ * voisines partagent leur arête à l'epsilon près. On les trie et on les fusionne
+ * avant de prendre le complément, sinon un chevauchement d'un millimètre
+ * fabriquerait un trou de la même taille et donc un mur de un millimètre.
+ */
+function gaps(
+  couverts: [number, number][],
+  de: number,
+  a: number,
+): [number, number][] {
+  const tries = [...couverts].sort((p, q) => p[0] - q[0])
+  const trous: [number, number][] = []
+  let curseur = de
+  for (const [lo, hi] of tries) {
+    if (lo > curseur + EPS) trous.push([curseur, Math.min(lo, a)])
+    curseur = Math.max(curseur, hi)
+    if (curseur >= a - EPS) break
+  }
+  if (curseur < a - EPS) trous.push([curseur, a])
+  // Un résidu sous le seuil n'est pas un trou dans un bâtiment, c'est du bruit
+  // d'arrondi : le murer ferait des lamelles de quelques centimètres, coûteuses
+  // en draw calls et invisibles.
+  return trous.filter(([lo, hi]) => hi - lo > MIN_ENCLOSURE_SEGMENT)
+}
+
+/**
+ * En dessous, un manque du pourtour ne vaut pas un mur. Un demi-mètre est plus
+ * étroit que la moindre porte : rien de franchissable ne s'y cache.
+ */
+const MIN_ENCLOSURE_SEGMENT = 0.5
+
+/** Vrai si le mur est posé, sur toute sa longueur, sur une arête de l'emprise. */
+function surLePourtour(wall: Wall, footprint: Rect): boolean {
+  return footprintEdges(footprint).some((edge) =>
+    edge.axis === 'x'
+      ? Math.abs(wall.a.z - edge.fixe) < EPS && Math.abs(wall.b.z - edge.fixe) < EPS
+      : Math.abs(wall.a.x - edge.fixe) < EPS && Math.abs(wall.b.x - edge.fixe) < EPS,
+  )
+}
+
+/**
+ * Requalifie en `outer` les murs MITOYENS qui se trouvent sur le pourtour.
+ *
+ * Un mur mitoyen sépare normalement deux salles. Aux angles est et ouest, il n'a
+ * pas de voisin : c'est lui qui ferme le bâtiment, et il est donc de la façade —
+ * mais il était étiqueté `side`, donc habillé du plâtre du thème de sa salle.
+ * Vue de l'extérieur, l'enveloppe alternait ainsi le béton des strips et le
+ * plâtre teinté des angles, ce qui donnait à la façade son aspect de patchwork.
+ * Sur le musée réel, dix murs sont dans ce cas.
+ *
+ * C'est une correction d'ÉTIQUETTE, pas de géométrie : les murs ne bougent pas,
+ * leurs œuvres restent accrochées. Aucun d'eux ne porte d'ouverture — le poseur
+ * ne perce que vers un voisin, et ceux-là n'en ont pas — donc requalifier ne
+ * peut pas fermer un passage.
+ */
+function reclassifyPerimeterWalls(footprint: Rect, rooms: Room[]): Room[] {
+  return rooms.map((room) => {
+    const walls = room.walls.map((wall) =>
+      wall.kind === 'side' && surLePourtour(wall, footprint)
+        ? { ...wall, kind: 'outer' as const }
+        : wall,
+    )
+    return walls.some((w, i) => w !== room.walls[i]) ? { ...room, walls } : room
+  })
+}
+
+/**
+ * Mure ce que les salles laissent ouvert sur le pourtour du niveau.
+ *
+ * Les murs d'enceinte naissent des salles, une salle ne couvrant que sa propre
+ * longueur : rien ne garantit que le pourtour soit clos. Sur le musée réel il ne
+ * l'était pas — rez-de-chaussée 25 %, étages 70 % —, faute de quoi le visiteur
+ * apparaissait dehors et les cloisons intérieures faisaient office de façade.
+ *
+ * On ne remplace RIEN : les murs de salle restent tels quels, avec leurs œuvres
+ * et leurs ouvertures. On n'ajoute que le complément, et deux murs ne peuvent
+ * donc pas se superposer — ce qui donnerait le z-fighting le plus visible du
+ * bâtiment, sur toute la façade.
+ */
+export function enclosureWalls(
+  footprint: Rect,
+  rooms: Room[],
+  ceilingHeight: number,
+): Wall[] {
+  const centre: Vec2 = {
+    x: round(footprint.x + footprint.width / 2),
+    z: round(footprint.z + footprint.depth / 2),
+  }
+  const murs: Wall[] = []
+
+  for (const edge of footprintEdges(footprint)) {
+    const couverts: [number, number][] = []
+    for (const room of rooms) {
+      for (const wall of room.walls) {
+        // Seuls comptent les murs qui sont EFFECTIVEMENT sur cette arête. Un mur
+        // mitoyen perpendiculaire la touche en un point et ne la couvre pas.
+        const surEdge =
+          edge.axis === 'x'
+            ? Math.abs(wall.a.z - edge.fixe) < EPS && Math.abs(wall.b.z - edge.fixe) < EPS
+            : Math.abs(wall.a.x - edge.fixe) < EPS && Math.abs(wall.b.x - edge.fixe) < EPS
+        if (!surEdge) continue
+        const u0 = edge.axis === 'x' ? wall.a.x : wall.a.z
+        const u1 = edge.axis === 'x' ? wall.b.x : wall.b.z
+        if (Math.abs(u1 - u0) < EPS) continue
+        couverts.push([Math.min(u0, u1), Math.max(u0, u1)])
+      }
+    }
+
+    for (const [lo, hi] of gaps(couverts, edge.de, edge.a)) {
+      const p = edge.axis === 'x' ? { x: round(lo), z: edge.fixe } : { x: edge.fixe, z: round(lo) }
+      const q = edge.axis === 'x' ? { x: round(hi), z: edge.fixe } : { x: edge.fixe, z: round(hi) }
+      murs.push(
+        finalizeWall(
+          {
+            id: `enclos-${edge.id}-${round(lo)}`,
+            p,
+            q,
+            kind: 'outer',
+            openings: [],
+          },
+          centre,
+          ceilingHeight,
+        ),
+      )
+    }
+  }
+
+  return murs
+}
+
 /** Les quatre murs d'aveugle d'une salle rectangulaire isolée : la réserve. */
 function boxWalls(roomId: string, footprint: Rect, ceilingHeight: number): Wall[] {
   const xMin = footprint.x
@@ -1017,17 +1171,25 @@ function layoutAttempt(input: LayoutInput, atriumSize: number): BuildingPlan {
   })
 
   const plusBas = niveaux[0].level
-  const floors: Floor[] = niveaux.map(({ level, rooms }) => ({
+  const floors: Floor[] = niveaux.map(({ level, rooms: brutes }) => {
+    // Avant tout le reste : un mur mitoyen posé sur le pourtour EST un mur de
+    // façade, quel que soit son étiquetage d'origine.
+    const rooms = reclassifyPerimeterWalls(footprint, brutes)
+    return {
     id: floorId(level),
     name: floorName(level),
     level,
     elevation: elevationOf(level, config),
     ceilingHeight: round(ceilingHeight),
     rooms,
+    // Après les salles, jamais avant : la fermeture se calcule sur ce qu'elles
+    // laissent réellement ouvert.
+    enclosure: enclosureWalls(footprint, rooms, round(ceilingHeight)),
     // La dalle la plus basse est pleine : il n'y a rien en dessous à découvrir.
     slabHoles: level === plusBas ? [] : [{ ...atrium }],
     footprint: { ...footprint },
-  }))
+    }
+  })
 
   return { floors, ramps: planRamps(floors, atrium, config), atrium }
 }

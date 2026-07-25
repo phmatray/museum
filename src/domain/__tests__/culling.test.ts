@@ -63,6 +63,7 @@ function plateau(level: number, footprint: Rect): Floor {
     elevation: level * PAS,
     ceilingHeight: HAUTEUR,
     rooms: [],
+    enclosure: [],
     slabHoles: [],
     footprint,
   }
