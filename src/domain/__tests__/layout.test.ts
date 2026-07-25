@@ -16,13 +16,19 @@ import { describe, expect, it } from 'vitest'
 
 import { clusterArtworks, type Cluster } from '../clustering'
 import {
+  BLIND_GALLERY_NAME,
   elevationOf,
+  isBlindGallery,
+  linearNeed,
+  planSideSlots,
   roomCapacity,
   planBuilding,
   rampSlopeDegrees,
   subdivideSide,
+  targetRoomWidth,
   type BuildingPlan,
 } from '../layout'
+import { MIN_ARTWORK_GAP, MIN_USABLE_SEGMENT, WALL_CORNER_MARGIN } from '../types'
 import type { Artwork, Catalogue, MuseumConfig, Rect, Room, Wall } from '../types'
 
 // ── Fixtures ─────────────────────────────────────────────────────────────
@@ -80,6 +86,89 @@ function wallLength(w: Wall): number {
 
 function allRooms(plan: BuildingPlan): Room[] {
   return plan.floors.flatMap((f) => f.rooms)
+}
+
+/**
+ * Les salles au sens du visiteur. Une galerie aveugle est un volume qui ferme
+ * l'enveloppe : elle a bien quatre murs et une emprise — donc tous les
+ * invariants structurels lui sont opposables — mais elle n'a ni cluster, ni
+ * baie, ni porte, et ne compte pas comme salle (spec §7.2).
+ */
+function collections(rooms: Room[]): Room[] {
+  return rooms.filter((r) => !isBlindGallery(r))
+}
+
+/**
+ * Les salles d'un plateau que le visiteur peut atteindre depuis l'atrium.
+ *
+ * On part des salles qui ouvrent une baie sur le vide — le seul accès de plain-
+ * pied, puisque la rampe débouche dans l'atrium — et on suit les ouvertures de
+ * proche en proche. Une salle dimensionnée par son besoin ne longe plus
+ * forcément l'atrium : elle peut se retrouver en angle, et ne tenir que par
+ * l'enfilade. Ce qui doit rester vrai, c'est qu'on y arrive.
+ */
+function atteignables(floor: BuildingPlan['floors'][number], atrium: Rect): Set<string> {
+  const voisins = new Map<string, Set<string>>(floor.rooms.map((r) => [r.id, new Set<string>()]))
+  const racines = new Set<string>()
+
+  for (const room of floor.rooms) {
+    for (const wall of room.walls) {
+      const L = wallLength(wall)
+      const dir = { x: (wall.b.x - wall.a.x) / L, z: (wall.b.z - wall.a.z) / L }
+      for (const o of wall.openings) {
+        const u = (o.start + o.end) / 2
+        // Un pas au travers de l'ouverture, donc à l'opposé de la normale.
+        const x = wall.a.x + dir.x * u - wall.normal.x * 0.05
+        const z = wall.a.z + dir.z * u - wall.normal.z * 0.05
+        if (contains(atrium, x, z)) {
+          racines.add(room.id)
+          continue
+        }
+        for (const autre of floor.rooms) {
+          if (autre.id !== room.id && contains(autre.footprint, x, z, -1e-6)) {
+            voisins.get(room.id)!.add(autre.id)
+            voisins.get(autre.id)!.add(room.id)
+          }
+        }
+      }
+    }
+  }
+
+  const vus = new Set(racines)
+  const pile = [...racines]
+  while (pile.length > 0) {
+    for (const v of voisins.get(pile.pop()!)!) {
+      if (!vus.has(v)) {
+        vus.add(v)
+        pile.push(v)
+      }
+    }
+  }
+  return vus
+}
+
+/**
+ * Longueur de mur réellement accrochable d'une salle, avec la règle EXACTE de
+ * `hanging.ts` : marges d'angle, ouvertures déduites, fragments trop courts
+ * jetés. C'est la grandeur à comparer au besoin linéaire d'un cluster.
+ */
+function offreLineaire(room: Room): number {
+  let total = 0
+  for (const wall of room.walls) {
+    const L = wallLength(wall)
+    let segments: [number, number][] = [[WALL_CORNER_MARGIN, L - WALL_CORNER_MARGIN]]
+    for (const o of wall.openings) {
+      segments = segments.flatMap(([s, e]) => {
+        if (o.end <= s || o.start >= e) return [[s, e] as [number, number]]
+        const out: [number, number][] = []
+        if (o.start > s) out.push([s, Math.min(o.start, e)])
+        if (o.end < e) out.push([Math.max(o.end, s), e])
+        return out
+      })
+    }
+    for (const [s, e] of segments) if (e - s >= MIN_USABLE_SEGMENT) total += e - s
+  }
+  return total
 }
 
 /** Toutes les invariantes structurelles, en un seul endroit. */
@@ -303,6 +392,239 @@ describe('subdivideSide', () => {
   })
 })
 
+// ── Dimensionnement par le besoin ────────────────────────────────────────
+
+describe('besoin linéaire', () => {
+  it('vaut Σ largeurs + (n+1) écarts, et rien pour une salle vide', () => {
+    // L'œuvre de référence de `hanging.ts` : 0,90 m de haut, aspect 2.
+    const largeur = 0.9 * 2
+    expect(linearNeed(0)).toBe(0)
+    expect(linearNeed(1)).toBeCloseTo(largeur + 2 * MIN_ARTWORK_GAP, 6)
+    expect(linearNeed(11)).toBeCloseTo(11 * largeur + 12 * MIN_ARTWORK_GAP, 6)
+    // Strictement croissant : une œuvre de plus, c'est toujours du mur en plus.
+    for (let n = 1; n < 40; n++) expect(linearNeed(n + 1)).toBeGreaterThan(linearNeed(n))
+    // Une entrée absurde ne renvoie jamais NaN : la géométrie s'en remettrait mal.
+    expect(linearNeed(Number.NaN)).toBe(0)
+    expect(linearNeed(-3)).toBe(0)
+  })
+})
+
+describe('largeur visée d’une salle', () => {
+  it('croît avec le cluster, sans jamais sortir de [plancher, côté]', () => {
+    let precedente = 0
+    for (let n = 1; n <= 30; n++) {
+      const w = targetRoomWidth(n, 9, 6, 30)
+      expect(w).toBeGreaterThanOrEqual(6)
+      expect(w).toBeLessThanOrEqual(30)
+      expect(w).toBeGreaterThanOrEqual(precedente)
+      precedente = w
+    }
+    // Le côté est une borne dure : mieux vaut une salle de la taille du côté et
+    // la boucle d'atrium ensuite, qu'une salle qui déborde sur sa voisine.
+    expect(targetRoomWidth(200, 9, 6, 30)).toBe(30)
+    expect(targetRoomWidth(1, 9, 6, 30)).toBe(6)
+  })
+
+  it('demande moins de largeur à une salle profonde : ses murs mitoyens portent', () => {
+    // Deux mètres de profondeur en plus, c'est quatre mètres de mur mitoyen en
+    // plus (deux murs), donc deux mètres de largeur en moins.
+    expect(targetRoomWidth(12, 11, 6, 40)).toBeCloseTo(targetRoomWidth(12, 9, 6, 40) - 2, 6)
+  })
+
+  it('ne dimensionne pas une salle de 11 œuvres comme un côté de 38 m', () => {
+    // Le défaut qu'on corrige, en une ligne : 11 œuvres réclament 27 m de mur,
+    // qu'une salle de 10 m de large et 9 m de profond offre déjà.
+    const w = targetRoomWidth(11, 9, 6, 38)
+    expect(w).toBeLessThan(12)
+    expect(w).toBeGreaterThan(6)
+  })
+})
+
+describe('planSideSlots', () => {
+  it('couvre exactement la longueur du côté', () => {
+    for (const targets of [[8], [8, 7], [6, 6, 6], [12, 9, 7]]) {
+      const slots = planSideSlots(30, targets, 6)!
+      expect(slots).not.toBeNull()
+      expect(slots.reduce((s, x) => s + x.width, 0)).toBeCloseTo(30, 9)
+      // Chaque cluster reçoit un emplacement et un seul.
+      const vus = slots.filter((s) => s.cluster >= 0).map((s) => s.cluster)
+      expect([...vus].sort((a, b) => a - b)).toEqual(targets.map((_, i) => i))
+    }
+  })
+
+  it('centre les salles et rejette l’aveuglement dans les angles', () => {
+    const slots = planSideSlots(30, [8], 6)!
+    expect(slots.map((s) => s.cluster)).toEqual([-1, 0, -1])
+    expect(slots[0].width).toBeCloseTo(11, 9)
+    expect(slots[2].width).toBeCloseTo(11, 9)
+    // Les salles gardent EXACTEMENT leur largeur visée : le reliquat est muré,
+    // pas redistribué. C'est tout l'objet du changement.
+    expect(slots[1].width).toBe(8)
+  })
+
+  it('regroupe le reliquat en une seule galerie quand deux ne tiendraient pas', () => {
+    // Reliquat 10 m : deux galeries de 5 m seraient sous le plancher, une de
+    // 10 m le respecte.
+    const slots = planSideSlots(30, [10, 10], 6)!
+    expect(slots.map((s) => s.cluster)).toEqual([-1, 0, 1])
+    expect(slots[0].width).toBeCloseTo(10, 9)
+  })
+
+  it('rend aux salles un reliquat trop court pour être une pièce', () => {
+    const slots = planSideSlots(30, [14, 13], 6)!
+    expect(slots.every((s) => s.cluster >= 0)).toBe(true)
+    expect(slots.reduce((s, x) => s + x.width, 0)).toBeCloseTo(30, 9)
+    // Rendu au prorata : la grande salle prend la plus grosse part des 3 m.
+    expect(slots[0].width - 14).toBeGreaterThan(slots[1].width - 13)
+  })
+
+  it('renonce quand les largeurs visées ne tiennent pas', () => {
+    expect(planSideSlots(30, [20, 20], 6)).toBeNull()
+    expect(planSideSlots(30, [30], 6)).toBeNull()
+    expect(planSideSlots(30, [], 6)).toBeNull()
+  })
+})
+
+describe('échelle des salles', () => {
+  const cfg = config()
+  const plan = planBuilding({
+    clusters: clusters(14, 11, 9, 8, 7, 6, 5, 5, 4, 4, 4, 4),
+    featured: [],
+    vault: [],
+    config: cfg,
+  })
+
+  it('n’offre à aucune salle plus de 2,5 fois le mur dont son cluster a besoin', () => {
+    for (const floor of plan.floors.filter((f) => f.level >= 1)) {
+      for (const room of collections(floor.rooms)) {
+        const besoin = linearNeed(room.keys.length)
+        const long =
+          room.side === 'north' || room.side === 'south'
+            ? room.footprint.width
+            : room.footprint.depth
+        // Exemption du plancher : une salle déjà à `minRoomWidth` ne peut pas
+        // rétrécir davantage, quel que soit le peu qu'elle expose.
+        if (long <= cfg.building.minRoomWidth + 1e-6) continue
+        expect(offreLineaire(room) / besoin, `${room.id} (${room.keys.length} œuvres)`).toBeLessThan(
+          2.5,
+        )
+      }
+    }
+  })
+
+  it('sert quand même chaque cluster : l’offre couvre le besoin', () => {
+    for (const floor of plan.floors.filter((f) => f.level >= 1)) {
+      for (const room of collections(floor.rooms)) {
+        expect(offreLineaire(room), `${room.id}`).toBeGreaterThanOrEqual(
+          linearNeed(room.keys.length),
+        )
+        expect(roomCapacity(room), `${room.id}`).toBeGreaterThanOrEqual(room.keys.length)
+      }
+    }
+  })
+
+  it('ne laisse plus une collection de 5 œuvres tenir tout un côté', () => {
+    // Le cas réel qui a motivé le changement : un cluster seul sur un côté de
+    // 30 m y était étiré sur 30 m. Il n'en prend plus que ce qu'il remplit.
+    const seul = planBuilding({ clusters: clusters(5), featured: [], vault: [], config: cfg })
+    const salle = collections(seul.floors[1].rooms)[0]
+    const cote = seul.floors[1].footprint.width
+    expect(salle.footprint.width).toBeLessThan(cote / 3)
+    expect(salle.footprint.width).toBeGreaterThanOrEqual(cfg.building.minRoomWidth)
+  })
+})
+
+// ── Galeries aveugles ────────────────────────────────────────────────────
+
+describe('galeries aveugles', () => {
+  const cfg = config({ roomsPerFloor: 2 })
+  const plan = planBuilding({
+    clusters: clusters(12, 9, 6, 5),
+    featured: ['acme/x'],
+    vault: [],
+    config: cfg,
+  })
+
+  it('ferment l’enveloppe : les quatre côtés existent à chaque plateau', () => {
+    for (const floor of plan.floors.filter((f) => f.level >= 1)) {
+      const cotes = new Set(floor.rooms.map((r) => r.side))
+      expect([...cotes].sort()).toEqual(['east', 'north', 'south', 'west'])
+
+      // Et l'anneau pave exactement la dalle moins l'atrium : sans quoi le
+      // visiteur trouve un bord de dalle sans mur, et tombe.
+      const aire = floor.rooms.reduce((s, r) => s + r.footprint.width * r.footprint.depth, 0)
+      const dalle = floor.footprint.width * floor.footprint.depth
+      const vide = plan.atrium.width * plan.atrium.depth
+      expect(aire).toBeCloseTo(dalle - vide, 4)
+    }
+    expectPlanSain(plan, cfg)
+  })
+
+  it('n’ont ni baie, ni porte, ni cluster, et restent des pièces', () => {
+    const aveugles = allRooms(plan).filter(isBlindGallery)
+    expect(aveugles.length).toBeGreaterThan(0)
+    for (const g of aveugles) {
+      expect(g.name).toBe(BLIND_GALLERY_NAME)
+      expect(g.keys).toEqual([])
+      expect(g.topics).toEqual([])
+      expect(g.walls).toHaveLength(4)
+      for (const wall of g.walls) expect(wall.openings, `${wall.id}`).toEqual([])
+      const long = g.side === 'north' || g.side === 'south' ? g.footprint.width : g.footprint.depth
+      expect(long).toBeGreaterThanOrEqual(cfg.building.minRoomWidth - 1e-6)
+    }
+  })
+
+  it('ne reçoivent jamais la porte d’une salle voisine', () => {
+    // Une porte se juge sur ce qu'il y a DERRIÈRE : on sort du mur d'un pas, à
+    // l'endroit de l'ouverture, et on regarde dans quelle salle on tombe. Une
+    // galerie aveugle ne perce rien : une porte qui donne sur elle donnerait sur
+    // un mur plein.
+    for (const floor of plan.floors.filter((f) => f.level >= 1)) {
+      const aveugles = floor.rooms.filter(isBlindGallery)
+      for (const room of collections(floor.rooms)) {
+        for (const wall of room.walls) {
+          const L = wallLength(wall)
+          const dir = { x: (wall.b.x - wall.a.x) / L, z: (wall.b.z - wall.a.z) / L }
+          for (const o of wall.openings) {
+            const u = (o.start + o.end) / 2
+            const x = wall.a.x + dir.x * u - wall.normal.x * 0.05
+            const z = wall.a.z + dir.z * u - wall.normal.z * 0.05
+            const derriere = aveugles.find((g) => contains(g.footprint, x, z, -1e-6))
+            expect(derriere?.id, `${wall.id} : ${o.kind} donnant sur ${derriere?.id}`).toBeUndefined()
+          }
+        }
+      }
+    }
+  })
+
+  it('passent après les salles, et ne comptent pas comme telles', () => {
+    for (const floor of plan.floors) {
+      const ids = floor.rooms.map(isBlindGallery)
+      // Aucune vraie salle après la première galerie : `floor.rooms[0]` reste la
+      // salle qu'un cartel ou une curation ira chercher.
+      expect(ids.slice(ids.indexOf(true) < 0 ? ids.length : ids.indexOf(true)).every(Boolean)).toBe(
+        true,
+      )
+    }
+    expect(collections(allRooms(plan))).toHaveLength(4 + 1) // 4 clusters + salle d'honneur
+  })
+
+  it('ne coupent la circulation d’aucune salle : tout se rejoint depuis l’atrium', () => {
+    for (const floor of plan.floors.filter((f) => f.level >= 1)) {
+      const vus = atteignables(floor, plan.atrium)
+      for (const room of collections(floor.rooms)) {
+        expect(vus.has(room.id), `${room.id} (${room.name}) inatteignable`).toBe(true)
+      }
+    }
+  })
+
+  it('n’encombrent pas le rez-de-chaussée, dont la salle d’honneur tient le côté', () => {
+    const rdc = plan.floors.find((f) => f.level === 0)!
+    expect(rdc.rooms).toHaveLength(1)
+    expect(rdc.rooms[0].id).toBe('rdc-honneur')
+  })
+})
+
 // ── Murs et ouvertures ───────────────────────────────────────────────────
 
 describe('murs', () => {
@@ -323,7 +645,9 @@ describe('murs', () => {
 
   it('perce une baie centrée sur le mur intérieur des salles de collection', () => {
     for (const floor of plan.floors.filter((f) => f.level >= 1)) {
-      for (const room of floor.rooms) {
+      // Les galeries aveugles sont exclues : c'est leur définition même de
+      // n'avoir ni baie ni porte. Elles ont leur propre test plus bas.
+      for (const room of collections(floor.rooms)) {
         const inner = room.walls.find((w) => w.kind === 'inner')
         expect(inner, `${room.id} : un mur inner`).toBeDefined()
         const baies = inner!.openings.filter((o) => o.kind === 'bay')
@@ -526,7 +850,9 @@ describe('cas limites', () => {
   it('1 cluster → un étage, une salle', () => {
     const plan = planBuilding({ clusters: clusters(7), featured: [], vault: [], config: cfg })
     expect(plan.floors).toHaveLength(2)
-    expect(plan.floors[1].rooms).toHaveLength(1)
+    // Une seule SALLE : le reste du côté part en galeries aveugles, qui ferment
+    // l'enveloppe sans prétendre exposer quoi que ce soit.
+    expect(collections(plan.floors[1].rooms)).toHaveLength(1)
     expect(plan.floors[1].rooms[0].keys).toHaveLength(7)
     expectPlanSain(plan, cfg)
   })
@@ -547,7 +873,7 @@ describe('cas limites', () => {
     const nombreux = clusters(...new Array<number>(70).fill(4))
     const plan = planBuilding({ clusters: nombreux, featured: [], vault: [], config: cfg })
     expect(plan.floors).toHaveLength(1 + Math.ceil(70 / 6))
-    expect(allRooms(plan)).toHaveLength(70)
+    expect(collections(allRooms(plan))).toHaveLength(70)
     // Toutes les clés sont placées, une seule fois chacune.
     const clefs = allRooms(plan).flatMap((r) => r.keys)
     expect(new Set(clefs).size).toBe(clefs.length)
@@ -659,6 +985,44 @@ describe('sur les 115 dépôts réels du catalogue', () => {
 
   it('garde une rampe praticable', () => {
     for (const ramp of plan.ramps) expect(rampSlopeDegrees(ramp)).toBeLessThan(40)
+  })
+
+  it('tient chaque salle à l’échelle de ce qu’elle expose', () => {
+    // C'est le test qui aurait dû échouer avant le dimensionnement par le
+    // besoin : le corpus réel produisait une salle Nord de 38 m pour 11 œuvres,
+    // dont le mur extérieur ne portait que 5 accrochages — un couloir vide.
+    const salles = plan.floors
+      .filter((f) => f.level >= 1)
+      .flatMap((f) => collections(f.rooms))
+      .filter((r) => r.keys.length > 0)
+    expect(salles.length).toBeGreaterThan(4)
+
+    for (const room of salles) {
+      const long =
+        room.side === 'north' || room.side === 'south' ? room.footprint.width : room.footprint.depth
+      if (long <= cfg.building.minRoomWidth + 1e-6) continue
+      expect(
+        offreLineaire(room) / linearNeed(room.keys.length),
+        `${room.id} (${room.name}, ${room.keys.length} œuvres, ${long.toFixed(1)} m)`,
+      ).toBeLessThan(2.5)
+    }
+  })
+
+  it('laisse chaque salle atteignable depuis l’atrium', () => {
+    for (const floor of plan.floors.filter((f) => f.level >= 1)) {
+      const vus = atteignables(floor, plan.atrium)
+      for (const room of collections(floor.rooms)) {
+        expect(vus.has(room.id), `${room.id} (${room.name}) inatteignable`).toBe(true)
+      }
+    }
+  })
+
+  it('ferme l’enveloppe de chaque plateau de collections', () => {
+    for (const floor of plan.floors.filter((f) => f.level >= 1)) {
+      const aire = floor.rooms.reduce((s, r) => s + r.footprint.width * r.footprint.depth, 0)
+      const dalle = floor.footprint.width * floor.footprint.depth
+      expect(aire, `${floor.id}`).toBeCloseTo(dalle - plan.atrium.width * plan.atrium.depth, 4)
+    }
   })
 
   it('reste identique d’une exécution à l’autre', () => {

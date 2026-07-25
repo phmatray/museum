@@ -1,30 +1,47 @@
 import { useGameStore } from '../stores/gameStore'
-import type { MuseumConfig } from '../types/museum'
+import { floorById } from '../io/loadMuseum'
+import type { Museum, Rect } from '../domain/types'
 
 interface MinimapProps {
-  config: MuseumConfig
+  museum: Museum
+  /** Niveau affiché. Le lot 3 le fera suivre le joueur. */
+  floorId: string
 }
 
-export function Minimap({ config }: MinimapProps) {
+const MAP_SIZE = 150
+const PADDING = 10
+
+/**
+ * Plan d'un niveau, vu de dessus.
+ *
+ * Adapté au bâtiment dérivé du lot 2 : l'ancien modèle (`RoomConfig`, une liste
+ * plate de salles centrées sur un point) n'existe plus, une salle est désormais
+ * un `Rect` en coin-minimal-plus-taille et appartient à un niveau. Le cadrage
+ * est celui de l'EMPRISE DU NIVEAU et non de la boîte englobante des salles :
+ * sur ce plan en anneau, cadrer sur les salles ferait sauter l'échelle d'un
+ * niveau à l'autre selon les côtés occupés, alors que le bâtiment, lui, ne
+ * bouge pas.
+ */
+export function Minimap({ museum, floorId }: MinimapProps) {
   const currentRoomId = useGameStore((s) => s.currentRoomId)
+  const floor = floorById(museum, floorId)
+  if (!floor) return null
 
-  const allX = config.rooms.flatMap((r) => [r.position.x - r.dimensions.width / 2, r.position.x + r.dimensions.width / 2])
-  const allZ = config.rooms.flatMap((r) => [r.position.z - r.dimensions.depth / 2, r.position.z + r.dimensions.depth / 2])
-  const minX = Math.min(...allX)
-  const maxX = Math.max(...allX)
-  const minZ = Math.min(...allZ)
-  const maxZ = Math.max(...allZ)
-  const rangeX = maxX - minX || 1
-  const rangeZ = maxZ - minZ || 1
-  const mapSize = 150
-  const padding = 10
+  const { footprint } = floor
+  const echelle = (MAP_SIZE - 2 * PADDING) / Math.max(footprint.width, footprint.depth)
 
-  function toMapCoords(x: number, z: number) {
+  /** Rectangle du monde → rectangle du plan (x monde → x, z monde → y). */
+  function projeter(rect: Rect) {
     return {
-      x: padding + ((x - minX) / rangeX) * (mapSize - 2 * padding),
-      y: padding + ((z - minZ) / rangeZ) * (mapSize - 2 * padding),
+      x: PADDING + (rect.x - footprint.x) * echelle,
+      y: PADDING + (rect.z - footprint.z) * echelle,
+      width: rect.width * echelle,
+      height: rect.depth * echelle,
     }
   }
+
+  const emprise = projeter(footprint)
+  const atrium = projeter(museum.atrium)
 
   return (
     <div
@@ -32,8 +49,8 @@ export function Minimap({ config }: MinimapProps) {
         position: 'fixed',
         bottom: '1rem',
         right: '1rem',
-        width: mapSize,
-        height: mapSize,
+        width: MAP_SIZE,
+        height: MAP_SIZE,
         background: 'rgba(0,0,0,0.6)',
         borderRadius: '8px',
         border: '1px solid rgba(255,255,255,0.2)',
@@ -41,24 +58,26 @@ export function Minimap({ config }: MinimapProps) {
         overflow: 'hidden',
       }}
     >
-      <svg width={mapSize} height={mapSize}>
-        {config.rooms.map((room) => {
-          const center = toMapCoords(room.position.x, room.position.z)
-          const w = (room.dimensions.width / rangeX) * (mapSize - 2 * padding)
-          const h = (room.dimensions.depth / rangeZ) * (mapSize - 2 * padding)
-          const isCurrent = room.id === currentRoomId
+      <svg width={MAP_SIZE} height={MAP_SIZE} role="img" aria-label={`Plan du niveau ${floor.name}`}>
+        {/* La dalle. */}
+        <rect {...emprise} fill="rgba(255,255,255,0.06)" stroke="rgba(255,255,255,0.25)" />
 
+        {/* La trémie : le vide central, qu'on ne peut pas traverser à pied. */}
+        <rect {...atrium} fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.2)" />
+
+        {floor.rooms.map((room) => {
+          const r = projeter(room.footprint)
+          const courante = room.id === currentRoomId
           return (
             <rect
               key={room.id}
-              x={center.x - w / 2}
-              y={center.y - h / 2}
-              width={w}
-              height={h}
-              fill={isCurrent ? 'rgba(74, 144, 217, 0.5)' : 'rgba(255,255,255,0.1)'}
-              stroke={isCurrent ? '#4a90d9' : 'rgba(255,255,255,0.3)'}
-              strokeWidth={isCurrent ? 2 : 1}
-            />
+              {...r}
+              fill={courante ? 'rgba(74, 144, 217, 0.5)' : 'rgba(255,255,255,0.12)'}
+              stroke={courante ? '#4a90d9' : 'rgba(255,255,255,0.3)'}
+              strokeWidth={courante ? 2 : 1}
+            >
+              <title>{room.name}</title>
+            </rect>
           )
         })}
       </svg>

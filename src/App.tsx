@@ -1,16 +1,14 @@
 import { Canvas } from '@react-three/fiber'
 import { Physics } from '@react-three/rapier'
 import { KeyboardControls } from '@react-three/drei'
-import { Suspense, useMemo, useCallback } from 'react'
+import { Suspense, use, useCallback, useMemo } from 'react'
 import { Player } from './components/Player'
 import { PointerLockCamera, PointerLockOverlay, TourExitButton } from './components/PointerLockOverlay'
-import { Room } from './components/Room'
 import { GuidedTour } from './components/GuidedTour'
-import museumConfig from './config/museum.json'
-import type { MuseumConfig } from './types/museum'
+import { MuseumScene } from './scene/MuseumScene'
+import { museumResource, resolveSpawn, voidFloorY } from './io/loadMuseum'
 import { useIsMobile } from './hooks/useIsMobile'
 import { MobileControlsOverlay } from './components/MobileControls'
-import { useRoomTransition } from './hooks/useRoomTransition'
 import { Minimap } from './components/Minimap'
 import { useGameStore } from './stores/gameStore'
 
@@ -23,9 +21,30 @@ const Controls = {
   right: 'right',
 } as const
 
+/**
+ * Le musée est chargé ICI, au-dessus du `Canvas`.
+ *
+ * `museum.json` sert à trois consommateurs qui ne vivent pas au même endroit :
+ * le bâtiment (dans le canvas), le spawn du joueur (dans le canvas) et le plan
+ * (en HTML, à côté). `museumResource()` mémorise la promesse, si bien que ces
+ * appels multiples à `use()` partagent une requête et UN SEUL objet `Museum` —
+ * ce qui interdit structurellement que le joueur apparaisse dans un bâtiment et
+ * que le plan en dessine un autre.
+ */
 export default function App() {
+  return (
+    <Suspense fallback={<ChargementDuMusee />}>
+      <Museum />
+    </Suspense>
+  )
+}
+
+function Museum() {
+  const museum = use(museumResource())
   const isMobile = useIsMobile()
-  const { triggerTransition } = useRoomTransition()
+
+  const spawn = useMemo(() => resolveSpawn(museum), [museum])
+  const voidY = useMemo(() => voidFloorY(museum), [museum])
 
   const handleTourComplete = useCallback(() => {
     useGameStore.getState().setTourActive(false)
@@ -46,7 +65,7 @@ export default function App() {
     <>
       <PointerLockOverlay />
       <TourExitButton />
-      <Minimap config={museumConfig as MuseumConfig} />
+      <Minimap museum={museum} floorId={museum.spawn.floorId} />
       {isMobile && (
         <MobileControlsOverlay
           onMove={() => {}}
@@ -54,24 +73,64 @@ export default function App() {
         />
       )}
       <KeyboardControls map={keyMap}>
-        <Canvas camera={{ fov: 75, near: 0.1, far: 1000 }}>
+        {/*
+          `shadows` est indispensable : la verrière zénithale est la seule ombre
+          du bâtiment (spec §9.2, une shadow map), et sans ce drapeau le
+          `castShadow` de la lumière directionnelle est ignoré en silence.
+          `"percentage"` plutôt que `true` : le défaut de R3F est
+          `PCFSoftShadowMap`, que three 0.183 a déprécié et remplace de toute
+          façon par `PCFShadowMap` en écrivant un avertissement à chaque
+          démarrage. Autant demander directement ce qu'on obtient.
+        */}
+        <Canvas shadows="percentage" camera={{ fov: 75, near: 0.1, far: 1000 }}>
           <Suspense fallback={null}>
             <Physics>
               <PointerLockCamera />
-              <ambientLight intensity={1.2} />
-              <hemisphereLight args={['#ffffff', '#444444', 0.8]} />
-              <Player spawn={[0, 1, 0]} />
-              {(museumConfig as MuseumConfig).rooms.map((room) => (
-                <Room key={room.id} config={room} onDoorwayEnter={triggerTransition} />
-              ))}
-              <GuidedTour
-                stops={(museumConfig as MuseumConfig).tourPath}
-                onComplete={handleTourComplete}
+              <MuseumScene />
+              <Player
+                spawn={[spawn.position.x, spawn.position.y, spawn.position.z]}
+                yaw={spawn.yaw}
+                voidY={voidY}
               />
+              {/*
+                La visite guidée n'a plus d'itinéraire : `tourPath` vivait dans
+                l'ancien `config/museum.json`, que le bâtiment dérivé remplace.
+                Le lot 3 la reconstruira à partir des accrochages — une visite
+                d'un musée vide n'aurait rien à montrer. En attendant, elle rend
+                la main immédiatement (voir `GuidedTour`) plutôt que de figer le
+                joueur dans une visite sans étape.
+              */}
+              <GuidedTour stops={[]} onComplete={handleTourComplete} />
             </Physics>
           </Suspense>
         </Canvas>
       </KeyboardControls>
     </>
+  )
+}
+
+/**
+ * Écran d'attente pendant le chargement de `museum.json`.
+ *
+ * Un `fallback={null}` afficherait une page blanche : si le fichier manque ou
+ * est invalide, `loadMuseum` lève une `SchemaError` détaillée, mais elle ne
+ * part que dans la console. Un mot à l'écran vaut mieux que rien.
+ */
+function ChargementDuMusee() {
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        display: 'grid',
+        placeItems: 'center',
+        background: '#0e1116',
+        color: 'rgba(255,255,255,0.7)',
+        font: '400 0.95rem/1.5 system-ui, sans-serif',
+        letterSpacing: '0.04em',
+      }}
+    >
+      Ouverture du musée…
+    </div>
   )
 }

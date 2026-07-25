@@ -2,7 +2,21 @@ import { useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useGameStore } from '../stores/gameStore'
-import type { TourStop } from '../types/museum'
+
+/**
+ * Une étape de visite.
+ *
+ * Le type vivait dans `src/types/museum.ts`, supprimé au lot 2 avec l'ancien
+ * modèle de musée. Il descend ici parce que c'est un objet de MISE EN SCÈNE et
+ * non de bâtiment : `domain/types.ts` décrit ce qui existe, pas la façon dont
+ * on le fait visiter. Le lot 3 dérivera un itinéraire des accrochages.
+ */
+export interface TourStop {
+  position: { x: number; y: number; z: number }
+  lookAt: { x: number; y: number; z: number }
+  /** Temps d'arrêt à cette étape, en secondes. */
+  pauseDuration: number
+}
 
 interface GuidedTourProps {
   stops: TourStop[]
@@ -22,8 +36,19 @@ export function GuidedTour({ stops, onComplete }: GuidedTourProps) {
   const wasActive = useRef(false)
 
   useFrame((_, delta) => {
-    if (!tourActive || stops.length < 2) {
+    if (!tourActive) {
       wasActive.current = false
+      return
+    }
+
+    // Visite sans itinéraire : on rend la main IMMÉDIATEMENT. Se contenter de
+    // sortir laisserait `tourActive` à vrai, c'est-à-dire un joueur figé (le
+    // `Player` ne bouge pas pendant une visite) dans une visite qui ne se
+    // termine jamais — seule la touche Échap en sortirait. Le lot 2 n'a pas
+    // encore d'itinéraire : ce chemin est celui qu'on prend réellement.
+    if (stops.length < 2) {
+      wasActive.current = false
+      onComplete()
       return
     }
 

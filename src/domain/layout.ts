@@ -5,7 +5,7 @@
  * rampe hélicoïdale dans le vide. Le bâtiment prend la forme du compte GitHub :
  * cinq dépôts donnent un plateau unique, deux mille donnent une tour.
  *
- * Deux invariants portent tout le reste :
+ * Trois invariants portent tout le reste :
  *
  *  - L'élévation est CALCULÉE depuis le niveau, jamais saisie. Deux étages ne
  *    peuvent donc pas se chevaucher, quoi qu'on écrive dans la configuration.
@@ -13,6 +13,11 @@
  *    largeur extérieure, Est et Ouest se limitent à la profondeur de l'atrium.
  *    Aucune emprise n'en recouvre une autre, sinon deux salles se disputeraient
  *    le même mètre carré de plancher.
+ *  - Une salle est dimensionnée par son BESOIN, pas par la longueur du côté qui
+ *    l'accueille. Le reliquat du côté part en galeries aveugles (§7.2), qui
+ *    ferment l'enveloppe sans faire semblant d'être des salles. Étirer une salle
+ *    de onze œuvres sur trente-huit mètres donnait un couloir vide : le bâtiment
+ *    doit rester une PARTITION du côté, mais pas au prix de son échelle.
  *
  * Les placements sont laissés VIDES : l'accrochage est le travail de
  * `hanging.ts`. Ici on ne produit que la géométrie et les ouvertures.
@@ -36,8 +41,8 @@ import type {
   Wall,
   WallKind,
 } from './types'
-import { WALL_CORNER_MARGIN } from './types'
-import { wallCapacity } from './hanging'
+import { MIN_ARTWORK_GAP, WALL_CORNER_MARGIN } from './types'
+import { AVERAGE_ARTWORK_HEIGHT, DEFAULT_ASPECT, wallCapacity } from './hanging'
 
 // ── Contrat public ───────────────────────────────────────────────────────
 
@@ -91,6 +96,30 @@ const BAY_HEAD_MARGIN = 0.6
 
 const ATRIUM_GROWTH_STEP = 2
 const MAX_LAYOUT_ITERATIONS = 10
+
+/**
+ * Largeur de l'œuvre de référence, celle dont `hanging.ts` se sert pour annoncer
+ * la capacité d'un mur. Le dimensionnement des salles DOIT partir de la même :
+ * deux références concurrentes et une salle taillée « juste » ici serait déclarée
+ * trop petite là-bas, ce qui ferait grandir l'atrium sans fin.
+ */
+const REF_ARTWORK_WIDTH = AVERAGE_ARTWORK_HEIGHT * DEFAULT_ASPECT
+
+/** Pas d'élargissement d'une salle dont la capacité mesurée reste insuffisante. */
+const SIZING_GROWTH_STEP = 0.5
+
+/**
+ * Garde-fou de la boucle de dimensionnement d'un côté. Chaque passe élargit au
+ * moins d'un pas les salles en manque ; au-delà, on retombe sur la subdivision
+ * proportionnelle du lot 1 et c'est l'atrium qui grandira.
+ */
+const MAX_SIZING_PASSES = 16
+
+/** Nom porté par toutes les galeries aveugles. Elles ne sont pas des salles. */
+export const BLIND_GALLERY_NAME = 'Galerie aveugle'
+
+/** Tolérance de comparaison : on manipule des mètres, le micron suffit. */
+const EPS = 1e-9
 
 // ── Utilitaires numériques ───────────────────────────────────────────────
 
@@ -195,23 +224,75 @@ function sortClusters(clusters: Cluster[]): Cluster[] {
 }
 
 /**
+ * Longueur de mur qu'un cluster réclame, en mètres : `n` œuvres de référence
+ * séparées d'un écart minimal, marges comprises aux deux bouts (spec §7.2.4).
+ *
+ * C'est la grandeur qui doit dicter la taille d'une salle. Un compte d'œuvres
+ * n'en dit rien : ce qui remplit un mur est une longueur, pas un cardinal.
+ */
+export function linearNeed(count: number): number {
+  const n = Number.isFinite(count) && count > 0 ? Math.floor(count) : 0
+  if (n === 0) return 0
+  return round(n * REF_ARTWORK_WIDTH + (n + 1) * MIN_ARTWORK_GAP)
+}
+
+/**
+ * Largeur visée par une salle de l'anneau qui doit accrocher `count` œuvres.
+ *
+ * On inverse l'offre de mur d'une salle de largeur `W` et de profondeur `d` :
+ *
+ *   offre(W) = (W − 2m)          mur extérieur
+ *            + (W − 2m − baie)   mur intérieur, baie déduite
+ *            + 2 × (d − 2m − p)  murs mitoyens, porte déduite
+ *
+ * La baie est comptée à son maximum et la porte comme si elle existait toujours :
+ * on préfère viser un peu large et laisser la mesure de capacité — la vraie,
+ * celle de `hanging.ts` — trancher ensuite. Le résultat n'est qu'un POINT DE
+ * DÉPART : il ignore la perte de granularité (un segment de 2 m n'accroche rien
+ * même s'il fait 2 m), que la boucle de `sideRooms` corrige en mesurant.
+ */
+export function targetRoomWidth(
+  count: number,
+  roomDepth: number,
+  minRoomWidth: number,
+  maxWidth: number,
+): number {
+  const mitoyens = 2 * Math.max(0, roomDepth - 2 * WALL_CORNER_MARGIN - DOOR_WIDTH)
+  const restant = linearNeed(count) - mitoyens
+  const voulue = (restant + 4 * WALL_CORNER_MARGIN + MAX_BAY_WIDTH) / 2
+  return round(Math.min(Math.max(voulue, minRoomWidth), Math.max(maxWidth, 0)))
+}
+
+/**
  * Répartition en quatre bacs (spec §7.2.1) : clusters par poids décroissant,
  * chacun dans le côté le moins chargé.
  *
- * Un garde-fou en plus du spec : un côté ne peut pas recevoir plus de salles
- * qu'il n'en tient à `minRoomWidth`. Sans lui, l'Est et l'Ouest — qui ne font
- * que la profondeur de l'atrium — se verraient attribuer des salles de deux
- * mètres pendant que le Nord reste à moitié vide.
+ * Un garde-fou en plus du spec : un côté ne peut recevoir un cluster que s'il
+ * lui reste de quoi loger la LARGEUR VISÉE de sa salle. Sans lui, l'Est et
+ * l'Ouest — qui ne font que la profondeur de l'atrium — se verraient attribuer
+ * des salles de deux mètres pendant que le Nord reste à moitié vide. La borne
+ * porte bien sur une longueur cumulée et non sur un nombre de salles : deux
+ * cabinets et une grande galerie n'occupent pas la même chose.
  */
-function distributeToSides(clusters: Cluster[], strips: Strip[], minRoomWidth: number): Cluster[][] {
+function distributeToSides(
+  clusters: Cluster[],
+  strips: Strip[],
+  minRoomWidth: number,
+  roomDepth: number,
+): Cluster[][] {
   const bins: Cluster[][] = strips.map(() => [])
   const loads = strips.map(() => 0)
-  const capacity = strips.map((s) => Math.max(1, Math.floor(s.length / Math.max(0.1, minRoomWidth))))
+  const used = strips.map(() => 0)
 
   for (const cluster of sortClusters(clusters)) {
+    const largeurs = strips.map((s) =>
+      targetRoomWidth(clusterWeight(cluster), roomDepth, minRoomWidth, s.length),
+    )
     let chosen = -1
     for (let i = 0; i < bins.length; i++) {
-      if (bins[i].length >= capacity[i]) continue
+      // Le premier cluster d'un côté y entre toujours : un côté qui ne peut
+      // loger personne bloquerait la répartition au lieu de la faire grandir.
+      if (bins[i].length > 0 && used[i] + largeurs[i] > strips[i].length + EPS) continue
       if (chosen < 0 || loads[i] < loads[chosen]) chosen = i
     }
     // Tous les côtés sont pleins : on charge quand même le moins chargé, et la
@@ -222,6 +303,7 @@ function distributeToSides(clusters: Cluster[], strips: Strip[], minRoomWidth: n
     }
     bins[chosen].push(cluster)
     loads[chosen] += clusterWeight(cluster)
+    used[chosen] += largeurs[chosen]
   }
 
   return bins
@@ -262,6 +344,50 @@ export function subdivideSide(length: number, weights: number[], minRoomWidth: n
     for (const i of sur) widths[i] -= (deficit * (widths[i] - minRoomWidth)) / disponible
   }
   return widths
+}
+
+/**
+ * Un emplacement le long d'un côté. `cluster` est l'indice du cluster dans le
+ * bac, ou −1 pour une galerie aveugle.
+ */
+interface Slot {
+  width: number
+  cluster: number
+}
+
+/**
+ * Découpe un côté en salles à leur largeur visée et en galeries aveugles pour le
+ * reliquat (spec §7.2, invariant d'enveloppe).
+ *
+ * Les salles sont CENTRÉES sur le côté, ce qui n'est pas un choix esthétique :
+ * sur le Nord et le Sud, les deux bouts du côté sont les zones d'angle, celles
+ * qui longent l'aile perpendiculaire et non le vide. Y reléguer l'aveuglement
+ * laisse toutes les salles de collection face à l'atrium, donc toutes avec une
+ * baie qui donne sur quelque chose.
+ *
+ * Renvoie `null` quand les largeurs visées ne tiennent pas : c'est le signal de
+ * repli vers la subdivision proportionnelle, et de là vers l'agrandissement de
+ * l'atrium.
+ */
+export function planSideSlots(length: number, targets: number[], minRoomWidth: number): Slot[] | null {
+  if (targets.length === 0) return null
+  const total = targets.reduce((s, w) => s + w, 0)
+  if (total > length - EPS) return null
+
+  const rooms: Slot[] = targets.map((width, cluster) => ({ width, cluster }))
+  const bord = (length - total) / 2
+
+  // Deux galeries symétriques, une seule en tête, ou aucune : une galerie plus
+  // étroite que `minRoomWidth` n'est pas une pièce, c'est un interstice. Le
+  // reliquat qu'on ne peut pas murer retourne aux salles, au prorata.
+  if (bord >= minRoomWidth - EPS) {
+    return [{ width: bord, cluster: -1 }, ...rooms, { width: bord, cluster: -1 }]
+  }
+  if (2 * bord >= minRoomWidth - EPS) {
+    return [{ width: 2 * bord, cluster: -1 }, ...rooms]
+  }
+  const rendu = 2 * bord
+  return rooms.map((slot) => ({ ...slot, width: slot.width + (rendu * slot.width) / total }))
 }
 
 // ── Murs ─────────────────────────────────────────────────────────────────
@@ -365,6 +491,21 @@ function clampedOpening(
 }
 
 /**
+ * Ce que la salle ouvre. Une galerie aveugle passe tout à `false` : elle ferme
+ * l'enveloppe et rien de plus, sans baie ni porte (spec §7.2).
+ */
+interface RoomOpenings {
+  /** Porte dans le mur mitoyen du côté `min` de l'axe du côté. */
+  doorA: boolean
+  /** Porte dans le mur mitoyen du côté `max`. */
+  doorB: boolean
+  /** Baie sur l'atrium et passages d'angle. */
+  inner: boolean
+}
+
+const BLIND: RoomOpenings = { doorA: false, doorB: false, inner: false }
+
+/**
  * Les quatre murs d'une salle de l'anneau (spec §7.3).
  *
  * Le mur `inner` regarde le centre du bâtiment. Sur la portion qui longe
@@ -379,8 +520,7 @@ function ringRoomWalls(
   strip: Strip,
   atrium: Rect,
   ceilingHeight: number,
-  hasPrev: boolean,
-  hasNext: boolean,
+  ouvertures: RoomOpenings,
 ): Wall[] {
   const xMin = footprint.x
   const xMax = round(footprint.x + footprint.width)
@@ -400,37 +540,41 @@ function ringRoomWalls(
       : [atrium.z, round(atrium.z + atrium.depth)]
 
   const innerOpenings: OpeningSpec[] = []
-  const surAtrium = overlap(along[0], along[1], atriumSpan[0], atriumSpan[1])
+  const surAtrium = ouvertures.inner
+    ? overlap(along[0], along[1], atriumSpan[0], atriumSpan[1])
+    : null
   if (surAtrium) {
     const bay = centeredOpening(surAtrium[0], surAtrium[1], bayWidth, 'bay', bayHeight)
     if (bay) innerOpenings.push(bay)
   }
   // Portions d'angle : seuls le Nord et le Sud en ont, par construction de la
   // partition. `roomDepth` est la profondeur de l'aile perpendiculaire.
-  if (strip.axis === 'x') {
+  if (ouvertures.inner && strip.axis === 'x') {
     const depth = Math.abs(strip.outer - strip.inner)
     const corners: [number, number][] = [
       [round(atriumSpan[0] - depth), atriumSpan[0]],
       [atriumSpan[1], round(atriumSpan[1] + depth)],
     ]
     for (const [cLo, cHi] of corners) {
-      const zone = overlap(along[0], along[1], cLo, cHi)
-      if (!zone) continue
-      const porte = clampedOpening(zone[0], zone[1], cLo, cHi, DOOR_WIDTH, 'door', DOOR_HEIGHT)
+      // Le passage n'est percé que si la salle couvre l'angle EN ENTIER. Le mur
+      // qui lui fait face est celui d'une salle de l'aile perpendiculaire, percé
+      // au centre de la même zone : à couverture partielle les deux trous ne
+      // seraient pas en vis-à-vis et la porte donnerait sur un mur plein.
+      if (along[0] > cLo + EPS || along[1] < cHi - EPS) continue
+      const porte = clampedOpening(cLo, cHi, cLo, cHi, DOOR_WIDTH, 'door', DOOR_HEIGHT)
       if (porte) innerOpenings.push(porte)
     }
   }
 
   /**
-   * Mur mitoyen : porte vers la salle voisine du même côté. En bout de côté,
-   * l'Est et l'Ouest débouchent sur l'angle du Nord ou du Sud — la porte y est
-   * la contrepartie du passage d'angle percé en face. Le Nord et le Sud, eux,
-   * finissent sur la façade : rien à percer.
+   * Mur mitoyen : porte vers ce qu'il y a de l'autre côté, quand il y a lieu de
+   * l'ouvrir. C'est l'appelant qui le sait : lui seul voit si le voisin est une
+   * salle, une galerie aveugle — qu'on ne perce jamais — ou le passage d'angle.
    */
-  const sideOpenings = (voisin: boolean): OpeningSpec[] => {
+  const sideOpenings = (ouvre: boolean): OpeningSpec[] => {
+    if (!ouvre) return []
     const lo = strip.axis === 'x' ? zMin : xMin
     const hi = strip.axis === 'x' ? zMax : xMax
-    if (!voisin && strip.axis === 'x') return []
     const porte = centeredOpening(lo, hi, DOOR_WIDTH, 'door', DOOR_HEIGHT)
     return porte ? [porte] : []
   }
@@ -443,8 +587,8 @@ function ringRoomWalls(
     const zInner = outerIsMax ? zMin : zMax
     specs.push(
       { id: `${roomId}-outer`, p: { x: xMin, z: zOuter }, q: { x: xMax, z: zOuter }, kind: 'outer', openings: [] },
-      { id: `${roomId}-side-a`, p: { x: xMin, z: zMin }, q: { x: xMin, z: zMax }, kind: 'side', openings: sideOpenings(hasPrev) },
-      { id: `${roomId}-side-b`, p: { x: xMax, z: zMin }, q: { x: xMax, z: zMax }, kind: 'side', openings: sideOpenings(hasNext) },
+      { id: `${roomId}-side-a`, p: { x: xMin, z: zMin }, q: { x: xMin, z: zMax }, kind: 'side', openings: sideOpenings(ouvertures.doorA) },
+      { id: `${roomId}-side-b`, p: { x: xMax, z: zMin }, q: { x: xMax, z: zMax }, kind: 'side', openings: sideOpenings(ouvertures.doorB) },
       { id: `${roomId}-inner`, p: { x: xMin, z: zInner }, q: { x: xMax, z: zInner }, kind: 'inner', openings: innerOpenings },
     )
   } else {
@@ -452,8 +596,8 @@ function ringRoomWalls(
     const xInner = outerIsMax ? xMin : xMax
     specs.push(
       { id: `${roomId}-outer`, p: { x: xOuter, z: zMin }, q: { x: xOuter, z: zMax }, kind: 'outer', openings: [] },
-      { id: `${roomId}-side-a`, p: { x: xMin, z: zMin }, q: { x: xMax, z: zMin }, kind: 'side', openings: sideOpenings(hasPrev) },
-      { id: `${roomId}-side-b`, p: { x: xMin, z: zMax }, q: { x: xMax, z: zMax }, kind: 'side', openings: sideOpenings(hasNext) },
+      { id: `${roomId}-side-a`, p: { x: xMin, z: zMin }, q: { x: xMax, z: zMin }, kind: 'side', openings: sideOpenings(ouvertures.doorA) },
+      { id: `${roomId}-side-b`, p: { x: xMin, z: zMax }, q: { x: xMax, z: zMax }, kind: 'side', openings: sideOpenings(ouvertures.doorB) },
       { id: `${roomId}-inner`, p: { x: xInner, z: zMin }, q: { x: xInner, z: zMax }, kind: 'inner', openings: innerOpenings },
     )
   }
@@ -592,7 +736,155 @@ function chunkClusters(clusters: Cluster[], roomsPerFloor: number): Cluster[][] 
   return plateaux
 }
 
-/** Les salles d'un plateau de collections, réparties sur les quatre côtés. */
+/**
+ * Frontières des emplacements le long d'un côté.
+ *
+ * Calculées en cumulé puis arrondies, la dernière forcée sur la fin du côté : la
+ * somme des emprises vaut exactement la longueur, sans liseré ni recouvrement.
+ */
+function slotBounds(strip: Strip, widths: number[]): number[] {
+  const bornes: number[] = [strip.start]
+  let cumul = 0
+  for (let i = 0; i < widths.length; i++) {
+    cumul += widths[i]
+    bornes.push(i === widths.length - 1 ? round(strip.start + strip.length) : round(strip.start + cumul))
+  }
+  return bornes
+}
+
+/**
+ * Vrai si le passage d'angle est ouvert en face, c'est-à-dire si une salle de
+ * l'aile perpendiculaire couvre entièrement l'emprise donnée. Toujours vrai pour
+ * le Nord et le Sud, qui finissent sur la façade et n'ont pas d'angle en face.
+ */
+type CornerGate = (footprint: Rect, bout: 0 | 1) => boolean
+
+const CORNER_ALWAYS: CornerGate = () => true
+
+/** Bâtit les salles et les galeries d'un côté à partir d'un découpage donné. */
+function buildSlots(
+  id: string,
+  strip: Strip,
+  bin: Cluster[],
+  slots: Slot[],
+  atrium: Rect,
+  ceilingHeight: number,
+  angle: CornerGate = CORNER_ALWAYS,
+): Room[] {
+  const bornes = slotBounds(strip, slots.map((s) => s.width))
+  let galerie = 0
+
+  return slots.map((slot, i) => {
+    const footprint = roomFootprint(strip, bornes[i], bornes[i + 1])
+    if (slot.cluster < 0) {
+      const roomId = `${id}-${strip.side}-galerie-${galerie++}`
+      return {
+        id: roomId,
+        name: BLIND_GALLERY_NAME,
+        side: strip.side,
+        footprint,
+        theme: defaultTheme('collection'),
+        walls: ringRoomWalls(roomId, footprint, strip, atrium, ceilingHeight, BLIND),
+        topics: [],
+        keys: [],
+      }
+    }
+
+    // Une porte ne s'ouvre que sur une salle de collection. En bout de côté,
+    // l'Est et l'Ouest débouchent sur l'angle du Nord ou du Sud — la porte y est
+    // la contrepartie du passage d'angle percé en face —, sauf si une galerie
+    // aveugle occupe ce bout : elle mure le passage, l'ouvrir donnerait sur un
+    // cul-de-sac. Le Nord et le Sud, eux, finissent sur la façade.
+    const salleAvant = i > 0 && slots[i - 1].cluster >= 0
+    const salleApres = i + 1 < slots.length && slots[i + 1].cluster >= 0
+    const enAngle = strip.axis === 'z'
+    const cluster = bin[slot.cluster]
+    const roomId = `${id}-${strip.side}-${slot.cluster}`
+    return {
+      id: roomId,
+      name: cluster.name,
+      side: strip.side,
+      footprint,
+      theme: defaultTheme('collection'),
+      walls: ringRoomWalls(roomId, footprint, strip, atrium, ceilingHeight, {
+        doorA: salleAvant || (enAngle && i === 0 && angle(footprint, 0)),
+        doorB: salleApres || (enAngle && i === slots.length - 1 && angle(footprint, 1)),
+        inner: true,
+      }),
+      topics: [...cluster.topics],
+      keys: [...cluster.keys],
+    }
+  })
+}
+
+/**
+ * Les salles d'un côté, dimensionnées par leur besoin, plus les galeries
+ * aveugles qui comblent le reliquat.
+ *
+ * La largeur visée n'est qu'une estimation : elle ignore la granularité des
+ * segments — un mur de 2,4 m offert en deux morceaux de 1,2 m n'accroche rien.
+ * On MESURE donc la capacité réelle, avec la fonction qui accrochera pour de
+ * bon, et on élargit les salles en manque en prenant sur les galeries. Sans
+ * cette boucle, la boucle d'atrium de `planBuilding` tournerait dans le vide :
+ * agrandir l'atrium rallonge le côté mais n'élargit plus les salles, puisque
+ * c'est désormais leur besoin qui les dimensionne.
+ *
+ * Repli quand rien ne tient : la subdivision proportionnelle du lot 1, qui étire
+ * les salles sur tout le côté. Le bâtiment est alors moins beau mais toujours
+ * juste, et c'est l'atrium qui grandira.
+ */
+function sideRooms(
+  id: string,
+  strip: Strip,
+  bin: Cluster[],
+  atrium: Rect,
+  config: MuseumConfig,
+  angle: CornerGate,
+): Room[] {
+  const { roomDepth, minRoomWidth, ceilingHeight } = config.building
+  const targets = bin.map((c) =>
+    targetRoomWidth(clusterWeight(c), roomDepth, minRoomWidth, strip.length),
+  )
+
+  for (let pass = 0; pass <= MAX_SIZING_PASSES; pass++) {
+    const slots = planSideSlots(strip.length, targets, minRoomWidth)
+    if (!slots) break
+
+    const rooms = buildSlots(id, strip, bin, slots, atrium, ceilingHeight, angle)
+    const manques = rooms.map((r) => (r.keys.length > 0 ? r.keys.length - roomCapacity(r) : 0))
+    if (manques.every((m) => m <= 0)) return rooms
+
+    // Élargissement proportionnel au manque : une salle à qui il manque trois
+    // œuvres a besoin de trois fois plus de mur, réparti sur les deux murs longs.
+    let bouge = false
+    slots.forEach((slot, i) => {
+      if (manques[i] <= 0 || slot.cluster < 0) return
+      const gain = Math.max(SIZING_GROWTH_STEP, (manques[i] * (REF_ARTWORK_WIDTH + MIN_ARTWORK_GAP)) / 2)
+      targets[slots[i].cluster] = round(targets[slots[i].cluster] + gain)
+      bouge = true
+    })
+    if (!bouge) break
+  }
+
+  const widths = subdivideSide(strip.length, bin.map(clusterWeight), minRoomWidth)
+  return buildSlots(
+    id,
+    strip,
+    bin,
+    widths.map((width, cluster) => ({ width, cluster })),
+    atrium,
+    ceilingHeight,
+    angle,
+  )
+}
+
+/**
+ * Les salles d'un plateau de collections, réparties sur les quatre côtés.
+ *
+ * Les galeries aveugles sont rejetées en fin de liste : elles ne sont pas des
+ * salles au sens du visiteur, et tout ce qui parcourt `floor.rooms` — cartels,
+ * curation, statistiques — doit tomber sur les vraies d'abord.
+ */
 function collectionRooms(
   id: string,
   clusters: Cluster[],
@@ -601,53 +893,69 @@ function collectionRooms(
 ): Room[] {
   const { roomDepth, minRoomWidth, ceilingHeight } = config.building
   const strips = ringStrips(atrium, roomDepth)
-  const bins = distributeToSides(clusters, strips, minRoomWidth)
-  const rooms: Room[] = []
+  const bins = distributeToSides(clusters, strips, minRoomWidth, roomDepth)
 
-  strips.forEach((strip, s) => {
-    const bin = bins[s]
-    if (bin.length === 0) return
-    const widths = subdivideSide(strip.length, bin.map(clusterWeight), minRoomWidth)
-
-    // Les frontières sont calculées en cumulé puis arrondies, et la dernière est
-    // forcée sur la fin du côté : la somme des salles vaut exactement le côté.
-    const bornes: number[] = [strip.start]
-    let cumul = 0
-    for (let i = 0; i < widths.length; i++) {
-      cumul += widths[i]
-      bornes.push(i === widths.length - 1 ? round(strip.start + strip.length) : round(strip.start + cumul))
+  /** Un côté à la fois, dans son ordre canonique, galeries comprises. */
+  const parCote = (s: number, angle: CornerGate): Room[] => {
+    const strip = strips[s]
+    // Invariant d'enveloppe (spec §7.2) : les quatre côtés existent toujours. Un
+    // côté dont le bac est vide — cas courant dès que `roomsPerFloor` descend
+    // sous 4 — reçoit une galerie aveugle sur toute sa longueur. Sans elle, la
+    // dalle s'arrête sans mur et le visiteur tombe.
+    if (bins[s].length === 0) {
+      if (strip.length < minRoomWidth) return []
+      const tout: Slot[] = [{ width: strip.length, cluster: -1 }]
+      return buildSlots(id, strip, [], tout, atrium, ceilingHeight)
     }
+    return sideRooms(id, strip, bins[s], atrium, config, angle)
+  }
 
-    bin.forEach((cluster, i) => {
-      const roomId = `${id}-${strip.side}-${i}`
-      const footprint = roomFootprint(strip, bornes[i], bornes[i + 1])
-      rooms.push({
-        id: roomId,
-        name: cluster.name,
-        side: strip.side,
-        footprint,
-        theme: defaultTheme('collection'),
-        walls: ringRoomWalls(
-          roomId,
-          footprint,
-          strip,
-          atrium,
-          ceilingHeight,
-          i > 0,
-          i < bin.length - 1,
-        ),
-        topics: [...cluster.topics],
-        keys: [...cluster.keys],
-      })
-    })
-  })
+  // Le Nord et le Sud d'abord : ce sont eux qui possèdent les quatre angles, et
+  // l'Est et l'Ouest ont besoin de savoir ce qui s'y trouve avant de percer
+  // leurs portes de bout. Une porte face à une galerie aveugle donnerait sur un
+  // mur plein, puisque la galerie, elle, ne perce rien.
+  const nord = parCote(0, CORNER_ALWAYS)
+  const sud = parCote(2, CORNER_ALWAYS)
 
-  return rooms
+  /** Vrai si une salle de collection du Nord (bout 0) ou du Sud (bout 1) couvre tout l'angle. */
+  const angle: CornerGate = (footprint, bout) =>
+    (bout === 0 ? nord : sud).some(
+      (r) =>
+        !isBlindGallery(r) &&
+        r.footprint.x <= footprint.x + EPS &&
+        r.footprint.x + r.footprint.width >= footprint.x + footprint.width - EPS,
+    )
+
+  const parStrip = [nord, parCote(1, angle), sud, parCote(3, angle)]
+  const rooms: Room[] = []
+  const galeries: Room[] = []
+  for (const room of parStrip.flat()) {
+    if (isBlindGallery(room)) galeries.push(room)
+    else rooms.push(room)
+  }
+
+  return [...rooms, ...galeries]
+}
+
+/**
+ * Vrai pour une galerie aveugle : un volume qui ferme l'enveloppe, sans cluster,
+ * sans accrochage, sans ouverture. Le test porte sur l'identifiant, seul champ
+ * que la curation ne peut pas réécrire (elle peut renommer, pas renuméroter).
+ *
+ * `derive()` doit s'en servir pour ne pas les compter dans `stats.roomCount`
+ * (spec §7.2) ni les proposer comme cible de curation.
+ */
+export function isBlindGallery(room: Room): boolean {
+  return /-galerie-\d+$/.test(room.id)
 }
 
 /**
  * Salle d'honneur : tout le côté Nord du rez-de-chaussée. Elle est seule à son
  * niveau — c'est le niveau d'accueil, on ne le charge pas.
+ *
+ * Elle échappe volontairement au dimensionnement par le besoin : une salle
+ * d'honneur est monumentale par définition, et c'est la seule du bâtiment dont
+ * l'échelle soit un parti pris plutôt qu'un défaut.
  */
 function honourRoom(featured: RepoKey[], atrium: Rect, config: MuseumConfig): Room {
   const { roomDepth, ceilingHeight } = config.building
@@ -660,7 +968,11 @@ function honourRoom(featured: RepoKey[], atrium: Rect, config: MuseumConfig): Ro
     side: strip.side,
     footprint,
     theme: defaultTheme('honour'),
-    walls: ringRoomWalls(roomId, footprint, strip, atrium, ceilingHeight, false, false),
+    walls: ringRoomWalls(roomId, footprint, strip, atrium, ceilingHeight, {
+      doorA: false,
+      doorB: false,
+      inner: true,
+    }),
     topics: [],
     keys: [...featured],
   }
