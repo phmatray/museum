@@ -151,10 +151,22 @@ export type WallKind = 'outer' | 'side' | 'inner'
 
 /** Ouverture dans un mur, en mètres depuis l'extrémité `a`. */
 export interface Opening {
-  kind: 'door' | 'bay'
+  kind: 'door' | 'bay' | 'window'
   start: number
   end: number
+  /** Altitude du HAUT de l'ouverture, au-dessus du plancher du niveau. */
   height: number
+  /**
+   * Altitude du BAS de l'ouverture — l'allège. Zéro pour tout ce qui se
+   * franchit à pied.
+   *
+   * Sans elle, toute ouverture partait du plancher : « fenêtre » était
+   * littéralement impossible à exprimer, et une baie de 3,70 m tombait au sol
+   * comme une porte. Elle change aussi la façon dont le mur est construit — une
+   * ouverture posée au sol est une ENCOCHE de son contour, une ouverture qui
+   * flotte est un vrai trou (voir `builders/wall.ts`).
+   */
+  sill: number
 }
 
 export interface Placement {

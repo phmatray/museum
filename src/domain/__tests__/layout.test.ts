@@ -239,8 +239,14 @@ function expectMursSains(room: Room, cfg: MuseumConfig): void {
       expect(o.height).toBeLessThanOrEqual(wall.height + 1e-9)
       precedent = o.end
     }
-    // Un mur extérieur ne se perce pas : c'est la façade.
-    if (wall.kind === 'outer') expect(wall.openings).toHaveLength(0)
+    // Un mur d'enceinte ne se perce que de FENÊTRES — jamais d'une porte ni
+    // d'une baie, qui donneraient sur le vide depuis un étage.
+    if (wall.kind === 'outer') {
+      for (const o of wall.openings) {
+        expect(o.kind, `${wall.id} : ouverture franchissable en façade`).toBe('window')
+        expect(o.sill, `${wall.id} : fenêtre posée au sol`).toBeGreaterThan(0)
+      }
+    }
   }
 }
 
@@ -560,7 +566,18 @@ describe('galeries aveugles', () => {
     expectPlanSain(plan, cfg)
   })
 
-  it('n’ont ni baie, ni porte, ni cluster, et restent des pièces', () => {
+  it('n’ont ni cluster ni œuvre, et sont TRAVERSABLES', () => {
+    /*
+      Elles étaient murées sur leurs quatre côtés. L'intention se défendait — une
+      galerie ne fait pas semblant d'être une salle — mais la conséquence, mesurée
+      sur le musée réel, ne se défendait pas : à l'étage 2, cinq des sept pièces
+      étaient des galeries, donc 71 % du plateau en volume INACCESSIBLE. On
+      arrivait par la rampe sur un palier bordé de deux salles et de cinq murs.
+
+      Une galerie reste ce qu'elle était — sans cluster, sans œuvre, ce n'est pas
+      une salle — mais elle est maintenant ce qu'un reliquat de plan doit être
+      dans un musée : une circulation.
+    */
     const aveugles = allRooms(plan).filter(isBlindGallery)
     expect(aveugles.length).toBeGreaterThan(0)
     for (const g of aveugles) {
@@ -568,17 +585,20 @@ describe('galeries aveugles', () => {
       expect(g.keys).toEqual([])
       expect(g.topics).toEqual([])
       expect(g.walls).toHaveLength(4)
-      for (const wall of g.walls) expect(wall.openings, `${wall.id}`).toEqual([])
+      expect(
+        g.walls.reduce((n, w) => n + w.openings.length, 0),
+        `${g.id} : galerie murée, donc volume inaccessible`,
+      ).toBeGreaterThan(0)
       const long = g.side === 'north' || g.side === 'south' ? g.footprint.width : g.footprint.depth
       expect(long).toBeGreaterThanOrEqual(cfg.building.minRoomWidth - 1e-6)
     }
   })
 
-  it('ne reçoivent jamais la porte d’une salle voisine', () => {
+  it('la porte d’une salle qui donne sur une galerie trouve une galerie OUVERTE', () => {
     // Une porte se juge sur ce qu'il y a DERRIÈRE : on sort du mur d'un pas, à
-    // l'endroit de l'ouverture, et on regarde dans quelle salle on tombe. Une
-    // galerie aveugle ne perce rien : une porte qui donne sur elle donnerait sur
-    // un mur plein.
+    // l'endroit de l'ouverture, et on regarde dans quelle salle on tombe. Le
+    // piège s'est inversé : ouvrir sur une galerie n'est plus un cul-de-sac,
+    // mais il faut que la galerie ait bien un passage en vis-à-vis.
     for (const floor of plan.floors.filter((f) => f.level >= 1)) {
       const aveugles = floor.rooms.filter(isBlindGallery)
       for (const room of collections(floor.rooms)) {
@@ -590,7 +610,11 @@ describe('galeries aveugles', () => {
             const x = wall.a.x + dir.x * u - wall.normal.x * 0.05
             const z = wall.a.z + dir.z * u - wall.normal.z * 0.05
             const derriere = aveugles.find((g) => contains(g.footprint, x, z, -1e-6))
-            expect(derriere?.id, `${wall.id} : ${o.kind} donnant sur ${derriere?.id}`).toBeUndefined()
+            if (derriere === undefined) continue
+            expect(
+              derriere.walls.reduce((n, w) => n + w.openings.length, 0),
+              `${wall.id} : ${o.kind} donnant sur la galerie murée ${derriere.id}`,
+            ).toBeGreaterThan(0)
           }
         }
       }
@@ -682,7 +706,8 @@ describe('murs', () => {
           }
         }
         for (const wall of room.walls.filter((w) => w.kind === 'outer')) {
-          expect(wall.openings).toHaveLength(0)
+          // La façade ne reçoit que des jours, et seulement dans les passages.
+          for (const o of wall.openings) expect(o.kind).toBe('window')
         }
       }
     }
@@ -1132,7 +1157,12 @@ describe('pourtour', () => {
     for (const floor of plan.floors) {
       for (const wall of floor.enclosure) {
         expect(wall.placements).toHaveLength(0)
-        expect(wall.openings).toHaveLength(0)
+        // Un mur de fermeture peut porter des jours — il n'accroche rien, donc
+        // percer ne lui coûte aucune cimaise —, mais rien de franchissable.
+        for (const o of wall.openings) {
+          expect(o.kind).toBe('window')
+          expect(o.sill).toBeGreaterThan(0)
+        }
         expect(wall.kind).toBe('outer')
       }
     }

@@ -398,6 +398,8 @@ interface OpeningSpec {
   from: number
   to: number
   height: number
+  /** Allège. Omise ⇒ 0, c'est-à-dire posée au sol : portes et baies. */
+  sill?: number
 }
 
 interface WallSpec {
@@ -440,7 +442,17 @@ function finalizeWall(spec: WallSpec, centre: Vec2, height: number): Wall {
     const start = round(Math.max(0, Math.min(u0, u1)))
     const end = round(Math.min(longueur, Math.max(u0, u1)))
     if (end - start < 0.05) continue
-    openings.push({ kind: o.kind, start, end, height: round(Math.min(o.height, height)) })
+    const haut = round(Math.min(o.height, height))
+    openings.push({
+      kind: o.kind,
+      start,
+      end,
+      height: haut,
+      // Plafonnée sous le haut : une allège au-dessus de son propre linteau
+      // décrirait un rectangle retourné, que `Shape.holes` accepterait sans
+      // rien dire avant de produire une face inversée.
+      sill: round(Math.max(0, Math.min(o.sill ?? 0, haut))),
+    })
   }
   openings.sort((x, y) => x.start - y.start)
 
@@ -490,10 +502,7 @@ function clampedOpening(
   return { kind, from: round(centre - width / 2), to: round(centre + width / 2), height }
 }
 
-/**
- * Ce que la salle ouvre. Une galerie aveugle passe tout à `false` : elle ferme
- * l'enveloppe et rien de plus, sans baie ni porte (spec §7.2).
- */
+/** Ce que la salle ouvre. */
 interface RoomOpenings {
   /** Porte dans le mur mitoyen du côté `min` de l'axe du côté. */
   doorA: boolean
@@ -501,9 +510,74 @@ interface RoomOpenings {
   doorB: boolean
   /** Baie sur l'atrium et passages d'angle. */
   inner: boolean
+  /** Fenêtres dans le mur d'enceinte : vue sur le parc. */
+  fenetres?: boolean
 }
 
-const BLIND: RoomOpenings = { doorA: false, doorB: false, inner: false }
+// ── Fenêtres ─────────────────────────────────────────────────────────────
+
+/** Allège : hauteur d'appui, celle à laquelle on pose les avant-bras. */
+const WINDOW_SILL = 0.95
+
+/** Retombée sous la dalle. Une fenêtre qui monte au plafond n'a plus de linteau. */
+const WINDOW_HEAD_MARGIN = 1.1
+
+/** Largeur d'un jour. Étroit, comme les baies : la façade reste massive. */
+const WINDOW_WIDTH = 1.5
+
+/** Entraxe visé. Le rythme compte plus que le nombre : c'est lui qui se lit. */
+const WINDOW_PITCH = 4.2
+
+/**
+ * Trumeau conservé à chaque extrémité du mur. Un jour qui affleure l'angle
+ * donnerait l'impression que l'enveloppe ne porte rien.
+ */
+const WINDOW_END_MARGIN = 1.6
+
+/**
+ * Le rythme de jours d'un mur d'enceinte.
+ *
+ * ── Où l'on met des fenêtres, et où l'on n'en met surtout pas ──
+ *
+ * Uniquement dans les PASSAGES et dans les murs de fermeture — jamais dans une
+ * salle de collection. C'est d'abord un choix de musée : on regarde les œuvres
+ * dans les salles, on regarde dehors en circulant, et un contre-jour derrière
+ * une toile est exactement ce qu'un accrochage cherche à éviter.
+ *
+ * C'est aussi ce qui rend la chose sûre. Percer une salle de collection lui
+ * retirerait de la cimaise, donc de la capacité ; la boucle de capacité de
+ * `planBuilding` élargirait alors l'atrium pour compenser, ce qui rallonge les
+ * côtés, ce qui ajoute des fenêtres — une boucle qui ne converge pas. Les
+ * passages et les murs de fermeture n'accrochent RIEN : leur percement ne peut
+ * rien déséquilibrer.
+ */
+function windowRhythm(length: number, ceilingHeight: number): OpeningSpec[] {
+  const utile = length - 2 * WINDOW_END_MARGIN
+  if (utile < WINDOW_WIDTH) return []
+
+  const haut = ceilingHeight - WINDOW_HEAD_MARGIN
+  if (haut - WINDOW_SILL < 0.5) return []
+
+  // Le nombre de jours qui tient dans la portion utile, au moins un.
+  const n = Math.max(1, Math.floor((utile + (WINDOW_PITCH - WINDOW_WIDTH)) / WINDOW_PITCH))
+  // Puis on RÉPARTIT sur la portion utile plutôt que d'appliquer l'entraxe
+  // théorique : un rythme centré et régulier se lit, un rythme théorique laisse
+  // un trumeau final de travers qui se remarque immédiatement.
+  const espace = n > 1 ? (utile - n * WINDOW_WIDTH) / (n - 1) : 0
+
+  const jours: OpeningSpec[] = []
+  for (let i = 0; i < n; i++) {
+    const from = WINDOW_END_MARGIN + i * (WINDOW_WIDTH + espace)
+    jours.push({
+      kind: 'window',
+      from: round(from),
+      to: round(from + WINDOW_WIDTH),
+      height: round(haut),
+      sill: WINDOW_SILL,
+    })
+  }
+  return jours
+}
 
 /**
  * Les quatre murs d'une salle de l'anneau (spec §7.3).
@@ -580,13 +654,26 @@ function ringRoomWalls(
   }
 
   const outerIsMax = strip.outer > strip.inner
+  // Le mur d'enceinte de la pièce : percé de jours seulement si elle est un
+  // passage. Voir `windowRhythm` — une salle de collection garde sa cimaise.
+  const jours = ouvertures.fenetres
+    ? windowRhythm(strip.axis === 'x' ? xMax - xMin : zMax - zMin, ceilingHeight)
+    : []
+  // `windowRhythm` travaille en abscisse locale depuis 0 ; `finalizeWall` attend
+  // des cotes dans le repère du monde, sur l'axe du côté.
+  const origineJour = strip.axis === 'x' ? xMin : zMin
+  const joursMonde: OpeningSpec[] = jours.map((j) => ({
+    ...j,
+    from: round(origineJour + j.from),
+    to: round(origineJour + j.to),
+  }))
   const specs: WallSpec[] = []
 
   if (strip.axis === 'x') {
     const zOuter = outerIsMax ? zMax : zMin
     const zInner = outerIsMax ? zMin : zMax
     specs.push(
-      { id: `${roomId}-outer`, p: { x: xMin, z: zOuter }, q: { x: xMax, z: zOuter }, kind: 'outer', openings: [] },
+      { id: `${roomId}-outer`, p: { x: xMin, z: zOuter }, q: { x: xMax, z: zOuter }, kind: 'outer', openings: joursMonde },
       { id: `${roomId}-side-a`, p: { x: xMin, z: zMin }, q: { x: xMin, z: zMax }, kind: 'side', openings: sideOpenings(ouvertures.doorA) },
       { id: `${roomId}-side-b`, p: { x: xMax, z: zMin }, q: { x: xMax, z: zMax }, kind: 'side', openings: sideOpenings(ouvertures.doorB) },
       { id: `${roomId}-inner`, p: { x: xMin, z: zInner }, q: { x: xMax, z: zInner }, kind: 'inner', openings: innerOpenings },
@@ -595,7 +682,7 @@ function ringRoomWalls(
     const xOuter = outerIsMax ? xMax : xMin
     const xInner = outerIsMax ? xMin : xMax
     specs.push(
-      { id: `${roomId}-outer`, p: { x: xOuter, z: zMin }, q: { x: xOuter, z: zMax }, kind: 'outer', openings: [] },
+      { id: `${roomId}-outer`, p: { x: xOuter, z: zMin }, q: { x: xOuter, z: zMax }, kind: 'outer', openings: joursMonde },
       { id: `${roomId}-side-a`, p: { x: xMin, z: zMin }, q: { x: xMax, z: zMin }, kind: 'side', openings: sideOpenings(ouvertures.doorA) },
       { id: `${roomId}-side-b`, p: { x: xMin, z: zMax }, q: { x: xMax, z: zMax }, kind: 'side', openings: sideOpenings(ouvertures.doorB) },
       { id: `${roomId}-inner`, p: { x: xInner, z: zMin }, q: { x: xInner, z: zMax }, kind: 'inner', openings: innerOpenings },
@@ -740,6 +827,15 @@ export function enclosureWalls(
     for (const [lo, hi] of gaps(couverts, edge.de, edge.a)) {
       const p = edge.axis === 'x' ? { x: round(lo), z: edge.fixe } : { x: edge.fixe, z: round(lo) }
       const q = edge.axis === 'x' ? { x: round(hi), z: edge.fixe } : { x: edge.fixe, z: round(hi) }
+      // Un mur de fermeture n'accroche rien : il peut donc être percé sans
+      // coûter la moindre cimaise. C'est même le meilleur endroit pour une vue —
+      // il ferme précisément les portions où aucune salle ne revendique le
+      // pourtour, donc les angles et les paliers.
+      const jours = windowRhythm(hi - lo, ceilingHeight).map((j) => ({
+        ...j,
+        from: round(lo + j.from),
+        to: round(lo + j.to),
+      }))
       murs.push(
         finalizeWall(
           {
@@ -747,7 +843,7 @@ export function enclosureWalls(
             p,
             q,
             kind: 'outer',
-            openings: [],
+            openings: jours,
           },
           centre,
           ceilingHeight,
@@ -930,6 +1026,11 @@ function buildSlots(
 
   return slots.map((slot, i) => {
     const footprint = roomFootprint(strip, bornes[i], bornes[i + 1])
+    // Un voisin existe dès qu'il y a une case à côté : salle de collection OU
+    // galerie. C'est ce qui fait de l'anneau un parcours continu.
+    const voisinAvant = i > 0
+    const voisinApres = i + 1 < slots.length
+
     if (slot.cluster < 0) {
       const roomId = `${id}-${strip.side}-galerie-${galerie++}`
       return {
@@ -938,7 +1039,33 @@ function buildSlots(
         side: strip.side,
         footprint,
         theme: defaultTheme('collection'),
-        walls: ringRoomWalls(roomId, footprint, strip, atrium, ceilingHeight, BLIND),
+        /*
+          UNE GALERIE EST UN PASSAGE, PAS UN CAISSON MURÉ.
+
+          Elle était close sur ses quatre côtés. L'intention était bonne — une
+          galerie ne fait pas semblant d'être une salle, elle comble le reliquat
+          d'un côté et ferme l'enveloppe — mais la conséquence, mesurée sur le
+          musée réel, ne l'était pas : à l'étage 2, cinq des sept pièces étaient
+          des galeries, soit 71 % du plateau en volume INACCESSIBLE. Le visiteur
+          arrivait par la rampe sur un palier bordé de deux salles et de cinq
+          murs. C'est ce que « l'architecture est à améliorer » désigne.
+
+          Ouvertes aux deux bouts et sur l'atrium, les mêmes galeries font
+          exactement ce qu'un musée demande à un reliquat de plan : une
+          circulation. On peut faire le tour de l'anneau, et le regard porte
+          d'un bout à l'autre du côté au lieu de buter sur une cloison.
+
+          Elles n'accrochent toujours rien : ce sont des passages, et une œuvre
+          y serait vue en marchant, jamais regardée.
+        */
+        walls: ringRoomWalls(roomId, footprint, strip, atrium, ceilingHeight, {
+          doorA: voisinAvant,
+          doorB: voisinApres,
+          inner: true,
+          // Un passage regarde dehors. C'est là que la vue sur le parc a sa
+          // place, et nulle part ailleurs : voir `windowRhythm`.
+          fenetres: true,
+        }),
         topics: [],
         keys: [],
       }
@@ -949,8 +1076,10 @@ function buildSlots(
     // la contrepartie du passage d'angle percé en face —, sauf si une galerie
     // aveugle occupe ce bout : elle mure le passage, l'ouvrir donnerait sur un
     // cul-de-sac. Le Nord et le Sud, eux, finissent sur la façade.
-    const salleAvant = i > 0 && slots[i - 1].cluster >= 0
-    const salleApres = i + 1 < slots.length && slots[i + 1].cluster >= 0
+    // Depuis que les galeries sont des passages, un voisin est un voisin :
+    // ouvrir sur une galerie n'est plus un cul-de-sac, c'est la suite du tour.
+    const salleAvant = voisinAvant
+    const salleApres = voisinApres
     const enAngle = strip.axis === 'z'
     const cluster = bin[slot.cluster]
     const roomId = `${id}-${strip.side}-${slot.cluster}`

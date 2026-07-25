@@ -61,10 +61,17 @@ const rect = z.object({
 })
 
 const openingSchema = z.looseObject({
-  kind: z.enum(['door', 'bay']),
+  kind: z.enum(['door', 'bay', 'window']),
   start: nombre,
   end: nombre,
   height: nombre.positive(),
+  /**
+   * Allège. Facultative à la LECTURE, et c'est délibéré : un `museum.json`
+   * produit avant qu'elle n'existe — ou remis par le cache de la CI — doit
+   * continuer à s'ouvrir. Absente, elle vaut zéro, c'est-à-dire une ouverture
+   * posée au sol, ce qu'étaient toutes les ouvertures avant.
+   */
+  sill: nombre.min(0).default(0),
 })
 
 const placementSchema = z.looseObject({
@@ -107,6 +114,12 @@ const floorSchema = z.looseObject({
   elevation: nombre,
   ceilingHeight: nombre.positive(),
   rooms: z.array(roomSchema),
+  /**
+   * Les murs qui ferment le pourtour là où aucune salle ne le fait. Facultatif
+   * à la lecture, pour la même raison que `sill` : un fichier d'avant se lit
+   * encore, avec un bâtiment simplement moins clos.
+   */
+  enclosure: z.array(wallSchema).default([]),
   slabHoles: z.array(rect),
   footprint: rect,
 })

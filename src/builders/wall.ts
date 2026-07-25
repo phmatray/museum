@@ -256,15 +256,72 @@ function skyline(rects: Step[]): Step[] {
 }
 
 /**
- * Les ouvertures, ramenées dans le mur puis regroupées par contact.
+ * Une ouverture qui FLOTTE : son allège est au-dessus du plancher.
  *
- * `Opening` n'a pas d'allège : une ouverture part TOUJOURS du plancher et monte
- * à `height`. C'est vrai des portes comme des baies, et c'est ce qui fait qu'une
- * ouverture est une ENCOCHE du contour et non un trou flottant — son arête basse
- * est confondue avec celle du mur. Le jour où le modèle gagnera une allège, il
- * faudra rouvrir de vrais `Shape.holes` ET leur donner un seuil ; le §9.4 le
- * prévoit (« le seuil pour les baies qui ne descendent pas au sol »), le modèle
- * de données pas encore.
+ * Un rectangle en coordonnées du mur — `[from, to] × [bas, haut]` — destiné à
+ * devenir un `Shape.holes` du morceau qui le contient.
+ */
+interface Trou {
+  from: number
+  to: number
+  bas: number
+  haut: number
+}
+
+/**
+ * Sépare les ouvertures posées au SOL de celles qui flottent.
+ *
+ * La distinction n'est pas cosmétique, elle change la construction. Une
+ * ouverture au sol a son arête basse confondue avec celle du mur : c'est une
+ * ENCOCHE du contour. En faire un `Shape.holes` ferait fermer cette arête par
+ * une facette horizontale exactement coplanaire avec la face supérieure de la
+ * dalle — le z-fighting qu'on a déjà payé une fois, dans toutes les portes du
+ * bâtiment. Une ouverture qui flotte, elle, ne touche aucune arête du mur : le
+ * trou est alors la SEULE description possible, et il n'a plus rien à
+ * concurrencer.
+ */
+function separerOuvertures(
+  openings: Opening[],
+  length: number,
+  height: number,
+): { auSol: Opening[]; flottantes: Trou[] } {
+  const auSol: Opening[] = []
+  const flottantes: Trou[] = []
+
+  for (const o of openings) {
+    const from = Math.max(0, Math.min(o.start, o.end))
+    const to = Math.min(length, Math.max(o.start, o.end))
+    const haut = Math.min(o.height, height)
+    // `sill` est arrivé après coup dans le modèle : un `museum.json` produit
+    // avant, ou remis par le cache de la CI, n'en porte pas. Sans ce garde-fou
+    // `Math.min(undefined, …)` donne NaN, qui contamine la Shape entière et
+    // fait disparaître le mur — sans la moindre erreur.
+    const allege = Number.isFinite(o.sill) ? o.sill : 0
+    const bas = Math.max(0, Math.min(allege, haut))
+    if (to - from <= EPS || haut - bas <= EPS) continue
+    // Une allège sous le seuil est une ouverture au sol : garder un jambage de
+    // deux millimètres sous une baie ne se verrait pas et ferait une arête de
+    // plus à faire calculer au collider.
+    if (bas <= ALLEGE_MIN) auSol.push(o)
+    // De même en haut : si le trou monte jusqu'au plafond, il n'y a pas de
+    // linteau à décrire et le trou déborderait du contour.
+    else if (height - haut <= EPS) auSol.push({ ...o, sill: 0 })
+    else flottantes.push({ from, to, bas, haut })
+  }
+
+  return { auSol, flottantes }
+}
+
+/**
+ * En dessous, une allège n'est pas une allège. Cinq centimètres, c'est moins que
+ * la plinthe : rien de constructible ne s'y loge.
+ */
+const ALLEGE_MIN = 0.05
+
+/**
+ * Les ouvertures posées au sol, ramenées dans le mur puis regroupées par contact.
+ *
+ * Chacune est une ENCOCHE du contour, jamais un trou : voir `separerOuvertures`.
  */
 function openingGroups(openings: Opening[], length: number, height: number): Step[][] {
   const rects: Step[] = openings
@@ -340,7 +397,7 @@ function wallPieces(length: number, height: number, groups: Step[][]): Piece[] {
  * flotter les faces du mur de 3 mm au-dessus du sol, et le §9.4 y gagnerait un
  * jour de traque de fentes lumineuses.
  */
-function pieceShape(piece: Piece, height: number): THREE.Shape {
+function pieceShape(piece: Piece, height: number, trous: Trou[] = []): THREE.Shape {
   // Le profil bas : une hauteur par intervalle, 0 sur le plein.
   const profil: Step[] = []
   let u = piece.from
@@ -360,7 +417,24 @@ function pieceShape(piece: Piece, height: number): THREE.Shape {
   points.push(new THREE.Vector2(piece.to, height))
   points.push(new THREE.Vector2(piece.from, height))
 
-  return new THREE.Shape(points)
+  const shape = new THREE.Shape(points)
+
+  // Les fenêtres du morceau, en sens HORAIRE : `ExtrudeGeometry` renormalise,
+  // mais un contour explicitement inversé évite d'avoir à le revérifier à
+  // chaque montée de version — c'est déjà la convention de `buildSlab`.
+  for (const t of trous) {
+    if (t.from < piece.from - EPS || t.to > piece.to + EPS) continue
+    shape.holes.push(
+      new THREE.Path([
+        new THREE.Vector2(t.from, t.bas),
+        new THREE.Vector2(t.from, t.haut),
+        new THREE.Vector2(t.to, t.haut),
+        new THREE.Vector2(t.to, t.bas),
+      ]),
+    )
+  }
+
+  return shape
 }
 
 /**
@@ -428,7 +502,8 @@ export function buildWall(wall: Wall): BuiltWall {
   const frame = wallFrame(wall)
   if (frame.length < EPS || wall.height <= EPS) return emptyWall()
 
-  const groups = openingGroups(wall.openings, frame.length, wall.height)
+  const { auSol, flottantes } = separerOuvertures(wall.openings, frame.length, wall.height)
+  const groups = openingGroups(auSol, frame.length, wall.height)
   const pieces = wallPieces(frame.length, wall.height, groups)
   if (pieces.length === 0) return emptyWall() // entièrement percé : plus de mur
 
@@ -440,7 +515,7 @@ export function buildWall(wall: Wall): BuiltWall {
   const morceaux: THREE.BufferGeometry[] = []
 
   const corps = extrudeChanfreine(
-    pieces.map((p) => pieceShape(p, wall.height)),
+    pieces.map((p) => pieceShape(p, wall.height, flottantes)),
     WALL_THICKNESS,
   )
   // Sortie brute en `[−CHAMFER, T − CHAMFER]` : on la recale sur `[0, T]` ou

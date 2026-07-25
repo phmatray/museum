@@ -11,6 +11,7 @@ import { museumResource, resolveSpawn, voidFloorY } from './io/loadMuseum'
 import { useIsMobile } from './hooks/useIsMobile'
 import { MobileControlsOverlay } from './components/MobileControls'
 import { Minimap } from './components/Minimap'
+import { MuseumErrorBoundary } from './components/MuseumErrorBoundary'
 import { useGameStore } from './stores/gameStore'
 import { VisitorTracker } from './hooks/useRoomTransition'
 
@@ -35,9 +36,16 @@ const Controls = {
  */
 export default function App() {
   return (
-    <Suspense fallback={<ChargementDuMusee />}>
-      <Museum />
-    </Suspense>
+    // La frontière ENGLOBE le Suspense, et pas l'inverse : `use()` sur une
+    // promesse rejetée relance pendant le rendu de l'enfant, et une frontière
+    // placée à l'intérieur ne verrait jamais rien. Sans elle, un `museum.json`
+    // que le schéma refuse laisse l'écran de chargement à l'affiche
+    // indéfiniment — vécu.
+    <MuseumErrorBoundary>
+      <Suspense fallback={<ChargementDuMusee />}>
+        <Museum />
+      </Suspense>
+    </MuseumErrorBoundary>
   )
 }
 

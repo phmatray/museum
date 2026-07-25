@@ -106,7 +106,7 @@ describe('usableSegments', () => {
   })
 
   it('retire les ouvertures et coupe le mur en deux', () => {
-    const wall = makeWall('w', 10, [{ kind: 'door', start: 4, end: 6, height: 2.1 }])
+    const wall = makeWall('w', 10, [{ kind: 'door', start: 4, end: 6, height: 2.1 , sill: 0}])
     expect(usableSegments(wall)).toEqual([
       { start: 0.5, end: 4 },
       { start: 6, end: 9.5 },
@@ -114,7 +114,7 @@ describe('usableSegments', () => {
   })
 
   it('écarte les segments trop courts pour recevoir quoi que ce soit', () => {
-    const wall = makeWall('w', 10, [{ kind: 'bay', start: 1.5, end: 8, height: 2.4 }])
+    const wall = makeWall('w', 10, [{ kind: 'bay', start: 1.5, end: 8, height: 2.4 , sill: 0}])
     const segments = usableSegments(wall)
     expect(segments).toEqual([{ start: 8, end: 9.5 }])
     expect(segments.every((s) => s.end - s.start >= MIN_USABLE_SEGMENT)).toBe(true)
@@ -122,8 +122,8 @@ describe('usableSegments', () => {
 
   it('fusionne des ouvertures qui se recouvrent', () => {
     const wall = makeWall('w', 12, [
-      { kind: 'door', start: 4, end: 7, height: 2.1 },
-      { kind: 'bay', start: 5, end: 8, height: 2.4 },
+      { kind: 'door', start: 4, end: 7, height: 2.1 , sill: 0},
+      { kind: 'bay', start: 5, end: 8, height: 2.4 , sill: 0},
     ])
     expect(usableSegments(wall)).toEqual([
       { start: 0.5, end: 4 },
@@ -144,7 +144,7 @@ describe('wallCapacity', () => {
   })
 
   it('somme la capacité de chaque segment', () => {
-    const wall = makeWall('w', 10, [{ kind: 'door', start: 4, end: 6, height: 2.1 }])
+    const wall = makeWall('w', 10, [{ kind: 'door', start: 4, end: 6, height: 2.1 , sill: 0}])
     expect(wallCapacity(wall)).toBe(2)
   })
 
@@ -241,8 +241,8 @@ describe('hangWall — répartition automatique', () => {
 
   it('n’accroche jamais dans une ouverture', () => {
     const wall = makeWall('w', 14, [
-      { kind: 'door', start: 3, end: 5, height: 2.1 },
-      { kind: 'bay', start: 8, end: 10.4, height: 2.4 },
+      { kind: 'door', start: 3, end: 5, height: 2.1 , sill: 0},
+      { kind: 'bay', start: 8, end: 10.4, height: 2.4 , sill: 0},
     ])
     const placements = hangWall(wall, makeEntries(6, () => 0))
     expectNoOverlap(placements)
@@ -368,7 +368,7 @@ describe('hangWall — placements épinglés', () => {
   })
 
   it('écarte une épingle qui tombe dans une ouverture', () => {
-    const wall = makeWall('w', 12, [{ kind: 'door', start: 5, end: 7, height: 2.1 }])
+    const wall = makeWall('w', 12, [{ kind: 'door', start: 5, end: 7, height: 2.1 , sill: 0}])
     const placements = hangWall(wall, [{ ...makeEntries(1)[0], pinned: { u: 6 } }])
     expect(placements).toEqual([])
   })
@@ -456,14 +456,14 @@ describe('hangWall — totalité', () => {
 
 describe('hangWall — déterminisme', () => {
   it('donne deux fois le même résultat', () => {
-    const wall = makeWall('w', 14, [{ kind: 'door', start: 6, end: 8, height: 2.1 }])
+    const wall = makeWall('w', 14, [{ kind: 'door', start: 6, end: 8, height: 2.1 , sill: 0}])
     const first = hangWall(wall, realEntries)
     const second = hangWall(wall, realEntries)
     expect(JSON.stringify(first)).toBe(JSON.stringify(second))
   })
 
   it('ne dépend pas de l’ordre des entrées', () => {
-    const wall = makeWall('w', 14, [{ kind: 'door', start: 6, end: 8, height: 2.1 }])
+    const wall = makeWall('w', 14, [{ kind: 'door', start: 6, end: 8, height: 2.1 , sill: 0}])
     const entries = [
       ...realEntries.slice(0, 6),
       { ...realEntries[6], pinned: { u: 2 } },
@@ -489,7 +489,7 @@ describe('hangWall — déterminisme', () => {
 describe('hangRoom', () => {
   const fourWalls = () => [
     makeWall('nord', 8),
-    makeWall('est', 6, [{ kind: 'door', start: 2, end: 4, height: 2.1 }]),
+    makeWall('est', 6, [{ kind: 'door', start: 2, end: 4, height: 2.1 , sill: 0}]),
     makeWall('sud', 8),
     makeWall('ouest', 6),
   ]
@@ -558,7 +558,7 @@ describe('hangRoom', () => {
     const room = makeRoom('grande', [
       makeWall('nord', 12),
       makeWall('est', 12),
-      makeWall('sud', 12, [{ kind: 'door', start: 5, end: 7, height: 2.1 }]),
+      makeWall('sud', 12, [{ kind: 'door', start: 5, end: 7, height: 2.1 , sill: 0}]),
       makeWall('ouest', 12),
     ])
     // Une salle réelle reçoit un cluster, pas tout le corpus : on vérifie que

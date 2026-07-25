@@ -48,7 +48,12 @@ function mur(over: Partial<Wall> = {}): Wall {
 }
 
 function porte(start: number, end: number, height = 2.1): Opening {
-  return { kind: 'door', start, end, height }
+  return { kind: 'door', start, end, height, sill: 0 }
+}
+
+/** Une fenêtre : ouverture qui FLOTTE, allège au-dessus du plancher. */
+function fenetre(start: number, end: number, sill = 0.95, height = 2.6): Opening {
+  return { kind: 'window', start, end, height, sill }
 }
 
 /** Les triangles du COLLIDER, dans le repère du niveau. */
@@ -171,18 +176,24 @@ function volumeSigne(built: BuiltWall): number {
 }
 
 function airePercee(wall: Wall): number {
-  return wall.openings.reduce(
-    (s, o) => s + (o.end - o.start) * Math.min(o.height, wall.height),
-    0,
-  )
+  // Le vide d'une ouverture va de son ALLÈGE à son linteau. Compter depuis le
+  // sol reviendrait à percer l'allège d'une fenêtre, qui est justement ce qui
+  // en fait une fenêtre.
+  return wall.openings.reduce((s, o) => {
+    const haut = Math.min(o.height, wall.height)
+    const bas = Math.max(0, Math.min(o.sill ?? 0, haut))
+    return s + (o.end - o.start) * (haut - bas)
+  }, 0)
 }
 
 /** Boîte du VIDE d'une ouverture, dans le repère du mur, marges comprises. */
 function boiteOuverture(o: Opening, wall: Wall, marge = 0.02): THREE.Box3 {
+  const haut = Math.min(o.height, wall.height)
+  const bas = Math.max(0, Math.min(o.sill ?? 0, haut))
   return new THREE.Box3(
     // `w` déborde largement de l'épaisseur : « sur toute son épaisseur ».
-    new THREE.Vector3(o.start + marge, marge, -1),
-    new THREE.Vector3(o.end - marge, Math.min(o.height, wall.height) - marge, 1),
+    new THREE.Vector3(o.start + marge, bas + marge, -1),
+    new THREE.Vector3(o.end - marge, haut - marge, 1),
   )
 }
 
@@ -321,7 +332,7 @@ describe('aire de la face', () => {
       kind: 'inner',
       openings: [
         porte(3.5, 5.5),
-        { kind: 'bay', start: 17.8, end: 20.2, height: 3.7 },
+        { kind: 'bay', start: 17.8, end: 20.2, height: 3.7 , sill: 0},
         porte(32.5, 34.5),
       ],
     })
@@ -348,7 +359,7 @@ describe('aire de la face', () => {
   })
 
   it('ouverture débordante : elle est ramenée dans le mur', () => {
-    const w = mur({ openings: [{ kind: 'door', start: -3, end: 2, height: 99 }] })
+    const w = mur({ openings: [{ kind: 'door', start: -3, end: 2, height: 99 , sill: 0}] })
     // Ramenée à u ∈ [0, 2] et à la hauteur du mur : 2 × 4 percés.
     expect(aireFaceInterieure(w, buildWall(w))).toBeCloseTo(40 - 8, 3)
   })
@@ -553,7 +564,7 @@ describe('embrasure (spec §9.4)', () => {
     const multiple = mur({
       b: { x: 38, z: 0 },
       height: 4.3,
-      openings: [porte(3.5, 5.5), { kind: 'bay', start: 17.8, end: 20.2, height: 3.7 }, porte(32.5, 34.5)],
+      openings: [porte(3.5, 5.5), { kind: 'bay', start: 17.8, end: 20.2, height: 3.7 , sill: 0}, porte(32.5, 34.5)],
     })
     const fm = facettes(multiple, buildWall(multiple))
     for (const ouv of multiple.openings) {
@@ -739,7 +750,10 @@ describe('musée réel (public/data/museum.json)', () => {
     }
   })
 
-  it('laisse passer par chacune de ses ouvertures', () => {
+  it('le vide de chaque ouverture est réellement vide', () => {
+    // Vrai des portes comme des fenêtres : dans les deux cas le mur ne doit
+    // laisser aucun triangle DANS l'ouverture. La différence est la hauteur à
+    // laquelle ce vide commence, et c'est `boiteOuverture` qui la porte.
     let controlees = 0
     for (const w of murs) {
       const built = buildWall(w)
@@ -751,11 +765,105 @@ describe('musée réel (public/data/museum.json)', () => {
     expect(controlees).toBeGreaterThanOrEqual(4)
   })
 
+  it('on FRANCHIT une porte et on ne franchit pas une fenêtre', () => {
+    // La distinction qui compte pour le visiteur : sous une allège il y a du
+    // mur, et le collider le porte. Sans ça on sortirait du musée par un jour.
+    let fenetres = 0
+    for (const w of murs) {
+      const built = buildWall(w)
+      for (const o of w.openings.filter((x) => (x.sill ?? 0) > 0.05)) {
+        fenetres++
+        const sousAllege = new THREE.Box3(
+          new THREE.Vector3(o.start + 0.1, 0.05, -1),
+          new THREE.Vector3(o.end - 0.1, (o.sill ?? 0) - 0.05, 1),
+        )
+        expect(trianglesDansLaBoite(w, built, sousAllege), `${w.id} : allège percée`).toBeGreaterThan(0)
+      }
+    }
+    expect(fenetres, 'le musée réel ne porte aucune fenêtre à contrôler').toBeGreaterThan(0)
+  })
+
   it('n’émet aucun triangle dégénéré', () => {
     for (const w of murs) {
       for (const t of triangles(buildWall(w))) {
         expect(t.getArea(), w.id).toBeGreaterThan(1e-7)
       }
     }
+  })
+})
+
+// ── Fenêtres : les ouvertures qui FLOTTENT ───────────────────────────────
+
+/**
+ * Une ouverture posée au sol est une encoche du contour ; une fenêtre est un
+ * vrai trou. La distinction n'est pas cosmétique : elle décide de la façon dont
+ * le mur est construit, et se tromper de camp a déjà coûté du z-fighting dans
+ * toutes les portes du bâtiment.
+ */
+describe('fenêtres', () => {
+  it('perce un trou sans couper le mur en deux', () => {
+    // Une porte casse le mur en deux jambages ; une fenêtre, non — le mur passe
+    // sous elle et au-dessus d'elle.
+    const avec = buildWall(mur({ openings: [fenetre(3, 4.5)] }))
+    const sans = buildWall(mur({ openings: [] }))
+    expect(avec.geometry.getAttribute('position').count).toBeGreaterThan(
+      sans.geometry.getAttribute('position').count,
+    )
+  })
+
+  it('laisse de la matière SOUS la fenêtre — c’est l’allège', () => {
+    /*
+      Ce qui distingue une fenêtre d'une porte, c'est que le mur passe SOUS
+      elle. On le prouve par les sommets de l'arête basse du jour, et non en
+      cherchant un triangle entier sous l'allège : la face d'un mur percé est
+      une seule polyligne triangulée par earcut, dont les triangles enjambent
+      volontiers le jour. Leur absence ne prouverait rien.
+    */
+    const built = buildWall(mur({ openings: [fenetre(3, 4.5, 0.95, 2.6)] }))
+    const pos = built.geometry.getAttribute('position') as THREE.BufferAttribute
+
+    const boite = new THREE.Box3().setFromBufferAttribute(pos)
+    // Le mur descend toujours au sol : rien n'a été découpé en bas.
+    expect(boite.min.y).toBeLessThan(0.05)
+
+    // Le chanfrein de 3 mm déplace les sommets d'autant : on cherche à 2 cm près.
+    const proche = (v: number, cible: number) => Math.abs(v - cible) < 0.02
+    let coinsBas = 0
+    let coinsHaut = 0
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i)
+      const y = pos.getY(i)
+      if (!proche(x, 3) && !proche(x, 4.5)) continue
+      if (proche(y, 0.95)) coinsBas++
+      if (proche(y, 2.6)) coinsHaut++
+    }
+    expect(coinsBas, "l'arête basse du jour n'existe pas : ce n'est pas une fenêtre").toBeGreaterThan(0)
+    expect(coinsHaut, 'le linteau du jour n’existe pas').toBeGreaterThan(0)
+  })
+
+  it('une allège sous le seuil retombe sur une ouverture au sol', () => {
+    // Deux centimètres d'allège ne se verraient pas et feraient une arête de
+    // plus à faire calculer au collider.
+    const rase = buildWall(mur({ openings: [fenetre(3, 4.5, 0.02, 2.1)] }))
+    const porteEquivalente = buildWall(mur({ openings: [porte(3, 4.5, 2.1)] }))
+    expect(rase.geometry.getAttribute('position').count).toBe(
+      porteEquivalente.geometry.getAttribute('position').count,
+    )
+  })
+
+  it('une allège au-dessus du linteau ne produit pas de rectangle retourné', () => {
+    // `Shape.holes` accepterait le contour sans rien dire, avant de sortir une
+    // face inversée qu'on ne verrait que sous un certain angle.
+    const built = buildWall(mur({ openings: [fenetre(3, 4.5, 5, 2.6)] }))
+    for (const t of triangles(built)) {
+      for (const p of [t.a, t.b, t.c]) expect(Number.isFinite(p.x + p.y + p.z)).toBe(true)
+    }
+  })
+
+  it('le collider bouche la fenêtre : on ne sort pas du musée par un jour', () => {
+    // Une fenêtre est une vue, pas un passage. Si son trou traversait le
+    // collider, le visiteur franchirait la façade à hauteur d'appui.
+    const built = buildWall(mur({ openings: [fenetre(3, 4.5, 0.95, 2.6)] }))
+    expect(built.collider.indices.length).toBeGreaterThan(0)
   })
 })

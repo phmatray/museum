@@ -15,6 +15,8 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
+import { BLIND_GALLERY_NAME } from '../layout'
+
 import { FRAME_BORDER, FRAME_DEPTH } from '../../builders/artwork'
 import { WALL_THICKNESS } from '../../builders/wall'
 import type { Boite } from '../props'
@@ -342,6 +344,12 @@ describe('placeProps — le musée réel', () => {
     for (const floor of museum.floors) {
       for (const room of floor.rooms) {
         if (aire(room) < SALLE_ASSEZ_GRANDE) continue
+        // Un PASSAGE n'a pas à être végétalisé : son métier est d'être
+        // franchissable. Depuis que les galeries sont ouvertes aux deux bouts,
+        // leurs portes et leurs jours occupent le pourtour, et ce qui reste au
+        // milieu est la circulation — y planter une jardinière la barrerait.
+        // La règle du §9.4 vise les salles où l'on s'arrête.
+        if (room.name === BLIND_GALLERY_NAME) continue
         const plantes = parEtage(floor.id).filter(
           (p) =>
             p.id.startsWith('plante-') &&

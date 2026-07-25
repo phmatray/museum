@@ -628,19 +628,22 @@
                   "kind": "door",
                   "start": 3.5,
                   "end": 5.5,
-                  "height": 2.1
+                  "height": 2.1,
+                  "sill": 0
                 },
                 {
                   "kind": "bay",
                   "start": 13.8,
                   "end": 16.2,
-                  "height": 3.7
+                  "height": 3.7,
+                  "sill": 0
                 },
                 {
                   "kind": "door",
                   "start": 24.5,
                   "end": 26.5,
-                  "height": 2.1
+                  "height": 2.1,
+                  "sill": 0
                 }
               ],
               "placements": [
@@ -721,7 +724,57 @@
             "x": 0,
             "z": -1
           },
-          "openings": [],
+          "openings": [
+            {
+              "kind": "window",
+              "start": 1.6,
+              "end": 3.1,
+              "height": 3.2,
+              "sill": 0.95
+            },
+            {
+              "kind": "window",
+              "start": 5.816667,
+              "end": 7.316667,
+              "height": 3.2,
+              "sill": 0.95
+            },
+            {
+              "kind": "window",
+              "start": 10.033333,
+              "end": 11.533333,
+              "height": 3.2,
+              "sill": 0.95
+            },
+            {
+              "kind": "window",
+              "start": 14.25,
+              "end": 15.75,
+              "height": 3.2,
+              "sill": 0.95
+            },
+            {
+              "kind": "window",
+              "start": 18.466667,
+              "end": 19.966667,
+              "height": 3.2,
+              "sill": 0.95
+            },
+            {
+              "kind": "window",
+              "start": 22.683333,
+              "end": 24.183333,
+              "height": 3.2,
+              "sill": 0.95
+            },
+            {
+              "kind": "window",
+              "start": 26.9,
+              "end": 28.4,
+              "height": 3.2,
+              "sill": 0.95
+            }
+          ],
           "placements": []
         },
         {
@@ -740,7 +793,36 @@
             "x": 1,
             "z": 0
           },
-          "openings": [],
+          "openings": [
+            {
+              "kind": "window",
+              "start": 1.6,
+              "end": 3.1,
+              "height": 3.2,
+              "sill": 0.95
+            },
+            {
+              "kind": "window",
+              "start": 7.033333,
+              "end": 8.533333,
+              "height": 3.2,
+              "sill": 0.95
+            },
+            {
+              "kind": "window",
+              "start": 12.466667,
+              "end": 13.966667,
+              "height": 3.2,
+              "sill": 0.95
+            },
+            {
+              "kind": "window",
+              "start": 17.9,
+              "end": 19.4,
+              "height": 3.2,
+              "sill": 0.95
+            }
+          ],
           "placements": []
         },
         {
@@ -759,7 +841,36 @@
             "x": -1,
             "z": 0
           },
-          "openings": [],
+          "openings": [
+            {
+              "kind": "window",
+              "start": 1.6,
+              "end": 3.1,
+              "height": 3.2,
+              "sill": 0.95
+            },
+            {
+              "kind": "window",
+              "start": 7.033333,
+              "end": 8.533333,
+              "height": 3.2,
+              "sill": 0.95
+            },
+            {
+              "kind": "window",
+              "start": 12.466667,
+              "end": 13.966667,
+              "height": 3.2,
+              "sill": 0.95
+            },
+            {
+              "kind": "window",
+              "start": 17.9,
+              "end": 19.4,
+              "height": 3.2,
+              "sill": 0.95
+            }
+          ],
           "placements": []
         }
       ],
@@ -790,9 +901,9 @@
           "name": "Mcp / Claude",
           "side": "north",
           "footprint": {
-            "x": -3.1,
+            "x": -4.3,
             "z": -15,
-            "width": 12.1,
+            "width": 13.3,
             "depth": 9
           },
           "theme": "classic",
@@ -804,7 +915,7 @@
                 "z": -15
               },
               "b": {
-                "x": -3.1,
+                "x": -4.3,
                 "z": -15
               },
               "height": 4.3,
@@ -816,18 +927,28 @@
               "openings": [],
               "placements": [
                 {
-                  "key": "Atypical-Consulting/AdrMcp",
-                  "u": 2.965359843160042,
+                  "key": "phmatray/AIPromptMaster",
+                  "u": 2.582184874961636,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 1,
+                  "layer": 35,
+                  "pinned": false
+                },
+                {
+                  "key": "phmatray/AutonomousAgent",
+                  "u": 5.239627248839267,
+                  "centerHeight": 1.45,
+                  "width": 1.1505149978319906,
+                  "height": 0.5752574989159953,
+                  "atlas": 0,
+                  "layer": 41,
                   "pinned": false
                 },
                 {
                   "key": "Atypical-Consulting/RoselineMCP",
-                  "u": 6.05,
+                  "u": 8.016349936396814,
                   "centerHeight": 1.45,
                   "width": 1.2385606273598313,
                   "height": 0.6192803136799157,
@@ -837,7 +958,7 @@
                 },
                 {
                   "key": "Atypical-Consulting/StaticWGen",
-                  "u": 9.134640156839957,
+                  "u": 10.717815125038365,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
@@ -850,11 +971,11 @@
             {
               "id": "etage-1-north-0-side-a",
               "a": {
-                "x": -3.1,
+                "x": -4.3,
                 "z": -15
               },
               "b": {
-                "x": -3.1,
+                "x": -4.3,
                 "z": -6
               },
               "height": 4.3,
@@ -863,36 +984,34 @@
                 "x": 1,
                 "z": 0
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": [
                 {
-                  "key": "Atypical-Consulting/MarkdownInk",
-                  "u": 2.190359843160042,
+                  "key": "phmatray/BuildSphere",
+                  "u": 2,
                   "centerHeight": 1.45,
-                  "width": 1,
-                  "height": 0.5,
+                  "width": 1.1505149978319906,
+                  "height": 0.5752574989159953,
                   "atlas": 0,
-                  "layer": 16,
+                  "layer": 53,
                   "pinned": false
                 },
                 {
-                  "key": "Atypical-Consulting/claude-legends-review",
-                  "u": 4.5,
+                  "key": "phmatray/ClaudeCodeSdkNet",
+                  "u": 7,
                   "centerHeight": 1.45,
-                  "width": 1.2385606273598313,
-                  "height": 0.6192803136799157,
+                  "width": 1.1505149978319906,
+                  "height": 0.5752574989159953,
                   "atlas": 0,
-                  "layer": 6,
-                  "pinned": false
-                },
-                {
-                  "key": "phmatray/AIPromptMaster",
-                  "u": 6.809640156839958,
-                  "centerHeight": 1.45,
-                  "width": 1,
-                  "height": 0.5,
-                  "atlas": 0,
-                  "layer": 35,
+                  "layer": 57,
                   "pinned": false
                 }
               ]
@@ -918,28 +1037,29 @@
                   "kind": "door",
                   "start": 3.5,
                   "end": 5.5,
-                  "height": 2.1
+                  "height": 2.1,
+                  "sill": 0
                 }
               ],
               "placements": [
                 {
-                  "key": "phmatray/AutonomousAgent",
+                  "key": "Atypical-Consulting/AdrMcp",
                   "u": 2,
                   "centerHeight": 1.45,
-                  "width": 1.1505149978319906,
-                  "height": 0.5752574989159953,
+                  "width": 1,
+                  "height": 0.5,
                   "atlas": 0,
-                  "layer": 41,
+                  "layer": 1,
                   "pinned": false
                 },
                 {
-                  "key": "phmatray/BuildSphere",
+                  "key": "Atypical-Consulting/MarkdownInk",
                   "u": 7,
                   "centerHeight": 1.45,
-                  "width": 1.1505149978319906,
-                  "height": 0.5752574989159953,
+                  "width": 1,
+                  "height": 0.5,
                   "atlas": 0,
-                  "layer": 53,
+                  "layer": 16,
                   "pinned": false
                 }
               ]
@@ -947,7 +1067,7 @@
             {
               "id": "etage-1-north-0-inner",
               "a": {
-                "x": -3.1,
+                "x": -4.3,
                 "z": -6
               },
               "b": {
@@ -963,25 +1083,26 @@
               "openings": [
                 {
                   "kind": "bay",
-                  "start": 3.35,
-                  "end": 5.75,
-                  "height": 3.7
+                  "start": 3.95,
+                  "end": 6.35,
+                  "height": 3.7,
+                  "sill": 0
                 }
               ],
               "placements": [
                 {
-                  "key": "phmatray/ClaudeCodeSdkNet",
-                  "u": 1.925,
+                  "key": "Atypical-Consulting/ASTral",
+                  "u": 2.225,
                   "centerHeight": 1.45,
                   "width": 1.1505149978319906,
                   "height": 0.5752574989159953,
                   "atlas": 0,
-                  "layer": 57,
+                  "layer": 3,
                   "pinned": false
                 },
                 {
                   "key": "Atypical-Consulting/x402-dotnet",
-                  "u": 7.483161667389337,
+                  "u": 8.25381312421339,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
@@ -990,13 +1111,13 @@
                   "pinned": false
                 },
                 {
-                  "key": "Atypical-Consulting/ASTral",
-                  "u": 9.791580833694669,
+                  "key": "Atypical-Consulting/claude-legends-review",
+                  "u": 10.776906562106696,
                   "centerHeight": 1.45,
-                  "width": 1.1505149978319906,
-                  "height": 0.5752574989159953,
+                  "width": 1.2385606273598313,
+                  "height": 0.6192803136799157,
                   "atlas": 0,
-                  "layer": 3,
+                  "layer": 6,
                   "pinned": false
                 }
               ]
@@ -1086,7 +1207,8 @@
                   "kind": "door",
                   "start": 3.5,
                   "end": 5.5,
-                  "height": 2.1
+                  "height": 2.1,
+                  "sill": 0
                 }
               ],
               "placements": [
@@ -1219,13 +1341,13 @@
               "openings": [],
               "placements": [
                 {
-                  "key": "phmatray/ComputerInfo",
+                  "key": "phmatray/IdxDb",
                   "u": 2.940359843160042,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 59,
+                  "layer": 75,
                   "pinned": false
                 },
                 {
@@ -1306,26 +1428,34 @@
                 "x": 0,
                 "z": -1
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": [
                 {
-                  "key": "phmatray/IdxDb",
-                  "u": 3,
+                  "key": "phmatray/AutoTestId",
+                  "u": 2,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 75,
+                  "layer": 42,
                   "pinned": false
                 },
                 {
-                  "key": "Atypical-Consulting/Filament",
-                  "u": 6,
+                  "key": "phmatray/ComputerInfo",
+                  "u": 7,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 9,
+                  "layer": 59,
                   "pinned": false
                 }
               ]
@@ -1351,28 +1481,29 @@
                   "kind": "bay",
                   "start": 4.8,
                   "end": 7.2,
-                  "height": 3.7
+                  "height": 3.7,
+                  "sill": 0
                 }
               ],
               "placements": [
                 {
-                  "key": "Atypical-Consulting/blazor-state",
+                  "key": "Atypical-Consulting/Filament",
                   "u": 2.65,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 4,
+                  "layer": 9,
                   "pinned": false
                 },
                 {
-                  "key": "phmatray/AutoTestId",
+                  "key": "Atypical-Consulting/blazor-state",
                   "u": 9.35,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 42,
+                  "layer": 4,
                   "pinned": false
                 }
               ]
@@ -1402,9 +1533,9 @@
           "name": "Typescript / Blockchain",
           "side": "south",
           "footprint": {
-            "x": -3.2,
+            "x": -5.6,
             "z": 6,
-            "width": 9.7,
+            "width": 10.9,
             "depth": 9
           },
           "theme": "classic",
@@ -1412,11 +1543,11 @@
             {
               "id": "etage-1-south-0-outer",
               "a": {
-                "x": -3.2,
+                "x": -5.6,
                 "z": 15
               },
               "b": {
-                "x": 6.5,
+                "x": 5.3,
                 "z": 15
               },
               "height": 4.3,
@@ -1428,18 +1559,18 @@
               "openings": [],
               "placements": [
                 {
-                  "key": "Atypical-Consulting/readme-forge",
-                  "u": 2.387371250542002,
+                  "key": "phmatray/.github",
+                  "u": 2.687371250542002,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 22,
+                  "layer": 33,
                   "pinned": false
                 },
                 {
                   "key": "Atypical-Consulting/FlowForge",
-                  "u": 4.85,
+                  "u": 5.449999999999999,
                   "centerHeight": 1.45,
                   "width": 1.1505149978319906,
                   "height": 0.5752574989159953,
@@ -1449,7 +1580,7 @@
                 },
                 {
                   "key": "phmatray/dotnet-standards",
-                  "u": 7.312628749457997,
+                  "u": 8.212628749457997,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
@@ -1462,11 +1593,11 @@
             {
               "id": "etage-1-south-0-side-a",
               "a": {
-                "x": -3.2,
+                "x": -5.6,
                 "z": 6
               },
               "b": {
-                "x": -3.2,
+                "x": -5.6,
                 "z": 15
               },
               "height": 4.3,
@@ -1475,52 +1606,13 @@
                 "x": 1,
                 "z": 0
               },
-              "openings": [],
-              "placements": [
-                {
-                  "key": "phmatray/.github",
-                  "u": 2.9498283340560034,
-                  "centerHeight": 1.45,
-                  "width": 1,
-                  "height": 0.5,
-                  "atlas": 0,
-                  "layer": 33,
-                  "pinned": false
-                },
-                {
-                  "key": "phmatray/phmatray",
-                  "u": 5.974914167028002,
-                  "centerHeight": 1.45,
-                  "width": 1.1505149978319906,
-                  "height": 0.5752574989159953,
-                  "atlas": 0,
-                  "layer": 93,
-                  "pinned": false
-                }
-              ]
-            },
-            {
-              "id": "etage-1-south-0-side-b",
-              "a": {
-                "x": 6.5,
-                "z": 15
-              },
-              "b": {
-                "x": 6.5,
-                "z": 6
-              },
-              "height": 4.3,
-              "kind": "side",
-              "normal": {
-                "x": -1,
-                "z": 0
-              },
               "openings": [
                 {
                   "kind": "door",
                   "start": 3.5,
                   "end": 5.5,
-                  "height": 2.1
+                  "height": 2.1,
+                  "sill": 0
                 }
               ],
               "placements": [
@@ -1547,13 +1639,61 @@
               ]
             },
             {
+              "id": "etage-1-south-0-side-b",
+              "a": {
+                "x": 5.3,
+                "z": 15
+              },
+              "b": {
+                "x": 5.3,
+                "z": 6
+              },
+              "height": 4.3,
+              "kind": "side",
+              "normal": {
+                "x": -1,
+                "z": 0
+              },
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
+              "placements": [
+                {
+                  "key": "Atypical-Consulting/og-engine",
+                  "u": 2,
+                  "centerHeight": 1.45,
+                  "width": 1,
+                  "height": 0.5,
+                  "atlas": 0,
+                  "layer": 21,
+                  "pinned": false
+                },
+                {
+                  "key": "Atypical-Consulting/readme-forge",
+                  "u": 7,
+                  "centerHeight": 1.45,
+                  "width": 1,
+                  "height": 0.5,
+                  "atlas": 0,
+                  "layer": 22,
+                  "pinned": false
+                }
+              ]
+            },
+            {
               "id": "etage-1-south-0-inner",
               "a": {
-                "x": 6.5,
+                "x": 5.3,
                 "z": 6
               },
               "b": {
-                "x": -3.2,
+                "x": -5.6,
                 "z": 6
               },
               "height": 4.3,
@@ -1565,30 +1705,31 @@
               "openings": [
                 {
                   "kind": "bay",
-                  "start": 3.9,
-                  "end": 6.3,
-                  "height": 3.7
+                  "start": 4.25,
+                  "end": 6.65,
+                  "height": 3.7,
+                  "sill": 0
                 }
               ],
               "placements": [
                 {
+                  "key": "phmatray/phmatray",
+                  "u": 2.375,
+                  "centerHeight": 1.45,
+                  "width": 1.1505149978319906,
+                  "height": 0.5752574989159953,
+                  "atlas": 0,
+                  "layer": 93,
+                  "pinned": false
+                },
+                {
                   "key": "Atypical-Consulting/.github",
-                  "u": 2.2,
+                  "u": 8.524999999999999,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
                   "layer": 0,
-                  "pinned": false
-                },
-                {
-                  "key": "Atypical-Consulting/og-engine",
-                  "u": 7.75,
-                  "centerHeight": 1.45,
-                  "width": 1,
-                  "height": 0.5,
-                  "atlas": 0,
-                  "layer": 21,
                   "pinned": false
                 }
               ]
@@ -1618,9 +1759,9 @@
           "name": "Htmx / Trading",
           "side": "south",
           "footprint": {
-            "x": 6.5,
+            "x": 5.3,
             "z": 6,
-            "width": 8.5,
+            "width": 9.7,
             "depth": 9
           },
           "theme": "classic",
@@ -1628,7 +1769,7 @@
             {
               "id": "etage-1-south-1-outer",
               "a": {
-                "x": 6.5,
+                "x": 5.3,
                 "z": 15
               },
               "b": {
@@ -1645,7 +1786,7 @@
               "placements": [
                 {
                   "key": "phmatray/trading-lab",
-                  "u": 2.7831616673893365,
+                  "u": 3.1538131242133893,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
@@ -1654,13 +1795,13 @@
                   "pinned": false
                 },
                 {
-                  "key": "phmatray/dotnet-toolbelt",
-                  "u": 5.641580833694668,
+                  "key": "Atypical-Consulting/FastComponents",
+                  "u": 6.426906562106694,
                   "centerHeight": 1.45,
-                  "width": 1.1505149978319906,
-                  "height": 0.5752574989159953,
+                  "width": 1.2385606273598313,
+                  "height": 0.6192803136799157,
                   "atlas": 0,
-                  "layer": 65,
+                  "layer": 8,
                   "pinned": false
                 }
               ]
@@ -1668,11 +1809,11 @@
             {
               "id": "etage-1-south-1-side-a",
               "a": {
-                "x": 6.5,
+                "x": 5.3,
                 "z": 6
               },
               "b": {
-                "x": 6.5,
+                "x": 5.3,
                 "z": 15
               },
               "height": 4.3,
@@ -1686,7 +1827,8 @@
                   "kind": "door",
                   "start": 3.5,
                   "end": 5.5,
-                  "height": 2.1
+                  "height": 2.1,
+                  "sill": 0
                 }
               ],
               "placements": [
@@ -1731,23 +1873,23 @@
               "openings": [],
               "placements": [
                 {
-                  "key": "phmatray/aspire-samples",
-                  "u": 2.920479790880056,
+                  "key": "stephaneweg/MusicTracker",
+                  "u": 2.9498283340560034,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 39,
+                  "layer": 114,
                   "pinned": false
                 },
                 {
-                  "key": "Atypical-Consulting/FastComponents",
-                  "u": 5.9602398954400275,
+                  "key": "phmatray/dotnet-toolbelt",
+                  "u": 5.974914167028002,
                   "centerHeight": 1.45,
-                  "width": 1.2385606273598313,
-                  "height": 0.6192803136799157,
+                  "width": 1.1505149978319906,
+                  "height": 0.5752574989159953,
                   "atlas": 0,
-                  "layer": 8,
+                  "layer": 65,
                   "pinned": false
                 }
               ]
@@ -1759,7 +1901,7 @@
                 "z": 6
               },
               "b": {
-                "x": 6.5,
+                "x": 5.3,
                 "z": 6
               },
               "height": 4.3,
@@ -1768,21 +1910,29 @@
                 "x": 0,
                 "z": 1
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": [
                 {
-                  "key": "stephaneweg/MusicTracker",
-                  "u": 2.7831616673893365,
+                  "key": "phmatray/aspire-samples",
+                  "u": 2,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 114,
+                  "layer": 39,
                   "pinned": false
                 },
                 {
                   "key": "phmatray/music-dotnet",
-                  "u": 5.641580833694668,
+                  "u": 7.35,
                   "centerHeight": 1.45,
                   "width": 1.1505149978319906,
                   "height": 0.5752574989159953,
@@ -1964,7 +2114,8 @@
                   "kind": "bay",
                   "start": 4.8,
                   "end": 7.2,
-                  "height": 3.7
+                  "height": 3.7,
+                  "sill": 0
                 }
               ],
               "placements": [
@@ -2016,7 +2167,7 @@
           "footprint": {
             "x": -15,
             "z": -15,
-            "width": 11.9,
+            "width": 10.7,
             "depth": 9
           },
           "theme": "classic",
@@ -2024,7 +2175,7 @@
             {
               "id": "etage-1-north-galerie-0-outer",
               "a": {
-                "x": -3.1,
+                "x": -4.3,
                 "z": -15
               },
               "b": {
@@ -2037,7 +2188,22 @@
                 "x": 0,
                 "z": 1
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "window",
+                  "start": 1.6,
+                  "end": 3.1,
+                  "height": 3.2,
+                  "sill": 0.95
+                },
+                {
+                  "kind": "window",
+                  "start": 7.6,
+                  "end": 9.1,
+                  "height": 3.2,
+                  "sill": 0.95
+                }
+              ],
               "placements": []
             },
             {
@@ -2062,11 +2228,11 @@
             {
               "id": "etage-1-north-galerie-0-side-b",
               "a": {
-                "x": -3.1,
+                "x": -4.3,
                 "z": -6
               },
               "b": {
-                "x": -3.1,
+                "x": -4.3,
                 "z": -15
               },
               "height": 4.3,
@@ -2075,7 +2241,15 @@
                 "x": -1,
                 "z": 0
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": []
             },
             {
@@ -2085,7 +2259,7 @@
                 "z": -6
               },
               "b": {
-                "x": -3.1,
+                "x": -4.3,
                 "z": -6
               },
               "height": 4.3,
@@ -2094,7 +2268,15 @@
                 "x": 0,
                 "z": -1
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": []
             }
           ],
@@ -2108,7 +2290,7 @@
           "footprint": {
             "x": -15,
             "z": 6,
-            "width": 11.8,
+            "width": 9.4,
             "depth": 9
           },
           "theme": "classic",
@@ -2120,7 +2302,7 @@
                 "z": 15
               },
               "b": {
-                "x": -3.2,
+                "x": -5.6,
                 "z": 15
               },
               "height": 4.3,
@@ -2129,7 +2311,22 @@
                 "x": 0,
                 "z": -1
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "window",
+                  "start": 1.6,
+                  "end": 3.1,
+                  "height": 3.2,
+                  "sill": 0.95
+                },
+                {
+                  "kind": "window",
+                  "start": 6.3,
+                  "end": 7.8,
+                  "height": 3.2,
+                  "sill": 0.95
+                }
+              ],
               "placements": []
             },
             {
@@ -2154,11 +2351,11 @@
             {
               "id": "etage-1-south-galerie-0-side-b",
               "a": {
-                "x": -3.2,
+                "x": -5.6,
                 "z": 15
               },
               "b": {
-                "x": -3.2,
+                "x": -5.6,
                 "z": 6
               },
               "height": 4.3,
@@ -2167,13 +2364,21 @@
                 "x": -1,
                 "z": 0
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": []
             },
             {
               "id": "etage-1-south-galerie-0-inner",
               "a": {
-                "x": -3.2,
+                "x": -5.6,
                 "z": 6
               },
               "b": {
@@ -2186,7 +2391,15 @@
                 "x": 0,
                 "z": 1
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.9,
+                  "end": 5.9,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": []
             }
           ],
@@ -2248,13 +2461,13 @@
               "openings": [],
               "placements": [
                 {
-                  "key": "phmatray/blazor-tailwind-ui",
+                  "key": "Atypical-Consulting/TenantKit",
                   "u": 3,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 46,
+                  "layer": 26,
                   "pinned": false
                 }
               ]
@@ -2275,26 +2488,34 @@
                 "x": 1,
                 "z": 0
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": [
                 {
-                  "key": "phmatray/key3s",
-                  "u": 3,
+                  "key": "phmatray/ai-migration-kit",
+                  "u": 2,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 80,
+                  "layer": 34,
                   "pinned": false
                 },
                 {
-                  "key": "Atypical-Consulting/TenantKit",
-                  "u": 6,
+                  "key": "phmatray/blazor-tailwind-ui",
+                  "u": 7,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 26,
+                  "layer": 46,
                   "pinned": false
                 }
               ]
@@ -2315,26 +2536,34 @@
                 "x": -1,
                 "z": 0
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": [
                 {
+                  "key": "phmatray/key3s",
+                  "u": 2,
+                  "centerHeight": 1.45,
+                  "width": 1,
+                  "height": 0.5,
+                  "atlas": 0,
+                  "layer": 80,
+                  "pinned": false
+                },
+                {
                   "key": "phmatray/tsh.ai",
-                  "u": 3,
+                  "u": 7,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
                   "layer": 109,
-                  "pinned": false
-                },
-                {
-                  "key": "phmatray/ai-migration-kit",
-                  "u": 6,
-                  "centerHeight": 1.45,
-                  "width": 1,
-                  "height": 0.5,
-                  "atlas": 0,
-                  "layer": 34,
                   "pinned": false
                 }
               ]
@@ -2360,7 +2589,8 @@
                   "kind": "bay",
                   "start": 2.25,
                   "end": 3.75,
-                  "height": 3.7
+                  "height": 3.7,
+                  "sill": 0
                 }
               ],
               "placements": []
@@ -2412,13 +2642,13 @@
               "openings": [],
               "placements": [
                 {
-                  "key": "phmatray/RedBlack",
+                  "key": "phmatray/BelgiumVatChecker",
                   "u": 3,
                   "centerHeight": 1.45,
                   "width": 1,
                   "height": 0.5,
                   "atlas": 0,
-                  "layer": 102,
+                  "layer": 44,
                   "pinned": false
                 }
               ]
@@ -2438,6 +2668,54 @@
               "normal": {
                 "x": 0,
                 "z": 1
+              },
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
+              "placements": [
+                {
+                  "key": "phmatray/RedBlack",
+                  "u": 2,
+                  "centerHeight": 1.45,
+                  "width": 1,
+                  "height": 0.5,
+                  "atlas": 0,
+                  "layer": 102,
+                  "pinned": false
+                },
+                {
+                  "key": "phmatray/VatBe",
+                  "u": 7,
+                  "centerHeight": 1.45,
+                  "width": 1,
+                  "height": 0.5,
+                  "atlas": 0,
+                  "layer": 111,
+                  "pinned": false
+                }
+              ]
+            },
+            {
+              "id": "etage-2-east-0-side-b",
+              "a": {
+                "x": 6,
+                "z": 6
+              },
+              "b": {
+                "x": 15,
+                "z": 6
+              },
+              "height": 4.3,
+              "kind": "side",
+              "normal": {
+                "x": 0,
+                "z": -1
               },
               "openings": [],
               "placements": [
@@ -2464,46 +2742,6 @@
               ]
             },
             {
-              "id": "etage-2-east-0-side-b",
-              "a": {
-                "x": 6,
-                "z": 6
-              },
-              "b": {
-                "x": 15,
-                "z": 6
-              },
-              "height": 4.3,
-              "kind": "side",
-              "normal": {
-                "x": 0,
-                "z": -1
-              },
-              "openings": [],
-              "placements": [
-                {
-                  "key": "phmatray/VatBe",
-                  "u": 3,
-                  "centerHeight": 1.45,
-                  "width": 1,
-                  "height": 0.5,
-                  "atlas": 0,
-                  "layer": 111,
-                  "pinned": false
-                },
-                {
-                  "key": "phmatray/BelgiumVatChecker",
-                  "u": 6,
-                  "centerHeight": 1.45,
-                  "width": 1,
-                  "height": 0.5,
-                  "atlas": 0,
-                  "layer": 44,
-                  "pinned": false
-                }
-              ]
-            },
-            {
               "id": "etage-2-east-0-inner",
               "a": {
                 "x": 6,
@@ -2524,7 +2762,8 @@
                   "kind": "bay",
                   "start": 2.25,
                   "end": 3.75,
-                  "height": 3.7
+                  "height": 3.7,
+                  "sill": 0
                 }
               ],
               "placements": []
@@ -2573,7 +2812,22 @@
                 "x": 0,
                 "z": 1
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "window",
+                  "start": 1.6,
+                  "end": 3.1,
+                  "height": 3.2,
+                  "sill": 0.95
+                },
+                {
+                  "kind": "window",
+                  "start": 8.9,
+                  "end": 10.4,
+                  "height": 3.2,
+                  "sill": 0.95
+                }
+              ],
               "placements": []
             },
             {
@@ -2611,7 +2865,15 @@
                 "x": -1,
                 "z": 0
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": []
             },
             {
@@ -2630,7 +2892,15 @@
                 "x": 0,
                 "z": -1
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": []
             }
           ],
@@ -2665,7 +2935,22 @@
                 "x": 0,
                 "z": 1
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "window",
+                  "start": 1.6,
+                  "end": 3.1,
+                  "height": 3.2,
+                  "sill": 0.95
+                },
+                {
+                  "kind": "window",
+                  "start": 8.9,
+                  "end": 10.4,
+                  "height": 3.2,
+                  "sill": 0.95
+                }
+              ],
               "placements": []
             },
             {
@@ -2684,7 +2969,15 @@
                 "x": 1,
                 "z": 0
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": []
             },
             {
@@ -2722,7 +3015,15 @@
                 "x": 0,
                 "z": -1
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 6.5,
+                  "end": 8.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": []
             }
           ],
@@ -2757,7 +3058,15 @@
                 "x": -1,
                 "z": 0
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "window",
+                  "start": 2.9,
+                  "end": 4.4,
+                  "height": 3.2,
+                  "sill": 0.95
+                }
+              ],
               "placements": []
             },
             {
@@ -2795,7 +3104,15 @@
                 "x": 0,
                 "z": -1
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": []
             },
             {
@@ -2814,7 +3131,15 @@
                 "x": 1,
                 "z": 0
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "bay",
+                  "start": 2.25,
+                  "end": 3.75,
+                  "height": 3.7,
+                  "sill": 0
+                }
+              ],
               "placements": []
             }
           ],
@@ -2849,7 +3174,57 @@
                 "x": 0,
                 "z": -1
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "window",
+                  "start": 1.6,
+                  "end": 3.1,
+                  "height": 3.2,
+                  "sill": 0.95
+                },
+                {
+                  "kind": "window",
+                  "start": 5.816667,
+                  "end": 7.316667,
+                  "height": 3.2,
+                  "sill": 0.95
+                },
+                {
+                  "kind": "window",
+                  "start": 10.033333,
+                  "end": 11.533333,
+                  "height": 3.2,
+                  "sill": 0.95
+                },
+                {
+                  "kind": "window",
+                  "start": 14.25,
+                  "end": 15.75,
+                  "height": 3.2,
+                  "sill": 0.95
+                },
+                {
+                  "kind": "window",
+                  "start": 18.466667,
+                  "end": 19.966667,
+                  "height": 3.2,
+                  "sill": 0.95
+                },
+                {
+                  "kind": "window",
+                  "start": 22.683333,
+                  "end": 24.183333,
+                  "height": 3.2,
+                  "sill": 0.95
+                },
+                {
+                  "kind": "window",
+                  "start": 26.9,
+                  "end": 28.4,
+                  "height": 3.2,
+                  "sill": 0.95
+                }
+              ],
               "placements": []
             },
             {
@@ -2906,7 +3281,29 @@
                 "x": 0,
                 "z": 1
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "door",
+                  "start": 3.5,
+                  "end": 5.5,
+                  "height": 2.1,
+                  "sill": 0
+                },
+                {
+                  "kind": "bay",
+                  "start": 13.8,
+                  "end": 16.2,
+                  "height": 3.7,
+                  "sill": 0
+                },
+                {
+                  "kind": "door",
+                  "start": 24.5,
+                  "end": 26.5,
+                  "height": 2.1,
+                  "sill": 0
+                }
+              ],
               "placements": []
             }
           ],
@@ -2941,7 +3338,22 @@
                 "x": 1,
                 "z": 0
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "window",
+                  "start": 1.6,
+                  "end": 3.1,
+                  "height": 3.2,
+                  "sill": 0.95
+                },
+                {
+                  "kind": "window",
+                  "start": 8.9,
+                  "end": 10.4,
+                  "height": 3.2,
+                  "sill": 0.95
+                }
+              ],
               "placements": []
             },
             {
@@ -2998,7 +3410,15 @@
                 "x": -1,
                 "z": 0
               },
-              "openings": [],
+              "openings": [
+                {
+                  "kind": "bay",
+                  "start": 4.8,
+                  "end": 7.2,
+                  "height": 3.7,
+                  "sill": 0
+                }
+              ],
               "placements": []
             }
           ],
