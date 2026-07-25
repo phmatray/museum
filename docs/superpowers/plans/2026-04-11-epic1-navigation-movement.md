@@ -59,7 +59,7 @@ Additional root files:
 - [ ] **Step 1: Initialize the project with Vite**
 
 ```bash
-cd /Users/phmatray/Repositories/javascript/museum
+cd path/to/museum
 npm create vite@latest . -- --template react-ts
 ```
 
