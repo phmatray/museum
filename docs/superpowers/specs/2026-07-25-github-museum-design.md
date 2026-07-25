@@ -257,10 +257,13 @@ L'activité de commits (52 semaines) vient de l'endpoint REST `/stats/commit_act
 Pour chaque dépôt retenu :
 1. Télécharger `https://opengraph.githubassets.com/<sha1(key)>/<owner>/<name>`.
 2. Si `curation.repos[key].image` existe, prendre ce fichier à la place.
-3. Produire deux sorties : WebP 1024×512 qualité 78 dans `public/media/near/<slug>.webp` (LOD proche) et une couche 256×128 dans la texture array KTX2 (LOD lointain).
-4. Échec de téléchargement → toile de repli générée : aplat de la couleur du langage + nom du dépôt. **Aucun dépôt ne reste sans visuel.**
+3. Produire deux sorties, toutes deux avec `sharp` (pur npm, aucun binaire externe) :
+   - **LOD proche** — WebP 1024×512 qualité 78 dans `public/media/near/<slug>.webp`
+   - **LOD lointain** — une tuile 256×128 posée dans l'atlas `public/media/atlas-<n>.webp`, grille de 16×16 tuiles (4096×2048). Au-delà de 256 dépôts, plusieurs atlas, donc plusieurs `DataArrayTexture`, donc un draw call par atlas.
+4. Écrire `public/media/atlas.json` : la correspondance `RepoKey → { atlas, layer }`. C'est ce fichier qui alimente `Placement.layer`.
+5. Échec de téléchargement → toile de repli générée par `sharp` : aplat de la couleur du langage + nom du dépôt. **Aucun dépôt ne reste sans visuel.**
 
-Budget : 256 WebP à ~45 Ko ≈ 11 Mo, chargés à la demande par proximité. La texture array complète pèse ~17 Mo en ETC1S et se charge une fois.
+Budget : les WebP proches, ~45 Ko pièce, sont chargés à la demande par proximité et ne comptent pas au chargement initial. Chaque atlas pèse ~2 Mo au téléchargement et 32 Mo en VRAM une fois décomposé en couches.
 
 ## 6. Clustering
 
@@ -385,21 +388,44 @@ Tous purs, tous dans `builders/`, tous testables sans canvas.
 |---|---|---|
 | Draw calls | **< 150** | instancing + texture array |
 | Triangles | < 500 k | procédural pur, aucun asset importé |
-| VRAM textures | < 150 Mo | KTX2 array 256×128, haute définition à la demande |
+| VRAM textures | < 150 Mo | `DataArrayTexture` 256×128 (32 Mo par atlas de 256), haute définition à la demande |
 | Lumières temps réel | **≤ 4** | tout le reste est peint dans le matériau |
 | Shadow maps | 1 | la verrière zénithale seule |
 | Chargement initial | < 5 Mo | `museum.json` + array + géométrie ; les WebP suivent |
 | Images par seconde | ≥ 60 bureau, ≥ 30 mobile | mesuré, pas estimé |
 
-### 9.1 Les toiles en un draw call
+### 9.1 Les toiles en un draw call — **validé par le lot 0**
 
-Une texture par œuvre donnerait 256 matériaux et 256 draw calls. À la place : une `CompressedArrayTexture` (KTX2/BasisU, WebGL2) dont chaque couche est une œuvre, et un `InstancedMesh` dont le shader échantillonne `texture(map, vec3(vUv, aLayer))` — `aLayer` étant un `InstancedBufferAttribute`.
+Une texture par œuvre donnerait N matériaux et N draw calls. À la place : une **`DataArrayTexture`** dont chaque couche est une œuvre, et un `InstancedMesh` dont le shader échantillonne `texture(map, vec3(vUv, aLayer))`, `aLayer` étant un `InstancedBufferAttribute`.
+
+Le spike (`spike/array-texture.ts`, commit `799aebe`) a mesuré sur 256 couches :
+
+| Mesure | Résultat |
+|---|---|
+| Draw calls | **1** |
+| Programmes shader | 1 |
+| `MAX_ARRAY_TEXTURE_LAYERS` | 2048 — 8× de marge |
+| VRAM | 32 Mo (RGBA 256×128 non compressé) |
+| Images/s | 120 |
+
+**Le chemin retenu n'est pas KTX2.** Aucun encodeur (`toktx`, `basisu`) n'est installable : pas de formule Homebrew, pas de paquet npm, et l'installer en CI seulement rendrait le pipeline inexécutable en local. Le transcodeur basis livré avec three ne sert qu'au décodage — il ne produit rien.
+
+Chemin retenu, sans aucune dépendance d'encodage :
+
+```
+build (sharp)          →  un atlas WebP unique, 16×16 tuiles de 256×128
+                          (4096×2048, ~2 Mo au téléchargement)
+chargement (navigateur) →  découpe en DataArrayTexture, 256 couches, 32 Mo VRAM
+rendu                   →  InstancedMesh + aLayer → 1 draw call
+```
+
+On échange 15 Mo de VRAM supplémentaires contre la suppression complète d'une chaîne d'outils. C'est le bon marché : la VRAM était budgétée à 150 Mo.
+
+**Piège identifié et corrigé par le spike** : `DataArrayTexture` n'applique pas `UNPACK_FLIP_Y_WEBGL`, contrairement aux textures classiques. Les lignes doivent être retournées à la construction (pas dans le shader, pour que le reste du code l'ignore), faute de quoi **toutes les toiles sont accrochées à l'envers**.
 
 Deux niveaux de détail :
 - **loin** — couche de la texture array, 256×128, toujours résidente
 - **près (< 10 m)** — WebP 1024×512 chargé à la demande, rendu par un mesh individuel qui masque l'instance correspondante
-
-**C'est le pari technique du projet.** Le lot 0 le dérisque avant tout le reste. Repli si le chargeur KTX2 ne suit pas : atlas classique 4096² × 16 pages, moins élégant, éprouvé, même architecture en aval.
 
 ### 9.2 Les spots n'existent pas
 
@@ -462,7 +488,7 @@ Dégradation gracieuse : si le fetch échoue, le `catalogue.json` du dernier bui
 
 | Lot | Contenu | Critère de fin |
 |---|---|---|
-| **0** | Spike texture array : `KTX2Loader` + `CompressedArrayTexture` + `InstancedMesh` 256 couches | 256 quads texturés en 1 draw call, mesuré — ou décision de repli sur atlas |
+| **0** | ~~Spike texture array~~ — **fait**, commit `799aebe` | 1 draw call pour 256 couches, 120 im/s, mesuré ; chemin `DataArrayTexture` retenu, KTX2 abandonné |
 | **1** | `domain/`, `schema/`, `io/github`, clustering, dérivation | `npm run plan` imprime le plan en texte. Tests verts. Zéro 3D. |
 | **2** | `builders/` + scène du bâtiment : anneau, dalles à trémie, rampe, garde-corps ; réglage autostep | on marche dans un musée vide sur plusieurs niveaux |
 | **3** | Œuvres : accrochage, `InstancedMesh`, LOD deux niveaux, cartels sous 6 m | tous les dépôts accrochés, 60 im/s mesurées |
@@ -477,7 +503,7 @@ Le **lot 0 précède tout** : il dérisque le seul pari technique. Le **lot 4 pr
 
 | Risque | Probabilité | Parade |
 |---|---|---|
-| `KTX2Loader` ne gère pas les array textures compressées | moyenne | Lot 0 en premier ; repli atlas 4096² × 16 pages |
+| ~~`KTX2Loader` ne gère pas les array textures compressées~~ | **écarté** | Lot 0 : chemin `DataArrayTexture` validé, aucun encodeur requis |
 | Clustering IDF produisant des salles absurdes | moyenne | Overrides de curation ; le nommage se corrige en une ligne de JSON |
 | 256 œuvres > budget de draw calls malgré l'instancing | faible | Baies étroites déjà choisies ; culling par étage ; réduire `roomsPerFloor` |
 | Quota GitHub dépassé en CI | faible | `GITHUB_TOKEN` = 5000 req/h ; cache ; dégradation gracieuse |

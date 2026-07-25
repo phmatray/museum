@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "Atypical Museum",
+  "owners": ["phmatray", "Atypical-Consulting"],
+  "filters": {
+    "excludeForks": true,
+    "excludeArchived": false,
+    "excludePatterns": []
+  },
+  "building": {
+    "roomDepth": 9,
+    "ceilingHeight": 4.3,
+    "slabThickness": 0.4,
+    "minAtriumSize": 12,
+    "minRoomWidth": 6,
+    "roomsPerFloor": 6
+  },
+  "clustering": {
+    "minClusterSize": 4,
+    "maxClusterSize": 14
+  }
+}
