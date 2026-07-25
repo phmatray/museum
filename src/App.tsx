@@ -12,6 +12,7 @@ import { useIsMobile } from './hooks/useIsMobile'
 import { MobileControlsOverlay } from './components/MobileControls'
 import { Minimap } from './components/Minimap'
 import { MuseumErrorBoundary } from './components/MuseumErrorBoundary'
+import { EditorMount } from './editor/EditorMount'
 import { useGameStore } from './stores/gameStore'
 import { VisitorTracker } from './hooks/useRoomTransition'
 
@@ -50,8 +51,13 @@ export default function App() {
 }
 
 function Museum() {
-  const museum = use(museumResource())
+  const publie = use(museumResource())
   const isMobile = useIsMobile()
+
+  // Le musée RÉGÉNÉRÉ par l'éditeur prend la main sur celui du disque. En
+  // production le crochet rend toujours `null` et l'expression se réduit à
+  // `publie` — c'est la même ligne, sans branche à maintenir en double.
+  const museum = useGameStore((s) => s.museumOverride) ?? publie
 
   const spawn = useMemo(() => resolveSpawn(museum), [museum])
   const voidY = useMemo(() => voidFloorY(museum), [museum])
@@ -76,6 +82,7 @@ function Museum() {
       <PointerLockOverlay />
       <TourExitButton />
       <Minimap museum={museum} floorId={museum.spawn.floorId} />
+      <EditorMount publie={museum} />
       {isMobile && (
         <MobileControlsOverlay
           onMove={() => {}}

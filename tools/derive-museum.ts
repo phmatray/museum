@@ -23,7 +23,6 @@ import { registerHooks } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import type { AtlasIndex } from '../src/domain/types.ts'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -50,25 +49,12 @@ registerHooks({
   },
 })
 
-const { derive, formatPlan } = await import('../src/domain/derive.ts')
+// `ATLAS_VIDE` vient du DOMAINE et n'est plus recopié ici : l'outil et
+// l'éditeur doivent produire le même bâtiment à partir des mêmes entrées, ce
+// qu'une seconde copie divergente rendrait faux sans prévenir.
+const { ATLAS_VIDE, derive, formatPlan } = await import('../src/domain/derive.ts')
 const { EMPTY_CURATION, parseAtlasIndex, parseCatalogue, parseCuration, parseMuseumConfig } =
   await import('../src/schema/index.ts')
-
-/**
- * Atlas de repli quand le pipeline média n'a pas encore tourné. Les tuiles
- * gardent la géométrie du vrai atlas (spec §5) : c'est elle qui donne le rapport
- * largeur/hauteur des cadres, et un musée dérivé sans médias doit tout de même
- * accrocher des œuvres de la bonne forme.
- */
-const ATLAS_VIDE: AtlasIndex = {
-  schemaVersion: 1,
-  tileWidth: 256,
-  tileHeight: 128,
-  cols: 16,
-  rows: 16,
-  atlases: [],
-  entries: {},
-}
 
 /** Lecture facultative : un fichier absent n'est pas une erreur, un fichier illisible si. */
 async function lireSiPresent(chemin: string): Promise<unknown | null> {

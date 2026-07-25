@@ -49,6 +49,28 @@ import type {
 
 // ── Contrat public ───────────────────────────────────────────────────────
 
+/**
+ * Atlas de repli quand le pipeline média n'a pas encore tourné.
+ *
+ * Les tuiles gardent la GÉOMÉTRIE du vrai atlas (spec §5) : c'est elle qui donne
+ * le rapport largeur/hauteur des cadres, et un musée dérivé sans médias doit
+ * tout de même accrocher des œuvres de la bonne forme — sinon la mise en page
+ * changerait le jour où les images arrivent.
+ *
+ * Exporté ici et non recopié chez ses deux appelants : l'outil de dérivation et
+ * l'éditeur doivent produire le MÊME bâtiment à partir des mêmes entrées, ce
+ * qu'une seconde copie divergente rendrait faux sans prévenir.
+ */
+export const ATLAS_VIDE: AtlasIndex = Object.freeze({
+  schemaVersion: 1,
+  tileWidth: 256,
+  tileHeight: 128,
+  cols: 16,
+  rows: 16,
+  atlases: [],
+  entries: {},
+})
+
 export interface DeriveInput {
   catalogue: Catalogue
   curation: Curation

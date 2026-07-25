@@ -2,6 +2,7 @@
 // connaisse la clé `test`, que vite seul rejette au typage.
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import { museumDevWrite } from './tools/vite-plugin-museum-write'
 
 /**
  * Local Clock-compatible replacement for the THREE.Clock deprecation in r183.
@@ -137,7 +138,10 @@ export default defineConfig({
   // Sur GitHub Pages le site vit sous /<nom-du-depot>/, pas à la racine du
   // domaine. La CI passe BASE_PATH ; en local on reste à la racine.
   base: process.env.BASE_PATH ?? '/',
-  plugins: [react()],
+  // `museumDevWrite` porte `apply: 'serve'` : il n'existe pas dans un build.
+  // C'est ce qui rend le site déployé structurellement incapable d'être écrit —
+  // pas une discipline, une impossibilité (spec §10).
+  plugins: [react(), museumDevWrite()],
   optimizeDeps: {
     rolldownOptions: {
       plugins: [upstreamDeprecationFixesRolldown()],
