@@ -38,6 +38,7 @@ import bpy
 ROOT = Path(__file__).resolve().parents[2]
 PLANTES = ROOT / "public" / "assets" / "plants"
 SORTIE = PLANTES / "plants-lod.glb"
+SORTIE_PARC = PLANTES / "park-lod.glb"
 
 # Les fichiers attendus par `src/scene/propAssets.ts`, dans son ordre.
 FICHIERS = [
@@ -57,6 +58,42 @@ FICHIERS = [
 #
 # Cette liste DOIT rester synchronisée avec `ESPECES_GLB` de propAssets.ts ; un
 # test le vérifie plutôt que de compter sur la discipline.
+# Deux essences d'arbre et deux d'arbuste. Un parc ne se fait pas avec la
+# variete d'un catalogue mais avec la REPETITION d'un petit nombre d'essences —
+# c'est ce que fait un vrai dessin de parc, et c'est aussi ce qui permet de
+# l'instancier : chaque espece de plus coute un lot d'instances.
+#
+# `jacaranda_tree` a ete ecarte, et pas par gout. Il pese 3 863 832 triangles et
+# refuse de descendre sous 68 691 : ses feuilles sont des ILOTS separes, qu'un
+# DECIMATE en mode COLLAPSE ne peut pas fusionner — une feuille deja reduite a
+# un quad n'a plus d'arete a effondrer. Il coutait a lui seul onze fois le
+# budget des deux autres arbres reunis. Les deux `island_tree` descendent a
+# 6 000 sans broncher.
+GARDES_PARC = {
+    "arbre-01": ["island_tree_01_LOD0"],
+    "arbre-02": ["island_tree_02_LOD0"],
+    "arbuste-01": ["shrub_01_a"],
+    "arbuste-02": ["shrub_03_a"],
+}
+
+FICHIERS_PARC = [
+    "island_tree_01.gltf",
+    "island_tree_02.gltf",
+    "shrub_01.gltf",
+    "shrub_03.gltf",
+]
+
+# Un arbre est vu de plus loin qu'une plante en pot, mais il est BEAUCOUP plus
+# grand : sa silhouette occupe plus de pixels, pas moins. On lui en laisse donc
+# davantage. Un arbuste, lui, est une masse : sa forme compte, son detail non.
+# 6 000 etait BEAUCOUP trop bas, et le defaut ne se voyait pas dans les
+# chiffres : a 0,4 % de conservation, les cartes de feuilles — deux triangles
+# chacune — sont les premieres a etre effondrees, et l'arbre sort en SQUELETTE.
+# Un tronc et des branches nues, sur toute la parcelle. Le budget doit laisser
+# de quoi garder les feuilles, qui sont ce qu'on regarde.
+BUDGET_ARBRE = 22_000
+BUDGET_ARBUSTE = 4_000
+
 GARDES = {
     "plante-01": ["anthurium_botany_01_a"],
     "plante-02": ["calathea_orbifolia_01_a"],
@@ -68,6 +105,7 @@ GARDES = {
 }
 
 A_GARDER = {nom for noms in GARDES.values() for nom in noms}
+A_GARDER_PARC = {nom for noms in GARDES_PARC.values() for nom in noms}
 
 # Budget de triangles PAR SUJET, toutes ses pièces réunies (pot, feuillage,
 # terre).
@@ -92,14 +130,14 @@ def repartir():
     bpy.ops.wm.read_factory_settings(use_empty=True)
 
 
-def importer(chemin: Path):
+def importer(chemin: Path, a_garder):
     """Importe un glTF et rend les seuls objets que le musée instancie."""
     avant = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=str(chemin))
     nouveaux = [o for o in bpy.data.objects if o not in avant and o.type == "MESH"]
     gardes = []
     for o in list(nouveaux):
-        if o.name in A_GARDER:
+        if o.name in a_garder:
             gardes.append(o)
         else:
             bpy.data.objects.remove(o, do_unlink=True)
@@ -147,19 +185,27 @@ def redimensionner_textures(cote: int = 512) -> None:
         print(f"PLANTS_TEX {img.name:34} {avant[0]}×{avant[1]} -> {img.size[0]}×{img.size[1]}")
 
 
-def main():
+def traiter(fichiers, gardes, budget, sortie, etiquette):
+    """
+    Importe, allège, exporte. Un jeu à la fois, dans une scène neuve.
+
+    `budget` est soit un entier — le même plafond pour tous les sujets — soit une
+    fonction `espece -> entier`, quand un arbre et un arbuste n'ont pas le même
+    droit au détail.
+    """
     repartir()
+    a_garder = {nom for noms in gardes.values() for nom in noms}
 
     objets = []
-    for nom in FICHIERS:
+    for nom in fichiers:
         chemin = PLANTES / nom
         if not chemin.exists():
-            print(f"PLANTS_MANQUANT {nom} — lance d'abord `node tools/fetch-assets.ts`")
+            print(f"{etiquette}_MANQUANT {nom} — lance d'abord `node tools/fetch-assets.ts`")
             sys.exit(1)
-        objets.extend(importer(chemin))
+        objets.extend(importer(chemin, a_garder))
 
     if not objets:
-        print("PLANTS_VIDE aucun maillage importé")
+        print(f"{etiquette}_VIDE aucun maillage importé")
         sys.exit(1)
 
     avant = {o.name: triangles(o) for o in objets}
@@ -167,37 +213,36 @@ def main():
     parNom = {o.name: o for o in objets}
 
     # Un sujet à la fois : le budget est le sien, pas celui de la planche.
-    for espece, noms in GARDES.items():
+    for espece, noms in gardes.items():
         pieces = [parNom[n] for n in noms if n in parNom]
         if not pieces:
             continue
+        plafond = budget(espece) if callable(budget) else budget
         depart = sum(avant[o.name] for o in pieces)
-        if depart <= BUDGET_PAR_SUJET:
-            print(f"PLANTS_SUJET {espece:10} {depart:6} tri — sous budget, intact")
+        if depart <= plafond:
+            print(f"{etiquette}_SUJET {espece:12} {depart:7} tri — sous budget, intact")
             continue
 
-        # Répartition PROPORTIONNELLE entre les pièces du sujet : le feuillage
+        # Répartition PROPORTIONNELLE entre les pièces d'un sujet : le feuillage
         # qui pèse les deux tiers reçoit les deux tiers du budget, et toutes
         # subissent donc le même taux. Un budget également réparti massacrerait
-        # le feuillage tout en laissant intact le pot, qui n'est pas le problème.
-        facteur = BUDGET_PAR_SUJET / depart
+        # le feuillage tout en laissant intact le tronc, qui n'est pas le
+        # problème.
+        facteur = plafond / depart
         for o in pieces:
             d = avant[o.name]
             if d <= PLANCHER:
                 continue
             decimer(o, max(PLANCHER, math.floor(d * facteur)) / d)
         arrive = sum(triangles(o) for o in pieces)
-        print(f"PLANTS_SUJET {espece:10} {depart:6} -> {arrive:5} tri "
+        print(f"{etiquette}_SUJET {espece:12} {depart:7} -> {arrive:6} tri "
               f"({100 * arrive / depart:.0f} %)")
-
-    apres = {o.name: triangles(o) for o in objets}
-    total_apres = sum(apres.values())
 
     redimensionner_textures()
 
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.export_scene.gltf(
-        filepath=str(SORTIE),
+        filepath=str(sortie),
         export_format="GLB",
         use_selection=True,
         export_apply=True,
@@ -206,12 +251,24 @@ def main():
         export_yup=True,
     )
 
-    for nom in sorted(avant, key=lambda n: -avant[n]):
-        part = 100 * apres[nom] / avant[nom] if avant[nom] else 100
-        print(f"PLANTS_OBJ {nom:38} {avant[nom]:7} -> {apres[nom]:6} tri  ({part:5.1f} %)")
-    print(f"PLANTS_TOTAL {total_avant} -> {total_apres} triangles "
+    total_apres = sum(triangles(o) for o in objets)
+    print(f"{etiquette}_TOTAL {total_avant} -> {total_apres} triangles "
           f"({100 * total_apres / total_avant:.1f} %)")
-    print(f"PLANTS_POIDS {SORTIE.stat().st_size} octets -> {SORTIE.relative_to(ROOT)}")
+    print(f"{etiquette}_POIDS {sortie.stat().st_size} octets -> {sortie.relative_to(ROOT)}")
+
+
+def main():
+    traiter(FICHIERS, GARDES, BUDGET_PAR_SUJET, SORTIE, "PLANTS")
+    # Le parc dans une scène SÉPARÉE : mêler cinq arbres aux quatre plantes
+    # d'intérieur dans un seul fichier forcerait le navigateur à décoder les
+    # arbres pour afficher une salle, et réciproquement.
+    traiter(
+        FICHIERS_PARC,
+        GARDES_PARC,
+        lambda espece: BUDGET_ARBRE if espece.startswith("arbre") else BUDGET_ARBUSTE,
+        SORTIE_PARC,
+        "PARK",
+    )
 
 
 if __name__ == "__main__":

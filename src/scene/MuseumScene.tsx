@@ -57,6 +57,7 @@ import type { Museum, Rect, Vec2 } from '../domain/types'
 import { floorAbove, museumResource } from '../io/loadMuseum'
 import { CartelLayer } from './CartelLayer'
 import { FloorMesh } from './FloorMesh'
+import { ParkLayer } from './ParkLayer'
 import { PropsLayer } from './PropsLayer'
 import { RampMesh } from './RampMesh'
 import { RoomLights } from './RoomLights'
@@ -431,6 +432,18 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
         l'éclairage des toiles reste peint dans le shader (§9.2).
       */}
       <PropsLayer museum={museum} />
+
+      {/*
+        LE PARC. Hors de tout groupe d'étage, et c'est délibéré : il
+        n'appartient à aucun niveau, il est SOUS le bâtiment et visible depuis
+        tous. Le masquer avec un plateau le ferait disparaître par les fenêtres
+        du plateau voisin — c'est-à-dire par ce qu'on vient de percer pour le
+        voir.
+
+        Le musée n'avait aucun sol : il flottait sur un fond de ciel, ce qui le
+        faisait lire comme une maquette posée sur une table.
+      */}
+      <ParkLayer footprint={museum.floors[0].footprint} elevation={0} />
     </>
   )
 }

@@ -44,6 +44,8 @@ const MATIERES = [
   { id: 'WoodFloor007', role: 'parquet', usage: 'sols des salles' },
   { id: 'Marble012', role: 'marbre', usage: 'sol du rez-de-chaussée et de l’atrium' },
   { id: 'Metal063', role: 'metal', usage: 'garde-corps, mains courantes, cadres' },
+  { id: 'Grass004', role: 'herbe', usage: 'pelouse du parc' },
+  { id: 'Gravel023', role: 'gravier', usage: 'allées et parvis du parc' },
 ] as const
 
 /** HDRI d'intérieur neutre : il sert au spéculaire, pas à l'éclairage direct. */
@@ -60,6 +62,18 @@ const PLANTES = [
   'calathea_orbifolia_01',
   'anthurium_botany_01',
 ] as const
+
+/**
+ * Le PARC. Un musée posé sur une dalle nue se lit comme une maquette : ce qui
+ * lui donne son échelle et son sol, c'est ce qui pousse autour.
+ *
+ * Trois arbres et deux arbustes, pas davantage. Un parc ne se fait pas avec la
+ * variété d'un catalogue mais avec la répétition d'un petit nombre d'essences —
+ * c'est ce que fait un vrai dessin de parc, et c'est aussi ce qui permet de
+ * l'instancier. Le coût d'une espèce de plus est un lot d'instances de plus.
+ */
+const ARBRES = ['island_tree_01', 'island_tree_02', 'jacaranda_tree'] as const
+const ARBUSTES = ['shrub_01', 'shrub_03'] as const
 
 interface Telechargement {
   url: string
@@ -165,11 +179,19 @@ async function main() {
   console.log(`  ${(await recupererHdri()).padEnd(6)} ${HDRI.id} ${HDRI.resolution}`)
   journal.push(`| ${HDRI.id} | Poly Haven | CC0 | carte d'environnement, spéculaire |`)
 
-  console.log(`\nVégétation (${PLANTES.length}) — Poly Haven, CC0`)
+  console.log(`\nVégétation d'intérieur (${PLANTES.length}) — Poly Haven, CC0`)
   for (const p of PLANTES) {
     const r = await recupererPlante(p)
     console.log(`  ${r.padEnd(6)} ${p}`)
-    journal.push(`| ${p} | Poly Haven | CC0 | végétation |`)
+    journal.push(`| ${p} | Poly Haven | CC0 | végétation d'intérieur |`)
+  }
+
+  const parc = [...ARBRES, ...ARBUSTES]
+  console.log(`\nParc (${parc.length}) — Poly Haven, CC0`)
+  for (const p of parc) {
+    const r = await recupererPlante(p)
+    console.log(`  ${r.padEnd(6)} ${p}`)
+    journal.push(`| ${p} | Poly Haven | CC0 | parc |`)
   }
 
   await writeFile(

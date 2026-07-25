@@ -197,6 +197,11 @@ export const REGLAGE_MATIERE: Record<MatiereId, ReglageMatiere> = {
    * descend la métallicité et on remonte franchement l'albédo.
    */
   metal: { gain: 2.3, roughness: 3.2, metalness: 0.22, rebond: 0.3, motif: 2 },
+  // Le parc. Motifs LARGES : une pelouse dont on voit la tuile se répéter tous
+  // les deux mètres se lit comme une moquette. À 6 m, la récurrence tombe sous
+  // l'horizon de perception depuis la hauteur d'œil.
+  herbe: { gain: 1.15, roughness: 1, metalness: 0, rebond: 0, motif: 6 },
+  gravier: { gain: 1.35, roughness: 1, metalness: 0, rebond: 0, motif: 3.5 },
 }
 
 /**
