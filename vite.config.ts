@@ -1,4 +1,6 @@
-import { defineConfig } from 'vite'
+// `defineConfig` vient de vitest et non de vite : c'est la seule signature qui
+// connaisse la clé `test`, que vite seul rejette au typage.
+import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
 /**

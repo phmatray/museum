@@ -6,6 +6,7 @@
     "module": "esnext",
     "types": ["node"],
     "skipLibCheck": true,
+    "strict": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",
@@ -20,5 +21,7 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts"]
+  // Les scripts de `tools/` tournent en CI : sans eux ici, `tsc -b` ne les
+  // voyait pas et une erreur de type ne cassait le build qu'à l'exécution.
+  "include": ["vite.config.ts", "tools/**/*.ts"]
 }

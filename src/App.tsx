@@ -14,12 +14,14 @@ import { useRoomTransition } from './hooks/useRoomTransition'
 import { Minimap } from './components/Minimap'
 import { useGameStore } from './stores/gameStore'
 
-enum Controls {
-  forward = 'forward',
-  backward = 'backward',
-  left = 'left',
-  right = 'right',
-}
+// Objet constant plutôt qu'`enum` : `erasableSyntaxOnly` interdit les enums,
+// qui émettent du code au lieu de disparaître au strip des types.
+const Controls = {
+  forward: 'forward',
+  backward: 'backward',
+  left: 'left',
+  right: 'right',
+} as const
 
 export default function App() {
   const isMobile = useIsMobile()

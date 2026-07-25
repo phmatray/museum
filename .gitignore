@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Médias générés par tools/build-media.ts : atlas, LOD proches, tuiles et cache.
+# Seul atlas.json est commité — c'est lui qui porte les index de couche, donc le
+# seul de ces fichiers qu'un humain ou un diff a besoin de voir.
+public/media/*
+!public/media/atlas.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
