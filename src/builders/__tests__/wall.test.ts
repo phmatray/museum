@@ -20,6 +20,7 @@ import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 import type { Museum, Opening, Wall } from '../../domain/types'
 import type { BuiltWall } from '../wall'
+import { buildGlazing, creerVitrage } from '../glazing'
 import {
   CHAMFER,
   PLINTH_HEIGHT,
@@ -865,5 +866,86 @@ describe('fenêtres', () => {
     // collider, le visiteur franchirait la façade à hauteur d'appui.
     const built = buildWall(mur({ openings: [fenetre(3, 4.5, 0.95, 2.6)] }))
     expect(built.collider.indices.length).toBeGreaterThan(0)
+  })
+})
+
+// ── Vitrage ──────────────────────────────────────────────────────────────
+
+/**
+ * Percer un mur ne fait pas une fenêtre, ça fait un trou. Sans vitre, on voit
+ * le parc au travers d'une découpe franche, sans reflet ni épaisseur, et l'œil
+ * lit un décor découpé au cutter plutôt qu'un bâtiment.
+ */
+describe('vitrage', () => {
+  it('vitre les fenêtres et RIEN d’autre', () => {
+    // Une vitre dans une porte murerait le bâtiment.
+    const avecPorte = buildGlazing([mur({ openings: [porte(3, 5)] })])
+    expect(avecPorte.count).toBe(0)
+
+    const avecJour = buildGlazing([mur({ openings: [fenetre(3, 4.5)] })])
+    expect(avecJour.count).toBe(1)
+  })
+
+  it('tient DANS le jour, sans déborder sur le mur', () => {
+    // Une vitre plus grande que son percement se verrait comme une plaque
+    // collée sur la façade.
+    const w = mur({ openings: [fenetre(3, 4.5, 0.95, 2.6)] })
+    const { geometry } = buildGlazing([w])
+    const boite = new THREE.Box3().setFromBufferAttribute(
+      geometry.getAttribute('position') as THREE.BufferAttribute,
+    )
+    // Le mur va de (0,0) à (10,0) : l'axe du jour est x.
+    expect(boite.min.x).toBeGreaterThanOrEqual(3 - 1e-6)
+    expect(boite.max.x).toBeLessThanOrEqual(4.5 + 1e-6)
+    expect(boite.min.y).toBeGreaterThanOrEqual(0.95 - 1e-6)
+    expect(boite.max.y).toBeLessThanOrEqual(2.6 + 1e-6)
+  })
+
+  it('se pose au MILIEU de l’embrasure, pas au nu du mur', () => {
+    // Affleurante, l'embrasure de 32 cm qu'on a construite ne se lirait plus
+    // que d'un seul côté.
+    const w = mur({ openings: [fenetre(3, 4.5)] })
+    const { geometry } = buildGlazing([w])
+    const boite = new THREE.Box3().setFromBufferAttribute(
+      geometry.getAttribute('position') as THREE.BufferAttribute,
+    )
+    // Le mur est sur z = 0 et son épaisseur va d'un côté : la vitre doit être à
+    // une demi-épaisseur du plan de référence, pas dessus.
+    const profondeur = Math.abs((boite.min.z + boite.max.z) / 2)
+    expect(profondeur).toBeCloseTo(WALL_THICKNESS / 2, 6)
+  })
+
+  it('fusionne tout un niveau en UNE géométrie', () => {
+    // Un mesh par fenêtre coûterait un draw call par fenêtre, sur un budget
+    // déjà dépassé.
+    const murs = [
+      mur({ id: 'a', openings: [fenetre(1, 2.5), fenetre(4, 5.5)] }),
+      mur({ id: 'b', openings: [fenetre(7, 8.5)] }),
+    ]
+    const { geometry, count } = buildGlazing(murs)
+    expect(count).toBe(3)
+    expect(geometry.getIndex()!.count).toBe(3 * 6)
+  })
+
+  it('ne produit aucune géométrie invalide sur une liste vide', () => {
+    const { geometry, count } = buildGlazing([])
+    expect(count).toBe(0)
+    expect(geometry.getIndex()).not.toBeNull()
+    expect(geometry.getAttribute('position').count).toBe(0)
+  })
+
+  it('le matériau laisse voir au travers ET réfléchit', () => {
+    // Les deux à la fois : opaque on ne verrait pas le parc, sans reflet la
+    // vitre redevient un trou.
+    const m = creerVitrage()
+    expect(m.transparent).toBe(true)
+    expect(m.opacity).toBeLessThan(0.3)
+    expect(m.opacity).toBeGreaterThan(0)
+    expect(m.roughness).toBeLessThan(0.1)
+    expect(m.envMapIntensity).toBeGreaterThan(1)
+    // Sans ça la vitre masquerait dans le tampon de profondeur ce qu'on est
+    // censé voir au travers.
+    expect(m.depthWrite).toBe(false)
+    m.dispose()
   })
 })

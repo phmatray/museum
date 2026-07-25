@@ -45,6 +45,7 @@ import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 
 import { RAILING_HEIGHT, buildRailing, buildSlab } from '../builders/slab'
+import { buildGlazing, creerVitrage } from '../builders/glazing'
 import { buildWall } from '../builders/wall'
 import { floorBox, shadowSweptBox } from '../domain/culling'
 import type { Floor, Museum, Vec2 } from '../domain/types'
@@ -224,6 +225,22 @@ export function FloorMesh({
     )
   }, [floor.enclosure, floor.elevation, cartesBeton])
 
+  // ── Vitrage ────────────────────────────────────────────────────────────
+  //
+  // Toutes les vitres du plateau en UN maillage : percer un mur ne fait pas une
+  // fenêtre, ça fait un trou, et sans reflet l'œil lit un décor découpé au
+  // cutter. Les jours vivent à la fois dans les murs de fermeture du niveau et
+  // dans les murs d'enceinte des passages : on ramasse les deux.
+  const vitrage = useMemo(
+    () =>
+      buildGlazing([
+        ...floor.enclosure,
+        ...floor.rooms.flatMap((r) => r.walls),
+      ]),
+    [floor.enclosure, floor.rooms],
+  )
+  const vitrageMaterial = useMemo(() => creerVitrage(), [])
+
   // ── Culling (§9.3) ─────────────────────────────────────────────────────
   //
   // La boîte est calculée UNE fois, au montage : un plateau ne bouge pas. Elle
@@ -257,8 +274,10 @@ export function FloorMesh({
       roof?.dispose()
       for (const wall of enclosure) wall.geometry.dispose()
       enclosureMaterial?.dispose()
+      vitrage.geometry.dispose()
+      vitrageMaterial.dispose()
     }
-  }, [slab, railing, roof, enclosure, enclosureMaterial])
+  }, [slab, railing, roof, enclosure, enclosureMaterial, vitrage, vitrageMaterial])
 
   return (
     <group ref={groupe} name={`floor:${floor.id}`}>
@@ -310,6 +329,18 @@ export function FloorMesh({
             ),
           )}
         </RigidBody>
+      )}
+
+      {vitrage.count > 0 && (
+        // Pas de collider : une vitre est une vue, et le mur qui la porte est
+        // déjà solide sous l'allège et au-dessus du linteau. Un collider ici ne
+        // servirait qu'à empêcher de s'approcher de la fenêtre.
+        <mesh
+          name={`vitrage:${floor.id}`}
+          geometry={vitrage.geometry}
+          material={vitrageMaterial}
+          position={[0, floor.elevation, 0]}
+        />
       )}
 
       {roof && (

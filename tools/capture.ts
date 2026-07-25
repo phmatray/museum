@@ -111,6 +111,15 @@ const VUES: Vue[] = [
     preuve: "l'escalier hélicoïdal : girons et contremarches, pas un plan incliné",
   },
   {
+    // Dans le passage nord de l'étage 1, à 4 m d'un jour, regard vers le parc.
+    // Les coordonnées sont DÉRIVÉES du musée réel : centre de l'ouverture,
+    // reculé de 4 m le long de la normale rentrante du mur.
+    nom: 'fenetre',
+    de: [-12.65, 6.3, -11],
+    vers: [-12.65, 6.2, -55],
+    preuve: 'depuis un passage : la vue sur le parc, et la vitre qui la porte',
+  },
+  {
     nom: 'plafond',
     de: [0, 1.7, -10],
     vers: [0, 6, -10],
