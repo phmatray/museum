@@ -192,6 +192,25 @@ async function recupererPlante(id: string): Promise<string> {
 
 // ── Point d'entrée ───────────────────────────────────────────────────────
 
+/*
+  Les SOURCES de végétation sont désormais optionnelles.
+
+  Les modèles bruts de Poly Haven pèsent 330 Mo — `jacaranda_tree.bin` fait à
+  lui seul 208 Mo — et le musée n'en charge AUCUN : il ne lit que
+  `plants-lod.glb` et `park-lod.glb`, deux fichiers de 4,3 Mo produits par
+  `tools/blender/decimate-plants.py`. Ces deux-là sont maintenant versionnés,
+  parce que les régénérer demande Blender et que la CI n'en a pas.
+
+  Les télécharger par défaut coûtait donc 330 Mo à chaque publication, et
+  autant dans `dist/` — Vite recopie tout `public/` — pour un site dont le
+  besoin réel est de 33 Mo. On ne les prend plus que sur demande explicite,
+  c'est-à-dire quand on veut refaire la décimation.
+
+      node tools/fetch-assets.ts                        # matières + HDRI
+      node tools/fetch-assets.ts --sources-vegetation   # + les 330 Mo bruts
+*/
+const SOURCES_VEGETATION = process.argv.includes('--sources-vegetation')
+
 async function main() {
   await mkdir(OUT, { recursive: true })
   const journal: string[] = []
@@ -207,24 +226,26 @@ async function main() {
   console.log(`  ${(await recupererHdri()).padEnd(6)} ${HDRI.id} ${HDRI.resolution}`)
   journal.push(`| ${HDRI.id} | Poly Haven | CC0 | carte d'environnement, spéculaire |`)
 
-  console.log(`\nVégétation d'intérieur (${PLANTES.length}) — Poly Haven, CC0`)
-  for (const p of PLANTES) {
-    const r = await recupererPlante(p)
-    console.log(`  ${r.padEnd(6)} ${p}`)
-    journal.push(`| ${p} | Poly Haven | CC0 | végétation d'intérieur |`)
+  const vegetation = [...PLANTES, ...ARBRES, ...ARBUSTES]
+  for (const p of vegetation) {
+    journal.push(`| ${p} | Poly Haven | CC0 | végétation, décimée dans les LOD |`)
   }
 
-  const parc = [...ARBRES, ...ARBUSTES]
-  console.log(`\nParc (${parc.length}) — Poly Haven, CC0`)
-  for (const p of parc) {
-    const r = await recupererPlante(p)
-    console.log(`  ${r.padEnd(6)} ${p}`)
-    journal.push(`| ${p} | Poly Haven | CC0 | parc |`)
+  if (SOURCES_VEGETATION) {
+    console.log(`\nSources de végétation (${vegetation.length}) — Poly Haven, CC0 — 330 Mo`)
+    for (const p of vegetation) {
+      const r = await recupererPlante(p)
+      console.log(`  ${r.padEnd(6)} ${p}`)
+    }
+    console.log(`\n  Décimation : blender --background --python tools/blender/decimate-plants.py`)
+  } else {
+    console.log(`\nSources de végétation : IGNORÉES (--sources-vegetation pour les prendre).`)
+    console.log(`  Le musée lit les LOD versionnés, pas les sources.`)
   }
 
   await writeFile(
     join(OUT, 'CREDITS.md'),
-    `# Assets\n\nTous en CC0 (domaine public). Aucune attribution n'est requise ; elle est donnée\npar correction et pour documenter la provenance.\n\nRécupérés par \`node tools/fetch-assets.ts\`, non versionnés.\n\n| Asset | Source | Licence | Usage |\n|---|---|---|---|\n${journal.join('\n')}\n`,
+    `# Assets\n\nTous en CC0 (domaine public). Aucune attribution n'est requise ; elle est donnée\npar correction et pour documenter la provenance.\n\nRécupérés par \`node tools/fetch-assets.ts\`, non versionnés — sauf les LOD de\nvégétation et le kit de props, qui exigent Blender et sont donc commités.\n\n| Asset | Source | Licence | Usage |\n|---|---|---|---|\n${journal.join('\n')}\n`,
   )
   console.log(`\nCREDITS.md écrit.`)
 }

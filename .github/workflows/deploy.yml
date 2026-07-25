@@ -42,6 +42,31 @@ jobs:
           key: media-${{ runner.os }}-${{ hashFiles('public/data/catalogue.json') }}
           restore-keys: media-${{ runner.os }}-
 
+      # Les matières PBR et l'HDRI : 35 Mo d'assets CC0 qui ne changent que
+      # lorsque le manifeste de `fetch-assets.ts` change. La clé est le hachage
+      # de l'outil lui-même : elle sur-invalide (un commentaire suffit) mais ne
+      # sous-invalide jamais, ce qui est le bon sens de l'erreur pour un cache.
+      #
+      # Les LOD de végétation et le kit de props ne sont PAS ici : ils exigent
+      # Blender et sont versionnés (voir .gitignore). Sans eux, le musée publié
+      # serait un bâtiment nu — et la suite de tests échouerait avant même le
+      # build, parce que `PROP_METRICS` mesure le kit réel.
+      - name: Restaurer le cache des assets CC0
+        uses: actions/cache@v4
+        with:
+          path: |
+            public/assets/materials
+            public/assets/hdri
+          key: assets-${{ runner.os }}-${{ hashFiles('tools/fetch-assets.ts') }}
+          restore-keys: assets-${{ runner.os }}-
+
+      # Sans cette étape, le musée se déployait en APLATS : pas une matière, pas
+      # un grain, pas de terrazzo. Le pipeline la décrivait pourtant depuis le
+      # premier jour — « la CI les récupère et les met en cache » — mais elle
+      # n'avait jamais été branchée.
+      - name: Récupérer les assets CC0
+        run: node tools/fetch-assets.ts
+
       # Le catalogue du dernier build réussi sert de filet : si l'API GitHub
       # est en panne, on republie avec les données de la veille plutôt que de
       # casser le site.

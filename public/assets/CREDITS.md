@@ -3,7 +3,8 @@
 Tous en CC0 (domaine public). Aucune attribution n'est requise ; elle est donnée
 par correction et pour documenter la provenance.
 
-Récupérés par `node tools/fetch-assets.ts`, non versionnés.
+Récupérés par `node tools/fetch-assets.ts`, non versionnés — sauf les LOD de
+végétation et le kit de props, qui exigent Blender et sont donc commités.
 
 | Asset | Source | Licence | Usage |
 |---|---|---|---|
@@ -16,12 +17,12 @@ Récupérés par `node tools/fetch-assets.ts`, non versionnés.
 | Grass004 | ambientCG | CC0 | pelouse du parc |
 | Gravel023 | ambientCG | CC0 | allées et parvis du parc |
 | brown_photostudio_02 | Poly Haven | CC0 | carte d'environnement, spéculaire |
-| potted_plant_02 | Poly Haven | CC0 | végétation d'intérieur |
-| potted_plant_04 | Poly Haven | CC0 | végétation d'intérieur |
-| calathea_orbifolia_01 | Poly Haven | CC0 | végétation d'intérieur |
-| anthurium_botany_01 | Poly Haven | CC0 | végétation d'intérieur |
-| island_tree_01 | Poly Haven | CC0 | parc |
-| island_tree_02 | Poly Haven | CC0 | parc |
-| jacaranda_tree | Poly Haven | CC0 | parc |
-| shrub_01 | Poly Haven | CC0 | parc |
-| shrub_03 | Poly Haven | CC0 | parc |
+| potted_plant_02 | Poly Haven | CC0 | végétation, décimée dans les LOD |
+| potted_plant_04 | Poly Haven | CC0 | végétation, décimée dans les LOD |
+| calathea_orbifolia_01 | Poly Haven | CC0 | végétation, décimée dans les LOD |
+| anthurium_botany_01 | Poly Haven | CC0 | végétation, décimée dans les LOD |
+| island_tree_01 | Poly Haven | CC0 | végétation, décimée dans les LOD |
+| island_tree_02 | Poly Haven | CC0 | végétation, décimée dans les LOD |
+| jacaranda_tree | Poly Haven | CC0 | végétation, décimée dans les LOD |
+| shrub_01 | Poly Haven | CC0 | végétation, décimée dans les LOD |
+| shrub_03 | Poly Haven | CC0 | végétation, décimée dans les LOD |

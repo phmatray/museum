@@ -24,6 +24,23 @@ public/media/*
 public/assets/*
 !public/assets/CREDITS.md
 
+# ── Trois exceptions : les sorties de BLENDER ──
+#
+# Le reste des assets se retéléchargent (`node tools/fetch-assets.ts`). Ces
+# trois-là ne le peuvent pas : ils sont produits par `tools/blender/*.py`, et la
+# CI n'a pas Blender. Sans eux, le musée publié n'a ni banc, ni socle, ni
+# jardinière, ni un seul arbre — et la suite de tests échoue, parce que
+# `PROP_METRICS` mesure le kit réel plutôt que de se croire sur parole.
+#
+# 4,3 Mo, déterministes, régénérables à l'identique par un script versionné.
+# C'est une sortie d'outil qu'on met sous git, pas une source binaire.
+!public/assets/props/
+!public/assets/props/museum-kit.glb
+!public/assets/plants/
+public/assets/plants/*
+!public/assets/plants/park-lod.glb
+!public/assets/plants/plants-lod.glb
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
