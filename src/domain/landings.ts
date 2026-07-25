@@ -20,8 +20,12 @@ import type { Museum, Vec2 } from './types'
 export interface Landing {
   /** Position monde du point de contact. */
   position: Vec2
-  /** Demi-largeur à dégager, houppier de sécurité compris. */
+  /** Demi-largeur à dégager, marge de passage comprise. */
   rayon: number
+  /** Angle du rayon de l'hélice à ce bout : oriente le palier. */
+  angle: number
+  /** Largeur de l'emmarchement, pour dimensionner le palier. */
+  largeur: number
   /** L'escalier concerné, pour le diagnostic. */
   rampId: string
   /** `depart` = on y monte, `arrivee` = on en descend. */
@@ -64,6 +68,8 @@ export function landingsForFloor(museum: Museum, elevation: number): Landing[] {
           z: ramp.centre.z + ramp.radius * Math.sin(bout.angle),
         },
         rayon: ramp.width / 2 + MARGE_PALIER,
+        angle: bout.angle,
+        largeur: ramp.width + 2 * MARGE_PALIER,
         rampId: ramp.id,
         sens: bout.sens,
       })

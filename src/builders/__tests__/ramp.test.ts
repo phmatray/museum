@@ -582,22 +582,52 @@ describe('garde-corps', () => {
     expect(rayons.has(Math.round(ro * 100) / 100)).toBe(true)
   })
 
-  it('est solide : deux rives, couvrant tout le balayage', () => {
+  it('est solide au MILIEU, et ouvert aux deux bouts', () => {
+    /*
+      La rive extérieure s'interrompt à chaque extrémité, et ce n'est pas un
+      oubli : on entre sur un escalier hélicoïdal par le CÔTÉ, radialement
+      depuis le palier. Une balustrade continue en interdit purement et
+      simplement l'accès — mesuré en marchant, le visiteur atteignait le palier
+      et s'arrêtait net contre une lisse de 1,10 m.
+
+      La rive INTÉRIEURE, elle, borde le vide : elle reste continue partout.
+    */
     const r = ramp()
     const { railingColliders } = buildRamp(r)
-    // Deux rives, découpées par pas de 10° — un découpage indépendant de celui
-    // des marches, puisqu'un garde-corps ne monte pas par paliers.
-    expect(railingColliders.length % 2).toBe(0)
     expect(railingColliders.length).toBeGreaterThan(0)
 
-    // Un joueur qui longe une rive à hauteur de poitrine rencontre la lisse.
+    const interieures = railingColliders.filter(
+      (c) => Math.hypot(c.position.x - r.centre.x, c.position.z - r.centre.z) < r.radius,
+    )
+    const exterieures = railingColliders.filter(
+      (c) => Math.hypot(c.position.x - r.centre.x, c.position.z - r.centre.z) >= r.radius,
+    )
+    // La rive intérieure couvre tout le balayage, l'extérieure non.
+    expect(interieures.length).toBeGreaterThan(exterieures.length)
+
+    // Et l'ouverture est bien AUX BOUTS : rien de la rive extérieure dans les
+    // 1,60 m d'arc du départ.
+    const angleDe = (c: (typeof railingColliders)[number]) =>
+      Math.atan2(c.position.z - r.centre.z, c.position.x - r.centre.x)
+    const ecart = (a: number, b: number) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)))
+    const seuil = 1.6 / r.radius
+    for (const c of exterieures) {
+      expect(ecart(angleDe(c), r.startAngle), 'lisse extérieure devant la première marche').toBeGreaterThan(
+        seuil * 0.8,
+      )
+    }
+
+    // Un joueur qui longe une rive à hauteur de poitrine rencontre la lisse —
+    // partout sur la rive intérieure, et hors des zones d'entrée sur l'autre.
+    const marge = (1.6 / r.radius / Math.abs(r.sweep)) * 1.3
     for (const rive of [-1, 1]) {
       for (let i = 0; i <= 300; i++) {
         const t = i / 300
+        if (rive > 0 && (t < marge || t > 1 - marge)) continue
         const bord = rampSurfacePoint(r, t, (rive * (r.width - RAILING_THICKNESS)) / 2)
         const p = { x: bord.x, y: bord.y + RAILING_HEIGHT / 2, z: bord.z }
         const meilleure = Math.max(...railingColliders.map((c) => penetration(c, p)))
-        expect(meilleure).toBeGreaterThan(0)
+        expect(meilleure, `rive ${rive} à t=${t.toFixed(2)}`).toBeGreaterThan(0)
       }
     }
   })
@@ -713,9 +743,11 @@ describe('les rampes réelles de public/data/museum.json', () => {
       // Une boîte par MARCHE. Le pas de 10° ne découpe plus que les
       // garde-corps, qui eux montent en continu.
       expect(build.colliders).toHaveLength(Math.max(1, Math.round(r.rise / 0.15)))
-      expect(build.railingColliders).toHaveLength(
-        2 * Math.round(Math.abs(r.sweep) / COLLIDER_STEP),
-      )
+      // La rive extérieure s'ouvre aux deux bouts pour qu'on puisse monter sur
+      // l'escalier : le compte est donc INFÉRIEUR au découpage angulaire plein.
+      const plein = 2 * Math.round(Math.abs(r.sweep) / COLLIDER_STEP)
+      expect(build.railingColliders.length).toBeLessThan(plein)
+      expect(build.railingColliders.length).toBeGreaterThan(plein / 2)
     for (let i = 0; i <= 300; i++) {
       for (const k of [-0.5, 0, 0.5]) {
         const p = rampSurfacePoint(r, i / 300, k * r.width)
@@ -723,17 +755,26 @@ describe('les rampes réelles de public/data/museum.json', () => {
       }
     }
 
-    // Garde-corps : solide des deux côtés, à hauteur de poitrine. Son découpage
-    // est ANGULAIRE et non par marche — une lisse monte en continu, elle n'a pas
-    // de paliers —, donc son compte ne se déduit plus de celui des marches.
-    expect(build.railingColliders).toHaveLength(
-      2 * Math.round(Math.abs(r.sweep) / COLLIDER_STEP),
-    )
-    for (const rive of [-1, 1]) {
-      for (let i = 0; i <= 200; i++) {
-        const bord = rampSurfacePoint(r, i / 200, (rive * (r.width - RAILING_THICKNESS)) / 2)
+    // Garde-corps. Son découpage est ANGULAIRE et non par marche — une lisse
+    // monte en continu. La rive INTÉRIEURE borde le vide et doit être solide de
+    // bout en bout ; l'EXTÉRIEURE s'ouvre aux deux extrémités pour qu'on puisse
+    // monter sur l'escalier, ce qui est tout l'objet d'un escalier.
+    const total = 2 * Math.round(Math.abs(r.sweep) / COLLIDER_STEP)
+    expect(build.railingColliders.length).toBeLessThan(total)
+    expect(build.railingColliders.length).toBeGreaterThan(total / 2)
+
+    const marge = 1.6 / r.radius / Math.abs(r.sweep)
+    for (let i = 0; i <= 200; i++) {
+      const t = i / 200
+      for (const rive of [-1, 1]) {
+        // Hors des zones d'entrée pour la rive extérieure ; partout pour l'autre.
+        if (rive > 0 && (t < marge * 1.3 || t > 1 - marge * 1.3)) continue
+        const bord = rampSurfacePoint(r, t, (rive * (r.width - RAILING_THICKNESS)) / 2)
         const p = { x: bord.x, y: bord.y + RAILING_HEIGHT / 2, z: bord.z }
-        expect(Math.max(...build.railingColliders.map((c) => penetration(c, p)))).toBeGreaterThan(0)
+        expect(
+          Math.max(...build.railingColliders.map((c) => penetration(c, p))),
+          `${r.id} rive ${rive} à t=${t.toFixed(2)}`,
+        ).toBeGreaterThan(0)
       }
     }
     },

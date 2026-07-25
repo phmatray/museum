@@ -50,6 +50,8 @@
  * deux bâtiments différents.
  */
 import { use, useEffect, useMemo } from 'react'
+
+import { useGameStore } from '../stores/gameStore'
 import { useThree } from '@react-three/fiber'
 
 import { landings } from '../domain/culling'
@@ -74,6 +76,18 @@ import {
   TONE_MAPPING,
   buildAmbientEnvironment,
 } from './lighting'
+
+/**
+ * Hauteur de l'œil au-dessus des pieds, pour que `ouSuisJe()` rende une position
+ * de VISITEUR et non de caméra. Doit suivre `Player.tsx` : la caméra y est posée
+ * à `y + PLAYER_HEIGHT − CAPSULE_HALF_HEIGHT` au-dessus du centre de la capsule.
+ */
+// PLAYER_HEIGHT (1,70) − CAPSULE_HALF_HEIGHT (0,50) place la caméra 1,20 m
+// au-dessus du CENTRE de la capsule, lui-même à FEET_OFFSET (0,80) au-dessus des
+// pieds. L'œil est donc à 2,00 m des pieds — et non 0,90, qui était la première
+// valeur écrite d'instinct. Elle décalait tout relevé de 1,10 m, si bien qu'un
+// visiteur resté au rez-de-chaussée semblait avoir monté une marche.
+const HAUTEUR_OEIL = 2.0
 
 /** Charge le musée puis le rend. À placer sous un `<Suspense>`. */
 export function MuseumScene() {
@@ -191,6 +205,35 @@ function SceneDebugHandle({ culling }: { culling: FloorCulling }) {
       setCulling: (actif: boolean) => {
         culling.setActive(actif)
       },
+      /*
+        ── Jouer, et non regarder ──
+
+        `survol()` place une caméra là où JE décide qu'il faut regarder. C'est
+        commode et c'est un piège : on ne voit que ce qu'on a choisi de cadrer,
+        et un défaut de PARCOURS — un escalier qu'on ne peut pas atteindre —
+        n'apparaît sur aucune de ces vues. Il a fallu qu'on me le dise.
+
+        Ces trois-là permettent de piloter le VRAI personnage, avec sa physique,
+        depuis le point d'apparition : `tools/walk.ts` s'en sert pour marcher au
+        clavier et relever la trajectoire. Ce qu'ils prouvent n'est pas « ça a
+        l'air bien » mais « on y arrive ».
+      */
+      demarrer: () => {
+        useGameStore.getState().setPaused(false)
+      },
+      /** Oriente le regard. Le verrouillage du pointeur n'existe pas en headless. */
+      regarder: (yaw: number, pitch = 0) => {
+        camera.rotation.order = 'YXZ'
+        camera.rotation.y = yaw
+        camera.rotation.x = pitch
+      },
+      /** Position du VISITEUR — pieds au sol, pas l'œil. */
+      ouSuisJe: () => ({
+        x: camera.position.x,
+        y: camera.position.y - HAUTEUR_OEIL,
+        z: camera.position.z,
+        yaw: camera.rotation.y,
+      }),
       /**
        * Place la caméra et lui donne un point à viser.
        *

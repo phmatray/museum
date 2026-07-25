@@ -139,6 +139,29 @@ export const RAMP_MAX_SLOPE_DEG = 40
  */
 const MIN_INNER_RADIUS = 0.05
 
+/**
+ * Longueur d'emmarchement laissée LIBRE de balustrade à chaque bout, en mètres
+ * d'arc.
+ *
+ * 1,60 m : la largeur du palier plus un jeu. En dessous, on entre en visant ; au
+ * dessus, on longe un escalier ouvert sur le vide bien après y être monté.
+ */
+const ARC_ENTREE = 1.6
+
+/**
+ * La part du balayage à laisser libre à chaque extrémité, en paramètre `t`.
+ *
+ * Plafonnée au tiers : sur une volée très courte, retirer 1,60 m à chaque bout
+ * ne doit pas revenir à supprimer la balustrade.
+ */
+function ouvertureDEntree(ramp: Ramp, sweepAbs: number): number {
+  const arc = sweepAbs * ramp.radius
+  if (arc <= EPS_ARC) return 0
+  return Math.min(1 / 3, ARC_ENTREE / arc)
+}
+
+const EPS_ARC = 1e-6
+
 // ── Maillage : accumulateur de quadrilatères ─────────────────────────────
 
 interface MeshBuffer {
@@ -533,11 +556,30 @@ export function buildRamp(ramp: Ramp): RampBuild {
   // chute. Les deux lisses sont fusionnées en un maillage, donc un draw call.
   const railings: MeshBuffer = { positions: [], indices: [] }
   const railingTop = (t: number): number => deckTop(t) + RAILING_HEIGHT
+  /*
+    LA RIVE EXTÉRIEURE S'OUVRE AUX DEUX BOUTS.
+
+    Elle courait d'un bout à l'autre, y compris devant la première marche — et
+    comme on entre sur un escalier hélicoïdal par le CÔTÉ, radialement depuis le
+    palier, sa propre balustrade en interdisait l'accès. Mesuré en marchant : le
+    visiteur atteignait le palier, voyait les marches devant lui, et s'arrêtait
+    net contre une lisse de 1,10 m.
+
+    C'est le troisième obstacle du même parcours, après le garde-corps de la
+    trémie et l'absence de palier. Aucun des trois ne se voyait sur une capture ;
+    les trois se voient en dix secondes de marche.
+
+    La rive INTÉRIEURE, elle, reste continue : elle borde le vide de l'hélice, on
+    n'entre jamais par là et l'ouvrir serait une chute.
+  */
+  const entree = ouvertureDEntree(ramp, sweepAbs)
   sweepSolid(
     railings,
     ramp,
     { innerRadius: outerRadius - RAILING_THICKNESS, outerRadius, bottom: deckTop, top: railingTop },
-    geometrySteps,
+    Math.max(1, Math.round(geometrySteps * (1 - 2 * entree))),
+    entree,
+    1 - entree,
   )
   sweepSolid(
     railings,
@@ -603,6 +645,16 @@ export function buildRamp(ramp: Ramp): RampBuild {
     const halfHeight = (RAILING_HEIGHT + riseParSegment) / 2
     const centreY = rampSurfacePoint(ramp, tm).y + RAILING_HEIGHT / 2
     for (const rBord of [outerRadius - RAILING_THICKNESS / 2, innerRadius + RAILING_THICKNESS / 2]) {
+      /*
+        La rive EXTÉRIEURE n'a pas de collider dans les zones d'entrée.
+
+        Ouvrir la géométrie sans ouvrir le collider aurait été pire que de ne
+        rien faire : le visiteur aurait vu un passage ouvert et se serait cogné
+        dans du vide, sans le moindre indice de ce qui l'arrête. Une balustrade
+        invisible est un mur.
+      */
+      const estExterieure = rBord > ramp.radius
+      if (estExterieure && (tm < entree || tm > 1 - entree)) continue
       // Une boîte est une corde, la lisse est un arc : aux extrémités du
       // segment l'arc s'écarte de la corde de r·(1 − cos(demi)), soit près de
       // 4 cm à 10° de pas — plus que l'épaisseur de la lisse elle-même. Sans

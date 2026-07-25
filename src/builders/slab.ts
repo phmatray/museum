@@ -347,6 +347,72 @@ export function buildRailing(
   return { geometry, collider: toTrimesh(geometry), segments: ouverts }
 }
 
+// ── Palier ───────────────────────────────────────────────────────────────
+
+/**
+ * La plateforme qui relie le bord de la dalle à la première marche.
+ *
+ * ── Pourquoi elle est indispensable ──
+ *
+ * L'escalier est inscrit dans la trémie, son bord extérieur passe à 5,90 m de
+ * l'axe et le bord du vide est à 6,00 m : il restait **10 cm de vide au-dessus
+ * d'une chute de 4,70 m**, à franchir en montant une marche de 15 cm. Ouvrir le
+ * garde-corps ne suffisait donc pas — mesuré en marchant : le visiteur arrivait
+ * dans l'ouverture, voyait les marches devant lui, et s'arrêtait net.
+ *
+ * Aucun bâtiment ne se construit comme ça. Un escalier rencontre un plancher sur
+ * un PALIER, et c'est ce que cette dalle est.
+ *
+ * Sa face supérieure est au niveau du plancher : on y arrive de plain-pied, et
+ * la première contremarche reste la première contremarche.
+ */
+export function buildLanding(
+  centre: Vec2,
+  angle: number,
+  largeur: number,
+  epaisseur: number,
+): SlabResult {
+  // Le palier déborde vers l'EXTÉRIEUR de l'hélice, là où se trouve la dalle.
+  // Un mètre : la trémie est carrée et l'escalier circulaire, si bien que la
+  // distance du bord du vide varie selon l'angle. Trop court, le palier ne
+  // rejoint pas la dalle dans les angles ; le recouvrement, lui, est sans effet
+  // — les deux sont à la même altitude.
+  const DEBORD = 1.2
+  const demiLargeur = largeur / 2
+
+  const shape = new THREE.Shape([
+    new THREE.Vector2(-demiLargeur, 0),
+    new THREE.Vector2(demiLargeur, 0),
+    new THREE.Vector2(demiLargeur, DEBORD),
+    new THREE.Vector2(-demiLargeur, DEBORD),
+  ])
+
+  const geometry = new THREE.ExtrudeGeometry(shape, {
+    depth: epaisseur,
+    bevelEnabled: false,
+    steps: 1,
+  })
+  geometry.rotateX(-Math.PI / 2)
+  geometry.translate(0, -epaisseur, 0)
+  /*
+    Le palier doit s'étendre le long du RAYON, vers l'extérieur de l'hélice —
+    c'est de ce côté que se trouve la dalle. Écrit `rotateY(−angle)` du premier
+    coup, il partait TANGENTIELLEMENT, à quatre-vingt-dix degrés du seul endroit
+    utile, et le visiteur restait bloqué au même centimètre qu'avant.
+
+    Après `rotateX(−π/2)`, le +v local regarde −z. On veut l'envoyer sur
+    (cos a, sin a) : une rotation d'angle θ envoie (0, −v) sur (−v sin θ,
+    −v cos θ), d'où −sin θ = cos a et −cos θ = sin a, soit θ = −(a + π/2).
+  */
+  geometry.rotateY(-(angle + Math.PI / 2))
+  geometry.translate(centre.x, 0, centre.z)
+
+  indexSequentially(geometry)
+  groupByFacing(geometry)
+
+  return { geometry, collider: toTrimesh(geometry), railingSegments: [] }
+}
+
 // ── Outils géométriques ──────────────────────────────────────────────────
 
 /**

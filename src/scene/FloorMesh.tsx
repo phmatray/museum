@@ -44,7 +44,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { RigidBody, TrimeshCollider } from '@react-three/rapier'
 import * as THREE from 'three'
 
-import { RAILING_HEIGHT, buildRailing, buildSlab } from '../builders/slab'
+import { RAILING_HEIGHT, buildLanding, buildRailing, buildSlab } from '../builders/slab'
 import { buildGlazing, creerVitrage } from '../builders/glazing'
 import { buildWall } from '../builders/wall'
 import { floorBox, shadowSweptBox } from '../domain/culling'
@@ -107,13 +107,34 @@ export function FloorMesh({
   // trémie sur tout son périmètre — et comme l'escalier est DANS la trémie, il
   // devient inaccessible : c'est exactement ce qui se passait, et aucun test de
   // géométrie ne pouvait l'attraper, chaque pièce étant juste séparément.
-  const paliers = useMemo(
-    () =>
-      landingsForFloor(museum, floor.elevation).map((p) => ({
-        centre: p.position,
-        rayon: p.rayon,
-      })),
+  const paliersDuNiveau = useMemo(
+    () => landingsForFloor(museum, floor.elevation),
     [museum, floor.elevation],
+  )
+  const paliers = useMemo(
+    () => paliersDuNiveau.map((p) => ({ centre: p.position, rayon: p.rayon })),
+    [paliersDuNiveau],
+  )
+
+  /*
+    LA DALLE DE PALIER, et pas seulement le trou dans le garde-corps.
+
+    Ouvrir le garde-corps ne suffisait pas : l'escalier est inscrit dans la
+    trémie, son bord extérieur passe à 5,90 m de l'axe et le bord du vide est à
+    6,00 m. Il restait donc 10 cm de vide au-dessus d'une chute de 4,70 m, à
+    franchir en montant une marche de 15 cm. Mesuré EN MARCHANT : le visiteur
+    arrivait dans l'ouverture, voyait les marches devant lui, et s'arrêtait net.
+
+    Aucun bâtiment ne se construit comme ça. Un escalier rencontre un plancher
+    sur un palier.
+  */
+  const dallesPalier = useMemo(
+    () =>
+      paliersDuNiveau.map((p) => ({
+        id: `${p.rampId}-${p.sens}`,
+        build: buildLanding(p.position, p.angle, p.largeur, slabThickness),
+      })),
+    [paliersDuNiveau, slabThickness],
   )
   const railing = useMemo(
     () =>
@@ -285,12 +306,13 @@ export function FloorMesh({
       slab.geometry.dispose()
       railing?.geometry.dispose()
       roof?.dispose()
+      for (const d of dallesPalier) d.build.geometry.dispose()
       for (const wall of enclosure) wall.geometry.dispose()
       enclosureMaterial?.dispose()
       vitrage.geometry.dispose()
       vitrageMaterial.dispose()
     }
-  }, [slab, railing, roof, enclosure, enclosureMaterial, vitrage, vitrageMaterial])
+  }, [slab, railing, roof, enclosure, enclosureMaterial, vitrage, vitrageMaterial, dallesPalier])
 
   return (
     <group ref={groupe} name={`floor:${floor.id}`}>
@@ -302,6 +324,13 @@ export function FloorMesh({
       >
         <mesh geometry={slab.geometry} material={slabMaterials} receiveShadow castShadow />
         <TrimeshCollider args={[slab.collider.vertices, slab.collider.indices]} />
+
+        {dallesPalier.map(({ id, build }) => (
+          <group key={id}>
+            <mesh geometry={build.geometry} material={slabMaterials} receiveShadow />
+            <TrimeshCollider args={[build.collider.vertices, build.collider.indices]} />
+          </group>
+        ))}
 
         {railing && (
           <>

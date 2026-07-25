@@ -17,8 +17,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { buildRailing } from '../../builders/slab'
-import { buildSlab } from '../../builders/slab'
+import { buildLanding, buildRailing, buildSlab } from '../../builders/slab'
 import { landingsForFloor } from '../landings'
 import type { Museum } from '../types'
 
@@ -121,5 +120,69 @@ describe('accès à l’escalier', () => {
     const railing = buildRailing(slab.railingSegments, RAILING_HEIGHT, gaps)
     expect(railing.collider.indices.length).toBeGreaterThan(0)
     expect(railing.collider.indices.length % 3).toBe(0)
+  })
+})
+
+/**
+ * La DALLE de palier, et non plus seulement le trou dans le garde-corps.
+ *
+ * Ouvrir le garde-corps ne suffisait pas : l'escalier est inscrit dans la
+ * trémie, son bord extérieur passe à 5,90 m de l'axe et le bord du vide est à
+ * 6,00 m. Il restait 10 cm de vide au-dessus d'une chute de 4,70 m, à franchir
+ * en montant une marche de 15 cm — et le visiteur s'arrêtait net devant.
+ */
+describe('dalle de palier', () => {
+  it('s’étend vers l’EXTÉRIEUR de l’hélice, là où se trouve la dalle', () => {
+    // Le défaut qu'on interdit : un palier orienté tangentiellement, à
+    // quatre-vingt-dix degrés du seul endroit utile. Écrit comme ça la première
+    // fois, il laissait le visiteur bloqué au même centimètre qu'avant.
+    for (const floor of museum.floors) {
+      for (const p of landingsForFloor(museum, floor.elevation)) {
+        const build = buildLanding(p.position, p.angle, p.largeur, 0.4)
+        const pos = build.geometry.getAttribute('position')
+
+        // Rayon depuis l'axe de l'hélice — celui de l'escalier, pas l'origine.
+        const ramp = museum.ramps.find((r) => r.id === p.rampId)!
+        let rMax = 0
+        for (let i = 0; i < pos.count; i++) {
+          rMax = Math.max(
+            rMax,
+            Math.hypot(pos.getX(i) - ramp.centre.x, pos.getZ(i) - ramp.centre.z),
+          )
+        }
+        // Le palier doit dépasser le bord EXTÉRIEUR de l'emmarchement, sans
+        // quoi il ne rejoint pas la dalle.
+        expect(rMax, `${p.rampId} ${p.sens}`).toBeGreaterThan(ramp.radius + ramp.width / 2)
+      }
+    }
+  })
+
+  it('a sa face supérieure au niveau du plancher', () => {
+    // Un palier en surépaisseur ferait une marche parasite juste avant la
+    // première vraie ; en contrebas, un trou.
+    const p = landingsForFloor(museum, 0)[0]
+    const build = buildLanding(p.position, p.angle, p.largeur, 0.4)
+    const pos = build.geometry.getAttribute('position')
+    let yMax = -Infinity
+    let yMin = Infinity
+    for (let i = 0; i < pos.count; i++) {
+      yMax = Math.max(yMax, pos.getY(i))
+      yMin = Math.min(yMin, pos.getY(i))
+    }
+    expect(yMax).toBeCloseTo(0, 6)
+    expect(yMin).toBeCloseTo(-0.4, 6)
+  })
+
+  it('porte un collider : sans lui, on tombe au lieu de monter', () => {
+    const p = landingsForFloor(museum, 0)[0]
+    const build = buildLanding(p.position, p.angle, p.largeur, 0.4)
+    expect(build.collider.indices.length).toBeGreaterThan(0)
+  })
+
+  it('est assez large pour l’emmarchement', () => {
+    for (const p of landingsForFloor(museum, 0)) {
+      const ramp = museum.ramps.find((r) => r.id === p.rampId)!
+      expect(p.largeur).toBeGreaterThanOrEqual(ramp.width)
+    }
   })
 })
