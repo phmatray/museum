@@ -218,8 +218,19 @@ const PAS_ANNEAU = 3.4
  */
 const MARGE_RAMPE = 1.5
 
-/** Hauteur de la jardinière : les plantes qu'elle reçoit s'y posent. */
-const HAUTEUR_JARDINIERE = 0.5
+/**
+ * Hauteur de la jardinière : les plantes qu'elle reçoit s'y posent.
+ *
+ * DÉRIVÉE du modèle, et non recopiée. Elle valait `0.5` en dur, ce qui était la
+ * cote du bac de l'époque — un nombre juste, donc invisible, et qui serait
+ * devenu faux à la première jardinière remodelée. Le défaut aurait été muet :
+ * un bac de 0,44 m aurait laissé les 33 plantes non autoportantes flotter à six
+ * centimètres au-dessus de leur terreau, ce qu'aucune épreuve ne regarde et que
+ * seul un coup d'œil sous le bon angle attrape.
+ *
+ * `maxY` de la jardinière EST sa hauteur : c'est la même mesure, prise une fois.
+ */
+const HAUTEUR_JARDINIERE = PROP_METRICS.jardiniere.maxY
 
 /**
  * Enfoncement d'une plante dans sa jardinière, en mètres.
@@ -797,11 +808,25 @@ function borderLesTremies(floor: Floor, poser: Poseur): void {
   }
 }
 
+/**
+ * Dégagement derrière l'anneau, pour que le banc tienne entier.
+ *
+ * DÉRIVÉ du banc, et non recopié. La valeur était `0.9` en dur, c'est-à-dire la
+ * demi-longueur du banc plus un jeu — encore un nombre juste tant que le banc ne
+ * bougeait pas. Le lire sur `PROP_METRICS` fait que rallonger le banc écarte
+ * l'anneau tout seul, au lieu de le laisser mordre sur le vide de la trémie.
+ *
+ * Le jeu de 7 cm est ce qui reste quand on retire le rayon mesuré (0,828 m) de
+ * l'ancienne constante : la géométrie ne bouge donc que de trois millimètres, ce
+ * qui est le prix de ne plus avoir de nombre magique.
+ */
+const DEGAGEMENT_BANC = PROP_METRICS.banc.radius + 0.07
+
 function bancsDeTremie(floor: Floor, hole: Rect): PropPlacement[] {
   const cx = hole.x + hole.width / 2
   const cz = hole.z + hole.depth / 2
-  const dx = hole.width / 2 + RECUL_ANNEAU + 0.9
-  const dz = hole.depth / 2 + RECUL_ANNEAU + 0.9
+  const dx = hole.width / 2 + RECUL_ANNEAU + DEGAGEMENT_BANC
+  const dz = hole.depth / 2 + RECUL_ANNEAU + DEGAGEMENT_BANC
   // Nord et sud : banc allongé selon X. Est et ouest : allongé selon Z.
   const cotes: { x: number; z: number; rotation: number }[] = [
     { x: cx, z: cz - dz, rotation: 0 },
