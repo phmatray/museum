@@ -247,9 +247,19 @@ export interface Sculpture {
 Puis, dans `MuseumConfig`, après le bloc `clustering` (ligne 143) :
 
 ```ts
-  /** Pièces en volume. Vide sur toute instance qui n'en déclare pas. */
-  sculptures: Sculpture[]
+  /**
+   * Pièces en volume. Absent ou vide sur toute instance qui n'en déclare pas.
+   *
+   * OPTIONNEL dans le type alors que le schéma lui donne `.default([])` : après
+   * un `parseMuseumConfig` le champ est toujours là, mais un `MuseumConfig`
+   * construit À LA MAIN — les fixtures de test, et le code d'un fork — n'a
+   * aucune raison de porter un tableau vide. Le rendre requis cassait quatre
+   * fixtures existantes sans rien garantir de plus.
+   */
+  sculptures?: Sculpture[]
 ```
+
+⚠️ **Le champ est OPTIONNEL, et c'est une correction apportée pendant l'exécution.** Une première version de ce plan écrivait `sculptures: Sculpture[]` requis, tout en écrivant `museum.config.sculptures ?? []` en Task 3 — un `??` qui n'a de sens que sur un champ optionnel. Le plan se contredisait, et `npm run build` (contrainte globale) échouait sur quatre fixtures de test qui construisent un `MuseumConfig` à la main : `builders/__tests__/ramp.test.ts:60`, `domain/__tests__/derive.test.ts:82`, `layout.test.ts:37`, `tour.test.ts:39`.
 
 ⚠️ `Side` est déclaré ligne 148, **après** `MuseumConfig`. C'est sans effet : TypeScript ne demande pas qu'un type soit déclaré avant son usage.
 
@@ -316,8 +326,12 @@ Expected: PASS, toutes.
 
 - [ ] **Step 6: Vérifier que rien d'autre n'a bougé**
 
-Run: `npm test && npm run lint`
+Run: `npm test && npm run lint && npm run build`
 Expected: PASS. `museum.config.json` ne déclare pas encore de sculpture et doit continuer à se lire — c'est ce que couvre le premier test.
+
+⚠️ **`npm run build` est ici, et pas seulement dans les contraintes globales.** Une première version de cette étape ne lançait que `npm test && npm run lint` : ni l'un ni l'autre n'exécute `tsc -b`, si bien qu'un champ requis de trop passait les deux au vert tout en cassant le build. Le défaut n'est apparu que parce que l'implémenteur a lancé `tsc` de sa propre initiative.
+
+⚠️ **Un `toEqual` préexistant doit apprendre le nouveau champ.** `parseMuseumConfig — valeurs par défaut` (ligne ~122) compare la config parsée à un objet littéral exhaustif ; le `.default([])` y ajoute `sculptures: []`. Le compléter est correct — l'affaiblir en `toMatchObject` ne le serait pas.
 
 - [ ] **Step 7: Commit**
 
