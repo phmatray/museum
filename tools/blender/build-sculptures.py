@@ -30,6 +30,12 @@ SQUELETTE ». Un budget de triangles ne se choisit pas dans un tableur.
      `domain/sculptures.ts` calcule, la convention du kit de props ;
   3. la face avant regarde +Z — c'est la convention de `yawDeFacing()`.
 
+  L'ORDRE de ces étapes n'est pas indifférent : la décimation passe AVANT
+  l'échelle et l'ancrage. Un `COLLAPSE` déplace les sommets de bord — mesuré :
+  décimer après ancrage rendait une hauteur de 0,903 m au lieu des 0,900 m
+  imposés et une base 3 mm sous le sol. L'emprise qui sert au facteur d'échelle
+  doit être celle du maillage RÉELLEMENT exporté.
+
 Déterministe : aucun aléa, aucune horloge.
 """
 
@@ -118,32 +124,20 @@ def construire(identifiant: str, source: Path) -> None:
 
     depart = sum(triangles(o) for o in objets)
 
-    # 3. LA MISE EN FACE, d'abord : elle change l'emprise, donc elle doit
+    # 1. LA MISE EN FACE, d'abord : elle change l'emprise, donc elle doit
     #    précéder le recentrage.
     if reglage["front_yaw"] != 0.0:
         for o in objets:
             o.rotation_euler.rotate_axis("Z", reglage["front_yaw"] * 3.14159265358979 / 180)
     bpy.context.view_layer.update()
 
-    # 1. L'ÉCHELLE RÉELLE. Z est la verticale de Blender.
-    (_, _), (_, _), (z0, z1) = emprise(objets)
-    facteur = reglage["hauteur"] / (z1 - z0)
-    for o in objets:
-        o.scale = (facteur, facteur, facteur)
-    bpy.context.view_layer.update()
-
-    # 2. L'ANCRAGE : centré en X et Y, base posée sur Z = 0.
-    (x0, x1), (y0, y1), (z0, z1) = emprise(objets)
-    for o in objets:
-        o.location = (
-            o.location.x - (x0 + x1) / 2,
-            o.location.y - (y0 + y1) / 2,
-            o.location.z - z0,
-        )
-    bpy.context.view_layer.update()
-
-    # LA DÉCIMATION. Un budget par PIÈCE et non par objet : la pièce est ce
-    # qu'on expose, et c'est son total qui compte dans le budget de la scène.
+    # 2. LA DÉCIMATION, ensuite — et avant l'échelle et l'ancrage : un
+    #    `COLLAPSE` déplace les sommets de bord, donc l'emprise mesurée APRÈS
+    #    décimation n'est pas celle d'AVANT. La calculer sur le maillage encore
+    #    plein ferait rater la hauteur imposée et laisserait la base flotter au
+    #    lieu de toucher le sol. Un budget par PIÈCE et non par objet : la
+    #    pièce est ce qu'on expose, et c'est son total qui compte dans le
+    #    budget de la scène.
     for o in objets:
         depart_obj = triangles(o)
         if depart_obj <= reglage["triangles"]:
@@ -154,6 +148,25 @@ def construire(identifiant: str, source: Path) -> None:
         mod.decimate_type = "COLLAPSE"
         mod.ratio = part / depart_obj
         bpy.ops.object.modifier_apply(modifier=mod.name)
+    bpy.context.view_layer.update()
+
+    # 3. L'ÉCHELLE RÉELLE, sur le maillage RÉELLEMENT exporté. Z est la
+    #    verticale de Blender.
+    (_, _), (_, _), (z0, z1) = emprise(objets)
+    facteur = reglage["hauteur"] / (z1 - z0)
+    for o in objets:
+        o.scale = (facteur, facteur, facteur)
+    bpy.context.view_layer.update()
+
+    # 4. L'ANCRAGE : centré en X et Y, base posée sur Z = 0.
+    (x0, x1), (y0, y1), (z0, z1) = emprise(objets)
+    for o in objets:
+        o.location = (
+            o.location.x - (x0 + x1) / 2,
+            o.location.y - (y0 + y1) / 2,
+            o.location.z - z0,
+        )
+    bpy.context.view_layer.update()
 
     redimensionner_textures(reglage["textures"])
 
