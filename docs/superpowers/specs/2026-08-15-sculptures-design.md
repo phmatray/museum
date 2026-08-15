@@ -284,8 +284,17 @@ concerne tous et qui se prendra pour eux, pas dans le sillage d'un chat.
 
 ## 9. Cartel
 
-`CartelLayer` rend déjà les cartels sous 6 m ; `Cartel.tsx` est réutilisé tel quel. Le cartel de
-sculpture est posé sur le socle, tourné selon `facing`.
+Le cartel de sculpture est un composant AUTONOME, `scene/SculptureCartel.tsx`,
+couché sur le dessus du socle du côté `facing`.
+
+⚠️ Une première rédaction de ce spec annonçait « `Cartel.tsx` est réutilisé tel
+quel ». C'était faux : `CartelSpec` exige `key: RepoKey`, `wallId`, `u` et
+`side` — il est ancré sur un mur et indexé par dépôt, et une pièce en volume n'a
+ni l'un ni l'autre. Le forcer aurait demandé une clé factice dans un index de
+dépôts, c'est-à-dire exactement l'option écartée au §3 pour la curation. Ce qui
+est réellement partagé, c'est la table d'encre (`scene/cartelStyle.ts`, extraite
+pour l'occasion) et le seuil de distance de `domain/cartels.ts` : deux cartels
+du même bâtiment ne peuvent avoir ni deux couleurs ni deux portées.
 
 ```
 Philippe Matray
