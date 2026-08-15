@@ -17,7 +17,8 @@
 - **Aucune lumière n'est ajoutée par ce lot.** Le budget de 12 est déjà réparti.
 - **Français dans les commentaires et les noms de domaine**, comme tout le dépôt.
 - **`.editorconfig` :** LF, UTF-8, 2 espaces pour `.ts`/`.tsx`/`.json`, 4 pour `.py`, newline finale.
-- **Commandes :** `npm test` (vitest run) · `npm run lint` · `npm run build` · `npm run derive` (régénère `public/data/museum.json`).
+- **Commandes :** `npm test` (vitest run) · `npm run lint` · `npm run build` · `npm run derive` (régénère `public/data/museum.json`). **Lancer les trois premières à chaque tâche.**
+- ⛔ **`npm test` NE TYPECHECK RIEN — pas même les fichiers de test.** Vitest transpile via esbuild, qui efface les types sans les vérifier ; `eslint` ne les vérifie pas davantage. **Seul `npm run build` (`tsc -b`) le fait.** Deux témoins mesurés dans ce lot : (1) en Task 1, les quatre fichiers cassés par un champ requis de trop étaient **des fichiers de test** — `ramp.test.ts:60`, `derive.test.ts:82`, `layout.test.ts:37`, `tour.test.ts:39` — et `npm test` les passait tous au vert ; (2) en Task 2, un appel à deux arguments d'une fonction qui n'en prenait qu'un s'est **exécuté sans erreur**, le second argument simplement ignoré comme le veut JavaScript. Conséquence pratique pour toute étape « Expected: FAIL » de ce plan : l'échec attendu sous vitest est une **assertion d'exécution**, jamais une erreur de typage.
 
 ## Préalable
 
