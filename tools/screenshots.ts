@@ -112,6 +112,27 @@ async function main(): Promise<void> {
     )
   }
 
+  // — Les plans cotés, s'ils ont été produits —
+  //
+  // Ils rejoignent la planche parce qu'ils y ont leur place : une vue 3D montre
+  // ce qu'on voit, un plan montre ce qu'on ne voit PAS. Les nervures qui se
+  // traversaient aux angles de l'atrium lisaient comme des nervures épaisses en
+  // 3D, et sautaient aux yeux sur le plan.
+  const plans = (await readdir(SOURCE)).filter((f) => f.startsWith('plan-') && f.endsWith('.svg'))
+  const lignesPlans: string[] = []
+  for (const p of plans.sort()) {
+    const nom = basename(p, '.svg')
+    const cible = resolve(SORTIE, `${nom}.png`)
+    // Le SVG est rasterisé : GitHub affiche bien un SVG, mais pas toujours dans
+    // un README, et un plan qu'on doit ouvrir dans un onglet à part n'est pas lu.
+    const info = await sharp(resolve(SOURCE, p), { density: 110 })
+      .png({ compressionLevel: 9, palette: true })
+      .toFile(cible)
+    octets += info.size
+    console.log(`  ${nom.padEnd(20)} ${(info.size / 1024).toFixed(0).padStart(5)} ko`)
+    lignesPlans.push(`### \`${nom}\`\n\n![${nom}](${nom}.png)\n`)
+  }
+
   const pire = (k: keyof Mesure): number =>
     Math.max(...rapport.rapports.map((r) => r.mesure?.[k] ?? 0))
 
@@ -140,6 +161,16 @@ async function main(): Promise<void> {
       `le compteur est laissé rouge parce qu'il dit quelque chose de vrai. ` +
       `Le levier qui le fermerait est connu et non tiré : fusionner les murs d'un plateau ` +
       `par matière (71 murs, un appel chacun).\n\n` +
+      (lignesPlans.length > 0
+        ? `## Les plans cotés\n\n` +
+          `Un par niveau, produits par \`node tools/plan.ts\`. Ils portent le mobilier, ` +
+          `le décor et **les recouvrements**, cerclés de rouge.\n\n` +
+          `Trait plein : ce qui est au sol, dans lequel on se cogne. Trait pointillé : ce qui ` +
+          `est au-dessus de la tête et qu'on regarde par en dessous — c'est un plan de plafond ` +
+          `réfléchi, et c'est la seule façon de voir un débord, qui par définition ne touche ` +
+          `pas le sol.\n\n` +
+          lignesPlans.join('\n')
+        : '') +
       `## Les vues\n\n` +
       lignes.join('\n'),
   )

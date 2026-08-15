@@ -34,17 +34,27 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { placeDecor } from '../domain/decor'
+import type { DecorPlacement } from '../domain/decor'
 import type { Museum } from '../domain/types'
 import type { DecorAssets, DecorLot } from './decorAssets'
 import { assemblerLeDecor, decorAssetsResource } from './decorAssets'
 
 export interface DecorLayerProps {
   museum: Museum
+  /**
+   * Le placement, calculé par `MuseumScene` et partagé avec `PropsLayer`.
+   *
+   * Facultatif pour que le composant reste montable seul dans une épreuve, mais
+   * la scène le fournit TOUJOURS : deux calculs séparés ne seraient pas garantis
+   * d'accord, et le mobilier éviterait alors des nervures qui ne sont pas celles
+   * qu'on dessine.
+   */
+  decor?: readonly DecorPlacement[]
 }
 
-export function DecorLayer({ museum }: DecorLayerProps) {
+export function DecorLayer({ museum, decor }: DecorLayerProps) {
   const assets = useDecorAssets()
-  const placements = useMemo(() => placeDecor(museum), [museum])
+  const placements = useMemo(() => decor ?? placeDecor(museum), [museum, decor])
 
   const lot: DecorLot | null = useMemo(
     () => (assets === null ? null : assemblerLeDecor(assets, placements)),

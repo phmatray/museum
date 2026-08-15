@@ -70,6 +70,7 @@ import { ParkLayer } from './ParkLayer'
 import { HAUTEUR_OEIL } from '../components/Player'
 import { PropsLayer } from './PropsLayer'
 import { DecorLayer } from './DecorLayer'
+import { placeDecor } from '../domain/decor'
 import { RampMesh } from './RampMesh'
 import { RoomLights } from './RoomLights'
 import type { FloorCulling } from './floorCulling'
@@ -333,6 +334,10 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
   const paliers = useMemo(() => landings(museum), [museum])
   const culling = useFloorCullingRegistry(paliers)
 
+  // Le décor d'architecture, calculé une seule fois pour les DEUX calques qui en
+  // dépendent : `DecorLayer` le dessine, `PropsLayer` l'évite.
+  const decor = useMemo(() => placeDecor(museum), [museum])
+
   return (
     <>
       <SceneDebugHandle culling={culling} />
@@ -471,7 +476,7 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
         Aucune lumière n'entre ici. Les projecteurs du plafond sont des objets ;
         l'éclairage des toiles reste peint dans le shader (§9.2).
       */}
-      <PropsLayer museum={museum} />
+      <PropsLayer museum={museum} decor={decor} />
 
       {/*
         LE DÉCOR D'ARCHITECTURE (lot 9) : les nervures d'atrium, et ce qui
@@ -481,8 +486,12 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
         Il vit hors des groupes d'étage volontairement : une nervure naît du nez
         de dalle d'un niveau et penche au-dessus du vide, donc elle appartient
         autant à l'étage qui la porte qu'à celui qui la regarde d'en dessous.
+
+        Le placement est calculé ICI et non dans les deux calques, et descendu
+        aux deux : l'architecture est décidée avant le mobilier, et le mobilier
+        l'évite. Deux calculs séparés ne seraient pas garantis d'accord.
       */}
-      <DecorLayer museum={museum} />
+      <DecorLayer museum={museum} decor={decor} />
 
       {/*
         LE PARC. Hors de tout groupe d'étage, et c'est délibéré : il

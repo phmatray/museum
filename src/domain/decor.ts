@@ -106,11 +106,24 @@ export const DECOR_METRICS: Record<DecorId, DecorMetrics> = {
 /**
  * Pas des nervures le long du pourtour de l'atrium, en mètres.
  *
- * 3 m sur les 48 m de pourtour donne seize nervures. Plus serré, elles
- * deviennent une palissade et ferment le vide qu'elles sont censées célébrer ;
- * plus lâche, le rythme se perd et chacune lit comme un accident.
+ * ── Le pas n'est pas un goût : il est BORNÉ PAR LES ANGLES ──
+ *
+ * Deux nervures voisines ne doivent pas se traverser, donc leurs centres doivent
+ * être distants d'au moins deux rayons — 2 × 1,317 = 2,63 m. Sur une ligne
+ * droite, un pas de 3 m suffirait. Mais le pourtour d'une trémie tourne, et
+ * **la corde qui coupe un angle est plus courte que l'arc qui le contourne** :
+ * deux points séparés de `p` le long du périmètre, de part et d'autre d'un coin,
+ * ne sont éloignés que de `p/√2` dans le pire cas.
+ *
+ * D'où la borne : `p ≥ 2r·√2 = 3,73 m`. À 3 m, quatre paires se traversaient —
+ * une par coin — et le défaut était invisible en 3D, où deux nervures
+ * superposées lisent comme une nervure épaisse.
+ *
+ * 4 m laisse la marge, donne treize nervures sur les 52,4 m de pourtour, et
+ * garde le rythme : trois par côté environ. Plus serré, la colonnade devient une
+ * palissade et ferme le vide qu'elle est censée célébrer.
  */
-const PAS_NERVURE = 3
+const PAS_NERVURE = 4
 
 /**
  * Recul du pied de la nervure par rapport au bord de la trémie, en mètres.
@@ -175,31 +188,54 @@ function nervuresDeTremie(floorId: string, elevation: number, trou: Rect): Decor
 }
 
 /**
- * Points régulièrement espacés sur le pourtour d'un rectangle agrandi.
+ * Points régulièrement espacés le long du POURTOUR d'un rectangle agrandi.
  *
- * Le pas est RECALCULÉ par côté pour tomber juste : un pas constant appliqué
- * bêtement laisse un intervalle bâtard dans chaque angle, et c'est précisément
- * ce que l'œil lit comme une erreur sur une colonnade.
+ * ── Pourquoi un parcours du périmètre, et non quatre côtés indépendants ──
+ *
+ * La première version échantillonnait chaque côté séparément. Sur un carré c'est
+ * tentant, et c'est faux : le dernier point du côté nord et le premier du côté
+ * est tombent tous deux près du même angle, à quelques centimètres l'un de
+ * l'autre. Sur seize nervures cela faisait **quatre paires qui se traversaient**,
+ * une par coin — mesuré à 0,32 m de recouvrement par le plan coté.
+ *
+ * Le défaut ne se voyait pas en 3D : de l'intérieur de l'atrium, deux nervures
+ * superposées lisent comme une nervure un peu épaisse. C'est le plan qui l'a
+ * montré, et c'est exactement ce pour quoi `tools/plan.ts` existe.
+ *
+ * On parcourt donc le périmètre comme une seule ligne fermée, en abscisse
+ * curviligne. Le pas devient rigoureusement constant, les angles compris, et la
+ * colonnade a le rythme qu'on lui demande.
  */
 function pourtourDeTremie(trou: Rect, recul: number, pas: number): { x: number; z: number }[] {
   const x0 = trou.x - recul
   const z0 = trou.z - recul
   const x1 = trou.x + trou.width + recul
   const z1 = trou.z + trou.depth + recul
+  const largeur = x1 - x0
+  const profondeur = z1 - z0
+
+  // Les quatre côtés bout à bout, dans le sens horaire.
+  const cotes: { x: number; z: number; dx: number; dz: number; longueur: number }[] = [
+    { x: x0, z: z0, dx: 1, dz: 0, longueur: largeur },
+    { x: x1, z: z0, dx: 0, dz: 1, longueur: profondeur },
+    { x: x1, z: z1, dx: -1, dz: 0, longueur: largeur },
+    { x: x0, z: z1, dx: 0, dz: -1, longueur: profondeur },
+  ]
+  const perimetre = 2 * (largeur + profondeur)
+  const combien = Math.max(4, Math.round(perimetre / pas))
 
   const points: { x: number; z: number }[] = []
-  const parCote = Math.max(1, Math.round((x1 - x0) / pas))
-  const parCoteZ = Math.max(1, Math.round((z1 - z0) / pas))
-
-  for (let i = 0; i < parCote; i++) {
-    const t = (i + 0.5) / parCote
-    points.push({ x: x0 + (x1 - x0) * t, z: z0 })
-    points.push({ x: x0 + (x1 - x0) * t, z: z1 })
-  }
-  for (let i = 0; i < parCoteZ; i++) {
-    const t = (i + 0.5) / parCoteZ
-    points.push({ x: x0, z: z0 + (z1 - z0) * t })
-    points.push({ x: x1, z: z0 + (z1 - z0) * t })
+  for (let i = 0; i < combien; i++) {
+    // Le demi-pas décale le semis pour qu'aucun point ne tombe PILE dans un
+    // angle, où la nervure serait à cheval sur deux directions de porte-à-faux.
+    let s = ((i + 0.5) / combien) * perimetre
+    for (const c of cotes) {
+      if (s <= c.longueur) {
+        points.push({ x: c.x + c.dx * s, z: c.z + c.dz * s })
+        break
+      }
+      s -= c.longueur
+    }
   }
   return points
 }

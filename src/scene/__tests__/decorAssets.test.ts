@@ -20,6 +20,7 @@ import { describe, expect, it } from 'vitest'
 
 import { DECOR_IDS, DECOR_METRICS, placeDecor } from '../../domain/decor'
 import type { DecorId } from '../../domain/decor'
+import { PROP_METRICS, placeProps } from '../../domain/props'
 import type { Museum } from '../../domain/types'
 import { DECOR_KIT_PATH, DRACO_PATH, NOEUDS_DU_DECOR } from '../kits'
 import { doitFusionner, SURCHARGE_FUSION } from '../decorAssets'
@@ -193,6 +194,60 @@ describe('decor — le placement', () => {
       expect(p.position.z).toBeGreaterThanOrEqual(f.footprint.z)
       expect(p.position.z).toBeLessThanOrEqual(f.footprint.z + f.footprint.depth)
     }
+  })
+
+  it('ne fait se traverser AUCUNE nervure voisine', () => {
+    // Le pas des nervures est borné par les ANGLES du pourtour, pas par les
+    // côtés droits : la corde qui coupe un coin est plus courte que l'arc, et
+    // deux nervures de part et d'autre d'un angle se retrouvaient à 0,32 m l'une
+    // DANS l'autre. Invisible en 3D — deux nervures superposées lisent comme une
+    // nervure épaisse — et évident sur le plan coté.
+    const r = DECOR_METRICS['nervure-atrium'].radius
+    for (let i = 0; i < placements.length; i++) {
+      for (let j = i + 1; j < placements.length; j++) {
+        const a = placements[i]
+        const b = placements[j]
+        if (a.floorId !== b.floorId) continue
+        const d = Math.hypot(a.position.x - b.position.x, a.position.z - b.position.z)
+        expect(
+          d,
+          `${a.id} et ${b.id} se traversent de ${(2 * r - d).toFixed(2)} m`,
+        ).toBeGreaterThanOrEqual(2 * r - 0.01)
+      }
+    }
+  })
+
+  it('fait CÉDER le mobilier devant l’architecture', () => {
+    // L'invariant que `tools/plan.ts` a rendu visible : les deux modules placent
+    // contre des géométries différentes et ne se connaissaient pas. L'anneau de
+    // jardinières du pourtour d'atrium traversait les nervures sur deux niveaux,
+    // jusqu'à 0,75 m. Rien ne pouvait l'empêcher avant que `placeProps` ne
+    // reçoive le décor.
+    const props = placeProps(musee, placements)
+    for (const p of props) {
+      const m = PROP_METRICS[p.id]
+      // Un projecteur suspendu à 3,90 m au-dessus d'une nervure n'est pas une
+      // collision : on ne compare que ce qui partage une tranche de hauteur.
+      if (m.maxY <= 0) continue
+      for (const d of placements) {
+        if (d.floorId !== p.floorId) continue
+        const md = DECOR_METRICS[d.id]
+        const dist = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z)
+        expect(
+          dist,
+          `${p.id} traverse ${d.id} de ${(m.radius * p.scale + md.radius - dist).toFixed(2)} m`,
+        ).toBeGreaterThanOrEqual(m.radius * p.scale + md.radius - 0.01)
+      }
+    }
+  })
+
+  it('laisse encore le musée se meubler malgré le décor', () => {
+    // Le garde-fou du garde-fou : faire céder le mobilier est juste, le faire
+    // disparaître ne l'est pas. Une nervure trop grosse ou trop nombreuse
+    // viderait le bâtiment sans qu'aucune des épreuves ci-dessus ne bronche.
+    const avec = placeProps(musee, placements).length
+    const sans = placeProps(musee).length
+    expect(avec).toBeGreaterThan(sans * 0.75)
   })
 
   it('ne donne de collider qu’à ce qui est à portée de main', () => {

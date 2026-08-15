@@ -48,19 +48,31 @@ import * as THREE from 'three'
 
 import type { PropId, PropPlacement } from '../domain/props'
 import { PROP_IDS, placeProps } from '../domain/props'
+import type { DecorPlacement } from '../domain/decor'
 import type { Museum } from '../domain/types'
 import type { PropAssets, PropPiece } from './propAssets'
 import { propAssetsResource } from './propAssets'
 
 export interface PropsLayerProps {
   museum: Museum
+  /**
+   * Le décor d'architecture déjà posé, que le mobilier doit éviter.
+   *
+   * Il est calculé UNE fois par `MuseumScene` et descendu aux deux calques :
+   * si chacun posait le sien, rien ne garantirait qu'ils tombent d'accord, et le
+   * mobilier éviterait des nervures qui ne sont pas celles qu'on dessine.
+   */
+  decor?: readonly DecorPlacement[]
 }
 
 /** Le mobilier et la végétation du bâtiment entier. */
-export function PropsLayer({ museum }: PropsLayerProps) {
+export function PropsLayer({ museum, decor }: PropsLayerProps) {
   const assets = usePropAssets()
 
-  const parType = useMemo(() => grouperParType(placeProps(museum)), [museum])
+  const parType = useMemo(
+    () => grouperParType(placeProps(museum, decor)),
+    [museum, decor],
+  )
 
   if (assets === null) return null
 

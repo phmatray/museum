@@ -20,55 +20,61 @@
  *
  * Il ne remplace pas les tests — le test d'accès existe désormais aussi — mais
  * c'est lui qui rend une anomalie de plan ÉVIDENTE avant qu'on écrive le test.
+ *
+ * ── Révision du 2026-08-15 : le plan dessine enfin CE QU'ON Y POSE ──
+ *
+ * Il ne montrait que le bâtiment : emprise, salles, murs, trémie, escalier. Tout
+ * le MOBILIER et tout le DÉCOR d'architecture en étaient absents, alors que ce
+ * sont eux qu'on ajoute et donc eux dont le placement est douteux. On voyait
+ * qu'un escalier arrivait quelque part ; on ne voyait pas qu'une nervure et une
+ * jardinière se disputaient le même mètre carré.
+ *
+ * Deux régimes de trait, et c'est la distinction que fait un architecte :
+ *
+ *  - **trait plein** — ce qui est au SOL, dans lequel on se cogne. C'est le plan
+ *    d'étage ordinaire ;
+ *  - **trait pointillé** — ce qui est AU-DESSUS de la tête et qu'on regarde par
+ *    en dessous : projecteurs suspendus, et la part des nervures qui déborde en
+ *    porte-à-faux au-dessus du vide. C'est un plan de plafond réfléchi, et c'est
+ *    la seule façon de voir un débord, qui par définition ne touche pas le sol.
+ *
+ * Et surtout, il CHERCHE LES COLLISIONS. `domain/props.ts` garantit que les
+ * props ne se croisent pas entre eux ; rien ne garantissait qu'ils ne croisent
+ * pas le décor, qui est placé par un autre module et contre une autre géométrie.
+ * Les recouvrements sont cerclés de rouge et comptés en tête de plan.
  */
 /// <reference types="node" />
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { activerResolutionTs } from './ts-resolve.ts'
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const OUT = resolve(ROOT, '.captures')
+
+// Le domaine s'importe dynamiquement, APRÈS le crochet : `park.ts` importe
+// `./props` sans extension. Voir l'en-tête de `ts-resolve.ts`.
+activerResolutionTs()
+
+const { PROP_METRICS, placeProps } = await import('../src/domain/props.ts')
+const { DECOR_METRICS, placeDecor } = await import('../src/domain/decor.ts')
 
 /** Le plan est dessiné à cette échelle : 12 pixels par mètre. */
 const ECHELLE = 12
 const MARGE = 84
 
-// ── Types, lus au vol depuis museum.json ─────────────────────────────────
+// ── Types ────────────────────────────────────────────────────────────────
+//
+// Ils venaient d'une declaration LOCALE et partielle — « lus au vol depuis
+// museum.json ». C'etait tenable tant que cet outil ne faisait que dessiner le
+// contenu du fichier. Il appelle desormais `placeProps` et `placeDecor`, donc il
+// doit parler le meme langage que le domaine : une copie partielle ne se
+// substitue pas au vrai type, et la faire passer par un cast aurait rendu ce
+// fichier immunise contre les evolutions du modele — exactement ce qu'un type
+// existe pour empecher.
 
-interface Vec2 { x: number; z: number }
-interface Rect { x: number; z: number; width: number; depth: number }
-interface Opening { kind: string; start: number; end: number; height: number; sill?: number }
-interface Wall { id: string; a: Vec2; b: Vec2; kind: string; openings: Opening[]; placements: unknown[] }
-interface Room { id: string; name: string; footprint: Rect; theme: string; keys: string[]; walls: Wall[] }
-interface Floor {
-  id: string
-  name: string
-  level: number
-  elevation: number
-  ceilingHeight: number
-  rooms: Room[]
-  enclosure: Wall[]
-  slabHoles: Rect[]
-  footprint: Rect
-}
-interface Ramp {
-  id: string
-  fromFloor: string
-  toFloor: string
-  centre: Vec2
-  radius: number
-  startAngle: number
-  sweep: number
-  width: number
-  rise: number
-  baseElevation: number
-}
-interface Museum {
-  floors: Floor[]
-  ramps: Ramp[]
-  atrium: Rect
-  spawn: { floorId: string; position: { x: number; y: number; z: number } }
-}
+import type { Floor, Museum } from '../src/domain/types.ts'
 
 // ── Dessin ───────────────────────────────────────────────────────────────
 
@@ -104,13 +110,132 @@ function cote(
           text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#2f6f9f">${echap(texte)}</text>`
 }
 
+/**
+ * Une pièce posée, ramenée à ce qu'un plan a besoin de savoir.
+ *
+ * `rayon` est celui du cylindre englobant — la même convention que
+ * `PROP_METRICS`, et la seule mesure qui reste vraie quel que soit le lacet.
+ * `suspendu` bascule le trait du plein au pointillé : ce qui pend au plafond ou
+ * déborde au-dessus du vide ne se dessine pas comme ce qui barre le passage.
+ */
+interface Piece {
+  id: string
+  x: number
+  z: number
+  rayon: number
+  rotation: number
+  suspendu: boolean
+  famille: 'mobilier' | 'plante' | 'decor'
+}
+
+const TEINTES: Record<Piece['famille'], { trait: string; fond: string }> = {
+  mobilier: { trait: '#8a6d3b', fond: '#e8d9b8' },
+  plante: { trait: '#4f7a43', fond: '#d5e6cd' },
+  decor: { trait: '#3f6d8c', fond: '#cfe2ee' },
+}
+
+/** Toutes les pièces d'un niveau, mobilier et décor confondus. */
+function piecesDuNiveau(museum: Museum, floor: Floor): Piece[] {
+  const pieces: Piece[] = []
+  // Le décor est calculé D'ABORD et passé aux props, exactement comme le fait la
+  // scène. Sans ce partage, le plan dessinerait un mobilier que le musée ne pose
+  // pas — et un contrôle qui mesure autre chose que ce qui est rendu est pire
+  // qu'aucun contrôle.
+  const decor = placeDecor(museum)
+
+  for (const p of placeProps(museum, decor)) {
+    if (p.floorId !== floor.id) continue
+    const m = PROP_METRICS[p.id]
+    pieces.push({
+      id: p.id,
+      x: p.position.x,
+      z: p.position.z,
+      // L'échelle du prop compte : une plante à 2,4 occupe deux fois et demie
+      // son rayon nominal, et c'est elle qui déborde.
+      rayon: m.radius * p.scale,
+      rotation: p.rotation,
+      // Un prop dont tout le volume est SOUS son ancrage pend au plafond.
+      suspendu: m.maxY <= 0,
+      famille: p.id.startsWith('plante') ? 'plante' : 'mobilier',
+    })
+  }
+
+  for (const d of decor) {
+    if (d.floorId !== floor.id) continue
+    const m = DECOR_METRICS[d.id]
+    pieces.push({
+      id: d.id,
+      x: d.position.x,
+      z: d.position.z,
+      rayon: m.radius * Math.max(d.scale.x, d.scale.z),
+      rotation: d.rotation.y,
+      suspendu: false,
+      famille: 'decor',
+    })
+  }
+
+  return pieces
+}
+
+/**
+ * Les paires qui se recouvrent au sol.
+ *
+ * On ne compare QUE ce qui est au sol : un projecteur suspendu à 3,90 m au-dessus
+ * d'un banc n'est pas une collision, c'est un musée. Comparer les deux ferait
+ * hurler le plan sur une centaine de faux positifs et le rendrait inutile — le
+ * défaut classique d'un contrôle trop large.
+ */
+function collisions(pieces: readonly Piece[]): [number, number][] {
+  const paires: [number, number][] = []
+  for (let i = 0; i < pieces.length; i++) {
+    for (let j = i + 1; j < pieces.length; j++) {
+      const a = pieces[i]
+      const b = pieces[j]
+      if (a.suspendu || b.suspendu) continue
+      const d = Math.hypot(a.x - b.x, a.z - b.z)
+      if (enPot(a, b, d)) continue
+      // Une tolérance d'un centimètre : deux emprises tangentes ne sont pas un
+      // défaut, et un flottant ne tombe jamais pile.
+      if (d < a.rayon + b.rayon - 0.01) paires.push([i, j])
+    }
+  }
+  return paires
+}
+
+/**
+ * Vrai quand les deux pièces sont une plante ET son pot.
+ *
+ * Ce n'est pas une exception de confort, c'est la correction d'un FAUX POSITIF
+ * qui rendait le contrôle inutilisable : `poserUnePlante` pose la plante et sa
+ * jardinière au MÊME point — trois espèces sur quatre sont des planches
+ * botaniques sans contenant, et la jardinière est la condition pour qu'elles ne
+ * flottent pas. Leurs emprises se recouvrent donc TOUJOURS, par conception.
+ *
+ * Sans cette clause, le plan signalait 72 recouvrements dont 68 étaient des
+ * plantes correctement empotées. Un contrôle qui crie sur ce qui va bien noie
+ * les quatre cas qui ne vont pas, et on cesse de le lire — ce qui est pire que
+ * de ne pas l'avoir.
+ *
+ * La concentricité est exigée : une plante à côté d'une AUTRE jardinière que la
+ * sienne reste un vrai défaut, et celui-là doit continuer de sortir.
+ */
+function enPot(a: Piece, b: Piece, d: number): boolean {
+  const paire =
+    (a.id === 'jardiniere' && b.famille === 'plante') ||
+    (b.id === 'jardiniere' && a.famille === 'plante')
+  return paire && d < 0.05
+}
+
 function planDeNiveau(museum: Museum, floor: Floor): string {
   const f = floor.footprint
   const L = f.width * ECHELLE
   const H = f.depth * ECHELLE
   const px = (x: number) => MARGE + (x - f.x) * ECHELLE
   const pz = (z: number) => MARGE + (z - f.z) * ECHELLE
-  const larg = L + 2 * MARGE
+  // La légende vit à droite du plan, hors de l'emprise : posée dessus, elle
+  // masquerait précisément les salles du bord qu'on vient vérifier.
+  const LEGENDE = 210
+  const larg = L + 2 * MARGE + LEGENDE
   const haut = H + 2 * MARGE + 56
 
   const morceaux: string[] = []
@@ -198,6 +323,35 @@ function planDeNiveau(museum: Museum, floor: Floor): string {
     }
   }
 
+  // — Le mobilier et le décor : ce qu'on POSE, donc ce qu'on vient vérifier —
+  const pieces = piecesDuNiveau(museum, floor)
+  const heurts = collisions(pieces)
+  const enHeurt = new Set(heurts.flat())
+
+  for (const [i, p] of pieces.entries()) {
+    const t = TEINTES[p.famille]
+    const r = Math.max(2.2, p.rayon * ECHELLE)
+    // Le pointillé dit « au-dessus de la tête » : c'est la convention du plan de
+    // plafond réfléchi, et c'est ce qui distingue un obstacle d'un débord.
+    morceaux.push(
+      `<circle cx="${px(p.x)}" cy="${pz(p.z)}" r="${r.toFixed(1)}" fill="${t.fond}" fill-opacity="${p.suspendu ? 0.25 : 0.55}" stroke="${t.trait}" stroke-width="0.9"${p.suspendu ? ' stroke-dasharray="3 2.5"' : ''}/>`,
+    )
+    // Le sens : pour une nervure, c'est la direction du porte-à-faux ; pour un
+    // banc, celle du regard. Sans lui, un anneau de pièces orientées n'importe
+    // comment a exactement l'air d'un anneau correct.
+    if (p.famille === 'decor' || p.id === 'banc') {
+      const l = r + 5
+      morceaux.push(
+        `<line x1="${px(p.x)}" y1="${pz(p.z)}" x2="${(px(p.x) + Math.cos(p.rotation) * l).toFixed(1)}" y2="${(pz(p.z) - Math.sin(p.rotation) * l).toFixed(1)}" stroke="${t.trait}" stroke-width="1.1"/>`,
+      )
+    }
+    if (enHeurt.has(i)) {
+      morceaux.push(
+        `<circle cx="${px(p.x)}" cy="${pz(p.z)}" r="${(r + 3).toFixed(1)}" fill="none" stroke="#d94f4f" stroke-width="1.8"/>`,
+      )
+    }
+  }
+
   // — Le visiteur, là où il apparaît —
   if (museum.spawn.floorId === floor.id) {
     const sx = px(museum.spawn.position.x)
@@ -238,6 +392,45 @@ function planDeNiveau(museum: Museum, floor: Floor): string {
       <text x="${MARGE}" y="${echelleY + 22}">nord ↑ · plancher à ${floor.elevation.toFixed(2)} m · sous plafond ${floor.ceilingHeight} m</text>
     </g>`)
 
+  // — Légende : un plan qui ne se légende pas se relit de travers —
+  const legX = MARGE + L + 18
+  const entrees: [string, string][] = [
+    ['mobilier', `mobilier · ${pieces.filter((p) => p.famille === 'mobilier' && !p.suspendu).length}`],
+    ['plante', `végétation · ${pieces.filter((p) => p.famille === 'plante').length}`],
+    ['decor', `décor · ${pieces.filter((p) => p.famille === 'decor').length}`],
+  ]
+  const legende: string[] = entrees.map(([f, texte], i) => {
+    const t = TEINTES[f as Piece['famille']]
+    const y = MARGE + 14 + i * 20
+    return `<circle cx="${legX + 7}" cy="${y - 4}" r="6" fill="${t.fond}" stroke="${t.trait}" stroke-width="0.9"/>
+      <text x="${legX + 20}" y="${y}" font-family="system-ui, sans-serif" font-size="10" fill="#3b342a">${echap(texte)}</text>`
+  })
+  const ySusp = MARGE + 14 + entrees.length * 20
+  legende.push(
+    `<circle cx="${legX + 7}" cy="${ySusp - 4}" r="6" fill="#cfe2ee" fill-opacity="0.25" stroke="#3f6d8c" stroke-width="0.9" stroke-dasharray="3 2.5"/>
+     <text x="${legX + 20}" y="${ySusp}" font-family="system-ui, sans-serif" font-size="10" fill="#3b342a">au-dessus de la tête · ${pieces.filter((p) => p.suspendu).length}</text>`,
+    `<circle cx="${legX + 7}" cy="${ySusp + 16}" r="6" fill="none" stroke="#d94f4f" stroke-width="1.8"/>
+     <text x="${legX + 20}" y="${ySusp + 20}" font-family="system-ui, sans-serif" font-size="10" fill="${heurts.length > 0 ? '#a03030' : '#3b342a'}">recouvrement · ${heurts.length}</text>`,
+  )
+  morceaux.push(`<g>${legende.join('\n')}</g>`)
+
+  // Les collisions se nomment sous la légende : savoir qu'il y en a trois ne dit
+  // pas lesquelles, et c'est « lesquelles » qui se corrige.
+  if (heurts.length > 0) {
+    const lignes = heurts
+      .slice(0, 10)
+      .map(
+        ([i, j], k) =>
+          `<text x="${legX}" y="${ySusp + 44 + k * 13}" font-family="ui-monospace, monospace" font-size="9" fill="#a03030">${echap(
+            `${pieces[i].id} × ${pieces[j].id} — ${(pieces[i].rayon + pieces[j].rayon - Math.hypot(pieces[i].x - pieces[j].x, pieces[i].z - pieces[j].z)).toFixed(2)} m`,
+          )}</text>`,
+      )
+      .join('\n')
+    morceaux.push(
+      `<g>${lignes}${heurts.length > 10 ? `<text x="${legX}" y="${ySusp + 44 + 10 * 13}" font-family="ui-monospace, monospace" font-size="9" fill="#a03030">… et ${heurts.length - 10} autres</text>` : ''}</g>`,
+    )
+  }
+
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${larg} ${haut}" width="${larg}" height="${haut}">
   <rect width="${larg}" height="${haut}" fill="#ffffff"/>
   <text x="${MARGE}" y="${MARGE - 44}" font-family="system-ui, sans-serif" font-size="19" font-weight="600" fill="#2b2620">${echap(floor.name)}</text>
@@ -258,10 +451,35 @@ async function main() {
   const niveaux = seul === null ? museum.floors : museum.floors.filter((f) => f.level === seul)
 
   await mkdir(OUT, { recursive: true })
+  let totalHeurts = 0
   for (const floor of niveaux) {
     const chemin = resolve(OUT, `plan-${floor.id}.svg`)
     await writeFile(chemin, planDeNiveau(museum, floor), 'utf8')
-    console.log(`${floor.name.padEnd(18)} → .captures/plan-${floor.id}.svg`)
+
+    const pieces = piecesDuNiveau(museum, floor)
+    const heurts = collisions(pieces)
+    totalHeurts += heurts.length
+    const poses = pieces.filter((p) => !p.suspendu).length
+    console.log(
+      `${floor.name.padEnd(18)} ${String(poses).padStart(4)} au sol · ` +
+        `${String(pieces.length - poses).padStart(3)} en l'air · ` +
+        `${heurts.length > 0 ? `${heurts.length} recouvrement(s)` : 'aucun recouvrement'}` +
+        `  → .captures/plan-${floor.id}.svg`,
+    )
+    for (const [i, j] of heurts.slice(0, 6)) {
+      const d = pieces[i].rayon + pieces[j].rayon - Math.hypot(pieces[i].x - pieces[j].x, pieces[i].z - pieces[j].z)
+      console.log(
+        `${' '.repeat(20)}✗ ${pieces[i].id} × ${pieces[j].id} — ${d.toFixed(2)} m de trop`,
+      )
+    }
+  }
+
+  // Le compte remonte en code de sortie : un plan qu'on regarde est utile, un
+  // plan qui peut FAIRE ÉCHOUER quelque chose l'est davantage. `--strict` sert
+  // à le brancher un jour dans la CI, sans l'imposer aujourd'hui.
+  if (totalHeurts > 0 && process.argv.includes('--strict')) {
+    console.error(`\n${totalHeurts} recouvrement(s) — voir les cercles rouges.`)
+    process.exit(1)
   }
 }
 

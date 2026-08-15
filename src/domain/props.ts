@@ -45,6 +45,11 @@
  * végétation du bâtiment.
  */
 import type { Floor, Museum, Ramp, Rect, Room, Vec2, Vec3, Wall } from './types'
+// `decor.ts` n'importe rien d'ici : la dépendance ne va que dans ce sens, et il
+// n'y a donc pas de cycle. C'est aussi ce qui rend l'ordre lisible — le décor se
+// calcule d'abord, le mobilier ensuite.
+import { DECOR_METRICS } from './decor'
+import type { DecorPlacement } from './decor'
 
 // ── Contrat public ───────────────────────────────────────────────────────
 
@@ -383,11 +388,32 @@ export function boiteDuProp(placement: PropPlacement): Boite {
  * d'instances par simple parcours et qu'un ordre instable ferait scintiller les
  * matrices d'un rechargement à l'autre.
  */
-export function placeProps(museum: Museum): PropPlacement[] {
+/**
+ * @param decor Les pièces d'architecture DÉJÀ posées, qui deviennent des
+ *   obstacles au même titre qu'un mur.
+ *
+ *   L'ordre n'est pas arbitraire : **l'architecture existe avant le mobilier, et
+ *   c'est le mobilier qui cède.** Une nervure naît du nez de dalle, elle y est ou
+ *   le bâtiment est faux ; un banc, lui, a toujours un autre endroit où aller.
+ *
+ *   Par défaut vide, et c'est ce qui rend l'ajout sûr : les épreuves écrites
+ *   avant le décor appellent toujours `placeProps(museum)` et voient exactement
+ *   ce qu'elles voyaient.
+ *
+ *   Le besoin n'a pas été deviné, il a été MESURÉ : `tools/plan.ts` a montré
+ *   l'anneau de jardinières du pourtour d'atrium traversant les nervures sur
+ *   deux niveaux, jusqu'à 0,75 m de recouvrement. Rien ne pouvait l'empêcher —
+ *   les deux modules placent contre des géométries différentes et ne se
+ *   connaissaient pas.
+ */
+export function placeProps(
+  museum: Museum,
+  decor: readonly DecorPlacement[] = [],
+): PropPlacement[] {
   const resultat: PropPlacement[] = []
 
   for (const floor of museum.floors) {
-    const obstacles = obstaclesDuNiveau(museum, floor)
+    const obstacles = obstaclesDuNiveau(museum, floor, decor)
     // Les props déjà posés deviennent à leur tour des obstacles : sans ça, deux
     // salles adjacentes peuvent poser chacune une jardinière de part et d'autre
     // d'une cloison mince et les faire se chevaucher au travers.
@@ -427,10 +453,30 @@ export function placeProps(museum: Museum): PropPlacement[] {
  * placement a réellement vu — un prop mal posé vient presque toujours d'un
  * obstacle manquant, pas d'un test d'intersection faux.
  */
-export function obstaclesDuNiveau(museum: Museum, floor: Floor): Obstacle[] {
+export function obstaclesDuNiveau(
+  museum: Museum,
+  floor: Floor,
+  decor: readonly DecorPlacement[] = [],
+): Obstacle[] {
   const obstacles: Obstacle[] = []
   const bas = floor.elevation
   const haut = floor.elevation + floor.ceilingHeight
+
+  // Le décor d'architecture, en disques : une pièce qui penche déborde de son
+  // axe, et le cylindre englobant est la seule emprise qui reste vraie quel que
+  // soit son lacet — la même raison qui fait que `PropMetrics` mesure un rayon.
+  for (const piece of decor) {
+    if (piece.floorId !== null && piece.floorId !== floor.id) continue
+    const m = DECOR_METRICS[piece.id]
+    obstacles.push({
+      forme: 'disque',
+      x: piece.position.x,
+      z: piece.position.z,
+      rayon: m.radius * Math.max(piece.scale.x, piece.scale.z),
+      minY: piece.position.y + m.minY * piece.scale.y,
+      maxY: piece.position.y + m.maxY * piece.scale.y,
+    })
+  }
 
   for (const room of floor.rooms) {
     for (const wall of room.walls) {
