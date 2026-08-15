@@ -17,10 +17,26 @@
  *
  * ── L'ordre compte, et il est structurel ──
  *
- * `placeSculptures` doit tourner AVANT `placeProps`, dont les emprises réservées
- * viennent d'ici. Sans ça, `poserLeBanc` pose son banc face au mur le plus
- * garni, à 2,60 m de ce mur — soit à moins de deux mètres de la pièce dans la
- * salle d'honneur du musée réel. Un test le tient.
+ * `placeSculptures` doit tourner AVANT `placeProps`, dont les emprises
+ * réservées viennent d'ici.
+ *
+ * ⚠️ Ce n'est PAS la correction d'une collision constatée, et une première
+ * rédaction de ce commentaire l'affirmait à tort. Mesuré sur le musée réel :
+ * aucun des 40 props du rez-de-chaussée ne tombe au centre de la salle
+ * d'honneur, le plus proche est à 2,65 m, et le banc de cette salle n'est même
+ * pas posé — une jardinière l'a refusé avant lui.
+ *
+ * C'est une GARDE, et elle est justifiée par le caractère GÉNÉRATIF du
+ * bâtiment : `poserLesSocles` pose un socle au CENTRE EXACT de toute salle dont
+ * l'aire tombe entre 70 et 150 m², et l'aire de la salle d'honneur dérive du
+ * nombre de dépôts, qui change à chaque build. Treize salles du musée actuel
+ * sont déjà dans ce cas. Le jour où la salle d'honneur y tombera, c'est la
+ * réservation qui empêchera un socle de pousser à travers la pièce.
+ *
+ * La preuve du mécanisme vit dans le test « le mobilier contourne la pièce — la
+ * preuve, pas la garde », qui place délibérément la pièce dans une salle au
+ * centre occupé. Les tests portant sur la salle d'honneur, eux, sont des gardes
+ * de régression : ils passent même quand la réservation est neutralisée.
  */
 import type { Boite, EmpriseReservee } from './props'
 import type { Floor, Museum, Room, Sculpture, SculptureCartel, Side, Vec3 } from './types'
