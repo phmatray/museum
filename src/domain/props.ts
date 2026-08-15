@@ -110,16 +110,30 @@ export interface PropMetrics {
  * tests d'intersection tout en enfonçant une plante dans un mur à l'écran.
  */
 export const PROP_METRICS: Record<PropId, PropMetrics> = {
-  // 1,60 × 0,42 m : demi-diagonale 0,83 — le banc est le seul prop franchement
+  // ── Les quatre pièces du kit, RELEVÉES sur le kit Meshy du 2026-08-16 ──
+  //
+  // Les hauteurs sont inchangées au millimètre (0,45 / 1,05 / 0,22 / 0,50) : la
+  // table `PIECES` de `process-meshy.py` les a reprises exprès du kit
+  // procédural qu'elle remplace, parce que `HAUTEUR_JARDINIERE` porte 33
+  // plantes et que `DEGAGEMENT_BANC` porte les bancs de trémie. Ce qui a bougé,
+  // ce sont les RAYONS — les nouvelles pièces n'ont pas la même empreinte —
+  // et c'est l'épreuve de mesure qui l'a dit, pas une relecture.
+  //
+  // ⚠️ Les résidus à ±1 mm (`banc.minY = −0,001`, `projecteur.maxY = 0,002`)
+  // sont réels : ils viennent de l'effondrement d'arêtes, qui déplace des
+  // sommets. On les écrit tels que mesurés plutôt que de les arrondir à zéro —
+  // arrondir ici, c'est écrire un vœu à la place d'une mesure.
+  //
+  // 1,61 × 0,44 m : demi-diagonale 0,80 — le banc est le seul prop franchement
   // allongé, et c'est justement celui qu'on fait tourner face au mur.
-  banc: { radius: 0.827, minY: 0, maxY: 0.45 },
-  socle: { radius: 0.318, minY: 0, maxY: 1.05 },
+  banc: { radius: 0.805, minY: -0.001, maxY: 0.45 },
+  socle: { radius: 0.339, minY: 0, maxY: 1.05 },
   // Ancré sur le PLAN DE PLAFOND : la platine affleure la dalle, le corps pend
-  // en dessous. Le rayon vaut une fois et demie celui du fût parce que la tête
-  // est INCLINÉE de 28° vers la cimaise — la pièce déborde de son propre axe,
-  // et c'est ce débord que `RECUL_RAIL` doit pouvoir absorber.
-  projecteur: { radius: 0.123, minY: -0.22, maxY: 0 },
-  jardiniere: { radius: 0.495, minY: 0, maxY: 0.5 },
+  // en dessous. Le rayon a FONDU de 0,123 à 0,095 : la pièce Meshy est un simple
+  // fût dans un étrier, là où la précédente portait une tête inclinée à 28° qui
+  // débordait de son axe. `RECUL_RAIL` a donc désormais de la marge, pas moins.
+  projecteur: { radius: 0.095, minY: -0.222, maxY: 0.002 },
+  jardiniere: { radius: 0.529, minY: 0, maxY: 0.503 },
   // L'anthurium est un buisson bas et TRÈS étalé : son rayon dépasse sa
   // hauteur. C'est ce qui en fait un bon casseur d'angle droit, et ce qui
   // oblige à lui réserver près d'un mètre soixante d'envergure.

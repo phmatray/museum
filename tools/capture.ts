@@ -29,7 +29,7 @@
  * image entière ; c'est elle qu'on appelle, jamais `stats()`.
  */
 /// <reference types="node" />
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -44,8 +44,27 @@ const CHROME =
   process.env.CHROME_PATH ??
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
-/** Le port de `npm run dev`. Vite en prend un autre s'il est occupé : `--url`. */
-const DEFAULT_URL = 'http://localhost:5174/'
+/**
+ * Les ports où chercher `npm run dev`, et comment on reconnaît le BON.
+ *
+ * ⛔ Une URL en dur ne peut pas marcher ici, et pas seulement « parfois ».
+ *
+ * Vite prend 5173, puis 5174, puis 5175 selon ce qui est déjà occupé. Ce dépôt
+ * se travaille en WORKTREES : plusieurs copies du musée, sur plusieurs branches,
+ * peuvent servir en même temps. Une constante fige donc le NUMÉRO d'un port sans
+ * rien dire de QUI est derrière — et c'est arrivé : `5174` était écrit ici, le
+ * serveur de cette session écoutait sur 5173, et l'oracle a rendu onze vues
+ * complètes et cohérentes… mesurées sur le musée d'une autre session.
+ *
+ * Le remède n'est pas une meilleure devinette de port, c'est une PREUVE
+ * D'IDENTITÉ : on demande au serveur son `data/museum.json` et on le compare,
+ * octet pour octet, à celui du disque. Deux worktrees sur deux branches n'ont
+ * pas le même bâtiment ; celui qui répond le nôtre EST le nôtre.
+ *
+ * Et si aucun ne répond, on échoue en le disant, plutôt que de mesurer le musée
+ * du voisin.
+ */
+const PORTS = [5173, 5174, 5175, 5176, 5177]
 
 /** 1440×900 en DPR 2. Assez grand pour juger, assez petit pour tenir en mémoire. */
 const VIEWPORT = { width: 1440, height: 900, deviceScaleFactor: 2 }
@@ -355,8 +374,46 @@ function argument(nom: string): string | undefined {
   return i >= 0 ? process.argv[i + 1] : undefined
 }
 
+/**
+ * Trouve le serveur qui sert CE musée-ci. Voir `PORTS` pour le pourquoi.
+ *
+ * La preuve d'identité est le `museum.json` : il est dérivé du dépôt GitHub et
+ * de la branche, donc deux worktrees en ont deux versions différentes dès que
+ * l'un des deux a touché à `derive-museum.ts`. Comparer sa longueur suffit —
+ * c'est un fichier de plusieurs dizaines de kilo-octets, une collision de taille
+ * entre deux bâtiments différents n'arrive pas par hasard.
+ */
+async function trouverLeServeur(): Promise<string> {
+  const local = await readFile(resolve(ROOT, 'public', 'data', 'museum.json'))
+  const echecs: string[] = []
+
+  for (const port of PORTS) {
+    const base = `http://localhost:${port}/`
+    try {
+      const reponse = await fetch(`${base}data/museum.json`, {
+        signal: AbortSignal.timeout(1500),
+      })
+      if (!reponse.ok) {
+        echecs.push(`${port}: HTTP ${reponse.status}`)
+        continue
+      }
+      const servi = Buffer.from(await reponse.arrayBuffer())
+      if (servi.equals(local)) return base
+      echecs.push(`${port}: un AUTRE musée (${servi.length} o. contre ${local.length})`)
+    } catch {
+      echecs.push(`${port}: fermé`)
+    }
+  }
+
+  throw new Error(
+    `Aucun serveur ne sert CE musée.\n  ${echecs.join('\n  ')}\n` +
+      'Lancer `npm run dev` dans ce worktree, ou passer --url explicitement.',
+  )
+}
+
 async function main() {
-  const url = argument('url') ?? DEFAULT_URL
+  const url = argument('url') ?? (await trouverLeServeur())
+  console.log(`serveur : ${url}`)
   const only = argument('only')?.split(',').map((s) => s.trim())
   const vues = only ? VUES.filter((v) => only.includes(v.nom)) : VUES
   if (vues.length === 0) {
@@ -376,6 +433,25 @@ async function main() {
       defaultViewport: VIEWPORT,
     })
     const page = await browser.newPage()
+
+    /*
+      ⛔ CACHE COUPÉ, et ce n'est pas une précaution de confort.
+
+      Mesuré le 2026-08-16 : après avoir régénéré `park-lod.glb` — 135 200
+      triangles de moins, fichier neuf sur le disque, servi neuf par Vite — les
+      ONZE vues ont rendu EXACTEMENT les mêmes chiffres qu'au passage précédent,
+      au triangle près. Le navigateur relisait sa copie.
+
+      Un oracle qui mesure un cache est pire qu'un oracle absent : il rend un
+      relevé complet, cohérent, plausible, et FAUX. Il aurait fait conclure que
+      la reprise sur le parc n'avait rien donné, et le budget des vingt-neuf
+      pièces d'architecture aurait été taillé sur ce constat.
+
+      C'est la même famille que le premier oracle pris sans assets et que le
+      board qui servait un JSON de six jours : un instrument doit dire ce qui EST
+      là, jamais ce qu'il a vu la dernière fois.
+    */
+    await page.setCacheEnabled(false)
 
     const erreurs: string[] = []
     page.on('pageerror', (e) => erreurs.push(String(e)))

@@ -73,10 +73,76 @@ SORTIE = ROOT / "public" / "assets" / "props"
 #              maillage irrégulier se déclenche sur des milliers d'arêtes et fait
 #              exploser le budget, pour un galbe qui n'a aucune arête vive.
 
+#
+# ⚠️ `axe` vaut "z" PARTOUT, et ce n'est pas de la paresse.
+#
+# `mettre_a_l_echelle` met l'ÉTENDUE sur cet axe à `metres`. Meshy n'a aucune
+# convention d'orientation dans le plan : selon la pièce, sa longueur tombe sur x
+# ou sur y, et il faudrait le vérifier au cas par cas pour chacune des trente.
+# La HAUTEUR, elle, est sans ambiguïté après l'import glTF (Blender est Z-up) et
+# c'est la cote qu'on connaît vraiment de chaque objet — un banc fait 45 cm
+# d'assise, un totem 3 m. On échelonne donc toujours par la hauteur.
+
+BLANC = (0.90, 0.89, 0.87)  # béton blanc, la matière par défaut du bâtiment
+ACIER = (0.92, 0.92, 0.93)  # acier peint : à peine plus froid, à peine plus clair
+
 PIECES = {
+    # ── Les quatre pièces INSTANCIÉES (museum-kit.glb) ────────────────────
+    #
+    # ⛔ Leur budget n'est pas un choix de qualité, c'est une multiplication.
+    # `measure-props.ts` compte 100 projecteurs, 49 jardinières, 16 socles et
+    # 12 bancs à l'écran : un triangle de trop sur le projecteur en vaut CENT.
+    # Les quatre pesaient 112 712 triangles ; ces budgets-là les ramènent à
+    # 61 020, et c'est cette reprise qui paie une partie du décor.
+    #
+    # Les HAUTEURS reprennent exactement celles du kit précédent (0,45 / 1,05 /
+    # 0,221 / 0,50). Ce n'est pas une coïncidence à préserver, c'est une
+    # décision : `domain/props.ts` pose les plantes sur `PROP_METRICS.jardiniere
+    # .maxY` et les œuvres au-dessus des socles. Changer ces cotes déplacerait
+    # 33 plantes de quelques centimètres, sans qu'aucun test ne s'en plaigne.
+    "banc": {
+        "noeud": "Banc",
+        "axe": "z",
+        "metres": 0.45,
+        "ancrage": "sol",
+        "budget": 700,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "socle": {
+        "noeud": "Socle",
+        "axe": "z",
+        "metres": 1.05,
+        "ancrage": "sol",
+        "budget": 500,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "projecteur": {
+        "noeud": "Projecteur",
+        "axe": "z",
+        "metres": 0.221,
+        # Le seul de tout le kit qui PEND : son ancre est son haut.
+        "ancrage": "plafond",
+        "budget": 260,
+        "couleur": ACIER,
+        "chanfrein": False,
+    },
+    "jardiniere": {
+        "noeud": "Jardiniere",
+        "axe": "z",
+        "metres": 0.50,
+        "ancrage": "sol",
+        "budget": 380,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+
+    # ── La structure (musee-fixe.glb) ─────────────────────────────────────
+    #
     # La nervure d'atrium : une côte cantilever qui naît du nez de dalle. 4,30 m,
     # soit la hauteur d'étage — elle occupe le vide sur toute sa hauteur, ce qui
-    # est le geste. 16 exemplaires au pas de 3 m sur les 48 m de pourtour.
+    # est le geste.
     "nervure-atrium": {
         "noeud": "NervureAtrium",
         "axe": "z",
@@ -86,17 +152,294 @@ PIECES = {
         # À 550 le budget était tenu — et la POINTE était émoussée, les galbes
         # facettés : la décimation attaque le mince en premier, et sur cette
         # pièce le mince EST le sujet. Le compteur de triangles ne pouvait pas le
-        # dire ; deux images côte à côte, si. 1 600 × 16 exemplaires = 25 600
-        # triangles, payés par la reprise sur `BUDGET_ARBRE`.
+        # dire ; deux images côte à côte, si.
         "budget": 1600,
-        "couleur": (0.90, 0.89, 0.87),
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    # Le panneau de garde-corps nervuré. ⛔ AUCUN collider : `ramp.ts` produit
+    # déjà `railingColliders`, et un second jeu rendrait l'escalier
+    # infranchissable — le défaut que le commit 47b253f a mis une session à
+    # trouver.
+    "balustrade-nervuree": {
+        "noeud": "BalustradeNervuree",
+        "axe": "z",
+        "metres": 1.10,
+        "ancrage": "sol",
+        "budget": 900,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "nervure-lanterneau": {
+        "noeud": "NervureLanterneau",
+        "axe": "z",
+        "metres": 2.60,
+        "ancrage": "sol",
+        "budget": 700,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "console": {
+        "noeud": "Console",
+        "axe": "z",
+        "metres": 0.60,
+        # La seule pièce qui se pose contre une paroi : son ancre est sa face
+        # arrière, d'où l'ancrage `mur`.
+        "ancrage": "mur",
+        "budget": 500,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "mat-arborescent": {
+        "noeud": "MatArborescent",
+        "axe": "z",
+        "metres": 4.00,
+        "ancrage": "sol",
+        "budget": 2500,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "suspension-atrium": {
+        "noeud": "SuspensionAtrium",
+        "axe": "z",
+        "metres": 1.30,
+        "ancrage": "plafond",
+        "budget": 3000,
+        "couleur": ACIER,
+        "chanfrein": False,
+    },
+    "sculpture-atrium": {
+        "noeud": "SculptureAtrium",
+        "axe": "z",
+        "metres": 3.00,
+        "ancrage": "plafond",
+        "budget": 4000,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+
+    # ── Le mobilier fixe (musee-fixe.glb) ─────────────────────────────────
+    "banque-accueil": {
+        "noeud": "BanqueAccueil",
+        "axe": "z",
+        "metres": 1.10,
+        "ancrage": "sol",
+        "budget": 2000,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "banc-courbe": {
+        "noeud": "BancCourbe",
+        "axe": "z",
+        "metres": 0.45,
+        "ancrage": "sol",
+        "budget": 900,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "vitrine": {
+        "noeud": "Vitrine",
+        "axe": "z",
+        "metres": 0.90,
+        "ancrage": "sol",
+        "budget": 700,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "pupitre-cartel": {
+        "noeud": "PupitreCartel",
+        "axe": "z",
+        "metres": 1.10,
+        "ancrage": "sol",
+        "budget": 500,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "poteau-file": {
+        "noeud": "PoteauFile",
+        "axe": "z",
+        "metres": 1.00,
+        "ancrage": "sol",
+        "budget": 300,
+        "couleur": ACIER,
+        "chanfrein": False,
+    },
+    "corbeille": {
+        "noeud": "Corbeille",
+        "axe": "z",
+        "metres": 0.90,
+        "ancrage": "sol",
+        "budget": 400,
+        "couleur": ACIER,
+        "chanfrein": False,
+    },
+    "portemanteau": {
+        "noeud": "Portemanteau",
+        "axe": "z",
+        "metres": 1.80,
+        "ancrage": "sol",
+        "budget": 600,
+        "couleur": ACIER,
+        "chanfrein": False,
+    },
+    "borne-info": {
+        "noeud": "BorneInfo",
+        "axe": "z",
+        "metres": 1.40,
+        "ancrage": "sol",
+        "budget": 500,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "totem": {
+        "noeud": "Totem",
+        "axe": "z",
+        "metres": 3.00,
+        "ancrage": "sol",
+        "budget": 400,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "socle-haut": {
+        "noeud": "SocleHaut",
+        "axe": "z",
+        "metres": 1.40,
+        "ancrage": "sol",
+        "budget": 400,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "socle-bas": {
+        "noeud": "SocleBas",
+        "axe": "z",
+        "metres": 0.35,
+        "ancrage": "sol",
+        "budget": 350,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "jardiniere-longue": {
+        "noeud": "JardiniereLongue",
+        "axe": "z",
+        "metres": 0.50,
+        "ancrage": "sol",
+        "budget": 600,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "jardiniere-ronde": {
+        "noeud": "JardiniereRonde",
+        "axe": "z",
+        "metres": 0.80,
+        "ancrage": "sol",
+        "budget": 500,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "lampadaire": {
+        "noeud": "Lampadaire",
+        "axe": "z",
+        "metres": 1.80,
+        "ancrage": "sol",
+        "budget": 700,
+        "couleur": ACIER,
+        "chanfrein": False,
+    },
+
+    # ── Le parc (musee-parc.glb) ──────────────────────────────────────────
+    "portique": {
+        "noeud": "Portique",
+        "axe": "z",
+        "metres": 5.00,
+        "ancrage": "sol",
+        "budget": 2000,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    # La pièce-repère du parvis : c'est la SEULE qu'on voit en approchant, et la
+    # seule à qui l'on donne six mille triangles. Un exemplaire, donc six mille à
+    # l'écran — moins qu'un demi-arbre.
+    "sculpture-parvis": {
+        "noeud": "SculptureParvis",
+        "axe": "z",
+        "metres": 4.00,
+        "ancrage": "sol",
+        "budget": 6000,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "banc-parc": {
+        "noeud": "BancParc",
+        "axe": "z",
+        "metres": 0.85,
+        "ancrage": "sol",
+        "budget": 800,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "borne-parc": {
+        "noeud": "BorneParc",
+        "axe": "z",
+        "metres": 0.90,
+        "ancrage": "sol",
+        "budget": 300,
+        "couleur": BLANC,
+        "chanfrein": False,
+    },
+    "vasque": {
+        "noeud": "Vasque",
+        "axe": "z",
+        "metres": 0.50,
+        "ancrage": "sol",
+        "budget": 1200,
+        "couleur": BLANC,
         "chanfrein": False,
     },
 }
 
-# Les kits, et ce que chacun contient.
+# ── Les kits, et pourquoi il y en a trois ─────────────────────────────────
+#
+# `museum-kit.glb`   les quatre pièces INSTANCIÉES. `PropsLayer` en fait un
+#                    `InstancedMesh` par entrée : un lot, N copies, un draw call.
+#                    Ce sont les seules assez répétées pour que ça vaille le coup.
+# `musee-fixe.glb`   le décor d'architecture, FUSIONNÉ en coordonnées monde par
+#                    `decorAssets.ts` : un seul maillage pour tout l'intérieur.
+# `musee-parc.glb`   le décor du parc. Séparé du précédent parce qu'il vit à
+#                    cinquante mètres : les fusionner ensemble donnerait UNE
+#                    boîte englobante allant du hall au fond de la parcelle, que
+#                    le culling ne pourrait plus jamais écarter.
 KITS = {
-    "musee-fixe.glb": ["nervure-atrium"],
+    "museum-kit.glb": ["banc", "socle", "projecteur", "jardiniere"],
+    "musee-fixe.glb": [
+        "nervure-atrium",
+        "balustrade-nervuree",
+        "nervure-lanterneau",
+        "console",
+        "mat-arborescent",
+        "suspension-atrium",
+        "sculpture-atrium",
+        "banque-accueil",
+        "banc-courbe",
+        "vitrine",
+        "pupitre-cartel",
+        "poteau-file",
+        "corbeille",
+        "portemanteau",
+        "borne-info",
+        "totem",
+        "socle-haut",
+        "socle-bas",
+        "jardiniere-longue",
+        "jardiniere-ronde",
+        "lampadaire",
+    ],
+    "musee-parc.glb": [
+        "portique",
+        "sculpture-parvis",
+        "banc-parc",
+        "borne-parc",
+        "vasque",
+    ],
 }
 
 # En dessous, décimer abîme plus qu'il n'allège : un maillage déjà économe n'a
@@ -211,20 +554,42 @@ def decimer(obj, budget: int):
     bpy.ops.object.modifier_apply(modifier=mod.name)
 
 
-def chanfreiner(obj, largeur=0.003, segments=2):
+def lisser(obj):
     """
-    Chanfrein sur toutes les arêtes vives, puis application.
+    Lissage par angle : les faces à moins de 30° partagent leur normale.
 
-    Repris VERBATIM de `build-props.py`, y compris sa sonde de version : une
-    arête parfaitement nette ne capte aucune lumière et signe le procédural au
-    premier coup d'œil ; un chanfrein de 3 mm accroche un filet de spéculaire et
-    suffit à faire lire l'objet comme un vrai.
+    Séparé du chanfrein — il l'accompagnait dans `build-props.py` — parce que
+    les deux n'ont ni le même coût ni le même domaine. Celui-ci est GRATUIT,
+    ne change aucun sommet, et porte l'essentiel de l'effet sur un maillage
+    remaillé : ce sont les normales, pas la géométrie, qui font qu'un galbe se
+    lit comme un galbe. On l'applique donc à tout le monde.
     """
     bpy.context.view_layer.objects.active = obj
     if hasattr(bpy.ops.object, "shade_auto_smooth"):
         bpy.ops.object.shade_auto_smooth(angle=math.radians(30))
     elif hasattr(obj.data, "use_auto_smooth"):
         obj.data.use_auto_smooth = True
+
+
+def chanfreiner(obj, largeur=0.003, segments=2):
+    """
+    Chanfrein sur toutes les arêtes vives, puis application.
+
+    Repris de `build-props.py` : une arête parfaitement nette ne capte aucune
+    lumière et signe le procédural au premier coup d'œil ; 3 mm accrochent un
+    filet de spéculaire et suffisent à faire lire l'objet comme un vrai.
+
+    ⚠️ MAIS il ne se transpose PAS tel quel d'un maillage CAO à un maillage
+    Meshy, et la mesure est nette. Sur une boîte procédurale, `limit_method =
+    ANGLE` à 30° trouve douze arêtes. Sur un banc remaillé par Meshy il en
+    trouve des milliers : décimé à 595 triangles, le banc est ressorti à
+    **1 438** — un facteur 2,4 — et le garde-fou de budget a refusé le kit.
+
+    Il n'est donc PAS activé par défaut ici. Il ne vaut que sur les pièces
+    franchement planes et anguleuses, où l'angle limite ne se déclenche que sur
+    les vraies arêtes, et où le budget en tient compte.
+    """
+    bpy.context.view_layer.objects.active = obj
 
     mod = obj.modifiers.new(name="Chanfrein", type="BEVEL")
     mod.width = largeur
@@ -316,6 +681,23 @@ def exporter(objets, chemin: Path):
     bpy.ops.export_scene.gltf(**options)
 
 
+def ecarter(objets, jeu=0.45):
+    """
+    Aligne les pièces sur une rangée, chacune posée à côté de la précédente.
+
+    Le pas est la LARGEUR RÉELLE de chaque pièce, pas un intervalle constant :
+    un pas fixe collerait le totem de 3 m au socle de 40 cm et laisserait un
+    trou de deux mètres entre les petites. On veut une planche lisible, pas une
+    grille.
+    """
+    x = 0.0
+    for obj in objets:
+        xs = [v.co.x for v in obj.data.vertices]
+        largeur = max(xs) - min(xs)
+        obj.location.x = x + largeur / 2 - (min(xs) + max(xs)) / 2
+        x += largeur + jeu
+
+
 def rendre_apercu(objets, chemin: Path):
     """
     Rend le kit décimé en une image, pour le juger AVANT de l'intégrer.
@@ -330,29 +712,49 @@ def rendre_apercu(objets, chemin: Path):
 
     Éclairage à trois points sur fond neutre : ce n'est pas le rendu du musée, et
     ça ne prétend pas l'être — c'est un contrôle de SILHOUETTE.
+
+    ⚠️ Les pièces sont ÉTALÉES avant le rendu. Toutes sont ancrées à l'origine —
+    c'est le contrat de `ancrer` — donc vingt-et-une d'entre elles rendues telles
+    quelles donnent un tas illisible où l'on ne juge rien. L'étalement ne touche
+    que la POSITION D'OBJET, jamais les données de maillage, et il intervient
+    après l'export : le fichier livré n'en sait rien.
     """
+    ecarter(objets)
+    # ⚠️ `matrix_world` est calculé PARESSEUSEMENT : sans ce rafraîchissement, il
+    # rend encore l'identité juste après une écriture de `location`, et le
+    # cadrage se calcule alors sur un étalement qui n'a pas eu lieu. Symptôme
+    # observé : une planche de vingt-et-une pièces où une seule remplissait
+    # l'image, les vingt autres hors champ.
+    bpy.context.view_layer.update()
     scene = bpy.context.scene
     scene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in {
         e.identifier for e in bpy.types.RenderEngine.__subclasses__() if hasattr(e, "identifier")
     } else scene.render.engine
-    scene.render.resolution_x = 720
-    scene.render.resolution_y = 900
+    # Une rangée : large et basse. 900 de haut sur une seule pièce était juste ;
+    # sur vingt-et-une, il faut de la largeur, sinon chaque sujet fait 30 px.
+    scene.render.resolution_x = 2400 if len(objets) > 3 else 900
+    scene.render.resolution_y = 700 if len(objets) > 3 else 900
     scene.render.film_transparent = False
     scene.world = bpy.data.worlds.new("Apercu")
     scene.world.use_nodes = True
-    scene.world.node_tree.nodes["Background"].inputs[0].default_value = (0.30, 0.30, 0.32, 1)
+    scene.world.node_tree.nodes["Background"].inputs[0].default_value = (0.10, 0.105, 0.12, 1)
     scene.world.node_tree.nodes["Background"].inputs[1].default_value = 1.0
 
     # Le cadrage se CALCULE sur les bornes réelles ; il ne se devine pas. Une
     # première version posait la caméra à des angles écrits à la main et coupait
     # le haut de la pièce — un aperçu qui ampute son sujet est pire qu'aucun
     # aperçu, parce qu'il a l'air d'en être un.
-    xs = [v.co.x for o in objets for v in o.data.vertices]
-    ys = [v.co.y for o in objets for v in o.data.vertices]
-    zs = [v.co.z for o in objets for v in o.data.vertices]
+    # ⚠️ En coordonnées MONDE : `ecarter` vient de déplacer les objets, et des
+    # bornes lues sur `v.co` seul ignoreraient l'étalement — la caméra cadrerait
+    # la première pièce et couperait les vingt autres.
+    points = [o.matrix_world @ v.co for o in objets for v in o.data.vertices]
+    xs = [p.x for p in points]
+    ys = [p.y for p in points]
+    zs = [p.z for p in points]
     centre = ((min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2, (min(zs) + max(zs)) / 2)
     h = max(zs) - min(zs)
-    r = max(max(xs) - min(xs), max(ys) - min(ys), h)
+    largeur = max(xs) - min(xs)
+    r = max(largeur, max(ys) - min(ys), h)
 
     cible = bpy.data.objects.new("Cible", None)
     cible.location = centre
@@ -360,26 +762,62 @@ def rendre_apercu(objets, chemin: Path):
 
     cam_data = bpy.data.cameras.new("Apercu")
     cam_data.lens = 70
+    if len(objets) > 3:
+        # ORTHOGRAPHIQUE sur une rangée. Une perspective donnerait aux pièces du
+        # centre une taille et à celles des bords une autre, et la planche
+        # cesserait de comparer ce qu'elle prétend comparer. En ortho, une
+        # silhouette large de 40 cm à gauche fait exactement les mêmes pixels
+        # qu'une silhouette large de 40 cm à droite.
+        cam_data.type = "ORTHO"
+        cam_data.ortho_scale = largeur * 1.06
     cam = bpy.data.objects.new("Apercu", cam_data)
     scene.collection.objects.link(cam)
     # `lens 70` sur un capteur de 36 mm couvre ~29° : il faut donc reculer d'un
     # peu plus de deux fois la plus grande dimension pour tout faire tenir.
     d = r * 2.6 + 2.0
-    cam.location = (centre[0] + d * 0.55, centre[1] - d * 0.78, centre[2] + h * 0.28)
+    if len(objets) > 3:
+        # En ortho, la distance ne cadre rien — elle doit seulement rester devant
+        # les sujets. On garde un recul franc pour ne rien couper par le plan
+        # proche.
+        # De FACE, et non de trois quarts : sur une rangée, un angle fait que
+        # chaque pièce masque sa voisine. On perd la profondeur, on gagne de
+        # pouvoir juger vingt-et-une silhouettes d'un coup — et c'est la
+        # silhouette qui dit si la décimation a tenu.
+        cam.location = (centre[0], centre[1] - d, centre[2])
+    else:
+        cam.location = (centre[0] + d * 0.55, centre[1] - d * 0.78, centre[2] + h * 0.28)
     suivre = cam.constraints.new(type="TRACK_TO")
     suivre.target = cible
     suivre.track_axis = "TRACK_NEGATIVE_Z"
     suivre.up_axis = "UP_Y"
     scene.camera = cam
 
-    for pos, energie in (((4, -6, 8), 2200), ((-7, -3, 4), 900), ((0, 7, 3), 600)):
-        lampe = bpy.data.lights.new("L", type="AREA")
-        lampe.energy = energie
-        lampe.size = 6
-        obj = bpy.data.objects.new("L", lampe)
-        obj.location = (pos[0] * r / 2, pos[1] * r / 2, pos[2] * h / 4 + 1)
-        obj.rotation_euler = (math.radians(55), 0, math.radians(30))
-        scene.collection.objects.link(obj)
+    if len(objets) > 3:
+        # ⚠️ Des lampes SURFACIQUES sur une rangée de trente mètres, c'est une
+        # planche noire. Elles sont posées relativement à la taille de la scène,
+        # donc à soixante mètres des sujets, et l'éclairement décroît en carré
+        # de la distance : mesuré, les vingt-et-une pièces sortaient comme des
+        # fantômes à peine plus clairs que le fond.
+        #
+        # Un SOLEIL n'a pas de distance. Il éclaire la pièce du bout de la
+        # rangée exactement comme celle du milieu — ce qui est la condition pour
+        # que la planche compare vraiment ce qu'elle prétend comparer.
+        for rot, energie in (((55, 0, 25), 3.0), ((70, 0, -140), 1.1)):
+            lampe = bpy.data.lights.new("S", type="SUN")
+            lampe.energy = energie
+            lampe.angle = math.radians(6)
+            obj = bpy.data.objects.new("S", lampe)
+            obj.rotation_euler = tuple(math.radians(a) for a in rot)
+            scene.collection.objects.link(obj)
+    else:
+        for pos, energie in (((4, -6, 8), 2200), ((-7, -3, 4), 900), ((0, 7, 3), 600)):
+            lampe = bpy.data.lights.new("L", type="AREA")
+            lampe.energy = energie
+            lampe.size = 6
+            obj = bpy.data.objects.new("L", lampe)
+            obj.location = (pos[0] * r / 2, pos[1] * r / 2, pos[2] * h / 4 + 1)
+            obj.rotation_euler = (math.radians(55), 0, math.radians(30))
+            scene.collection.objects.link(obj)
 
     chemin.parent.mkdir(parents=True, exist_ok=True)
     scene.render.filepath = str(chemin)
@@ -433,6 +871,7 @@ def main():
             decimer(obj, int(spec["budget"] * 0.85) if spec["chanfrein"] else spec["budget"])
             if spec["chanfrein"]:
                 chanfreiner(obj)
+            lisser(obj)
             peindre(obj, spec["couleur"])
 
             final = triangles(obj)

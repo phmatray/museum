@@ -51,6 +51,7 @@ public/assets/*
 public/assets/props/*
 !public/assets/props/museum-kit.glb
 !public/assets/props/musee-fixe.glb
+!public/assets/props/musee-parc.glb
 !public/assets/plants/
 public/assets/plants/*
 !public/assets/plants/park-lod.glb
