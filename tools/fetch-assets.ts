@@ -103,6 +103,23 @@ const PLANTES = [
 const ARBRES = ['island_tree_01', 'island_tree_02', 'jacaranda_tree'] as const
 const ARBUSTES = ['shrub_01', 'shrub_03'] as const
 
+/**
+ * Pièces en volume. Cet outil ne les RÉCUPÈRE pas — elles ne sont pas en CC0,
+ * `tools/blender/build-sculptures.py` les produit à la main hors CI et le GLB
+ * est commité (voir `public/assets/sculptures/SOURCES.md`). Elles sont
+ * déclarées ici uniquement pour que `CREDITS.md` les distingue des assets
+ * récupérés : sans cette entrée, le gabarit ci-dessous écrirait « Tous en CC0
+ * » sur un fichier qui contient une pièce © tous droits réservés.
+ */
+const SCULPTURES = [
+  {
+    id: 'bavette',
+    source: "Meshy, d'après une photo de l'auteur",
+    licence: '© tous droits réservés',
+    usage: "pièce en volume, salle d'honneur",
+  },
+] as const
+
 interface Telechargement {
   url: string
   dest: string
@@ -231,6 +248,12 @@ async function main() {
     journal.push(`| ${p} | Poly Haven | CC0 | végétation, décimée dans les LOD |`)
   }
 
+  console.log(`\nPièces en volume (${SCULPTURES.length}) — commitées, hors pipeline CC0`)
+  for (const s of SCULPTURES) {
+    console.log(`  ${'ok'.padEnd(6)} ${s.id.padEnd(20)} ${s.usage}`)
+    journal.push(`| ${s.id} | ${s.source} | ${s.licence} | ${s.usage} |`)
+  }
+
   if (SOURCES_VEGETATION) {
     console.log(`\nSources de végétation (${vegetation.length}) — Poly Haven, CC0 — 330 Mo`)
     for (const p of vegetation) {
@@ -245,7 +268,23 @@ async function main() {
 
   await writeFile(
     join(OUT, 'CREDITS.md'),
-    `# Assets\n\nTous en CC0 (domaine public). Aucune attribution n'est requise ; elle est donnée\npar correction et pour documenter la provenance.\n\nRécupérés par \`node tools/fetch-assets.ts\`, non versionnés — sauf les LOD de\nvégétation et le kit de props, qui exigent Blender et sont donc commités.\n\n| Asset | Source | Licence | Usage |\n|---|---|---|---|\n${journal.join('\n')}\n`,
+    `# Assets
+
+Les assets **récupérés** — matières, HDRI, végétation — sont tous en CC0
+(domaine public). Aucune attribution n'est requise ; elle est donnée par
+correction et pour documenter la provenance.
+
+Les **pièces en volume** de \`sculptures/\` n'en font pas partie : ce sont des
+œuvres de l'auteur du musée, tous droits réservés. Leur provenance et leur
+licence sont dans \`sculptures/SOURCES.md\`.
+
+Récupérés par \`node tools/fetch-assets.ts\`, non versionnés — sauf les LOD de
+végétation et le kit de props, qui exigent Blender et sont donc commités.
+
+| Asset | Source | Licence | Usage |
+|---|---|---|---|
+${journal.join('\n')}
+`,
   )
   console.log(`\nCREDITS.md écrit.`)
 }
