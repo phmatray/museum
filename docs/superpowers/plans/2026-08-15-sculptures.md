@@ -336,14 +336,171 @@ les deux se lisent dans le meme fichier."
 
 ---
 
-### Task 2: `domain/sculptures.ts` — décider où
+### Task 2: `placeProps` accepte des emprises réservées
+
+**Files:**
+- Modify: `src/domain/props.ts` (après `Boite`, ligne 300 ; `placeProps` ligne 375-408)
+- Test: `src/domain/__tests__/props.test.ts`
+
+**Interfaces:**
+- Consumes: `Boite` (existe déjà, ligne 293).
+- Produces: `interface EmpriseReservee { floorId: string; boite: Boite }` · `placeProps(museum: Museum, reservees?: readonly EmpriseReservee[]): PropPlacement[]`.
+
+⚠️ **Cette tâche précède `sculptures.ts` — et c'est délibéré.** Une première version du plan livrait `sculptures.ts` d'abord, avec un commit qui ne typecheckait pas puisque `EmpriseReservee` n'existait pas encore. Arbitré : chaque commit compile. Le mécanisme est donc livré et testé ici avec une boîte construite à la main, sans rien savoir des sculptures.
+
+⚠️ **`props.ts` n'importera JAMAIS `sculptures.ts`.** La dépendance ne va que dans un sens : ce module n'a pas à savoir CE QUI occupe la place, seulement qu'elle est prise.
+
+⚠️ Le second paramètre a une valeur par défaut : **tous les appels existants restent valides**, y compris `placeProps(museum)` dans `PropsLayer.tsx` et les 20 tests déjà présents.
+
+- [ ] **Step 1: Écrire le test qui échoue**
+
+Ajouter à la fin de `src/domain/__tests__/props.test.ts` :
+
+```ts
+describe('placeProps — les emprises réservées', () => {
+  /**
+   * Une emprise posée à la main au centre de la salle d'honneur — 1,10 × 1,10 m
+   * au sol, 1,15 m de haut. Ce sont les cotes de la pièce qui viendra s'y poser,
+   * mais ce test ne connaît aucune sculpture : il éprouve le MÉCANISME, et il
+   * doit continuer à le faire si la pièce change de taille ou disparaît.
+   */
+  const rdc = museum.floors.find((f) => f.level === 0)!
+  const salle = rdc.rooms[0]
+  const cx = salle.footprint.x + salle.footprint.width / 2
+  const cz = salle.footprint.z + salle.footprint.depth / 2
+  const boite: Boite = {
+    minX: cx - 0.55,
+    maxX: cx + 0.55,
+    minZ: cz - 0.55,
+    maxZ: cz + 0.55,
+    minY: rdc.elevation,
+    maxY: rdc.elevation + 1.15,
+  }
+  const reservee = { floorId: rdc.id, boite }
+
+  it('sans réservation, le mobilier ENVAHIT la place — sinon ce test n’a pas de dents', () => {
+    const envahisseurs = placeProps(museum).filter(
+      (p) => p.floorId === rdc.id && croisent(boiteDuProp(p), boite),
+    )
+    expect(envahisseurs.length).toBeGreaterThan(0)
+  })
+
+  it('avec réservation, AUCUN prop ne croise l’emprise', () => {
+    const fautifs = placeProps(museum, [reservee])
+      .filter((p) => p.floorId === rdc.id)
+      .filter((p) => croisent(boiteDuProp(p), boite))
+      .map((p) => `${p.id} en (${p.position.x.toFixed(2)}, ${p.position.z.toFixed(2)})`)
+    expect(fautifs).toEqual([])
+  })
+
+  it('ne réserve que sur le niveau nommé', () => {
+    const autres = placeProps(museum, [reservee]).filter((p) => p.floorId !== rdc.id)
+    expect(autres).toEqual(placeProps(museum).filter((p) => p.floorId !== rdc.id))
+  })
+
+  it('une réservation sur un niveau inconnu ne change rien', () => {
+    expect(placeProps(museum, [{ floorId: 'niveau-inexistant', boite }])).toEqual(
+      placeProps(museum),
+    )
+  })
+
+  it('sans réservation, rend exactement ce que rendait l’appel à un argument', () => {
+    expect(placeProps(museum, [])).toEqual(placeProps(museum))
+  })
+})
+```
+
+⚠️ Le premier test est le seul qui donne du sens aux autres : si le mobilier ne tombait de toute façon jamais là, réserver ne prouverait rien. **S'il échoue, ne pas le supprimer** — il signifie que le placement a changé et que l'invariant n'est plus mis à l'épreuve ; il faut alors trouver un autre point de contact, pas baisser la garde.
+
+- [ ] **Step 2: Lancer le test pour vérifier qu'il échoue**
+
+Run: `npm test -- src/domain/__tests__/props.test.ts`
+Expected: FAIL — `placeProps` n'accepte qu'un argument, et le type `Boite` n'est peut-être pas encore importé dans le fichier de test (il l'est déjà : ligne 25).
+
+- [ ] **Step 3: Ajouter le type et le paramètre**
+
+Dans `src/domain/props.ts`, ajouter après la déclaration de `Boite` (après la ligne 300) :
+
+```ts
+/**
+ * Une emprise que le placement doit contourner, déjà occupée par autre chose.
+ *
+ * Elle existe pour les pièces en volume (`domain/sculptures.ts`), mais son type
+ * ne les nomme pas : ce module n'a pas à savoir CE QUI occupe la place, seulement
+ * qu'elle est prise. C'est aussi ce qui évite un import croisé entre les deux
+ * modules — la dépendance ne va que dans un sens.
+ */
+export interface EmpriseReservee {
+  floorId: string
+  boite: Boite
+}
+```
+
+Puis remplacer la signature et l'initialisation de `poses` dans `placeProps` (ligne 375 et ligne 385) :
+
+```ts
+export function placeProps(
+  museum: Museum,
+  reservees: readonly EmpriseReservee[] = [],
+): PropPlacement[] {
+  const resultat: PropPlacement[] = []
+
+  for (const floor of museum.floors) {
+    const obstacles = obstaclesDuNiveau(museum, floor)
+    // Les props déjà posés deviennent à leur tour des obstacles : sans ça, deux
+    // salles adjacentes peuvent poser chacune une jardinière de part et d'autre
+    // d'une cloison mince et les faire se chevaucher au travers.
+    //
+    // Les emprises RÉSERVÉES sont semées ici, avant tout le reste : ce qui les
+    // occupe est posé par un autre module, et le mobilier doit les contourner
+    // exactement comme il contourne un banc déjà placé. Les semer dans `poses`
+    // plutôt que dans `obstacles` n'est pas un détail — c'est ce qui leur donne
+    // le jeu de `ENTRE_PROPS`, c'est-à-dire de quoi passer devant.
+    const poses: Boite[] = reservees
+      .filter((r) => r.floorId === floor.id)
+      .map((r) => r.boite)
+```
+
+Le reste du corps de `placeProps` est inchangé.
+
+- [ ] **Step 4: Lancer les tests**
+
+Run: `npm test -- src/domain/__tests__/props.test.ts`
+Expected: PASS, les 5 nouveaux et les 20 existants (le paramètre est optionnel).
+
+- [ ] **Step 5: Lancer toute la suite**
+
+Run: `npm test && npm run lint`
+Expected: PASS.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add src/domain/props.ts src/domain/__tests__/props.test.ts
+git commit -m "feat(domain): le mobilier contourne les emprises reservees
+
+placeProps accepte des emprises deja occupees, semees dans `poses` et non dans
+`obstacles` : c'est ce qui leur donne le jeu d'ENTRE_PROPS, donc de quoi passer
+devant plutot que de raser ce qui est la.
+
+Le type ne nomme pas les sculptures, alors qu'elles sont sa raison d'etre.
+props.ts n'a pas a savoir CE QUI occupe la place, seulement qu'elle est prise —
+et la dependance ne va ainsi que dans un sens.
+
+Le test 'sans reservation, le mobilier ENVAHIT la place' est ce qui donne des
+dents aux autres : sans lui, ils passeraient meme si rien ne tombait jamais la."
+```
+
+---
+
+### Task 3: `domain/sculptures.ts` — décider où
 
 **Files:**
 - Create: `src/domain/sculptures.ts`
 - Test: `src/domain/__tests__/sculptures.test.ts`
 
 **Interfaces:**
-- Consumes: `Sculpture`, `Museum`, `Room`, `Floor`, `Vec3`, `Side` de `../types` (Task 1) ; `Boite` de `./props`.
+- Consumes: `Sculpture`, `SculptureCartel`, `Museum`, `Room`, `Floor`, `Vec3`, `Side` de `../types` (Task 1) ; `Boite`, `EmpriseReservee`, `croisent`, `boiteDuProp`, `placeProps` de `./props` (Task 2).
 - Produces:
   - `interface SculpturePlacement { id: string; file: string; position: Vec3; rotation: number; height: number; plinth: { width: number; depth: number; height: number }; floorId: string; roomId: string; cartel: SculptureCartel }`
   - `placeSculptures(museum: Museum): SculpturePlacement[]`
@@ -361,14 +518,16 @@ Créer `src/domain/__tests__/sculptures.test.ts` :
  * LOT SCULPTURES — la pièce se pose où il faut, et rien ne la traverse.
  *
  * Comme `props.test.ts`, l'épreuve porte sur le VRAI `public/data/museum.json` :
- * ce sont ses cotes qui sont à l'écran.
+ * ce sont ses cotes qui sont à l'écran, et une pièce dans un mur ne se voit pas
+ * sur une capture prise d'ailleurs.
  */
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
-import { croisent } from '../props'
+import { boiteDuProp, croisent, placeProps } from '../props'
 import {
   boiteDeSculpture,
+  emprisesDeSculptures,
   placeSculptures,
   sculptureCartelText,
   yawDeFacing,
@@ -438,7 +597,7 @@ describe('placeSculptures', () => {
 })
 
 describe('boiteDeSculpture', () => {
-  it('couvre le socle en plan et le socle plus la pièce en hauteur', () => {
+  it('couvre le socle en plan, et le socle plus la pièce en hauteur', () => {
     const [p] = placeSculptures(avec([BAVETTE]))
     const b = boiteDeSculpture(p)
     expect(b.maxX - b.minX).toBeCloseTo(1.1, 6)
@@ -447,7 +606,7 @@ describe('boiteDeSculpture', () => {
     expect(b.maxY).toBeCloseTo(p.position.y + 0.25 + 0.9, 6)
   })
 
-  it('ne croise ni mur, ni ouverture, ni trémie de sa salle', () => {
+  it('ne croise ni mur, ni trémie de sa salle', () => {
     const [p] = placeSculptures(avec([BAVETTE]))
     const b = boiteDeSculpture(p)
     const rdc = reel.floors.find((f) => f.level === 0)!
@@ -463,8 +622,7 @@ describe('boiteDeSculpture', () => {
         }),
       ).toBe(false)
     }
-    const salle = rdc.rooms[0]
-    for (const wall of salle.walls) {
+    for (const wall of rdc.rooms[0].walls) {
       expect(
         croisent(b, {
           minX: Math.min(wall.a.x, wall.b.x) - 0.45,
@@ -476,6 +634,32 @@ describe('boiteDeSculpture', () => {
         }),
       ).toBe(false)
     }
+  })
+})
+
+describe('le mobilier contourne la pièce', () => {
+  const musee = avec([BAVETTE])
+  const sculptures = placeSculptures(musee)
+
+  it('la sculpture est bien posée, sinon ce test ne prouve rien', () => {
+    expect(sculptures).toHaveLength(1)
+  })
+
+  it('AUCUN prop ne croise l’emprise de la sculpture', () => {
+    const boite = boiteDeSculpture(sculptures[0])
+    const fautifs = placeProps(musee, emprisesDeSculptures(sculptures))
+      .filter((p) => p.floorId === sculptures[0].floorId)
+      .filter((p) => croisent(boiteDuProp(p), boite))
+      .map((p) => `${p.id} en (${p.position.x.toFixed(2)}, ${p.position.z.toFixed(2)})`)
+    expect(fautifs).toEqual([])
+  })
+
+  it('sans réservation, il l’envahirait — c’est ce qui donne des dents au test', () => {
+    const boite = boiteDeSculpture(sculptures[0])
+    const envahisseurs = placeProps(musee).filter(
+      (p) => p.floorId === sculptures[0].floorId && croisent(boiteDuProp(p), boite),
+    )
+    expect(envahisseurs.length).toBeGreaterThan(0)
   })
 })
 
@@ -499,10 +683,12 @@ describe('yawDeFacing', () => {
 describe('sculptureCartelText', () => {
   it('rédige les quatre lignes dans l’ordre du cartel', () => {
     expect(sculptureCartelText(BAVETTE.cartel)).toBe(
-      'Philippe Matray\nBavette endormi, 2026\nPhotogrammétrie par IA (Meshy), maillage décimé\nCollection de l’artiste'.replace(
-        '’',
-        "'",
-      ),
+      [
+        'Philippe Matray',
+        'Bavette endormi, 2026',
+        'Photogrammétrie par IA (Meshy), maillage décimé',
+        "Collection de l'artiste",
+      ].join('\n'),
     )
   })
 
@@ -540,14 +726,15 @@ Créer `src/domain/sculptures.ts` :
  * salle un peu vide à une salle impraticable ». Une sculpture est l'inverse de
  * ça : elle est unique, elle est voulue à un endroit précis, et si elle ne peut
  * pas y aller il faut le SAVOIR plutôt que la voir disparaître. D'où un module
- * séparé, sans aléa du tout, et un placement qui échoue bruyamment.
+ * séparé, sans aléa du tout, et une salle introuvable qui écarte la pièce au
+ * lieu de la replier sur un défaut.
  *
  * ── L'ordre compte, et il est structurel ──
  *
  * `placeSculptures` doit tourner AVANT `placeProps`, dont les emprises réservées
  * viennent d'ici. Sans ça, `poserLeBanc` pose son banc face au mur le plus
  * garni, à 2,60 m de ce mur — soit à moins de deux mètres de la pièce dans la
- * salle d'honneur du musée réel.
+ * salle d'honneur du musée réel. Un test le tient.
  */
 import type { Boite, EmpriseReservee } from './props'
 import type { Floor, Museum, Room, Sculpture, SculptureCartel, Side, Vec3 } from './types'
@@ -603,10 +790,6 @@ export function yawDeFacing(facing: Side): number {
  * Pose les pièces déclarées par l'instance.
  *
  * Pur : même musée, même liste, dans l'ordre de `config.sculptures`.
- *
- * Une pièce dont la salle est introuvable est ÉCARTÉE, pas repliée sur une
- * salle par défaut : un identifiant fautif doit produire une absence visible,
- * pas une pièce silencieusement déplacée à l'autre bout du bâtiment.
  */
 export function placeSculptures(museum: Museum): SculpturePlacement[] {
   const placements: SculpturePlacement[] = []
@@ -642,6 +825,10 @@ export function placeSculptures(museum: Museum): SculpturePlacement[] {
  * Sans `room`, c'est la PREMIÈRE salle du niveau 0 — la salle d'honneur, seule
  * salle réelle de ce niveau (les côtés vides reçoivent des galeries aveugles,
  * qui n'y figurent pas). C'est le lieu qui dit « ceci est la collection ».
+ *
+ * Une salle nommée mais introuvable rend `null`, et la pièce n'est pas posée :
+ * un identifiant fautif doit produire une absence visible, pas une pièce
+ * silencieusement déplacée à l'autre bout du bâtiment.
  */
 function trouverSalle(
   museum: Museum,
@@ -666,8 +853,9 @@ function trouverSalle(
  * L'emprise de la pièce posée.
  *
  * En plan, c'est le SOCLE et non la pièce : le socle la contient par
- * construction (un test le vérifie sur le GLB réel), et c'est lui qu'on ne doit
- * pas heurter du pied. En hauteur, socle plus pièce.
+ * construction — `scene/__tests__/sculptureAssets.test.ts` le vérifie sur le GLB
+ * réel — et c'est lui qu'on ne doit pas heurter du pied. En hauteur, socle plus
+ * pièce.
  */
 export function boiteDeSculpture(p: SculpturePlacement): Boite {
   return {
@@ -707,11 +895,14 @@ export function sculptureCartelText(cartel: SculptureCartel): string {
 - [ ] **Step 4: Lancer le test**
 
 Run: `npm test -- src/domain/__tests__/sculptures.test.ts`
-Expected: FAIL sur `EmpriseReservee`, qui n'existe pas encore dans `props.ts` (Task 3). Les autres tests passent.
+Expected: PASS, les 13.
 
-⚠️ **Ne pas créer `EmpriseReservee` ici pour débloquer.** Elle appartient à `props.ts`, qui la consomme ; la déclarer des deux côtés en ferait deux types qui divergent. Enchaîner directement sur la Task 3, qui la crée.
+- [ ] **Step 5: Lancer toute la suite**
 
-- [ ] **Step 5: Commit (partiel, assumé)**
+Run: `npm test && npm run lint && npm run build`
+Expected: PASS. Le build est demandé ici parce que c'est le premier module qui consomme les types de la Task 1.
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/domain/sculptures.ts src/domain/__tests__/sculptures.test.ts
@@ -720,167 +911,11 @@ git commit -m "feat(domain): decider ou se pose une piece en volume
 Module separe de props.ts, et pas une extension : props seme du mobilier par
 dizaines en acceptant qu'un candidat refuse disparaisse. Une sculpture est
 unique et voulue a un endroit precis — si elle ne peut pas y aller, il faut le
-savoir. D'ou zero alea, et une salle introuvable qui ecarte au lieu de replier
-sur un defaut.
+savoir. D'ou zero alea, et une salle introuvable qui ecarte la piece au lieu de
+la replier sur un defaut.
 
-La suite ne compile pas encore : EmpriseReservee appartient a props.ts, qui la
-consomme, et la declarer des deux cotes en ferait deux types qui divergent."
-```
-
----
-
-### Task 3: `placeProps` réserve les emprises de sculpture
-
-**Files:**
-- Modify: `src/domain/props.ts` (contrat public ligne 49-100, `placeProps` ligne 375-408)
-- Test: `src/domain/__tests__/props.test.ts`
-
-**Interfaces:**
-- Consumes: `Boite` (existe déjà, ligne 293).
-- Produces: `interface EmpriseReservee { floorId: string; boite: Boite }` · `placeProps(museum: Museum, reservees?: readonly EmpriseReservee[]): PropPlacement[]`.
-
-⚠️ Le second paramètre a une valeur par défaut : **tous les appels existants restent valides**, y compris `placeProps(museum)` dans `PropsLayer.tsx` et les 20 tests de `props.test.ts`.
-
-⚠️ `props.ts` n'importe PAS `sculptures.ts`. La dépendance va dans l'autre sens : `sculptures.ts` importe le type `EmpriseReservee`. Un import croisé rendrait les deux modules inséparables.
-
-- [ ] **Step 1: Écrire le test qui échoue**
-
-Ajouter à `src/domain/__tests__/props.test.ts`. Ajouter d'abord aux imports existants :
-
-```ts
-import { placeSculptures, emprisesDeSculptures, boiteDeSculpture } from '../sculptures'
-import type { Sculpture } from '../types'
-```
-
-puis à la fin du fichier :
-
-```ts
-describe('placeProps — les emprises réservées', () => {
-  const BAVETTE: Sculpture = {
-    id: 'bavette',
-    file: 'bavette.glb',
-    height: 0.9,
-    facing: 'south',
-    plinth: { width: 1.1, depth: 1.1, height: 0.25 },
-    cartel: { title: 'Bavette endormi' },
-  }
-  const avecPiece = { ...museum, config: { ...museum.config, sculptures: [BAVETTE] } }
-  const sculptures = placeSculptures(avecPiece)
-  const reservees = emprisesDeSculptures(sculptures)
-  const propsAvecPiece = placeProps(avecPiece, reservees)
-
-  it('la sculpture est bien posée, sinon ce test ne prouve rien', () => {
-    expect(sculptures).toHaveLength(1)
-  })
-
-  it('AUCUN prop ne croise l’emprise de la sculpture', () => {
-    const boite = boiteDeSculpture(sculptures[0])
-    const fautifs = propsAvecPiece
-      .filter((p) => p.floorId === sculptures[0].floorId)
-      .filter((p) => croisent(boiteDuProp(p), boite))
-      .map((p) => `${p.id} en (${p.position.x.toFixed(2)}, ${p.position.z.toFixed(2)})`)
-    expect(fautifs).toEqual([])
-  })
-
-  it('sans réservation, le mobilier ENVAHIT la place — sinon le test n’a pas de dents', () => {
-    const boite = boiteDeSculpture(sculptures[0])
-    const sansReservation = placeProps(avecPiece)
-      .filter((p) => p.floorId === sculptures[0].floorId)
-      .filter((p) => croisent(boiteDuProp(p), boite))
-    expect(sansReservation.length).toBeGreaterThan(0)
-  })
-
-  it('ne réserve que sur le niveau concerné', () => {
-    const autresNiveaux = placeProps(avecPiece, reservees).filter(
-      (p) => p.floorId !== sculptures[0].floorId,
-    )
-    expect(autresNiveaux).toEqual(
-      placeProps(museum).filter((p) => p.floorId !== sculptures[0].floorId),
-    )
-  })
-})
-```
-
-⚠️ Le troisième test est le seul qui donne du sens aux deux premiers : si le mobilier ne tombait de toute façon jamais là, réserver ne prouverait rien. **S'il échoue, ne pas le supprimer** — il signifie que le placement a changé et que l'invariant n'est plus mis à l'épreuve ; il faut alors trouver un autre point de contact, pas baisser la garde.
-
-- [ ] **Step 2: Lancer le test pour vérifier qu'il échoue**
-
-Run: `npm test -- src/domain/__tests__/props.test.ts`
-Expected: FAIL — `placeProps` n'accepte qu'un argument, et `emprisesDeSculptures` n'est pas résolu.
-
-- [ ] **Step 3: Ajouter le type et le paramètre**
-
-Dans `src/domain/props.ts`, ajouter après la déclaration de `Boite` (après la ligne 300) :
-
-```ts
-/**
- * Une emprise que le placement doit contourner, déjà occupée par autre chose.
- *
- * Elle existe pour les pièces en volume (`domain/sculptures.ts`), mais son type
- * ne les nomme pas : ce module n'a pas à savoir CE QUI occupe la place, seulement
- * qu'elle est prise. C'est aussi ce qui évite un import croisé entre les deux
- * modules — la dépendance ne va que dans un sens.
- */
-export interface EmpriseReservee {
-  floorId: string
-  boite: Boite
-}
-```
-
-Puis remplacer la signature et l'initialisation de `poses` dans `placeProps` (ligne 375 et ligne 385) :
-
-```ts
-export function placeProps(
-  museum: Museum,
-  reservees: readonly EmpriseReservee[] = [],
-): PropPlacement[] {
-  const resultat: PropPlacement[] = []
-
-  for (const floor of museum.floors) {
-    const obstacles = obstaclesDuNiveau(museum, floor)
-    // Les props déjà posés deviennent à leur tour des obstacles : sans ça, deux
-    // salles adjacentes peuvent poser chacune une jardinière de part et d'autre
-    // d'une cloison mince et les faire se chevaucher au travers.
-    //
-    // Les emprises RÉSERVÉES sont semées ici, avant tout le reste : une pièce en
-    // volume est posée par un autre module, et le mobilier doit la contourner
-    // exactement comme il contourne un banc déjà placé. Les semer dans `poses`
-    // plutôt que dans `obstacles` n'est pas un détail — c'est ce qui leur donne
-    // le jeu de `ENTRE_PROPS`, c'est-à-dire de quoi passer devant.
-    const poses: Boite[] = reservees
-      .filter((r) => r.floorId === floor.id)
-      .map((r) => r.boite)
-```
-
-Le reste du corps de `placeProps` est inchangé.
-
-- [ ] **Step 4: Lancer les tests**
-
-Run: `npm test -- src/domain/__tests__/props.test.ts src/domain/__tests__/sculptures.test.ts`
-Expected: PASS, y compris les 20 tests existants de `props.test.ts` (le paramètre est optionnel).
-
-- [ ] **Step 5: Lancer toute la suite**
-
-Run: `npm test && npm run lint`
-Expected: PASS.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add src/domain/props.ts src/domain/__tests__/props.test.ts
-git commit -m "feat(domain): le mobilier contourne les emprises reservees
-
-placeProps accepte des emprises deja occupees, semees dans `poses` et non dans
-`obstacles` : c'est ce qui leur donne le jeu d'ENTRE_PROPS, donc de quoi passer
-devant plutot que de raser la piece.
-
-Le type ne nomme pas les sculptures. props.ts n'a pas a savoir CE QUI occupe la
-place, seulement qu'elle est prise — et la dependance ne va ainsi que dans un
-sens.
-
-Le test 'sans reservation, le mobilier ENVAHIT la place' est ce qui donne des
-dents aux deux autres : sans lui, ils passeraient meme si rien ne tombait
-jamais la."
+L'emprise est celle du SOCLE et non de la piece : le socle la contient par
+construction, et c'est lui qu'on heurte du pied."
 ```
 
 ---
@@ -889,11 +924,14 @@ jamais la."
 
 **Files:**
 - Create: `src/builders/plinth.ts`
+- Modify: `src/builders/slab.ts` (passer `toTrimesh` et `WELD_QUANTUM` en export, ligne 149 et 549)
 - Test: `src/builders/__tests__/plinth.test.ts`
 
 **Interfaces:**
-- Consumes: `TrimeshCollider` de `./slab` (exporté ligne 39).
+- Consumes: `TrimeshCollider` (exporté ligne 39) et `toTrimesh` de `./slab`.
 - Produces: `interface PlinthResult { geometry: THREE.BufferGeometry; collider: TrimeshCollider }` · `buildPlinth(width: number, depth: number, height: number): PlinthResult`.
+
+⚠️ **`toTrimesh` est PARTAGÉ, pas recopié.** Une première version du plan faisait dupliquer les ~35 lignes de soudure de sommets depuis `slab.ts`. Arbitré : une règle, une implémentation — la soudure de sommets pour Rapier est la même partout dans le bâtiment, et une correction appliquée à une copie manquerait l'autre. `toTrimesh` et `WELD_QUANTUM` passent donc en export dans `slab.ts`, qui exporte déjà `TrimeshCollider` pour la même raison.
 
 - [ ] **Step 1: Écrire le test qui échoue**
 
@@ -972,7 +1010,44 @@ describe('buildPlinth', () => {
 Run: `npm test -- src/builders/__tests__/plinth.test.ts`
 Expected: FAIL — `Cannot find module '../plinth'`.
 
-- [ ] **Step 3: Écrire le constructeur**
+- [ ] **Step 3: Partager `toTrimesh` depuis `slab.ts`**
+
+Dans `src/builders/slab.ts`, deux déclarations passent en export. Ligne 149 :
+
+```ts
+/**
+ * Quantum de soudure des sommets du collider, en mètres. Les positions sont
+ * stockées en float32 : deux sommets « identiques » diffèrent d'environ 1e-7.
+ * Un dixième de millimètre absorbe cette erreur sans jamais fusionner deux
+ * sommets réellement distincts, nos coordonnées étant au pire au centimètre.
+ */
+export const WELD_QUANTUM = 1e-4
+```
+
+Ligne 549, ajouter `export` devant `function toTrimesh`, et compléter sa
+documentation d'une phrase — un export est un contrat, pas un détail :
+
+```ts
+/**
+ * Extrait le maillage de collision d'une géométrie, en soudant les sommets
+ * coïncidents. Rapier n'utilise que les positions : garder les doublons ne
+ * ferait qu'alourdir la structure d'accélération du trimesh.
+ *
+ * Exporté parce que la soudure est la MÊME règle partout dans le bâtiment :
+ * `builders/plinth.ts` la consomme. Une seconde copie divergerait à la première
+ * correction appliquée d'un seul côté.
+ */
+export function toTrimesh(geometry: THREE.BufferGeometry): TrimeshCollider {
+```
+
+⚠️ **Ne rien changer d'autre dans `slab.ts`.** `quantise` reste privée : elle n'a de sens que pour `toTrimesh`, qui est maintenant partagée.
+
+- [ ] **Step 4: Vérifier que le partage n'a rien cassé**
+
+Run: `npm test -- src/builders/__tests__/slab.test.ts`
+Expected: PASS. Ajouter un `export` ne change aucun comportement ; si un test bouge, c'est qu'autre chose a été modifié par mégarde.
+
+- [ ] **Step 5: Écrire le constructeur**
 
 Créer `src/builders/plinth.ts` :
 
@@ -997,18 +1072,22 @@ Créer `src/builders/plinth.ts` :
 import * as THREE from 'three'
 
 import type { TrimeshCollider } from './slab'
+import { toTrimesh } from './slab'
 
 export interface PlinthResult {
   geometry: THREE.BufferGeometry
   collider: TrimeshCollider
 }
 
-/** Quantum de soudure des sommets, identique à `builders/slab.ts`. */
-const WELD_QUANTUM = 1e-4
-
 /**
  * Construit un socle de `width` × `depth` × `height`, centré en plan sur
  * l'origine, sa base en y = 0.
+ *
+ * La soudure du collider vient de `slab.ts` et n'est pas refaite ici : c'est la
+ * même règle, et deux copies divergeraient à la première correction appliquée
+ * d'un seul côté. Elle ramène les 24 sommets de `BoxGeometry` — trois par coin,
+ * un par face, pour que les normales des arêtes vives restent distinctes — aux
+ * 8 coins réels.
  */
 export function buildPlinth(width: number, depth: number, height: number): PlinthResult {
   if (width <= 0 || depth <= 0 || height <= 0) {
@@ -1022,63 +1101,32 @@ export function buildPlinth(width: number, depth: number, height: number): Plint
 
   return { geometry, collider: toTrimesh(geometry) }
 }
-
-/**
- * Maillage de collision, sommets coïncidents soudés.
- *
- * Rapier n'utilise que les positions : les 24 sommets de `BoxGeometry` — trois
- * par coin, un par face, pour que les normales des arêtes vives restent
- * distinctes — se ramènent aux 8 coins réels.
- */
-function toTrimesh(geometry: THREE.BufferGeometry): TrimeshCollider {
-  const position = geometry.getAttribute('position')
-  const index = geometry.getIndex()
-  const source = index
-    ? Array.from({ length: index.count }, (_, i) => index.getX(i))
-    : Array.from({ length: position.count }, (_, i) => i)
-
-  const vertices: number[] = []
-  const indices: number[] = []
-  const vus = new Map<string, number>()
-
-  for (const sommet of source) {
-    const x = position.getX(sommet)
-    const y = position.getY(sommet)
-    const z = position.getZ(sommet)
-    const cle = `${quantise(x)}|${quantise(y)}|${quantise(z)}`
-    let soude = vus.get(cle)
-    if (soude === undefined) {
-      soude = vertices.length / 3
-      vus.set(cle, soude)
-      vertices.push(x, y, z)
-    }
-    indices.push(soude)
-  }
-
-  return { vertices: new Float32Array(vertices), indices: new Uint32Array(indices) }
-}
-
-function quantise(valeur: number): number {
-  // `+ 0` neutralise le −0, qui donnerait une clé distincte de celle de 0.
-  return Math.round(valeur / WELD_QUANTUM) + 0
-}
 ```
 
-- [ ] **Step 4: Lancer le test**
+- [ ] **Step 6: Lancer le test**
 
 Run: `npm test -- src/builders/__tests__/plinth.test.ts`
 Expected: PASS, les 7.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 7: Lancer toute la suite**
+
+Run: `npm test && npm run lint`
+Expected: PASS — `slab.ts` a changé, ses consommateurs doivent être vérifiés.
+
+- [ ] **Step 8: Commit**
 
 ```bash
-git add src/builders/plinth.ts src/builders/__tests__/plinth.test.ts
+git add src/builders/plinth.ts src/builders/slab.ts src/builders/__tests__/plinth.test.ts
 git commit -m "feat(builders): un socle aux cotes demandees
 
 Une BoxGeometry et non une ExtrudeGeometry : un socle n'a pas de trou, donc les
 deux pieges du §8 — le biseau et l'index absent — ne se posent pas. Les tests
 les verifient quand meme : le jour ou le socle recevra un chanfrein, il faudra
-extruder, et la garde sera deja la."
+extruder, et la garde sera deja la.
+
+toTrimesh passe en export dans slab.ts plutot que d'etre recopie. La soudure de
+sommets pour Rapier est la meme regle partout dans le batiment ; une seconde
+copie divergerait a la premiere correction appliquee d'un seul cote."
 ```
 
 ---
@@ -2063,7 +2111,7 @@ function useSculptureAssets(fichiers: readonly string[]): SculptureAssets | null
 
 ⚠️ Le `placement` passé à `<SculptureCartel>` a sa position remise à zéro : le cartel est monté DANS le groupe déjà translaté, ses coordonnées y sont donc locales. Sans ça la pièce serait décalée deux fois.
 
-⚠️ **`CuboidCollider` n'a PAS pu être vérifié contre le paquet** — `node_modules` était absent du worktree au moment d'écrire ce plan. Ce qui est établi : `RoomMesh.tsx:31` importe `TrimeshCollider` de `@react-three/rapier`, donc la famille des composants collider existe bien dans cette version. `CuboidCollider` en est un export standard de la v2, mais **le confirmer à la première compilation** plutôt que de le supposer. S'il n'existe pas sous ce nom, l'équivalent est `<RigidBody type="fixed" colliders="cuboid">` enveloppant un maillage aux dimensions voulues — c'est ce que fait `ParkLayer.tsx:97`.
+✅ **`CuboidCollider` est vérifié** — déclaré dans `node_modules/@react-three/rapier/dist/declarations/src/components/AnyCollider.d.ts:22`, réexporté par `index.d.ts:11` (`export * from "./components/AnyCollider.js"`). L'import fonctionne. (Une version antérieure de ce plan portait ici un avertissement : `node_modules` n'était pas installé au moment de l'écrire, et le plan disait ne pas avoir vérifié plutôt que de supposer. C'est fait.)
 
 - [ ] **Step 2: Réserver les emprises dans `PropsLayer`**
 
@@ -2241,15 +2289,20 @@ Budget verifie par tools/capture.ts --check, pas estime."
 |---|---|
 | §4 modèle de données | Task 1 |
 | §5.1 socle bas | Tasks 4, 9 (la cote vit dans la config) |
-| §5.2 emplacement et axe | Task 2, vérifié Task 9 étape 5 |
-| §5.3 ordre de placement | Task 3 (le test), Task 8 (le câblage) |
+| §5.2 emplacement et axe | Task 3, vérifié Task 9 étape 5 |
+| §5.3 ordre de placement | Task 2 (le mécanisme), Task 3 (le test sur la vraie pièce), Task 8 (le câblage) |
 | §6 chaîne d'asset, budget, source | Task 5 |
-| §7 modules | Tasks 2, 4, 6, 7, 8 |
+| §7 modules | Tasks 3, 4, 6, 7, 8 |
 | §8 collider | Task 8 |
 | §9 cartel | Task 7 |
 | §10 budget | Task 9 étape 4 |
 | §11 tests | Tasks 1, 2, 3, 4, 6 |
 | §12 hors périmètre | rien n'y touche |
+
+**Trois corrections apportées au scan pré-vol, arbitrées par Philippe avant exécution :**
+1. Task 4 faisait RECOPIER `toTrimesh` depuis `slab.ts` — ~35 lignes identiques. `toTrimesh` et `WELD_QUANTUM` passent en export : une règle, une implémentation.
+2. Les tâches 2 et 3 sont INVERSÉES. L'ordre d'origine livrait `sculptures.ts` avec un commit qui ne typecheckait pas, puisque `EmpriseReservee` n'arrivait qu'ensuite. Chaque commit compile désormais, et `git bisect` reste utilisable.
+3. Le test de `sculptureCartelText` portait un `.replace('’', "'")` sur sa chaîne attendue — apostrophe typographique contre apostrophe droite. Corrigé en construisant l'attendu par `join('\n')`, sans acrobatie.
 
 **Deux écarts au spec, corrigés dans le plan plutôt que propagés :**
 1. Le §9 annonçait « `Cartel.tsx` réutilisé tel quel » — faux, `CartelSpec` est ancré sur un mur et indexé par dépôt. Task 7 corrige le composant **et le spec**.
