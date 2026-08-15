@@ -62,4 +62,23 @@ describe('buildPlinth', () => {
     const b = buildPlinth(1.1, 1.1, 0.25).geometry.getAttribute('position').array
     expect(Array.from(a)).toEqual(Array.from(b))
   })
+
+  it('distingue ses trois axes — une permutation ne doit pas passer', () => {
+    /*
+      TROIS cotes distinctes, vérifiées SÉPARÉMENT par axe.
+
+      `buildPlinth(width, depth, height)` appelle `new THREE.BoxGeometry(width,
+      height, depth)` : trois axes, deux conventions d'ordre différentes, et
+      rien dans le nom des paramètres ne signale l'inversion. Avec un socle
+      carré, permuter la largeur et la profondeur laisse passer TOUS les autres
+      tests — mesuré. Le centrage ne suffit pas non plus : il est symétrique
+      quelle que soit la cote assignée à chaque axe.
+    */
+    const { geometry } = buildPlinth(1.4, 0.8, 0.25)
+    geometry.computeBoundingBox()
+    const b = geometry.boundingBox!
+    expect(b.max.x - b.min.x).toBeCloseTo(1.4, 6) // largeur → X
+    expect(b.max.z - b.min.z).toBeCloseTo(0.8, 6) // profondeur → Z
+    expect(b.max.y - b.min.y).toBeCloseTo(0.25, 6) // hauteur → Y
+  })
 })
