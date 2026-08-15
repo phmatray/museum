@@ -52,12 +52,19 @@ interface Noeud {
   name?: string
 }
 
+interface Primitive {
+  attributes: Record<string, number>
+  indices?: number
+  /** 4 = TRIANGLES, et c'est le défaut de la spécification. */
+  mode?: number
+}
+
 interface Gltf {
   scenes?: { nodes?: number[] }[]
   scene?: number
   nodes?: Noeud[]
-  meshes?: { primitives: { attributes: Record<string, number> }[] }[]
-  accessors?: { min?: number[]; max?: number[] }[]
+  meshes?: { primitives: Primitive[] }[]
+  accessors?: { min?: number[]; max?: number[]; count?: number }[]
 }
 
 const MAGIC = 0x46546c67
@@ -188,6 +195,63 @@ export function bornesDuNoeud(gltf: Gltf, nom: string): Bornes | null {
   }
 
   return Number.isFinite(min[0]) ? { min, max } : null
+}
+
+/**
+ * Triangles d'un nœud nommé et de sa descendance.
+ *
+ * ── Pourquoi ici, et pourquoi sans décoder non plus ──
+ *
+ * Le §9 plafonne les triangles, et `tools/capture.ts` le vérifie — mais il lui
+ * faut un navigateur, un contexte WebGL et une scène montée. Cela le rend
+ * excellent comme juge final et inutilisable comme garde-fou : quand il rougit,
+ * le modèle est déjà commité. Le même compte se lit ici en quelques
+ * millisecondes, sur le fichier, AVANT qu'il entre dans l'arbre.
+ *
+ * Aucun décodage, pour la raison qui vaut déjà pour les bornes : un accesseur
+ * porte toujours son `count`, y compris sous `KHR_draco_mesh_compression`, où
+ * seul le `bufferView` devient optionnel. On lit donc le nombre d'indices dans
+ * le JSON et on divise par trois.
+ *
+ * Deux réserves, toutes deux du bon côté :
+ *
+ *  - une primitive NON indexée retombe sur `POSITION.count / 3`, ce que la
+ *    spécification impose comme équivalent en mode TRIANGLES ;
+ *  - une primitive qui n'est pas en mode TRIANGLES (`mode !== 4`) est IGNORÉE
+ *    plutôt que comptée de travers. Le kit n'en contient aucune, et en compter
+ *    une comme des triangles gonflerait le budget sans rien mesurer.
+ *
+ * Ce que ce compte N'EST PAS : le nombre de triangles DESSINÉS. Il faut le
+ * multiplier par le nombre d'exemplaires posés — c'est justement ce que le
+ * multiplicateur rend visible, et c'est là que se cachait le projecteur à
+ * 940 triangles instancié cent fois.
+ */
+export function trianglesDuNoeud(gltf: Gltf, nom: string): number | null {
+  const noeuds = gltf.nodes ?? []
+  const depart = noeuds.findIndex((n) => n.name === nom)
+  if (depart < 0) return null
+
+  let total = 0
+  const pile: number[] = [depart]
+  while (pile.length > 0) {
+    const index = pile.pop() as number
+    const noeud = noeuds[index]
+
+    if (noeud.mesh !== undefined) {
+      for (const prim of gltf.meshes?.[noeud.mesh]?.primitives ?? []) {
+        if ((prim.mode ?? 4) !== 4) continue
+        const acc =
+          prim.indices !== undefined
+            ? gltf.accessors?.[prim.indices]
+            : gltf.accessors?.[prim.attributes.POSITION]
+        if (acc?.count === undefined) continue
+        total += Math.floor(acc.count / 3)
+      }
+    }
+    for (const enfant of noeud.children ?? []) pile.push(enfant)
+  }
+
+  return total
 }
 
 /**

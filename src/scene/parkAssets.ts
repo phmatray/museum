@@ -11,8 +11,21 @@
  *
  * Des modèles de rendu hors ligne : `island_tree_01` pèse 1 599 403 triangles,
  * `jacaranda_tree` 3 863 832. `tools/blender/decimate-plants.py` les ramène à
- * 6 000 par arbre et 2 000 par arbuste, cartes à 512 — 2 830 012 triangles
- * deviennent 15 999, et 1,9 Mo au lieu de plus de cinquante.
+ * **22 000 par arbre et 4 000 par arbuste** (`BUDGET_ARBRE`, `BUDGET_ARBUSTE`),
+ * cartes à 512.
+ *
+ * ⚠️ Ce paragraphe a annoncé « 6 000 par arbre et 2 000 par arbuste » pendant
+ * toute la durée de vie du fichier, et c'était FAUX depuis le correctif qui a
+ * relevé les budgets : à 6 000, les cartes de feuilles — deux triangles chacune —
+ * étaient les premières effondrées par COLLAPSE et l'arbre sortait en SQUELETTE.
+ * Le chiffre a été corrigé dans `decimate-plants.py`, pas ici.
+ *
+ * Ce n'était pas une coquille, c'était un piège actif : ce commentaire a servi de
+ * mesure, et il a fait sous-estimer le parc d'un facteur 2,4 lors d'un
+ * dimensionnement de budget. Le parc réel pèse **610 855 triangles à l'écran, soit
+ * 64 % de toute la scène** — et non ~250 000. La source de vérité est le fichier
+ * Python ; le relevé se rejoue par `node tools/measure-props.ts`, qui compte sur
+ * les GLB eux-mêmes et n'a aucun commentaire à croire.
  *
  * On garde leurs matériaux tels quels : le masque d'alpha est ce qui découpe le
  * feuillage dans ses quads, et le fusionner comme on fusionne le mobilier
@@ -34,22 +47,12 @@ export interface ParkPiece {
 
 export type ParkAssets = ReadonlyMap<EspeceParc, readonly ParkPiece[]>
 
-export const PARK_LOD = 'assets/plants/park-lod.glb'
-export const DRACO_PATH = 'draco/'
+// Chemins et noms de nœuds vivent dans `kits.ts`, qui n'importe ni `three` ni
+// Vite — voir l'en-tête de ce fichier-là. Réexportés pour que rien ne change
+// d'import.
+export { DRACO_PATH, ESPECES_PARK_GLB, PARK_LOD } from './kits'
 
-/**
- * Les nœuds de chaque essence dans `park-lod.glb`.
- *
- * DOIT rester synchronisée avec `GARDES_PARC` de `decimate-plants.py`, qui
- * décide de ce que le fichier contient. Un test le vérifie plutôt que de compter
- * sur la discipline.
- */
-export const ESPECES_PARK_GLB: readonly { id: EspeceParc; noeuds: readonly string[] }[] = [
-  { id: 'arbre-01', noeuds: ['island_tree_01_LOD0'] },
-  { id: 'arbre-02', noeuds: ['island_tree_02_LOD0'] },
-  { id: 'arbuste-01', noeuds: ['shrub_01_a'] },
-  { id: 'arbuste-02', noeuds: ['shrub_03_a'] },
-]
+import { ESPECES_PARK_GLB, PARK_LOD, DRACO_PATH } from './kits'
 
 // ── Chargement ───────────────────────────────────────────────────────────
 

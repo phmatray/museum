@@ -1,0 +1,176 @@
+{
+  "_pourquoi": "Relevé de référence AVANT le chantier Calatrava. Sert d'oracle avant/après. Rejouable : node tools/capture.ts --url <serveur>, puis python3 tools/oracle.py fixer.",
+  "_conditions": "Assets CC0 récupérés (node tools/fetch-assets.ts) ET atlas construit (npm run media). Sans eux le musée rend sans matières, sans HDRI et sans œuvres, et les métriques de luminance ne veulent rien dire : mesuré le même jour, la vue `entree` donnait 172,1 de luminance et 255 draw calls à sec, contre 144,7 et 259 une fois les assets en place. Un oracle pris sur un musée nu aurait fait passer pour une régression tout ce qui n'aurait été qu'un chargement réussi.",
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "deviceScaleFactor": 2
+  },
+  "budget": {
+    "calls": 150,
+    "triangles": 1000000,
+    "lights": 12,
+    "shadowCasters": 2
+  },
+  "pires": {
+    "calls": 259,
+    "triangles": 975919,
+    "lights": 12,
+    "shadowCasters": 1
+  },
+  "vues": [
+    {
+      "vue": "entree",
+      "preuve": "vue d'accueil : plus de masse noire, et le plafond n'est plus du parquet",
+      "pctSous25": 0.17,
+      "pctSous10": 0.03,
+      "pctSur230": 1.37,
+      "pctSur250": 0.01,
+      "luminanceMoyenne": 144.7,
+      "ecartType": 35.3,
+      "mesure": {
+        "calls": 259,
+        "triangles": 975919,
+        "frame": 4791,
+        "lights": 12,
+        "shadowCasters": 1
+      }
+    },
+    {
+      "vue": "exterieur",
+      "preuve": "silhouette et façade : teinte unique, pas de bandeau de bois par niveau",
+      "pctSous25": 0.01,
+      "pctSous10": 0,
+      "pctSur230": 1.66,
+      "pctSur250": 0,
+      "luminanceMoyenne": 150.6,
+      "ecartType": 46.5,
+      "mesure": {
+        "calls": 256,
+        "triangles": 975539,
+        "frame": 6519,
+        "lights": 12,
+        "shadowCasters": 1
+      }
+    },
+    {
+      "vue": "atrium-plongee",
+      "preuve": "la rampe vue de haut : garde-corps et sous-face du tablier",
+      "pctSous25": 0,
+      "pctSous10": 0,
+      "pctSur230": 0.26,
+      "pctSur250": 0,
+      "luminanceMoyenne": 146.3,
+      "ecartType": 34.1,
+      "mesure": {
+        "calls": 225,
+        "triangles": 973089,
+        "frame": 8311,
+        "lights": 12,
+        "shadowCasters": 1
+      }
+    },
+    {
+      "vue": "coin",
+      "preuve": "l'angle de salle : le SSAO doit y creuser un dégradé",
+      "pctSous25": 1.13,
+      "pctSous10": 0.71,
+      "pctSur230": 0.11,
+      "pctSur250": 0,
+      "luminanceMoyenne": 125.4,
+      "ecartType": 27.8,
+      "mesure": {
+        "calls": 158,
+        "triangles": 963259,
+        "frame": 10007,
+        "lights": 12,
+        "shadowCasters": 1
+      }
+    },
+    {
+      "vue": "coin-sans-postfx",
+      "preuve": "même caméra, sans post-traitement : le témoin du A/B",
+      "pctSous25": 0.62,
+      "pctSous10": 0,
+      "pctSur230": 0.11,
+      "pctSur250": 0.09,
+      "luminanceMoyenne": 134.7,
+      "ecartType": 22.8,
+      "mesure": {
+        "calls": 103,
+        "triangles": 962818,
+        "frame": 10053,
+        "lights": 12,
+        "shadowCasters": 1
+      }
+    },
+    {
+      "vue": "escalier",
+      "preuve": "l'escalier hélicoïdal : girons et contremarches, pas un plan incliné",
+      "pctSous25": 0.16,
+      "pctSous10": 0.06,
+      "pctSur230": 5.08,
+      "pctSur250": 0,
+      "luminanceMoyenne": 152.8,
+      "ecartType": 41.6,
+      "mesure": {
+        "calls": 246,
+        "triangles": 974795,
+        "frame": 11845,
+        "lights": 12,
+        "shadowCasters": 1
+      }
+    },
+    {
+      "vue": "fenetre",
+      "preuve": "depuis un passage : la vue sur le parc, et la vitre qui la porte",
+      "pctSous25": 0.03,
+      "pctSous10": 0,
+      "pctSur230": 0,
+      "pctSur250": 0,
+      "luminanceMoyenne": 129.9,
+      "ecartType": 42.3,
+      "mesure": {
+        "calls": 135,
+        "triangles": 958471,
+        "frame": 13541,
+        "lights": 12,
+        "shadowCasters": 1
+      }
+    },
+    {
+      "vue": "palier",
+      "preuve": "le palier : le garde-corps doit s'ouvrir devant la première marche",
+      "pctSous25": 0.39,
+      "pctSous10": 0.08,
+      "pctSur230": 0.85,
+      "pctSur250": 0,
+      "luminanceMoyenne": 138.6,
+      "ecartType": 38.9,
+      "mesure": {
+        "calls": 236,
+        "triangles": 973967,
+        "frame": 15301,
+        "lights": 12,
+        "shadowCasters": 1
+      }
+    },
+    {
+      "vue": "plafond",
+      "preuve": "regard vers le haut : la sous-face de dalle doit être du béton clair",
+      "pctSous25": 0,
+      "pctSous10": 0,
+      "pctSur230": 34.31,
+      "pctSur250": 2.59,
+      "luminanceMoyenne": 204.4,
+      "ecartType": 33.5,
+      "mesure": {
+        "calls": 187,
+        "triangles": 968615,
+        "frame": 17061,
+        "lights": 12,
+        "shadowCasters": 1
+      }
+    }
+  ]
+}
