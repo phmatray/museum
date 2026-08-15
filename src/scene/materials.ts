@@ -194,6 +194,19 @@ export const REGLAGE_MATIERE: Record<MatiereId, ReglageMatiere> = {
    * Le `rebond` tombe à zéro : c'est le lèche-lumière peint sous les faces
    * tournées vers le bas, et une façade verticale n'en a aucune.
    */
+  // ⚠️ 1,85 et pas 2,35 — second A/B refusé le 2026-08-16.
+  //
+  // L'intuition était que le bâtiment lit beige et qu'un albédo plus haut le
+  // rendrait blanc. La mesure dit non : de 1,85 à 2,35, soit +27 % d'albédo, la
+  // vue `exterieur` gagne 3 points de luminance sur 156 — parce que le mappage
+  // tonal ACES COMPRESSE les hautes lumières, et qu'à ce niveau on pousse
+  // contre le rouleau. Pendant ce temps la vue `fenetre`, dont l'embrasure
+  // occupe un tiers du cadre, passe de 9,6 % à 23,1 % de quasi-blanc.
+  //
+  // Le blanc de cette architecture ne se gagne donc pas sur l'albédo. Le levier
+  // est l'EXPOSITION et l'occlusion — l'étape E6 du plan les règle ensemble,
+  // neuf constantes, chacune A/B-able seule grâce à la paire témoin
+  // `coin` / `coin-sans-postfx`. Un demi-réglage y serait pire que rien.
   'beton-blanc': { gain: 1.85, roughness: 0.95, metalness: 0, rebond: 0, motif: 2.6 },
   platre: { gain: 1.25, roughness: 1, metalness: 0, rebond: 0.14, motif: 3.2 },
   'platre-peint': { gain: 1.45, roughness: 1, metalness: 0, rebond: 0.14, motif: 3.2 },

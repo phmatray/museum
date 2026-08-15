@@ -189,6 +189,21 @@ export function FloorMesh({
   // l'entrée. Un plafond de musée est du béton clair, pas du parquet.
   const coqueMaterial = useMatiere('beton', undefined, {
     rebond: 0.34,
+    // ⚠️ 0xcfcac2 et pas plus clair, et le chiffre vient d'un A/B refusé.
+    //
+    // La rive de dalle vue du dehors et le plafond vu du dedans SONT LA MÊME
+    // SURFACE — un seul groupe de matériau porte la coque entière. Éclaircir la
+    // rive pour unifier la façade blanche éclaircit donc le plafond d'autant.
+    // Mesuré le 2026-08-16 en passant à 0xe4e2de : la vue `plafond` passe de
+    // 31,5 % à 43,7 % de pixels quasi blancs, l'écrêtage de 0,02 % à 1,24 %, et
+    // l'écart-type CHUTE de 36,2 à 30,0 — le défaut « plat et cramé ». Pendant
+    // ce temps la vue `exterieur` gagne 0,4 point de luminance sur 160.
+    //
+    // Le geste n'est donc pas mauvais, il est mal branché : unifier la façade
+    // demande un TROISIÈME groupe de matériau sur la dalle, pour que sa rive
+    // extérieure cesse de partager le sort de sa sous-face. Tant que ce groupe
+    // n'existe pas, ce réglage-ci n'a qu'un seul bon niveau, et c'est celui du
+    // plafond.
     teinte: '#cfcac2',
   })
   const slabMaterials = useMemo(

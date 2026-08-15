@@ -34,9 +34,23 @@ végétation, qui exigent Blender et sont donc commités.
 ## Mobilier et architecture — généré par Meshy AI
 
 Ces pièces ne sont **pas CC0**, et elles ne sont **pas reproductibles en CI**.
-Elles sortent d'un modèle génératif, à partir des prompts consignés dans la table
-`PIECES` de `tools/blender/process-meshy.py` et des images de référence
-versionnées dans `tools/meshy/reference/`.
+Elles sortent d'un modèle génératif. Trois fichiers versionnés portent tout ce
+qu'il faut pour les refaire :
+
+| Fichier | Ce qu'il porte |
+|---|---|
+| `tools/meshy/pieces.json` | les **prompts**, un par pièce, plus le suffixe de style commun aux trente. C'est la SOURCE de ces assets |
+| `tools/meshy/tasks.json` | les identifiants de tâche Meshy : la provenance, et l'historique des reprises avec leur motif |
+| `tools/meshy/reference/` | les images qui ont servi à générer la 3D, réduites à 768 px (0,6 Mo au total) |
+| `tools/blender/process-meshy.py` | la table `PIECES` : échelle, ancrage, budget de triangles, couleur — ce qu'on FAIT du maillage, pas ce qu'on demande |
+
+Depuis une image de référence, `meshy_image_to_3d` refait un maillage équivalent
+pour une vingtaine de crédits ; depuis les seuls prompts, il faut repasser par la
+génération d'image.
+
+⚠️ **Meshy ne documente pas la provenance de son entraînement.** Consigné ici
+sans être maquillé : c'est une information que quiconque republie ces pièces doit
+avoir.
 
 - **Licence** — compte Meshy **payant** : le titulaire du compte possède les
   modèles générés, usage commercial et redistribution compris. Aucune mention
