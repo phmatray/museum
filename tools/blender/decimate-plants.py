@@ -91,7 +91,23 @@ FICHIERS_PARC = [
 # chacune — sont les premieres a etre effondrees, et l'arbre sort en SQUELETTE.
 # Un tronc et des branches nues, sur toute la parcelle. Le budget doit laisser
 # de quoi garder les feuilles, qui sont ce qu'on regarde.
-BUDGET_ARBRE = 22_000
+#
+# ── Révision du 2026-08-15 : 22 000 -> 16 000 ──
+#
+# Le parc pesait 610 855 triangles à l'écran, soit **64 % de toute la scène**,
+# pour 22 arbres vus entre 30 et 80 m derrière un bâtiment — quand le bâtiment
+# lui-même en pèse 16 000. Relevé par `node tools/measure-props.ts`, qui compte
+# sur les GLB et non sur un commentaire.
+#
+# Ce n'est pas un plafond qu'on baisse pour éteindre un voyant : c'est le seul
+# poste du musée dont le coût soit sans rapport avec ce qu'on regarde. 16 000
+# reste 2,7 fois au-dessus du point de rupture mesuré (6 000, où les cartes de
+# feuilles s'effondraient et l'arbre sortait en squelette), et libère 132 000
+# triangles — de quoi payer tout le décor d'architecture.
+#
+# Le contrôle n'est pas le compteur, c'est la vue `exterieur` de
+# `tools/capture.ts`, en A/B avec le relevé de référence.
+BUDGET_ARBRE = 16_000
 BUDGET_ARBUSTE = 4_000
 
 GARDES = {
