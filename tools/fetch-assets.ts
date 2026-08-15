@@ -211,6 +211,65 @@ async function recupererPlante(id: string): Promise<string> {
 */
 const SOURCES_VEGETATION = process.argv.includes('--sources-vegetation')
 
+/**
+ * Le fichier de provenance, en DEUX régimes qui ne se mélangent pas.
+ *
+ * ── Pourquoi la phrase d'ouverture a changé ──
+ *
+ * Ce fichier s'ouvrait sur « Tous en CC0 (domaine public) », et c'était vrai
+ * tant que tout venait d'ambientCG et de Poly Haven. Ça a cessé de l'être le
+ * jour où le décor d'architecture est arrivé : il sort d'un modèle génératif,
+ * pas d'une banque d'assets libres. Le dépôt est PUBLIC — laisser la phrase en
+ * l'état aurait fait dire au fichier de provenance quelque chose de faux sur la
+ * moitié de ce qu'il documente.
+ *
+ * Le générateur porte donc les deux sections, et non le seul tableau CC0 : sans
+ * ça, le prochain `node tools/fetch-assets.ts` écraserait la correction. C'est
+ * la différence entre corriger un fichier et corriger ce qui l'écrit.
+ */
+function credits(journal: string[]): string {
+  return `# Assets
+
+Deux régimes, et ils ne se mélangent pas.
+
+## Matières, HDRI, végétation — CC0
+
+Tous en CC0 (domaine public). Aucune attribution n'est requise ; elle est donnée
+par correction et pour documenter la provenance.
+
+Récupérés par \`node tools/fetch-assets.ts\`, non versionnés — sauf les LOD de
+végétation, qui exigent Blender et sont donc commités.
+
+| Asset | Source | Licence | Usage |
+|---|---|---|---|
+${journal.join('\n')}
+
+## Mobilier et architecture — généré par Meshy AI
+
+Ces pièces ne sont **pas CC0**, et elles ne sont **pas reproductibles en CI**.
+Elles sortent d'un modèle génératif, à partir des prompts consignés dans la table
+\`PIECES\` de \`tools/blender/process-meshy.py\` et des images de référence
+versionnées dans \`tools/meshy/reference/\`.
+
+- **Licence** — compte Meshy **payant** : le titulaire du compte possède les
+  modèles générés, usage commercial et redistribution compris. Aucune mention
+  n'est donc due dans la page publiée. ⚠️ Cette ligne est à revérifier si le
+  compte repasse au palier gratuit, qui livre en **CC BY 4.0** et exigerait une
+  attribution *dans le site lui-même*, pas seulement ici.
+- **Traçabilité** — Meshy ne documente pas les œuvres de son entraînement. La
+  géométrie n'est rattachable à aucune source identifiable. C'est un fait qu'on
+  consigne, pas une licence qu'on invoque.
+- **Reproductibilité** — un rebuild ne repasse PAS par cet outil. Il repasse par
+  \`meshy_image_to_3d\` sur l'image de référence versionnée, puis par
+  \`blender --background --python tools/blender/process-meshy.py\`. C'est
+  pourquoi les kits sortis sont commités : la CI n'a ni Blender, ni compte Meshy.
+
+| Pièce | Id | Kit | Rendu | Référence |
+|---|---|---|---|---|
+| Nervure d'atrium | \`nervure-atrium\` | musee-fixe.glb | couleur de sommet | \`tools/meshy/reference/nervure-atrium.png\` |
+`
+}
+
 async function main() {
   await mkdir(OUT, { recursive: true })
   const journal: string[] = []
@@ -243,10 +302,7 @@ async function main() {
     console.log(`  Le musée lit les LOD versionnés, pas les sources.`)
   }
 
-  await writeFile(
-    join(OUT, 'CREDITS.md'),
-    `# Assets\n\nTous en CC0 (domaine public). Aucune attribution n'est requise ; elle est donnée\npar correction et pour documenter la provenance.\n\nRécupérés par \`node tools/fetch-assets.ts\`, non versionnés — sauf les LOD de\nvégétation et le kit de props, qui exigent Blender et sont donc commités.\n\n| Asset | Source | Licence | Usage |\n|---|---|---|---|\n${journal.join('\n')}\n`,
-  )
+  await writeFile(join(OUT, 'CREDITS.md'), credits(journal))
   console.log(`\nCREDITS.md écrit.`)
 }
 

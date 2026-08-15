@@ -69,6 +69,7 @@ import { ParkLayer } from './ParkLayer'
 */
 import { HAUTEUR_OEIL } from '../components/Player'
 import { PropsLayer } from './PropsLayer'
+import { DecorLayer } from './DecorLayer'
 import { RampMesh } from './RampMesh'
 import { RoomLights } from './RoomLights'
 import type { FloorCulling } from './floorCulling'
@@ -471,6 +472,17 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
         l'éclairage des toiles reste peint dans le shader (§9.2).
       */}
       <PropsLayer museum={museum} />
+
+      {/*
+        LE DÉCOR D'ARCHITECTURE (lot 9) : les nervures d'atrium, et ce qui
+        suivra. Une seule couche, un seul maillage, un seul draw call — la
+        fusion est faite dans `decorAssets.ts`, pas ici.
+
+        Il vit hors des groupes d'étage volontairement : une nervure naît du nez
+        de dalle d'un niveau et penche au-dessus du vide, donc elle appartient
+        autant à l'étage qui la porte qu'à celui qui la regarde d'en dessous.
+      */}
+      <DecorLayer museum={museum} />
 
       {/*
         LE PARC. Hors de tout groupe d'étage, et c'est délibéré : il

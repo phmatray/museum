@@ -24,22 +24,53 @@ public/media/*
 public/assets/*
 !public/assets/CREDITS.md
 
-# ── Trois exceptions : les sorties de BLENDER ──
+# ── Quatre exceptions : les sorties de BLENDER ──
 #
-# Le reste des assets se retéléchargent (`node tools/fetch-assets.ts`). Ces
-# trois-là ne le peuvent pas : ils sont produits par `tools/blender/*.py`, et la
-# CI n'a pas Blender. Sans eux, le musée publié n'a ni banc, ni socle, ni
-# jardinière, ni un seul arbre — et la suite de tests échoue, parce que
-# `PROP_METRICS` mesure le kit réel plutôt que de se croire sur parole.
+# Le reste des assets se retéléchargent (`node tools/fetch-assets.ts`). Ceux-là
+# ne le peuvent pas : ils sont produits par `tools/blender/*.py`, et la CI n'a
+# pas Blender. Sans eux, le musée publié n'a ni banc, ni socle, ni jardinière,
+# ni un seul arbre — et la suite de tests échoue, parce que `PROP_METRICS`
+# mesure le kit réel plutôt que de se croire sur parole.
 #
-# 4,3 Mo, déterministes, régénérables à l'identique par un script versionné.
-# C'est une sortie d'outil qu'on met sous git, pas une source binaire.
+# Trois d'entre eux sont déterministes et régénérables à l'identique par un
+# script versionné : c'est une sortie d'outil qu'on met sous git, pas une source
+# binaire. (Vérifié le 2026-08-15 : rejouer `decimate-plants.py` sans changer de
+# budget rend `plants-lod.glb` OCTET POUR OCTET identique.)
+#
+# ⚠️ `musee-fixe.glb` est le quatrième, et il ne rentre PAS dans cette phrase :
+# il sort de `process-meshy.py`, dont l'entrée est un modèle GÉNÉRATIF. Le
+# rejouer depuis les mêmes sources est déterministe ; regénérer ces sources ne
+# l'est pas, et demande un compte Meshy et des crédits. Il est donc commité pour
+# une raison de plus que les autres — non seulement la CI n'a pas Blender, mais
+# personne ne peut le reconstituer sans payer.
+#
+# ⚠️ Le `!public/assets/props/` seul un-ignorait le DOSSIER sans re-ignorer son
+# contenu : tout ce qu'on y déposait partait dans un commit, sources brutes
+# comprises. On aligne donc sur le motif des plantes, qui était correct.
 !public/assets/props/
+public/assets/props/*
 !public/assets/props/museum-kit.glb
+!public/assets/props/musee-fixe.glb
 !public/assets/plants/
 public/assets/plants/*
 !public/assets/plants/park-lod.glb
 !public/assets/plants/plants-lod.glb
+
+# ── Les sources Meshy BRUTES ──
+#
+# 3 Mo de GLB et 3,5 Mo de carte PAR PIÈCE, pour une trentaine de pièces : ~195 Mo
+# d'historique dans un dépôt public, pour des fichiers dont `process-meshy.py`
+# ne garde qu'un pour cent.
+#
+# ⛔ Et surtout, elles ne doivent pas vivre sous `public/` : Vite recopie ce
+# dossier INTÉGRALEMENT dans `dist/`. C'est la leçon du commit `fd858c1`, où le
+# site publié pesait 402 Mo au lieu de 48.
+#
+# Ce qu'on versionne à la place, c'est `tools/meshy/reference/` — les images qui
+# ont servi à générer la 3D, 604 ko au total. Depuis une image de référence,
+# `meshy_image_to_3d` refait un maillage équivalent pour quelques crédits ; sans
+# elle, il faudrait tout redessiner.
+assets-src/
 
 # Editor directories and files
 .vscode/*
