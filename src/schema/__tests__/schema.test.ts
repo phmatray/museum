@@ -122,6 +122,9 @@ describe('parseMuseumConfig — valeurs par défaut', () => {
         roomsPerFloor: 6,
       },
       clustering: { minClusterSize: 4, maxClusterSize: 14 },
+      // Défaut introduit par les sculptures : vide sur toute instance qui n'en
+      // déclare pas — c'est le cas de tout fork tant qu'il n'écrit rien.
+      sculptures: [],
     })
   })
 
@@ -365,5 +368,108 @@ describe('les schémas exportés restent utilisables directement', () => {
     expect(curationSchema.safeParse({}).success).toBe(true)
     expect(atlasIndexSchema.safeParse(atlasValide()).success).toBe(true)
     expect(catalogueSchema.safeParse(null).success).toBe(false)
+  })
+})
+
+describe('parseMuseumConfig — sculptures', () => {
+  const base = { schemaVersion: 1, owners: ['phmatray'] }
+
+  it('accepte une config sans sculptures — le cas de tout fork', () => {
+    const config = parseMuseumConfig(base)
+    expect(config.sculptures).toEqual([])
+  })
+
+  it('lit une sculpture complète', () => {
+    const config = parseMuseumConfig({
+      ...base,
+      sculptures: [
+        {
+          id: 'bavette',
+          file: 'bavette.glb',
+          height: 0.9,
+          facing: 'south',
+          plinth: { width: 1.1, depth: 1.1, height: 0.25 },
+          cartel: {
+            author: 'Philippe Matray',
+            title: 'Bavette endormi',
+            year: 2026,
+            medium: 'Photogrammétrie par IA (Meshy), maillage décimé',
+            credit: "Collection de l'artiste",
+          },
+        },
+      ],
+    })
+    // Non-null : le champ est optionnel dans le TYPE (une instance sans
+    // sculptures n'a pas à en porter un tableau vide), mais cette config vient
+    // d'être parsée avec une sculpture déclarée — il est forcément là.
+    expect(config.sculptures![0].id).toBe('bavette')
+    expect(config.sculptures![0].plinth.height).toBe(0.25)
+  })
+
+  it('refuse une hauteur nulle ou négative — une pièce plate n’est pas une pièce', () => {
+    expect(() =>
+      parseMuseumConfig({
+        ...base,
+        sculptures: [
+          {
+            id: 'x',
+            file: 'x.glb',
+            height: 0,
+            facing: 'south',
+            plinth: { width: 1, depth: 1, height: 0.25 },
+            cartel: { title: 'X' },
+          },
+        ],
+      }),
+    ).toThrow(/height/)
+  })
+
+  it('refuse une orientation inconnue', () => {
+    expect(() =>
+      parseMuseumConfig({
+        ...base,
+        sculptures: [
+          {
+            id: 'x',
+            file: 'x.glb',
+            height: 1,
+            facing: 'nordouest',
+            plinth: { width: 1, depth: 1, height: 0.25 },
+            cartel: { title: 'X' },
+          },
+        ],
+      }),
+    ).toThrow(/facing/)
+  })
+
+  it('refuse un cartel sans titre — un socle anonyme n’est pas un cartel', () => {
+    expect(() =>
+      parseMuseumConfig({
+        ...base,
+        sculptures: [
+          {
+            id: 'x',
+            file: 'x.glb',
+            height: 1,
+            facing: 'south',
+            plinth: { width: 1, depth: 1, height: 0.25 },
+            cartel: {},
+          },
+        ],
+      }),
+    ).toThrow(/title/)
+  })
+
+  it('refuse deux sculptures de même identifiant — la clé sert de graine et d’index', () => {
+    const s = {
+      file: 'x.glb',
+      height: 1,
+      facing: 'south' as const,
+      plinth: { width: 1, depth: 1, height: 0.25 },
+      cartel: { title: 'X' },
+    }
+    expect(() =>
+      parseMuseumConfig({ ...base, sculptures: [{ ...s, id: 'a' }, { ...s, id: 'a' }] }),
+    ).toThrow(/identifiant en double/)
   })
 })

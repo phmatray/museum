@@ -415,16 +415,57 @@ const clusteringSchema = z
     path: ['maxClusterSize'],
   })
 
-export const museumConfigSchema = z.strictObject({
-  schemaVersion: versionOptionnelle,
-  name: z.string().min(1).default('Musée GitHub'),
-  owners: z
-    .array(z.string().min(1))
-    .min(1, { error: 'attendu au moins un propriétaire GitHub — sans owner il n’y a rien à exposer' }),
-  filters: filtersSchema,
-  building: buildingSchema,
-  clustering: clusteringSchema,
+const sideSchema = z.enum(['north', 'east', 'south', 'west'])
+
+const sculptureCartelSchema = z.strictObject({
+  author: z.string().min(1).optional(),
+  title: z.string().min(1, { error: 'attendu un titre — un socle sans cartel n’expose rien' }),
+  year: z.number().int().optional(),
+  medium: z.string().min(1).optional(),
+  credit: z.string().min(1).optional(),
 })
+
+const sculptureSchema = z.strictObject({
+  id: z.string().min(1),
+  file: z.string().min(1),
+  height: z.number().positive({ error: 'attendu une hauteur réelle en mètres, strictement positive' }),
+  facing: sideSchema,
+  plinth: z.strictObject({
+    width: z.number().positive(),
+    depth: z.number().positive(),
+    height: z.number().nonnegative({ error: 'attendu ≥ 0 ; zéro pose la pièce à même le sol' }),
+  }),
+  room: z.string().min(1).optional(),
+  cartel: sculptureCartelSchema,
+})
+
+export const museumConfigSchema = z
+  .strictObject({
+    schemaVersion: versionOptionnelle,
+    name: z.string().min(1).default('Musée GitHub'),
+    owners: z
+      .array(z.string().min(1))
+      .min(1, { error: 'attendu au moins un propriétaire GitHub — sans owner il n’y a rien à exposer' }),
+    filters: filtersSchema,
+    building: buildingSchema,
+    clustering: clusteringSchema,
+    sculptures: z.array(sculptureSchema).default([]),
+  })
+  .superRefine((config, ctx) => {
+    // L'identifiant sert de clé de chargement ET de graine : un doublon ferait
+    // charger deux fois le même fichier pour n'en afficher qu'un, sans le dire.
+    const vus = new Set<string>()
+    config.sculptures.forEach((sculpture, i) => {
+      if (vus.has(sculpture.id)) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['sculptures', i, 'id'],
+          message: 'identifiant en double — chaque pièce ne peut figurer qu’une fois',
+        })
+      }
+      vus.add(sculpture.id)
+    })
+  })
 
 export function parseMuseumConfig(raw: unknown): MuseumConfig {
   verifierVersion(raw, FICHIER_CONFIG, false)
