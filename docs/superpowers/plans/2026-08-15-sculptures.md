@@ -2081,6 +2081,12 @@ interface UneSculptureProps {
 
 function UneSculpture({ placement, objet, theme }: UneSculptureProps) {
   const { plinth } = placement
+  // ⚠️ L'ORDRE DES TROIS COTES. `buildPlinth(width, depth, height)` n'a pas le
+  // même que `BoxGeometry(width, height, depth)` qu'il appelle, et le socle de
+  // Bavette est CARRÉ (1,10 × 1,10) : une permutation des deux premiers
+  // arguments ne se verrait donc ni à l'écran ni dans un test. Les trois
+  // propriétés sont nommées à l'appel pour que l'erreur soit au moins visible
+  // en relecture. Ne jamais réécrire cet appel avec des littéraux.
   const socle = useMemo(
     () => buildPlinth(plinth.width, plinth.depth, plinth.height),
     [plinth.width, plinth.depth, plinth.height],
@@ -2168,6 +2174,8 @@ function useSculptureAssets(fichiers: readonly string[]): SculptureAssets | null
 ```
 
 ⚠️ Le `placement` passé à `<SculptureCartel>` a sa position remise à zéro : le cartel est monté DANS le groupe déjà translaté, ses coordonnées y sont donc locales. Sans ça la pièce serait décalée deux fois.
+
+⚠️ **`<CuboidCollider args={[…, …, …]} />` porte le motif de permutation d'axes, deux fois rencontré dans ce lot.** Trois demi-cotes, un ordre positionnel implicite, et un socle **carré** dans la configuration de Bavette : intervertir la largeur et la profondeur ne se verrait ni à l'écran ni dans un test. Les deux instances précédentes — la fixture carrée de `boiteDeSculpture` (Task 3) et `BoxGeometry(1.1, 1.1, 0.25)` (Task 4) — ont toutes deux été trouvées par mutation, jamais par lecture. `scene/` n'ayant pas de test unitaire, la seule garde ici est la relecture : écrire les trois arguments dans l'ordre `[width/2, height/2, depth/2]` et le commenter.
 
 ✅ **`CuboidCollider` est vérifié** — déclaré dans `node_modules/@react-three/rapier/dist/declarations/src/components/AnyCollider.d.ts:22`, réexporté par `index.d.ts:11` (`export * from "./components/AnyCollider.js"`). L'import fonctionne. (Une version antérieure de ce plan portait ici un avertissement : `node_modules` n'était pas installé au moment de l'écrire, et le plan disait ne pas avoir vérifié plutôt que de supposer. C'est fait.)
 
