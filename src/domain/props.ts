@@ -105,6 +105,37 @@ export interface PropMetrics {
 }
 
 /**
+ * La pièce PEND-elle sous son ancrage, ou repose-t-elle dessus ?
+ *
+ * ── Pourquoi cette fonction existe, et pourquoi elle vit ICI ──
+ *
+ * La question se pose partout où l'on compare deux emprises au sol : un
+ * projecteur suspendu à 3,90 m au-dessus d'un banc n'est pas une collision,
+ * c'est un musée. Elle était donc écrite TROIS FOIS — dans `tools/plan.ts`,
+ * dans l'épreuve de placement du décor, dans l'épreuve du mobilier — et les
+ * trois fois de la même façon fautive : `maxY <= 0`.
+ *
+ * 🔴 Le kit Meshy l'a fait tomber d'un coup. Le nouveau projecteur mesure
+ * `minY = −0,222 ; maxY = +0,002` : il pend, sans le moindre doute, et deux
+ * millimètres de sa platine dépassent au-dessus du plan d'ancrage parce que
+ * l'effondrement d'arêtes déplace des sommets. Comparer une borne à zéro EXACT
+ * a fait basculer les trois tests à la fois, et le plan coté a sorti des
+ * recouvrements entre un objet à 3,75 m de haut et une plante de 84 cm.
+ *
+ * On ne demande donc plus « la pièce dépasse-t-elle son ancrage » — question
+ * dont la réponse tient dans un micromètre — mais « DE QUEL CÔTÉ est-elle »,
+ * à laquelle le milieu de son étendue répond sans ambiguïté : −0,11 pour le
+ * projecteur, +0,22 pour un banc.
+ *
+ * Une règle, une implémentation : le dépôt a déjà payé pour apprendre que la
+ * même règle recopiée à trois endroits diverge, et que réparer là où on l'a vue
+ * ne la répare pas là où elle se répète.
+ */
+export function pendAuPlafond(m: { minY: number; maxY: number }): boolean {
+  return (m.minY + m.maxY) / 2 < 0
+}
+
+/**
  * Mesuré sur les GLB eux-mêmes (bornes des accesseurs POSITION, transformation
  * de nœud comprise), pas estimé. Une valeur trop petite ici ferait passer les
  * tests d'intersection tout en enfonçant une plante dans un mur à l'écran.

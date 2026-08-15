@@ -18,13 +18,17 @@
     },
     "vitrine": {
       "tier": "A",
-      "image": "01a0079c-a6d8-700d-8742-efadff7235f7",
-      "modele": "01a007a4-477e-7b53-bb43-0c5d9323cc5a"
+      "image": "01a007b6-6e69-7cb1-9ed0-c6734cc7a959",
+      "modele": "01a007c5-d18f-7717-b6cc-6abc9abe0576",
+      "image_lot_precedent": "01a0079c-a6d8-700d-8742-efadff7235f7",
+      "reprise": "lot 4 : le VERRE s'etait reconstruit opaque — Meshy ne sait pas rendre une transparence. Redemandee en SOCLE seul ; la boite de verre sera procedurale."
     },
     "banque-accueil": {
       "tier": "A",
-      "image": "01a0079c-ad8f-7a72-949b-1c758baa99e4",
-      "modele": "01a007a4-5265-7a2b-bc20-7f06ebf110b7"
+      "image": "01a007b6-7b35-74af-ac08-af54f16a3e5c",
+      "modele": "01a007c5-dc0d-7725-91ba-c6f8429b4aef",
+      "image_lot_precedent": "01a0079c-ad8f-7a72-949b-1c758baa99e4",
+      "reprise": "lot 4 : les nervures, qui etaient tout le sujet, avaient fondu en une dalle lisse. Redemandees PROFONDES (15 cm) et ondulantes, vues de face."
     },
     "suspension-atrium": {
       "tier": "A",
@@ -58,8 +62,10 @@
     },
     "portique": {
       "tier": "A",
-      "image": "01a0079d-1b91-702a-baff-fcb23ee6624b",
-      "modele": "01a007a4-9646-7b5f-8f66-234a705e8261"
+      "image": "01a007b6-88c9-7d50-9839-98b68bb34093",
+      "modele": "01a007c5-e2c9-7727-a20e-ac49d9634b97",
+      "image_lot_precedent": "01a0079d-1b91-702a-baff-fcb23ee6624b",
+      "reprise": "lot 4 : le maillage etait fidele a l'image, et l'image montrait une fourche au lieu d'un mat penche. C'est l'IMAGE qui etait a reprendre, pas la 3D."
     },
     "sculpture-parvis": {
       "tier": "A",

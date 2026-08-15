@@ -39,8 +39,16 @@ export const PLANTS_LOD = 'assets/plants/plants-lod.glb'
 export const PARK_LOD = 'assets/plants/park-lod.glb'
 export const DRACO_PATH = 'draco/'
 
-/** Le décor d'architecture, produit par `tools/blender/process-meshy.py`. */
+/**
+ * Le décor, produit par `tools/blender/process-meshy.py`.
+ *
+ * DEUX fichiers, et la séparation n'est pas un rangement : `decorAssets.ts`
+ * fusionne chaque kit en un maillage unique, donc en une seule boîte englobante.
+ * Mettre le parc et l'intérieur dans le même donnerait une boîte allant du hall
+ * au fond de la parcelle, que le culling ne pourrait plus jamais écarter.
+ */
 export const DECOR_KIT_PATH = 'assets/props/musee-fixe.glb'
+export const DECOR_PARC_PATH = 'assets/props/musee-parc.glb'
 
 /**
  * Le nœud du kit de décor qui porte chaque pièce.
@@ -52,7 +60,42 @@ export const DECOR_KIT_PATH = 'assets/props/musee-fixe.glb'
  * pas ne lève rien : la pièce disparaît de la scène avec un avertissement.
  */
 export const NOEUDS_DU_DECOR: Record<string, DecorId> = {
+  // musee-fixe.glb
   NervureAtrium: 'nervure-atrium',
+  MatArborescent: 'mat-arborescent',
+  Console: 'console',
+  SculptureAtrium: 'sculpture-atrium',
+  SuspensionAtrium: 'suspension-atrium',
+  BanqueAccueil: 'banque-accueil',
+  Totem: 'totem',
+  BorneInfo: 'borne-info',
+  PoteauFile: 'poteau-file',
+  Portemanteau: 'portemanteau',
+  Corbeille: 'corbeille',
+  BancCourbe: 'banc-courbe',
+  PupitreCartel: 'pupitre-cartel',
+  SocleHaut: 'socle-haut',
+  SocleBas: 'socle-bas',
+  Vitrine: 'vitrine',
+  Lampadaire: 'lampadaire',
+  JardiniereLongue: 'jardiniere-longue',
+  JardiniereRonde: 'jardiniere-ronde',
+}
+
+/**
+ * Les nœuds du kit du PARC. Même contrat, autre fichier.
+ *
+ * ⚠️ `BalustradeNervuree` et `NervureLanterneau` sont dans `musee-fixe.glb` et
+ * n'apparaissent dans AUCUNE de ces deux tables : ils attendent l'escalier
+ * sculpté et la lanterne zénithale, qui n'existent pas encore. Un nœud présent
+ * dans le GLB mais absent d'ici n'est simplement pas chargé — voir `DECOR_IDS`.
+ */
+export const NOEUDS_DU_PARC: Record<string, DecorId> = {
+  Portique: 'portique',
+  SculptureParvis: 'sculpture-parvis',
+  BancParc: 'banc-parc',
+  BorneParc: 'borne-parc',
+  Vasque: 'vasque',
 }
 
 // ── Mobilier ─────────────────────────────────────────────────────────────

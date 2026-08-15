@@ -20,9 +20,9 @@ import { describe, expect, it } from 'vitest'
 
 import { DECOR_IDS, DECOR_METRICS, placeDecor } from '../../domain/decor'
 import type { DecorId, DecorPlacement } from '../../domain/decor'
-import { PROP_METRICS, placeProps } from '../../domain/props'
+import { PROP_METRICS, pendAuPlafond, placeProps } from '../../domain/props'
 import type { Museum } from '../../domain/types'
-import { DECOR_KIT_PATH, DRACO_PATH, NOEUDS_DU_DECOR } from '../kits'
+import { DECOR_KIT_PATH, DECOR_PARC_PATH, DRACO_PATH, NOEUDS_DU_DECOR, NOEUDS_DU_PARC } from '../kits'
 import { doitFusionner, SURCHARGE_FUSION } from '../decorAssets'
 import { lireGltf, metriquesDuNoeud, trianglesDuNoeud } from '../../domain/__tests__/glbBounds'
 
@@ -33,7 +33,14 @@ const musee = JSON.parse(
 
 describe('decorAssets — le catalogue', () => {
   it('fournit un modèle pour chaque identifiant de décor', () => {
-    const fournis = new Set<DecorId>(Object.values(NOEUDS_DU_DECOR))
+    // Les DEUX kits : le parc vit dans son propre fichier pour que sa boîte
+    // englobante ne s'étende pas du hall au fond de la parcelle. Ne contrôler
+    // que l'intérieur laisserait cinq pièces sans modèle, et une pièce sans
+    // modèle ne lève rien — elle disparaît avec un avertissement en console.
+    const fournis = new Set<DecorId>([
+      ...Object.values(NOEUDS_DU_DECOR),
+      ...Object.values(NOEUDS_DU_PARC),
+    ])
     expect([...DECOR_IDS].filter((id) => !fournis.has(id))).toEqual([])
   })
 
@@ -113,13 +120,33 @@ describe('decorAssets — le kit réel', () => {
     }
   })
 
-  it('ancre chaque pièce POSÉE sur son point de contact', () => {
+  it('ancre chaque pièce sur son point de CONTACT, quel qu’il soit', () => {
     // Le défaut invisible aux autres épreuves : `DECOR_METRICS` étant mesuré sur
     // le même fichier, un ancrage faux passerait les deux bornes sans broncher.
     // Seule cette assertion-ci l'attrape.
+    //
+    // ⚠️ Deux pièces PENDENT — la sculpture et la suspension d'atrium — et leur
+    // point de contact est leur SOMMET, pas leur pied. Exiger `minY ≈ 0` pour
+    // tout le monde accusait donc `SculptureAtrium` d'un ancrage faux alors
+    // qu'elle est correctement ancrée, à l'autre bout.
     for (const nom of Object.keys(NOEUDS_DU_DECOR)) {
-      const mesure = metriquesDuNoeud(gltf, nom)!
-      expect(Math.abs(mesure.minY), `« ${nom} » ne pose pas son pied à zéro`).toBeLessThan(0.02)
+      const m = metriquesDuNoeud(gltf, nom)!
+      const contact = (m.minY + m.maxY) / 2 < 0 ? m.maxY : m.minY
+      // La tolérance suit la TAILLE de la pièce, et ce n'est pas une indulgence :
+      // l'effondrement d'arêtes déplace des sommets proportionnellement à la
+      // longueur des arêtes qu'il fusionne. Sur la banque d'accueil, 3 m de
+      // long, le résidu vaut 22 mm — soit 0,7 % de la pièce, l'ordre de grandeur
+      // exact de tous les autres. Un seuil absolu accuserait donc les grandes
+      // pièces d'un défaut qui n'est proportionnellement pas plus grand.
+      //
+      // ⚠️ Et c'est la PLUS GRANDE dimension qui compte, pas la hauteur : la
+      // banque d'accueil fait 3 m de long pour 1,10 m de haut, et le résidu
+      // vient de ses arêtes longues. Mesurée sur la hauteur seule, la tolérance
+      // valait 11 mm pour un résidu de 22 — l'épreuve accusait la pièce d'un
+      // défaut que sa propre métrique ne savait pas dimensionner.
+      const taille = Math.max(2 * m.rayon, m.maxY - m.minY)
+      const tolerance = Math.max(0.02, taille * 0.01)
+      expect(Math.abs(contact), `« ${nom} » n’affleure pas son ancrage`).toBeLessThan(tolerance)
     }
   })
 
@@ -127,6 +154,39 @@ describe('decorAssets — le kit réel', () => {
     const script = readFileSync(resolve(RACINE, 'tools/blender/process-meshy.py'), 'utf8')
     for (const nom of Object.keys(NOEUDS_DU_DECOR)) {
       const reel = trianglesDuNoeud(gltf, nom)!
+      const bloc = new RegExp(`"noeud":\\s*"${nom}"[\\s\\S]*?"budget":\\s*(\\d+)`).exec(script)
+      expect(bloc, `budget de « ${nom} » introuvable`).not.toBeNull()
+      expect(reel).toBeLessThanOrEqual(Number(bloc![1]))
+      expect(reel).toBeGreaterThan(0)
+    }
+  })
+})
+
+/** Le prédicat du domaine, appliqué à une pièce de décor. Une règle, une implémentation. */
+function pend(p: DecorPlacement): boolean {
+  return pendAuPlafond(DECOR_METRICS[p.id])
+}
+
+describe('decorAssets — le kit du PARC', () => {
+  // Le second fichier a exactement les mêmes façons de casser en silence que le
+  // premier : un nœud mal nommé, une pièce hors budget. Ne contrôler que
+  // l'intérieur laisserait cinq pièces sans garde-fou — dont la sculpture du
+  // parvis, qui est la première chose qu'on voit du musée.
+  const gltfParc = lireGltf(resolve(RACINE, 'public', DECOR_PARC_PATH))
+  const script = readFileSync(resolve(RACINE, 'tools/blender/process-meshy.py'), 'utf8')
+
+  it('porte les nœuds que Blender y met, et leurs emprises', () => {
+    for (const [nom, id] of Object.entries(NOEUDS_DU_PARC)) {
+      const mesure = metriquesDuNoeud(gltfParc, nom)
+      expect(mesure, `« ${nom} » introuvable dans ${DECOR_PARC_PATH}`).not.toBeNull()
+      expect(DECOR_METRICS[id].radius).toBeGreaterThanOrEqual(mesure!.rayon - 0.01)
+      expect(DECOR_METRICS[id].maxY).toBeGreaterThanOrEqual(mesure!.maxY - 0.01)
+    }
+  })
+
+  it('tient le budget de triangles de la table Blender', () => {
+    for (const nom of Object.keys(NOEUDS_DU_PARC)) {
+      const reel = trianglesDuNoeud(gltfParc, nom)!
       const bloc = new RegExp(`"noeud":\\s*"${nom}"[\\s\\S]*?"budget":\\s*(\\d+)`).exec(script)
       expect(bloc, `budget de « ${nom} » introuvable`).not.toBeNull()
       expect(reel).toBeLessThanOrEqual(Number(bloc![1]))
@@ -161,19 +221,47 @@ describe('decor — le placement', () => {
     expect(placements.some((p) => p.floorId === reserve?.id)).toBe(false)
   })
 
-  it('pose chaque nervure au niveau du plancher de son étage', () => {
+  it('pose chaque pièce d’un étage DANS la tranche de cet étage', () => {
+    // L'ancienne version exigeait `y == elevation` au micromètre, ce qui n'était
+    // vrai que du temps où le décor n'était fait que de nervures posées au sol.
+    // Une console s'accroche SOUS la dalle du niveau, une suspension pend depuis
+    // le plancher du niveau au-dessus : les trois sont justes, et une égalité
+    // stricte n'en accepte qu'une.
+    //
+    // L'invariant réel est un ENCADREMENT : rien ne doit sortir de la tranche
+    // qui va de la sous-face de son plancher au plafond de son niveau.
     for (const p of placements) {
+      if (p.floorId === null) continue
       const etage = musee.floors.find((f) => f.id === p.floorId)
       expect(etage, `étage « ${p.floorId} » inconnu`).toBeDefined()
-      expect(p.position.y).toBeCloseTo(etage!.elevation, 6)
+      expect(p.position.y).toBeGreaterThanOrEqual(etage!.elevation - 1.0)
+      expect(p.position.y).toBeLessThanOrEqual(etage!.elevation + etage!.ceilingHeight + 0.01)
     }
   })
 
-  it('pose chaque nervure HORS du vide de la trémie', () => {
-    // Une nervure dont le pied flotte au-dessus du vide n'a rien pour la porter.
-    // Elle penche ensuite AU-DESSUS du vide, et c'est le geste — mais son pied
-    // reste sur la dalle.
-    for (const p of placements) {
+  it('n’attache un floorId qu’à ce qui appartient VRAIMENT à un plateau', () => {
+    // Les pièces du parvis portent `floorId: null`, et ce n'est pas un oubli :
+    // le culling écarte un plateau hors champ avec tout ce qui lui est attaché.
+    // Un portique rattaché au rez-de-chaussée disparaîtrait donc en même temps
+    // que lui — c'est-à-dire précisément quand on le regarde depuis dehors.
+    const dehors = placements.filter((p) => p.floorId === null)
+    expect(dehors.length, 'plus rien n’est posé hors des plateaux').toBeGreaterThan(0)
+    for (const p of dehors) {
+      expect(musee.floors.some((f) => f.id === p.floorId)).toBe(false)
+    }
+  })
+
+  it('pose chaque pièce POSÉE hors du vide de la trémie', () => {
+    // Une pièce dont le pied flotte au-dessus du vide n'a rien pour la porter.
+    // Une nervure penche ensuite AU-DESSUS du vide, et c'est le geste — mais son
+    // pied reste sur la dalle.
+    //
+    // ⚠️ Les pièces SUSPENDUES sont exclues, et c'est le contraire d'une
+    // indulgence : la sculpture d'atrium est posée au-dessus du vide EXPRÈS,
+    // dans le cœur de l'hélice, parce que c'est le seul volume du bâtiment qui
+    // soit à la fois central, haut de quatorze mètres et traversé par rien.
+    for (const p of placements.filter((x) => !pend(x))) {
+      if (p.floorId === null) continue
       const etage = musee.floors.find((f) => f.id === p.floorId)!
       const dansUnTrou = etage.slabHoles.some(
         (t) =>
@@ -186,8 +274,9 @@ describe('decor — le placement', () => {
     }
   })
 
-  it('reste dans l’emprise du bâtiment', () => {
+  it('reste dans l’emprise du bâtiment — sauf ce qui est dehors', () => {
     for (const p of placements) {
+      if (p.floorId === null) continue
       const f = musee.floors.find((x) => x.id === p.floorId)!
       expect(p.position.x).toBeGreaterThanOrEqual(f.footprint.x)
       expect(p.position.x).toBeLessThanOrEqual(f.footprint.x + f.footprint.width)
@@ -210,11 +299,25 @@ describe('decor — le placement', () => {
     const rayon = (p: DecorPlacement): number =>
       DECOR_METRICS[p.id].radius * Math.max(p.scale.x, p.scale.z)
 
+    // Deux pièces ne peuvent se traverser que si elles partagent une TRANCHE DE
+    // HAUTEUR. Une console accrochée sous une dalle et une nervure posée sur
+    // cette même dalle ont la même trace au sol par construction — c'est
+    // exactement le dessin voulu — et les compter comme un recouvrement ferait
+    // hurler l'épreuve sur ce qui va bien.
+    const chevauche = (a: DecorPlacement, b: DecorPlacement): boolean => {
+      const ha = [a.position.y + DECOR_METRICS[a.id].minY * a.scale.y,
+                  a.position.y + DECOR_METRICS[a.id].maxY * a.scale.y]
+      const hb = [b.position.y + DECOR_METRICS[b.id].minY * b.scale.y,
+                  b.position.y + DECOR_METRICS[b.id].maxY * b.scale.y]
+      return ha[0] < hb[1] - 0.01 && hb[0] < ha[1] - 0.01
+    }
+
     for (let i = 0; i < placements.length; i++) {
       for (let j = i + 1; j < placements.length; j++) {
         const a = placements[i]
         const b = placements[j]
         if (a.floorId !== b.floorId) continue
+        if (!chevauche(a, b)) continue
         const mini = rayon(a) + rayon(b)
         const d = Math.hypot(a.position.x - b.position.x, a.position.z - b.position.z)
         expect(
@@ -236,9 +339,14 @@ describe('decor — le placement', () => {
       const m = PROP_METRICS[p.id]
       // Un projecteur suspendu à 3,90 m au-dessus d'une nervure n'est pas une
       // collision : on ne compare que ce qui partage une tranche de hauteur.
-      if (m.maxY <= 0) continue
+      // ⚠️ Le test était `m.maxY <= 0`, et il a lâché sur les 2 mm de résidu
+      // d'ancrage du projecteur Meshy — voir `pendAuPlafond`.
+      if (pendAuPlafond(m)) continue
+      // Et symétriquement côté décor : une console accrochée sous une dalle ne
+      // peut pas heurter un socle posé au sol du niveau d'en dessous.
       for (const d of placements) {
         if (d.floorId !== p.floorId) continue
+        if (pend(d)) continue
         // Même correction que ci-dessus : l'emprise d'une nervure dépend de son
         // échelle, et `obstaclesDuNiveau` la lit bien ainsi. Une épreuve plus
         // stricte que le code qu'elle garde ne prouve rien — elle échoue sur des

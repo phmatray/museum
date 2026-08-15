@@ -33,10 +33,11 @@
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import type { GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 import type { DecorId, DecorPlacement } from '../domain/decor'
-import { DECOR_KIT_PATH, NOEUDS_DU_DECOR } from './kits'
+import { DECOR_KIT_PATH, DECOR_PARC_PATH, NOEUDS_DU_DECOR, NOEUDS_DU_PARC } from './kits'
 import { DRACO_PATH } from './kits'
 
 export interface DecorLot {
@@ -90,17 +91,34 @@ async function charger(base: string): Promise<DecorAssets> {
   draco.setDecoderPath(`${base}${DRACO_PATH}`)
   gltf.setDRACOLoader(draco)
 
-  const kit = await gltf.loadAsync(`${base}${DECOR_KIT_PATH}`)
   const pieces = new Map<DecorId, THREE.BufferGeometry>()
 
-  for (const [nom, id] of Object.entries(NOEUDS_DU_DECOR)) {
-    const noeud = kit.scene.getObjectByName(nom)
-    if (noeud === undefined) {
-      console.warn(`${DECOR_KIT_PATH} : nœud « ${nom} » introuvable`)
-      continue
+  // DEUX kits, et le second n'est pas un ajout cosmétique : le parc vit à
+  // cinquante mètres du hall. Les fusionner en un seul fichier donnerait une
+  // boîte englobante allant de l'entrée au fond de la parcelle, que le culling
+  // ne pourrait plus jamais écarter. Voir `DECOR_PARC_PATH` dans `kits.ts`.
+  //
+  // Les deux se chargent EN PARALLÈLE : ils sont indépendants, et les enchaîner
+  // ferait attendre le hall après le parc pour rien.
+  const [interieur, parc] = await Promise.all([
+    gltf.loadAsync(`${base}${DECOR_KIT_PATH}`),
+    gltf.loadAsync(`${base}${DECOR_PARC_PATH}`),
+  ])
+
+  const kits: [string, GLTF, Record<string, DecorId>][] = [
+    [DECOR_KIT_PATH, interieur, NOEUDS_DU_DECOR],
+    [DECOR_PARC_PATH, parc, NOEUDS_DU_PARC],
+  ]
+  for (const [chemin, kit, table] of kits) {
+    for (const [nom, id] of Object.entries(table)) {
+      const noeud = kit.scene.getObjectByName(nom)
+      if (noeud === undefined) {
+        console.warn(`${chemin} : nœud « ${nom} » introuvable`)
+        continue
+      }
+      const geometrie = geometrieDuNoeud(noeud)
+      if (geometrie !== null) pieces.set(id, geometrie)
     }
-    const geometrie = geometrieDuNoeud(noeud)
-    if (geometrie !== null) pieces.set(id, geometrie)
   }
 
   draco.dispose()

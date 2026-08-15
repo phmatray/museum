@@ -57,7 +57,7 @@ const OUT = resolve(ROOT, '.captures')
 // `./props` sans extension. Voir l'en-tête de `ts-resolve.ts`.
 activerResolutionTs()
 
-const { PROP_METRICS, placeProps } = await import('../src/domain/props.ts')
+const { PROP_METRICS, placeProps, pendAuPlafond } = await import('../src/domain/props.ts')
 const { DECOR_METRICS, placeDecor } = await import('../src/domain/decor.ts')
 
 /** Le plan est dessiné à cette échelle : 12 pixels par mètre. */
@@ -124,7 +124,11 @@ interface Piece {
   z: number
   rayon: number
   rotation: number
+  /** Vrai quand la pièce pend sous son ancrage. Sert au TRAIT, pas à la mesure. */
   suspendu: boolean
+  /** Bande verticale occupée, en coordonnées monde — voir `collisions`. */
+  bas: number
+  haut: number
   famille: 'mobilier' | 'plante' | 'decor'
 }
 
@@ -154,8 +158,9 @@ function piecesDuNiveau(museum: Museum, floor: Floor): Piece[] {
       // son rayon nominal, et c'est elle qui déborde.
       rayon: m.radius * p.scale,
       rotation: p.rotation,
-      // Un prop dont tout le volume est SOUS son ancrage pend au plafond.
-      suspendu: m.maxY <= 0,
+      suspendu: pendAuPlafond(m),
+      bas: p.position.y + m.minY * p.scale,
+      haut: p.position.y + m.maxY * p.scale,
       famille: p.id.startsWith('plante') ? 'plante' : 'mobilier',
     })
   }
@@ -169,7 +174,9 @@ function piecesDuNiveau(museum: Museum, floor: Floor): Piece[] {
       z: d.position.z,
       rayon: m.radius * Math.max(d.scale.x, d.scale.z),
       rotation: d.rotation.y,
-      suspendu: false,
+      suspendu: pendAuPlafond(m),
+      bas: d.position.y + m.minY * d.scale.y,
+      haut: d.position.y + m.maxY * d.scale.y,
       famille: 'decor',
     })
   }
@@ -178,12 +185,25 @@ function piecesDuNiveau(museum: Museum, floor: Floor): Piece[] {
 }
 
 /**
- * Les paires qui se recouvrent au sol.
+ * Les paires qui se recouvrent VRAIMENT, c'est-à-dire dans les trois dimensions.
  *
- * On ne compare QUE ce qui est au sol : un projecteur suspendu à 3,90 m au-dessus
- * d'un banc n'est pas une collision, c'est un musée. Comparer les deux ferait
- * hurler le plan sur une centaine de faux positifs et le rendrait inutile — le
- * défaut classique d'un contrôle trop large.
+ * ── Le drapeau `suspendu` ne suffisait pas, et voici pourquoi ──
+ *
+ * Il répondait « cette pièce pend-elle sous son ancrage », ce qui était un PROXY
+ * de la vraie question : « ces deux pièces partagent-elles une tranche de
+ * hauteur ». Le proxy tenait tant que le musée n'avait que deux régimes — posé
+ * au sol, ou suspendu au plafond.
+ *
+ * La console d'atrium l'a cassé. Elle s'accroche SOUS la dalle du niveau et
+ * monte depuis son point de contact : elle n'est donc « suspendue » dans aucun
+ * sens métrique, et elle occupe pourtant la même trace au sol que la nervure
+ * posée sur cette même dalle, 60 cm plus haut. Par construction, et c'est le
+ * dessin voulu — 47 faux recouvrements sur un plan qui n'en avait aucun.
+ *
+ * On compare donc les vraies bandes `[bas, haut]` en coordonnées monde. C'est la
+ * question qu'on voulait poser depuis le début ; le drapeau reste, mais pour ce
+ * qu'il sait faire — décider du trait plein ou pointillé au DESSIN, qui est un
+ * choix de représentation et pas une mesure.
  */
 function collisions(pieces: readonly Piece[]): [number, number][] {
   const paires: [number, number][] = []
@@ -191,7 +211,10 @@ function collisions(pieces: readonly Piece[]): [number, number][] {
     for (let j = i + 1; j < pieces.length; j++) {
       const a = pieces[i]
       const b = pieces[j]
-      if (a.suspendu || b.suspendu) continue
+      // Une tolérance d'un centimètre en hauteur aussi : deux pièces qui se
+      // touchent exactement — un socle posé sur une estrade — ne se traversent
+      // pas.
+      if (a.bas >= b.haut - 0.01 || b.bas >= a.haut - 0.01) continue
       const d = Math.hypot(a.x - b.x, a.z - b.z)
       if (enPot(a, b, d)) continue
       // Une tolérance d'un centimètre : deux emprises tangentes ne sont pas un

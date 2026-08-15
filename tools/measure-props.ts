@@ -57,9 +57,12 @@ const { planterParc } = await import('../src/domain/park.ts')
 // donnée pure, les chargeurs tirent `three` et `import.meta.env`. Un outil Node
 // n'a rien à faire du moteur de rendu — c'est ce que `tsc -b` a rappelé, et il
 // avait raison.
-const { ESPECES_GLB, ESPECES_PARK_GLB, NOEUDS_DU_KIT } = await import('../src/scene/kits.ts')
+const { ESPECES_GLB, ESPECES_PARK_GLB, NOEUDS_DU_KIT, NOEUDS_DU_DECOR, NOEUDS_DU_PARC } =
+  await import('../src/scene/kits.ts')
 
 const KIT_DEFAUT = 'public/assets/props/museum-kit.glb'
+const KIT_DECOR = 'public/assets/props/musee-fixe.glb'
+const KIT_PARC = 'public/assets/props/musee-parc.glb'
 const PLANTS = 'public/assets/plants/plants-lod.glb'
 const PARK = 'public/assets/plants/park-lod.glb'
 const MUSEE = 'public/data/museum.json'
@@ -249,4 +252,44 @@ function main(): void {
   console.log()
 }
 
-main()
+/**
+ * Le relevé du DÉCOR : `node tools/measure-props.ts --decor`.
+ *
+ * Séparé du relevé des props, et pas par commodité de sortie. Les deux répondent
+ * à des questions différentes : celui des props demande « combien ça coûte à
+ * l'écran », donc il a besoin de `placeProps` ; celui-ci demande « quelle place
+ * ça prend », et il doit pouvoir tourner AVANT que `DECOR_METRICS` existe.
+ *
+ * L'ordre de dépendance l'impose : `placeDecor` lit `DECOR_METRICS`, et
+ * `DECOR_METRICS` se remplit avec ce que cet outil imprime. Le faire dépendre du
+ * placement en ferait un outil qu'on ne peut lancer qu'une fois fait le travail
+ * qu'il sert.
+ */
+async function decor(): Promise<void> {
+  for (const [chemin, table] of [
+    [KIT_DECOR, NOEUDS_DU_DECOR],
+    [KIT_PARC, NOEUDS_DU_PARC],
+  ] as const) {
+    const gltf = lireGltf(resolve(ROOT, chemin))
+    console.log(`\n\u2500\u2500 ${chemin} \u2500\u2500\n`)
+    for (const [noeud, id] of Object.entries(table)) {
+      const m = metriquesDuNoeud(gltf, noeud)
+      const t = trianglesDuNoeud(gltf, noeud)
+      if (!m) {
+        // Nommé, jamais escamoté : un nœud absent du GLB est un contrat rompu
+        // entre `kits.ts` et la table `PIECES` de Blender, et il ne lève rien à
+        // l'exécution — la pièce disparaît simplement de la scène.
+        console.log(`  // \u26d4 ${id} : nœud « ${noeud} » ABSENT du kit`)
+        continue
+      }
+      console.log(
+        `  '${id}': { radius: ${plafond(m.rayon)}, minY: ${plancher(m.minY)}, ` +
+          `maxY: ${plafond(m.maxY)}, collision: null },  // ${t} tri`,
+      )
+    }
+  }
+  console.log()
+}
+
+if (process.argv.includes('--decor')) await decor()
+else main()
