@@ -648,3 +648,80 @@ describe('placeProps — cas limites', () => {
     expect(boite.maxY).toBeCloseTo(2 + PROP_METRICS.socle.maxY * 2, 6)
   })
 })
+
+describe('placeProps — les emprises réservées', () => {
+  const rdc = museum.floors.find((f) => f.level === 0)!
+
+  /**
+   * Un point RÉELLEMENT disputé, choisi par la mesure et non par intuition.
+   *
+   * `poserLesSocles` pose DEUX socles dès que la salle dépasse 150 m² — à ±1/3
+   * de son axe long, soit x = ±10 pour la salle d'honneur — et un seul, au
+   * centre exact, entre 70 et 150 m². À 270 m² le centre est donc LIBRE, et une
+   * première version de ce test l'y supposait envahi : il aurait passé sans
+   * rien éprouver.
+   */
+  const cible = { x: -10, z: -10.5 }
+  const boite: Boite = {
+    minX: cible.x - 0.55,
+    maxX: cible.x + 0.55,
+    minZ: cible.z - 0.55,
+    maxZ: cible.z + 0.55,
+    minY: rdc.elevation,
+    maxY: rdc.elevation + 1.15,
+  }
+  const reservee = { floorId: rdc.id, boite }
+
+  it('sans réservation, le mobilier occupe la place — sinon ce test n’a pas de dents', () => {
+    const occupants = placeProps(museum).filter(
+      (p) => p.floorId === rdc.id && croisent(boiteDuProp(p), boite),
+    )
+    expect(occupants.length).toBeGreaterThan(0)
+  })
+
+  it('avec réservation, AUCUN prop ne croise l’emprise', () => {
+    const fautifs = placeProps(museum, [reservee])
+      .filter((p) => p.floorId === rdc.id)
+      .filter((p) => croisent(boiteDuProp(p), boite))
+      .map((p) => `${p.id} en (${p.position.x.toFixed(2)}, ${p.position.z.toFixed(2)})`)
+    expect(fautifs).toEqual([])
+  })
+
+  it('ne réserve que sur le niveau nommé', () => {
+    /*
+      Le leurre : une emprise calée sur un prop d'un AUTRE niveau, mais DÉCLARÉE
+      sur le rez-de-chaussée.
+
+      Comportement correct : le prop visé survit, puisque la réservation ne vaut
+      que pour `rdc` — où cette boîte ne rencontre rien, les niveaux étant
+      disjoints en hauteur. Sans le filtre `floorId`, elle serait semée sur tous
+      les étages et ferait disparaître ce prop-là.
+
+      C'est la SEULE construction qui met le filtre à l'épreuve. Une boîte calée
+      sur `rdc` est géométriquement incapable de toucher un autre niveau —
+      `croisent()` exige un recouvrement sur les trois axes, et `rdc` occupe
+      [0 ; 4,3] quand `etage-1` commence à 4,7. Une première version de ce test
+      procédait ainsi et passait donc à l'identique, filtre ou pas.
+    */
+    const base = placeProps(museum)
+    const ailleurs = base.find((p) => p.floorId !== rdc.id)
+    expect(ailleurs).toBeDefined()
+
+    const leurre = { floorId: rdc.id, boite: boiteDuProp(ailleurs!) }
+    const avecLeurre = placeProps(museum, [leurre])
+
+    expect(avecLeurre.filter((p) => p.floorId === ailleurs!.floorId)).toEqual(
+      base.filter((p) => p.floorId === ailleurs!.floorId),
+    )
+  })
+
+  it('une réservation sur un niveau inconnu ne change rien', () => {
+    expect(placeProps(museum, [{ floorId: 'niveau-inexistant', boite }])).toEqual(
+      placeProps(museum),
+    )
+  })
+
+  it('sans réservation, rend exactement ce que rendait l’appel à un argument', () => {
+    expect(placeProps(museum, [])).toEqual(placeProps(museum))
+  })
+})
