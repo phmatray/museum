@@ -18,5 +18,21 @@
   "clustering": {
     "minClusterSize": 4,
     "maxClusterSize": 14
-  }
+  },
+  "sculptures": [
+    {
+      "id": "bavette",
+      "file": "bavette.glb",
+      "height": 0.9,
+      "facing": "south",
+      "plinth": { "width": 1.1, "depth": 1.1, "height": 0.25 },
+      "cartel": {
+        "author": "Philippe Matray",
+        "title": "Bavette endormi",
+        "year": 2026,
+        "medium": "Photogrammétrie par IA (Meshy), maillage décimé",
+        "credit": "Collection de l'artiste"
+      }
+    }
+  ]
 }
