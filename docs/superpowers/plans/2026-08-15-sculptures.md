@@ -773,10 +773,26 @@ Créer `src/domain/sculptures.ts` :
  *
  * ── L'ordre compte, et il est structurel ──
  *
- * `placeSculptures` doit tourner AVANT `placeProps`, dont les emprises réservées
- * viennent d'ici. Sans ça, `poserLeBanc` pose son banc face au mur le plus
- * garni, à 2,60 m de ce mur — soit à moins de deux mètres de la pièce dans la
- * salle d'honneur du musée réel. Un test le tient.
+ * `placeSculptures` doit tourner AVANT `placeProps`, dont les emprises
+ * réservées viennent d'ici.
+ *
+ * ⚠️ Ce n'est PAS la correction d'une collision constatée, et une première
+ * rédaction de ce commentaire l'affirmait à tort. Mesuré sur le musée réel :
+ * aucun des 40 props du rez-de-chaussée ne tombe au centre de la salle
+ * d'honneur, le plus proche est à 2,65 m, et le banc de cette salle n'est même
+ * pas posé — une jardinière l'a refusé avant lui.
+ *
+ * C'est une GARDE, et elle est justifiée par le caractère GÉNÉRATIF du
+ * bâtiment : `poserLesSocles` pose un socle au CENTRE EXACT de toute salle dont
+ * l'aire tombe entre 70 et 150 m², et l'aire de la salle d'honneur dérive du
+ * nombre de dépôts, qui change à chaque build. Treize salles du musée actuel
+ * sont déjà dans ce cas. Le jour où la salle d'honneur y tombera, c'est la
+ * réservation qui empêchera un socle de pousser à travers la pièce.
+ *
+ * La preuve du mécanisme vit dans le test « le mobilier contourne la pièce — la
+ * preuve, pas la garde », qui place délibérément la pièce dans une salle au
+ * centre occupé. Les tests portant sur la salle d'honneur, eux, sont des gardes
+ * de régression : ils passent même quand la réservation est neutralisée.
  */
 import type { Boite, EmpriseReservee } from './props'
 import type { Floor, Museum, Room, Sculpture, SculptureCartel, Side, Vec3 } from './types'
@@ -937,7 +953,7 @@ export function sculptureCartelText(cartel: SculptureCartel): string {
 - [ ] **Step 4: Lancer le test**
 
 Run: `npm test -- src/domain/__tests__/sculptures.test.ts`
-Expected: PASS, les 13.
+Expected: PASS, les 15. (Le plan a longtemps annoncé 13 : mon décompte était faux, pas l'implémentation.)
 
 - [ ] **Step 5: Lancer toute la suite**
 
@@ -2167,10 +2183,15 @@ et remplacer la ligne 63 :
 
 ```tsx
   // Les emprises des pièces en volume sont réservées AVANT que quoi que ce soit
-  // ne soit semé : sans ça, `poserLeBanc` pose son banc face au mur le plus
-  // garni, à 2,60 m de ce mur — soit à moins de deux mètres de la pièce dans la
-  // salle d'honneur du musée réel. L'ordre est un invariant du spec, pas une
-  // commodité, et `props.test.ts` le tient.
+  // ne soit semé.
+  //
+  // C'est une GARDE, pas la correction d'une collision constatée : mesuré,
+  // aucun des 40 props du rez-de-chaussée ne tombe au centre de la salle
+  // d'honneur. Mais `poserLesSocles` pose un socle au centre EXACT de toute
+  // salle entre 70 et 150 m², et l'aire des salles dérive du nombre de dépôts,
+  // qui change à chaque build — treize salles du musée actuel sont déjà dans ce
+  // cas. La preuve du mécanisme vit dans `sculptures.test.ts`, sur une salle au
+  // centre réellement occupé.
   const parType = useMemo(
     () => grouperParType(placeProps(museum, emprisesDeSculptures(placeSculptures(museum)))),
     [museum],
