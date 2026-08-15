@@ -47,6 +47,7 @@ import * as THREE from 'three'
 import { RAILING_HEIGHT, buildLanding, buildRailing, buildSlab } from '../builders/slab'
 import { buildGlazing, creerVitrage, creerVitrageGardeCorps } from '../builders/glazing'
 import { buildWall } from '../builders/wall'
+import { buildBriseSoleil, mursDeFacade } from '../builders/facade'
 import { floorBox, shadowSweptBox } from '../domain/culling'
 import { landingsForFloor } from '../domain/landings'
 import type { Floor, Museum, Vec2 } from '../domain/types'
@@ -172,9 +173,12 @@ export function FloorMesh({
   // dessous. Une seule matière pour les deux donnait un plafond en lames de
   // parquet dans toute la vue d'accueil, et un bandeau de bois faisant le tour
   // de la façade à chaque niveau.
-  // Le béton est mutualisé au niveau du module : la dalle, la fermeture du
-  // pourtour et les murs d'enceinte des salles partagent une seule texture GPU.
-  const cartesBeton = useCartes('beton', repetitionDeMatiere('beton'))
+  // L'enveloppe porte `beton-blanc` : même carte que `beton`, gain plus haut,
+  // pour que le brise-soleil ait un fond clair à rayer. Les cartes restent
+  // MUTUALISÉES — l'alias de `io/textures.ts` fait tomber les deux identifiants
+  // sur la même entrée de cache, donc une seule texture GPU pour la dalle, la
+  // fermeture du pourtour et les murs d'enceinte des salles.
+  const cartesEnveloppe = useCartes('beton-blanc', repetitionDeMatiere('beton-blanc'))
   const matiereDalle = matiereDeDalle(floor.level)
   // La répétition omise : `useMatiere` prend alors l'échelle propre de la
   // matière — une banche de béton de 2,6 m, une tuile de parquet de 3 m.
@@ -266,10 +270,49 @@ export function FloorMesh({
     if (!gabarit) return null
     return appliquerCartes(
       createWallMaterial({ theme: 'modern', wall: gabarit, elevation: floor.elevation }),
-      cartesBeton,
-      'beton',
+      cartesEnveloppe,
+      'beton-blanc',
     )
-  }, [floor.enclosure, floor.elevation, cartesBeton])
+  }, [floor.enclosure, floor.elevation, cartesEnveloppe])
+
+  // ── Brise-soleil ───────────────────────────────────────────────────────
+  //
+  // Le peigne de lames de la façade. Il est monté ici, avec l'enveloppe, parce
+  // qu'il appartient au même objet qu'elle : c'est la façade du niveau, pas une
+  // décoration posée dessus.
+  //
+  // Rien en RÉSERVE : elle est enterrée, elle n'a pas de façade, et un
+  // brise-soleil sous terre serait une contradiction dans les termes.
+  const briseSoleil = useMemo(() => {
+    if (floor.level < 0) return null
+    return buildBriseSoleil(
+      mursDeFacade(floor.enclosure, floor.rooms.flatMap((r) => r.walls)),
+      floor.ceilingHeight,
+    )
+  }, [floor.enclosure, floor.rooms, floor.ceilingHeight, floor.level])
+
+  /**
+   * Les lames sont BLANCHES, et c'est ce qui fait la façade.
+   *
+   * Elles ne partagent pas la matière de l'enveloppe : c'est le contraste entre
+   * un béton banché sombre et un peigne clair qui les détache. Peintes de la
+   * même teinte que le mur, elles se fondraient dedans et on aurait dépensé dix
+   * mille triangles pour un relief.
+   *
+   * `metalness: 0.05` et non 0,2 : de l'acier PEINT est un diélectrique. À forte
+   * métallicité, une lame de six centimètres n'a presque plus de diffus et ne
+   * rend que l'environnement — elle sortirait NOIRE, ce qui est le défaut déjà
+   * mesuré sur le garde-corps de la rampe.
+   */
+  const briseSoleilMaterial = useMemo(
+    () =>
+      new THREE.MeshStandardMaterial({
+        color: '#eae7e0',
+        roughness: 0.62,
+        metalness: 0.05,
+      }),
+    [],
+  )
 
   // ── Vitrage ────────────────────────────────────────────────────────────
   //
@@ -323,8 +366,21 @@ export function FloorMesh({
       enclosureMaterial?.dispose()
       vitrage.geometry.dispose()
       vitrageMaterial.dispose()
+      briseSoleil?.dispose()
+      briseSoleilMaterial.dispose()
     }
-  }, [slab, railing, roof, enclosure, enclosureMaterial, vitrage, vitrageMaterial, dallesPalier])
+  }, [
+    slab,
+    railing,
+    roof,
+    enclosure,
+    enclosureMaterial,
+    vitrage,
+    vitrageMaterial,
+    dallesPalier,
+    briseSoleil,
+    briseSoleilMaterial,
+  ])
 
   return (
     <group ref={groupe} name={`floor:${floor.id}`}>
@@ -389,6 +445,38 @@ export function FloorMesh({
             ),
           )}
         </RigidBody>
+      )}
+
+      {/*
+        LE BRISE-SOLEIL, en UN maillage pour tout le niveau.
+
+        ⚠️ Il vit hors du bloc de l'enveloppe, et ce n'est pas cosmétique. Écrit
+        d'abord dedans, il était gardé par `enclosure.length > 0` — or les deux
+        étages n'ont AUCUN mur d'enveloppe : leur pourtour est fermé par des murs
+        de salle. Les lames n'apparaissaient donc qu'au rez-de-chaussée, et la
+        façade gardait sa boîte nue sur les deux tiers de sa hauteur.
+
+        Aucun collider : une lame est à trente-cinq centimètres du parement, hors
+        d'atteinte depuis le sol, et un collider par lame chargerait la phase
+        large de Rapier de trois cents formes pour rien.
+
+        `castShadow` est ici un choix argumenté et non le réglage par défaut :
+        c'est le SEUL endroit du bâtiment où la carte d'ombre a la résolution
+        qu'il faut. Le texel vaut 22,8 mm et le récepteur — le parement — est à
+        35 cm derrière l'occulteur ; le flou reste de l'ordre de cinq centimètres
+        sur une lame de quarante-quatre. Ailleurs, à quatorze mètres de portée,
+        la même carte donnerait une barre crénelée qui nage quand la caméra
+        bouge.
+      */}
+      {briseSoleil && (
+        <mesh
+          name={`brise-soleil:${floor.id}`}
+          position={[0, floor.elevation, 0]}
+          geometry={briseSoleil}
+          material={briseSoleilMaterial}
+          castShadow
+          receiveShadow
+        />
       )}
 
       {vitrage.count > 0 && (

@@ -176,6 +176,25 @@ export const REGLAGE_MATIERE: Record<MatiereId, ReglageMatiere> = {
   // plafonniers — la vue `plafond` écrêtait 2,59 % de ses pixels. Un béton qui
   // brûle ne montre plus son relief, et le SSAO n'a plus rien à creuser.
   beton: { gain: 1.15, roughness: 1, metalness: 0, rebond: 0.24, motif: 2.6 },
+  /**
+   * L'ENVELOPPE : même carte que `beton`, gain nettement plus haut.
+   *
+   * 1,85 et non 1,15. Ce n'est pas une préférence de teinte, c'est ce qu'il faut
+   * pour que le brise-soleil existe : un peigne de lames claires ne se lit que
+   * par CONTRASTE avec ce qu'il raye, et sur la masse sombre du béton de dalle
+   * il restait un accessoire posé sur une boîte grise. Éclaircir la façade fait
+   * de l'ombre portée le dessin, ce qui est toute l'écriture de cette
+   * architecture.
+   *
+   * Pourquoi une matière séparée plutôt que remonter `beton` : la même matière
+   * porte les SOUS-FACES DE DALLE, dont le gain vient d'être baissé de 1,45 à
+   * 1,15 parce qu'elles écrêtaient 2,59 % de leurs pixels sous les plafonniers.
+   * Un seul réglage ne peut pas éclaircir la façade et calmer le plafond.
+   *
+   * Le `rebond` tombe à zéro : c'est le lèche-lumière peint sous les faces
+   * tournées vers le bas, et une façade verticale n'en a aucune.
+   */
+  'beton-blanc': { gain: 1.85, roughness: 0.95, metalness: 0, rebond: 0, motif: 2.6 },
   platre: { gain: 1.25, roughness: 1, metalness: 0, rebond: 0.14, motif: 3.2 },
   'platre-peint': { gain: 1.45, roughness: 1, metalness: 0, rebond: 0.14, motif: 3.2 },
   // `motif` ramené de 3 m à 1,9 m le 2026-08-16. À 3 m, une lame de `WoodFloor007`
@@ -285,7 +304,10 @@ const PROGRAM_CACHE_KEY = 'museum:matiere:v1'
  * est une information sur ce qu'elle est, pas une économie de matière.
  */
 export function matiereDeMur(kind: WallKind, theme: ThemeId): MatiereId {
-  if (kind === 'outer') return 'beton'
+  // L'enveloppe a sa propre matière depuis la pose du brise-soleil : voir
+  // `beton-blanc` dans `REGLAGE_MATIERE`. C'est le POINT UNIQUE qui décide, et
+  // c'est pour ça que `RoomMesh` et `FloorMesh` restent d'accord sans se parler.
+  if (kind === 'outer') return 'beton-blanc'
   switch (theme) {
     case 'classic':
       return 'platre'

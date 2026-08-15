@@ -289,9 +289,16 @@ describe('appliquerCartes', () => {
 // ── Affectation ──────────────────────────────────────────────────────────
 
 describe('affectation des matières', () => {
-  it('donne le béton au mur d’enceinte, quel que soit le thème', () => {
-    expect(matiereDeMur('outer', 'classic')).toBe('beton')
-    expect(matiereDeMur('outer', 'modern')).toBe('beton')
+  it('donne le béton CLAIR au mur d’enceinte, quel que soit le thème', () => {
+    // L'enveloppe a sa propre matière depuis la pose du brise-soleil : même
+    // carte que `beton`, gain plus haut, pour que le peigne de lames ait un fond
+    // clair à rayer. Ce que cette épreuve garde n'a pas changé — c'est que le
+    // THÈME d'une salle ne déborde jamais sur la façade, sans quoi le bâtiment
+    // changerait de couleur de l'extérieur selon le contenu des salles.
+    expect(matiereDeMur('outer', 'classic')).toBe('beton-blanc')
+    expect(matiereDeMur('outer', 'modern')).toBe('beton-blanc')
+    expect(matiereDeMur('outer', 'immersive')).toBe('beton-blanc')
+    expect(matiereDeMur('outer', 'vault')).toBe('beton-blanc')
   })
 
   it('donne le plâtre du thème aux cloisons', () => {

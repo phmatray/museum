@@ -49,6 +49,20 @@ import * as THREE from 'three'
  */
 export type MatiereId =
   | 'beton'
+  /**
+   * Le béton de l'ENVELOPPE, plus clair que celui des dalles.
+   *
+   * Même carte que `beton` — c'est un rôle, pas une carrière — mais son propre
+   * `gain` dans `REGLAGE_MATIERE`. Le besoin est venu du brise-soleil : un peigne
+   * de lames ne se lit que par contraste avec ce qu'il raye, et sur la masse
+   * sombre du béton de dalle il restait un accessoire posé sur une boîte grise.
+   *
+   * Il lui fallait donc un gain propre, et `beton` ne pouvait pas le lui donner :
+   * la même matière porte les SOUS-FACES DE DALLE, dont le gain vient tout juste
+   * d'être baissé de 1,45 à 1,15 parce qu'elles brûlaient sous les plafonniers.
+   * Un seul réglage ne peut pas éclaircir la façade et assombrir le plafond.
+   */
+  | 'beton-blanc'
   | 'platre'
   | 'platre-peint'
   | 'parquet'
@@ -93,6 +107,10 @@ export const MATERIALS_PATH = 'assets/materials/'
 /** Identifiant ambientCG de chaque matière. Voir `public/assets/CREDITS.md`. */
 export const SOURCE_AMBIENTCG: Record<MatiereId, string> = {
   beton: 'Concrete034',
+  // La MÊME planche que `beton`. Voir `ALIAS_DE_CARTES` juste en dessous : sans
+  // lui, ce doublon ferait retélécharger trois JPEG et allouer un second jeu de
+  // textures GPU pour des pixels identiques.
+  'beton-blanc': 'Concrete034',
   platre: 'Plaster001',
   'platre-peint': 'PaintedPlaster017',
   parquet: 'WoodFloor007',
@@ -228,10 +246,30 @@ function chargerCarte(
  * ne doit pas pouvoir imposer un autre chemin de chargement à une texture déjà
  * en vol.
  */
+/**
+ * Les matières qui PARTAGENT les cartes d'une autre.
+ *
+ * `beton-blanc` n'est pas une planche distincte : c'est `beton` avec un autre
+ * gain. Sans cet alias, il déclencherait son propre chargement — trois JPEG
+ * retéléchargés et un second jeu de textures GPU pour des pixels rigoureusement
+ * identiques, ce qui est exactement la mutualisation que l'en-tête de ce fichier
+ * existe pour garantir.
+ *
+ * L'alias est résolu au CACHE, pas à l'appel : deux identifiants différents
+ * doivent tomber sur la même entrée, sinon la mutualisation ne tient que si les
+ * deux demandent en même temps.
+ */
+const ALIAS_DE_CARTES: Partial<Record<MatiereId, MatiereId>> = {
+  'beton-blanc': 'beton',
+}
+
+const resoudre = (id: MatiereId): MatiereId => ALIAS_DE_CARTES[id] ?? id
+
 export function chargerMatiere(
-  id: MatiereId,
+  demande: MatiereId,
   chargeur: ChargeurDeTextures = new THREE.TextureLoader(),
 ): Promise<JeuDeCartes> {
+  const id = resoudre(demande)
   const dejaEnVol = enCours.get(id)
   if (dejaEnVol) return dejaEnVol
 
@@ -266,7 +304,10 @@ export function chargerMatiere(
  * texturé » qui ferait clignoter la surface en aplat pendant une image.
  */
 export function matiereEnCache(id: MatiereId): JeuDeCartes | undefined {
-  return chargees.get(id)
+  // L'alias se résout ICI aussi, sinon `beton-blanc` répondrait « pas encore
+  // chargé » alors que ses cartes sont en mémoire depuis longtemps — et la
+  // façade resterait en aplat le temps d'un chargement qui n'aurait jamais lieu.
+  return chargees.get(resoudre(id))
 }
 
 /**
