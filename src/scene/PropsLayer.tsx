@@ -48,6 +48,7 @@ import * as THREE from 'three'
 
 import type { PropId, PropPlacement } from '../domain/props'
 import { PROP_IDS, placeProps } from '../domain/props'
+import { emprisesDeSculptures, placeSculptures } from '../domain/sculptures'
 import type { Museum } from '../domain/types'
 import type { PropAssets, PropPiece } from './propAssets'
 import { propAssetsResource } from './propAssets'
@@ -60,7 +61,20 @@ export interface PropsLayerProps {
 export function PropsLayer({ museum }: PropsLayerProps) {
   const assets = usePropAssets()
 
-  const parType = useMemo(() => grouperParType(placeProps(museum)), [museum])
+  // Les emprises des pièces en volume sont réservées AVANT que quoi que ce soit
+  // ne soit semé.
+  //
+  // C'est une GARDE, pas la correction d'une collision constatée : mesuré,
+  // aucun des 40 props du rez-de-chaussée ne tombe au centre de la salle
+  // d'honneur. Mais `poserLesSocles` pose un socle au centre EXACT de toute
+  // salle entre 70 et 150 m², et l'aire des salles dérive du nombre de dépôts,
+  // qui change à chaque build — treize salles du musée actuel sont déjà dans ce
+  // cas. La preuve du mécanisme vit dans `sculptures.test.ts`, sur une salle au
+  // centre réellement occupé.
+  const parType = useMemo(
+    () => grouperParType(placeProps(museum, emprisesDeSculptures(placeSculptures(museum)))),
+    [museum],
+  )
 
   if (assets === null) return null
 
