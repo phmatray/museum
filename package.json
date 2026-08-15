@@ -11,6 +11,8 @@
     "fetch": "node tools/fetch-github.ts",
     "media": "node tools/build-media.ts",
     "derive": "node tools/derive-museum.ts",
+    "screenshots": "node tools/screenshots.ts",
+    "measure": "node tools/measure-props.ts",
     "plan": "node tools/derive-museum.ts --plan",
     "test": "vitest run",
     "test:watch": "vitest"
