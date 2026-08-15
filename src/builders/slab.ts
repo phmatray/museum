@@ -146,7 +146,7 @@ export const RAILING_GROUP_HANDRAIL = 1
  * Un dixième de millimètre absorbe cette erreur sans jamais fusionner deux
  * sommets réellement distincts, nos coordonnées étant au pire au centimètre.
  */
-const WELD_QUANTUM = 1e-4
+export const WELD_QUANTUM = 1e-4
 
 /** En dessous, un segment ou un rectangle est du bruit numérique : on l'ignore. */
 const MIN_EXTENT = 1e-6
@@ -545,8 +545,12 @@ function indexSequentially(geometry: THREE.BufferGeometry): void {
  * Extrait le maillage de collision d'une géométrie, en soudant les sommets
  * coïncidents. Rapier n'utilise que les positions : garder les doublons ne
  * ferait qu'alourdir la structure d'accélération du trimesh.
+ *
+ * Exporté parce que la soudure est la MÊME règle partout dans le bâtiment :
+ * `builders/plinth.ts` la consomme. Une seconde copie divergerait à la première
+ * correction appliquée d'un seul côté.
  */
-function toTrimesh(geometry: THREE.BufferGeometry): TrimeshCollider {
+export function toTrimesh(geometry: THREE.BufferGeometry): TrimeshCollider {
   const position = geometry.getAttribute('position')
   const index = geometry.getIndex()
   const source = index
