@@ -63,7 +63,13 @@ interface MuseumConfigFile {
 
 // ── Jeton ────────────────────────────────────────────────────────────────
 
-function resolveToken(): string | null {
+/**
+ * Exporté parce que `build-media.ts` en a besoin pour aller chercher les
+ * bannières `.github/banner.png` — y compris dans les dépôts PRIVÉS, que
+ * `raw.githubusercontent.com` refuse sans authentification. Deux résolutions de
+ * jeton dans le même outillage seraient deux endroits où la règle peut dériver.
+ */
+export function resolveToken(): string | null {
   if (process.env.GITHUB_TOKEN) return process.env.GITHUB_TOKEN
   try {
     return execFileSync('gh', ['auth', 'token'], { encoding: 'utf8' }).trim() || null

@@ -682,7 +682,21 @@ export const REBOND = {
  * demi-mètre suffit à ce que la lumière lèche le plafond, ce qui est aussi la
  * hauteur réelle d'une suspension muséale sous rail.
  */
-export const RETRAIT_PLAFOND = 0.55
+/*
+  Relevé de 0,55 à 0,85 le 2026-08-16, sur mesure.
+
+  À 55 cm, une source ponctuelle qui décroît en 1/d² frappe la dalle juste
+  au-dessus d'elle à bout portant : la vue `plafond` sortait à 34,3 % de pixels
+  quasi blancs, 2,59 % d'ÉCRÊTÉS, et l'écart-type le plus faible des dix vues —
+  un aplat crème surexposé, c'est-à-dire l'inverse exact du défaut du §9.4 et
+  tout aussi illisible.
+
+  0,85 m divise l'éclairement au zénith par 2,4 et ÉLARGIT la flaque au lieu de
+  la creuser. La raison d'être du retrait ne change pas — un point collé au
+  plafond ne l'éclaire plus du tout — on la calibre simplement sur ce qui a été
+  mesuré plutôt que sur la hauteur d'une suspension de catalogue.
+*/
+export const RETRAIT_PLAFOND = 0.85
 
 /**
  * Rayon utile d'un plafonnier, en mètres — bornes.

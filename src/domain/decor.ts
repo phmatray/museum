@@ -137,6 +137,24 @@ const PAS_NERVURE = 4
  */
 const RECUL_NERVURE = 0.55
 
+/**
+ * Échelle de la nervure quand elle sert de garde-corps sculpté, aux niveaux qui
+ * ne sont pas le dernier.
+ *
+ * 1,15 / 4,31 ≈ 0,267. La cote visée est celle du garde-corps existant —
+ * `RAILING_HEIGHT` vaut 1,10 m — parce que c'est la hauteur à laquelle une pièce
+ * borde un vide sans le fermer.
+ *
+ * Elle doit rester **franchement sous la hauteur d'œil**, qui est de 1,62 m dans
+ * ce musée : c'est tout l'enjeu. Au-dessus, on retombe sur la palissade ; en
+ * dessous de 0,9 m, la pièce ne borde plus rien et lit comme un plot.
+ *
+ * L'échelle est UNIFORME et non appliquée au seul axe vertical : écraser la
+ * pièce sur sa hauteur détruirait l'effilement, c'est-à-dire ce qui fait
+ * qu'elle est une nervure et pas un poteau.
+ */
+const ECHELLE_GARDE_CORPS = 0.267
+
 // ── Placement ────────────────────────────────────────────────────────────
 
 /**
@@ -147,12 +165,41 @@ const RECUL_NERVURE = 0.55
  */
 export function placeDecor(museum: Museum): DecorPlacement[] {
   const placements: DecorPlacement[] = []
-  for (const floor of museum.floors) {
-    // Pas de nervures en réserve : elle est enterrée, sans trémie ouverte sur le
-    // ciel, et une crypte en béton brut est une information, pas un oubli.
-    if (floor.level < 0) continue
+
+  // ── DEUX RÔLES pour la même pièce, selon le niveau ──
+  //
+  // Les nervures ont d'abord été posées à pleine hauteur sur les trois niveaux
+  // ouverts. Le plan coté validait ce placement — aucun recouvrement — et il
+  // avait raison sur ce qu'il mesure. Les captures ont montré ce qu'il ne mesure
+  // pas : trente-neuf lames de 4,30 m sur tout le pourtour, à hauteur d'œil,
+  // forment une PALISSADE. Depuis l'entrée comme depuis l'escalier, on ne voyait
+  // plus l'atrium — on voyait à travers une claire-voie.
+  //
+  // Les reléguer au seul dernier niveau réglait la palissade et créait le défaut
+  // inverse : vues d'en bas à quatorze mètres, elles se réduisaient à trois
+  // éclats blancs. Elles ne gênaient plus rien et ne racontaient plus rien.
+  //
+  // Le défaut n'était donc ni le nombre ni l'étage, mais la HAUTEUR UNIQUE. La
+  // même pièce fait deux choses selon ce qu'on lui donne :
+  //
+  //  - au dernier niveau, à pleine hauteur, elle COURONNE le vide et se lit en
+  //    contre-jour sur le puits de lumière. Personne n'a l'œil à cette altitude,
+  //    donc elle ne barre aucune vue ;
+  //  - aux niveaux inférieurs, ramenée à 1,15 m, elle devient un GARDE-CORPS
+  //    SCULPTÉ : sous la ligne de regard (1,62 m), donc elle n'obstrue rien, et
+  //    visible depuis tout l'atrium, donc elle donne son rythme à chaque plateau.
+  //
+  // Un plan vérifie qu'on ne se cogne pas ; il ne vérifie pas qu'on voit. C'est
+  // la vue `ligne-de-vue` de `capture.ts` qui garde cet invariant-là.
+  const ouverts = museum.floors.filter((f) => f.level >= 0 && f.slabHoles.length > 0)
+  const dernier = [...ouverts].sort((a, b) => b.level - a.level)[0]
+
+  for (const floor of ouverts) {
+    const couronne = floor.id === dernier?.id
     for (const trou of floor.slabHoles) {
-      placements.push(...nervuresDeTremie(floor.id, floor.elevation, trou))
+      placements.push(
+        ...nervuresDeTremie(floor.id, floor.elevation, trou, couronne ? 1 : ECHELLE_GARDE_CORPS),
+      )
     }
   }
   return placements
@@ -167,12 +214,24 @@ export function placeDecor(museum: Museum): DecorPlacement[] {
  * que droite — la faire pencher ici aurait demandé une rotation composée dont
  * l'emprise ne serait plus un cylindre.
  */
-function nervuresDeTremie(floorId: string, elevation: number, trou: Rect): DecorPlacement[] {
+function nervuresDeTremie(
+  floorId: string,
+  elevation: number,
+  trou: Rect,
+  echelle: number,
+): DecorPlacement[] {
   const cx = trou.x + trou.width / 2
   const cz = trou.z + trou.depth / 2
   const placements: DecorPlacement[] = []
 
-  for (const point of pourtourDeTremie(trou, RECUL_NERVURE, PAS_NERVURE)) {
+  // Le pas suit l'échelle : une pièce trois fois plus petite peut se serrer
+  // trois fois plus. Garder le pas de la couronne sur un garde-corps laisserait
+  // quatre mètres entre deux plots, ce qui ne borde plus rien — et un pas fixe
+  // sur une pièce à taille variable est précisément le genre de constante muette
+  // que ce module vient de corriger ailleurs.
+  const pas = Math.max(1.5, PAS_NERVURE * echelle)
+
+  for (const point of pourtourDeTremie(trou, RECUL_NERVURE, pas)) {
     // Le lacet qui envoie le +X local vers le centre de la trémie. Un lacet θ
     // envoie +X sur (cos θ, 0, −sin θ), d'où l'atan2 croisé.
     const rotation = Math.atan2(-(cz - point.z), cx - point.x)
@@ -180,7 +239,7 @@ function nervuresDeTremie(floorId: string, elevation: number, trou: Rect): Decor
       id: 'nervure-atrium',
       position: { x: point.x, y: elevation, z: point.z },
       rotation: { x: 0, y: rotation, z: 0 },
-      scale: { x: 1, y: 1, z: 1 },
+      scale: { x: echelle, y: echelle, z: echelle },
       floorId,
     })
   }

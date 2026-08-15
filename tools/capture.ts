@@ -92,6 +92,24 @@ const VUES: Vue[] = [
     preuve: 'la rampe vue de haut : garde-corps et sous-face du tablier',
   },
   {
+    // LA VUE QUI MANQUAIT, et son absence a coûté cher.
+    //
+    // Trente-neuf nervures posées sur trois niveaux formaient une palissade à
+    // hauteur d'œil : depuis l'entrée comme depuis l'escalier, on ne voyait plus
+    // l'atrium, on voyait à travers une claire-voie. Aucun contrôle ne l'a dit.
+    // Le plan coté validait le placement — et il avait raison sur ce qu'il
+    // mesure : il vérifie qu'on ne se COGNE pas, pas qu'on VOIT quelque chose.
+    //
+    // Celle-ci est une ligne de vue rasante : à hauteur d'œil, depuis un bord de
+    // l'atrium vers le bord opposé. Ce qu'elle prouve n'est pas une jolie image,
+    // c'est que la traversée visuelle du bâtiment reste ouverte — et elle
+    // rougirait à la première pièce qui la refermerait.
+    nom: 'ligne-de-vue',
+    de: [-5.4, 1.62, 5.4],
+    vers: [5.4, 1.62, -5.4],
+    preuve: 'traversée de l’atrium à hauteur d’œil : le vide doit rester un vide',
+  },
+  {
     // Depuis le rez-de-chaussée, dans le vide de l'atrium, regard vers le haut
     // et vers un angle : c'est le seul cadrage d'où les nervures des trois
     // niveaux se voient ENSEMBLE, en enfilade. La vue `atrium-plongee` est

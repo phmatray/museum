@@ -19,7 +19,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { DECOR_IDS, DECOR_METRICS, placeDecor } from '../../domain/decor'
-import type { DecorId } from '../../domain/decor'
+import type { DecorId, DecorPlacement } from '../../domain/decor'
 import { PROP_METRICS, placeProps } from '../../domain/props'
 import type { Museum } from '../../domain/types'
 import { DECOR_KIT_PATH, DRACO_PATH, NOEUDS_DU_DECOR } from '../kits'
@@ -202,17 +202,25 @@ describe('decor — le placement', () => {
     // deux nervures de part et d'autre d'un angle se retrouvaient à 0,32 m l'une
     // DANS l'autre. Invisible en 3D — deux nervures superposées lisent comme une
     // nervure épaisse — et évident sur le plan coté.
-    const r = DECOR_METRICS['nervure-atrium'].radius
+    // Le rayon se lit PAR EXEMPLAIRE : la même nervure sert de couronne à
+    // pleine taille au dernier niveau et de garde-corps au tiers de l'échelle
+    // en dessous. Une version antérieure de cette épreuve prenait le rayon
+    // nominal pour tout le monde et déclarait fautif un garde-corps de 0,35 m
+    // de rayon espacé de 1,50 m — elle mesurait une pièce qui n'existe pas.
+    const rayon = (p: DecorPlacement): number =>
+      DECOR_METRICS[p.id].radius * Math.max(p.scale.x, p.scale.z)
+
     for (let i = 0; i < placements.length; i++) {
       for (let j = i + 1; j < placements.length; j++) {
         const a = placements[i]
         const b = placements[j]
         if (a.floorId !== b.floorId) continue
+        const mini = rayon(a) + rayon(b)
         const d = Math.hypot(a.position.x - b.position.x, a.position.z - b.position.z)
         expect(
           d,
-          `${a.id} et ${b.id} se traversent de ${(2 * r - d).toFixed(2)} m`,
-        ).toBeGreaterThanOrEqual(2 * r - 0.01)
+          `${a.id} et ${b.id} se traversent de ${(mini - d).toFixed(2)} m`,
+        ).toBeGreaterThanOrEqual(mini - 0.01)
       }
     }
   })
@@ -231,12 +239,16 @@ describe('decor — le placement', () => {
       if (m.maxY <= 0) continue
       for (const d of placements) {
         if (d.floorId !== p.floorId) continue
-        const md = DECOR_METRICS[d.id]
+        // Même correction que ci-dessus : l'emprise d'une nervure dépend de son
+        // échelle, et `obstaclesDuNiveau` la lit bien ainsi. Une épreuve plus
+        // stricte que le code qu'elle garde ne prouve rien — elle échoue sur des
+        // cas que le musée n'a jamais posés.
+        const mini = m.radius * p.scale + DECOR_METRICS[d.id].radius * Math.max(d.scale.x, d.scale.z)
         const dist = Math.hypot(p.position.x - d.position.x, p.position.z - d.position.z)
         expect(
           dist,
-          `${p.id} traverse ${d.id} de ${(m.radius * p.scale + md.radius - dist).toFixed(2)} m`,
-        ).toBeGreaterThanOrEqual(m.radius * p.scale + md.radius - 0.01)
+          `${p.id} traverse ${d.id} de ${(mini - dist).toFixed(2)} m`,
+        ).toBeGreaterThanOrEqual(mini - 0.01)
       }
     }
   })

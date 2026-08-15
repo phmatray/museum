@@ -170,10 +170,20 @@ export interface ReglageMatiere {
  * l'autre est un albédo de métal brossé que le rendu doit sortir du noir.
  */
 export const REGLAGE_MATIERE: Record<MatiereId, ReglageMatiere> = {
-  beton: { gain: 1.45, roughness: 1, metalness: 0, rebond: 0.24, motif: 2.6 },
+  // `gain` ramené de 1,45 à 1,15 le 2026-08-16 : le béton porte les sous-faces
+  // de dalle ET les murs d'enveloppe, c'est-à-dire les deux plus grandes
+  // surfaces du musée. À 1,45 il renvoyait assez pour saturer sous les
+  // plafonniers — la vue `plafond` écrêtait 2,59 % de ses pixels. Un béton qui
+  // brûle ne montre plus son relief, et le SSAO n'a plus rien à creuser.
+  beton: { gain: 1.15, roughness: 1, metalness: 0, rebond: 0.24, motif: 2.6 },
   platre: { gain: 1.25, roughness: 1, metalness: 0, rebond: 0.14, motif: 3.2 },
   'platre-peint': { gain: 1.45, roughness: 1, metalness: 0, rebond: 0.14, motif: 3.2 },
-  parquet: { gain: 1.2, roughness: 0.9, metalness: 0, rebond: 0.2, motif: 3 },
+  // `motif` ramené de 3 m à 1,9 m le 2026-08-16. À 3 m, une lame de `WoodFloor007`
+  // mesurait près de 40 cm de large à l'écran : ce n'est plus un parquet, c'est
+  // un plancher de scène, et la tuile se lisait franchement sur la longueur
+  // d'une salle. 1,9 m ramène la lame à ~25 cm, la largeur d'un parquet
+  // contrecollé courant, et casse la répétition dans le même geste.
+  parquet: { gain: 1.2, roughness: 0.9, metalness: 0, rebond: 0.2, motif: 1.9 },
   /**
    * Le sol du hall et de l'atrium — la plus grande surface du musée.
    *
@@ -208,7 +218,13 @@ export const REGLAGE_MATIERE: Record<MatiereId, ReglageMatiere> = {
     roughness: 1.3,
     metalness: 0,
     rebond: 0.24,
-    motif: 0.9,
+    // `motif` ramené de 0,90 m à 0,62 m le 2026-08-16. Le raisonnement d'origine
+    // tient — c'est bien la maille qui donne le calibre des éclats — mais 3,5 cm
+    // sur le plus grand sol du musée donnait du CONFETTI : des points noirs
+    // francs sur un fond blanc, lus comme du bruit et non comme une matière.
+    // 0,62 m ramène l'éclat à 2,4 cm, le calibre d'un terrazzo fin ; à cette
+    // taille les points se fondent au lieu de grésiller.
+    motif: 0.62,
   },
   /**
    * Les mains courantes et les cadres. Depuis que le panneau du garde-corps est
