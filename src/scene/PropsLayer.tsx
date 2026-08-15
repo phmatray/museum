@@ -49,6 +49,7 @@ import * as THREE from 'three'
 import type { PropId, PropPlacement } from '../domain/props'
 import { PROP_IDS, placeProps } from '../domain/props'
 import type { DecorPlacement } from '../domain/decor'
+import { geometrieDesTaches, materiauDesTaches, textureDeTache } from './contactShadows'
 import type { Museum } from '../domain/types'
 import type { PropAssets, PropPiece } from './propAssets'
 import { propAssetsResource } from './propAssets'
@@ -69,15 +70,14 @@ export interface PropsLayerProps {
 export function PropsLayer({ museum, decor }: PropsLayerProps) {
   const assets = usePropAssets()
 
-  const parType = useMemo(
-    () => grouperParType(placeProps(museum, decor)),
-    [museum, decor],
-  )
+  const tous = useMemo(() => placeProps(museum, decor), [museum, decor])
+  const parType = useMemo(() => grouperParType(tous), [tous])
 
   if (assets === null) return null
 
   return (
     <group name="props">
+      <TachesDeContact placements={tous} />
       {PROP_IDS.map((id) => {
         const placements = parType.get(id)
         const lots = assets.get(id)
@@ -87,6 +87,48 @@ export function PropsLayer({ museum, decor }: PropsLayerProps) {
         ))
       })}
     </group>
+  )
+}
+
+// ── Les ombres de contact ────────────────────────────────────────────────
+
+/**
+ * Une tache douce sous chaque prop posé, toutes fusionnées en UN maillage.
+ *
+ * Sans elles, socles, bancs et jardinières FLOTTENT : l'œil lit l'appui d'un
+ * objet à l'ombre qu'il jette. Pourquoi peintes et non calculées : voir
+ * `contactShadows.ts` — la seconde shadow map a été mesurée à +77 draw calls
+ * pour rien à l'image.
+ */
+function TachesDeContact({ placements }: { placements: readonly PropPlacement[] }) {
+  const lot = useMemo(() => {
+    const geometry = geometrieDesTaches(placements)
+    if (geometry === null) return null
+    const texture = textureDeTache()
+    return { geometry, texture, material: materiauDesTaches(texture) }
+  }, [placements])
+
+  useEffect(() => {
+    if (lot === null) return
+    return () => {
+      lot.geometry.dispose()
+      lot.material.dispose()
+      lot.texture.dispose()
+    }
+  }, [lot])
+
+  if (lot === null) return null
+  // `renderOrder` négatif : les taches passent AVANT le verre du garde-corps
+  // dans la passe transparente, sinon l'ordre de tri les ferait clignoter
+  // derrière lui selon l'angle de vue.
+  return (
+    <mesh
+      geometry={lot.geometry}
+      material={lot.material}
+      renderOrder={-1}
+      castShadow={false}
+      receiveShadow={false}
+    />
   )
 }
 
