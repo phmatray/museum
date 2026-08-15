@@ -146,7 +146,7 @@ export const RAILING_GROUP_HANDRAIL = 1
  * Un dixième de millimètre absorbe cette erreur sans jamais fusionner deux
  * sommets réellement distincts, nos coordonnées étant au pire au centimètre.
  */
-export const WELD_QUANTUM = 1e-4
+const WELD_QUANTUM = 1e-4
 
 /** En dessous, un segment ou un rectangle est du bruit numérique : on l'ignore. */
 const MIN_EXTENT = 1e-6

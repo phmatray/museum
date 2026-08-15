@@ -44,6 +44,11 @@ const RETRAIT = 0.06
 /** Relief du texte au-dessus du dessus du socle. */
 const RELIEF = 0.004
 
+// Vecteur de travail, alloué UNE fois au niveau du module : `useFrame` tourne
+// 60 fois par seconde, et un `new THREE.Vector3()` par image suffit à nourrir
+// le ramasse-miettes jusqu'au hoquet visible. Même parti que `CartelLayer`.
+const positionMonde = new THREE.Vector3()
+
 export interface SculptureCartelProps {
   placement: SculpturePlacement
   theme: ThemeId
@@ -66,7 +71,7 @@ export function SculptureCartel({ placement, theme }: SculptureCartelProps) {
   useFrame(({ camera }) => {
     const noeud = groupe.current
     if (noeud === null) return
-    const d = camera.position.distanceTo(noeud.getWorldPosition(new THREE.Vector3()))
+    const d = camera.position.distanceTo(noeud.getWorldPosition(positionMonde))
     noeud.visible = d <= CARTEL_MAX_DISTANCE
   })
 

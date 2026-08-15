@@ -79,7 +79,9 @@ interface Sculpture {
   height: number        // hauteur réelle VISÉE, en mètres, > 0
   facing: Side          // 'north' | 'east' | 'south' | 'west'
   room?: string         // id de salle ; défaut : la salle d'honneur du niveau 0
-  plinth?: number       // hauteur du socle ; 0 = à même le sol ; défaut 0.25
+  plinth?: number       // hauteur du socle, strictement positive — `buildPlinth` refuse une
+                        // cote non positive, et rien dans le rendu ne sait aujourd'hui poser
+                        // une pièce sans socle ; défaut 0.25 si absent
   cartel: {
     author?: string
     title: string
@@ -214,7 +216,12 @@ ni horloge.
 | Ancrage | recentré en XZ, **origine au sol** | la convention du kit, et sa raison écrite dans `propAssets.ts` : « l'origine de chaque instance devient le point d'ancrage » |
 | Décimation | **18 000 triangles** | mesuré, voir ci-dessous |
 | Cartes | 2048² → **1024²** | 512 est le réglage des plantes, vues à 3–8 m ; celle-ci est vue à 1,5 m |
-| Export | GLB, Draco niveau 6 | **340 Ko** mesurés |
+| Export | GLB, Draco niveau 6 | **340 Ko** mesurés sur ce fichier |
+
+⚠️ **340 Ko est ce que le fichier pesait au moment de la mesure, pas le budget que le test
+impose.** `scene/__tests__/sculptureAssets.test.ts` plafonne le GLB commité à **600 Ko**, pas à
+340 : une pièce future qui pèserait jusqu'à 600 Ko passerait la suite au vert. Le chiffre de 340 Ko
+documente une décision de décimation (voir ci-dessous), pas une garantie de poids.
 
 ### Le budget de triangles a été regardé, pas estimé
 
@@ -261,8 +268,15 @@ scene/SculptureLayer.tsx   rend la pièce, son socle, son collider
 tools/blender/build-sculptures.py
 ```
 
-Pas d'`InstancedMesh` : un exemplaire unique n'a rien à instancier. La pièce est groupée par
-étage pour hériter du culling existant (§9.3 du parent).
+Pas d'`InstancedMesh` : un exemplaire unique n'a rien à instancier.
+
+⚠️ **La pièce n'est PAS groupée par étage, contrairement à ce qu'annonçait une première rédaction
+de ce paragraphe.** C'est délibéré, et c'est le bon choix — mesuré, pas supposé : l'en-tête de
+`PropsLayer.tsx` documente qu'un découpage par étage coûtait 32 draw calls contre 9 pour le
+mobilier, sans jamais rien économiser, parce que la boîte d'un plateau inclut le volume balayé
+par son ombre jusqu'au sol du bâtiment et que les quatre niveaux sont dans le frustum en même
+temps depuis presque partout. `SculptureLayer` suit le même parti que `CartelLayer` et
+`PropsLayer` : une couche unique.
 
 ⚠️ `builders/plinth.ts` tombe sous les deux pièges d'`ExtrudeGeometry` documentés au §8 du
 parent, qui touchent déjà `buildSlab`, `buildWall` et `buildRamp` : **`bevelEnabled: false`**
@@ -321,7 +335,7 @@ zéro ».
 
 | Suite | Ce qu'elle garantit |
 |---|---|
-| `domain/__tests__/sculptures.test.ts` | la pièce tombe dans la salle demandée ; son emprise ne croise ni mur, ni ouverture, ni trémie, ni hélice de rampe ; l'orientation correspond à `facing` ; même entrée, même sortie |
+| `domain/__tests__/sculptures.test.ts` | la pièce tombe dans la salle demandée ; l'orientation correspond à `facing` ; même entrée, même sortie ; son emprise ne croise ni les murs ni les trémies de la salle d'honneur — c'est tout ce que le test couvre, il ne vérifie NI les ouvertures NI l'hélice de rampe, et n'est donc probant que pour la salle d'honneur elle-même |
 | `domain/__tests__/props.test.ts` | **le test qui compte** : aucun prop ne croise l'emprise d'une sculpture. C'est l'invariant du §5.3 |
 | `builders/__tests__/plinth.test.ts` | bounding box **3D** réelle — pas l'aire 2D, qui ne voit pas le biseau ; collider indexé et non vide |
 | `schema/__tests__/schema.test.ts` | config sans `sculptures` ; `height` ≤ 0 ; `facing` inconnu ; cartel sans titre |

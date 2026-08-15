@@ -48,10 +48,11 @@ import * as THREE from 'three'
 
 import type { PropId, PropPlacement } from '../domain/props'
 import { PROP_IDS, placeProps } from '../domain/props'
-import { emprisesDeSculptures, placeSculptures } from '../domain/sculptures'
+import { emprisesDeSculptures } from '../domain/sculptures'
 import type { Museum } from '../domain/types'
 import type { PropAssets, PropPiece } from './propAssets'
 import { propAssetsResource } from './propAssets'
+import { useSculpturePlacements } from './useSculpturePlacements'
 
 export interface PropsLayerProps {
   museum: Museum
@@ -60,6 +61,17 @@ export interface PropsLayerProps {
 /** Le mobilier et la végétation du bâtiment entier. */
 export function PropsLayer({ museum }: PropsLayerProps) {
   const assets = usePropAssets()
+
+  /*
+    ⚠️ CONTRAT AVEC `SculptureLayer` : ce qu'on RÉSERVE ici doit être
+    EXACTEMENT ce qu'il DESSINE. Les deux calques consommaient chacun leur
+    propre appel à `placeSculptures(museum)` ; `useSculpturePlacements` est le
+    hook partagé qui les fait maintenant lire la MÊME liste. Sans lui, une
+    divergence entre les deux serait silencieuse — aucun test, aucun
+    avertissement, juste un socle qui pousse à travers un banc ou une place
+    réservée qui reste vide à côté de la pièce.
+  */
+  const sculptures = useSculpturePlacements(museum)
 
   // Les emprises des pièces en volume sont réservées AVANT que quoi que ce soit
   // ne soit semé.
@@ -72,8 +84,8 @@ export function PropsLayer({ museum }: PropsLayerProps) {
   // cas. La preuve du mécanisme vit dans `sculptures.test.ts`, sur une salle au
   // centre réellement occupé.
   const parType = useMemo(
-    () => grouperParType(placeProps(museum, emprisesDeSculptures(placeSculptures(museum)))),
-    [museum],
+    () => grouperParType(placeProps(museum, emprisesDeSculptures(sculptures))),
+    [museum, sculptures],
   )
 
   if (assets === null) return null

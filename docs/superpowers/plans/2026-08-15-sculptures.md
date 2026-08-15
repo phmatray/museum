@@ -287,7 +287,10 @@ const sculptureSchema = z.strictObject({
   plinth: z.strictObject({
     width: z.number().positive(),
     depth: z.number().positive(),
-    height: z.number().nonnegative({ error: 'attendu ≥ 0 ; zéro pose la pièce à même le sol' }),
+    height: z.number().positive({
+      error:
+        'attendu une hauteur de socle strictement positive — une pièce à même le sol n’est pas encore prise en charge',
+    }),
   }),
   room: z.string().min(1).optional(),
   cartel: sculptureCartelSchema,

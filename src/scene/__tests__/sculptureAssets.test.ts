@@ -15,16 +15,37 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
 import { bornesDuNoeud, lireGltf } from '../../domain/__tests__/glbBounds'
+import { parseMuseumConfig } from '../../schema'
 import { SCULPTURE_BUDGET_TRIANGLES } from '../sculptureAssets'
 
 const CHEMIN = `${process.cwd()}/public/assets/sculptures/bavette.glb`
 const gltf = lireGltf(CHEMIN)
 
-/** Le socle déclaré dans `museum.config.json`, que la pièce doit habiter. */
-const SOCLE = { width: 1.1, depth: 1.1 }
-
-/** La hauteur déclarée dans `museum.config.json`. */
-const HAUTEUR = 0.9
+/**
+ * Le socle et la hauteur de `bavette`, LUS dans `museum.config.json` — pas
+ * recopiés. Une version antérieure de ce fichier déclarait `SOCLE = { width:
+ * 1.1, depth: 1.1 }` et `HAUTEUR = 0.9` en dur, avec un commentaire affirmant
+ * qu'ils venaient de la config. C'était faux, et ça ne protégeait rien :
+ * mesuré, muter `museum.config.json` pour donner à `bavette` un socle de
+ * 0,40 × 0,40 m et une hauteur de 3 m laissait la suite entière au vert. La
+ * garde que ce fichier prétend fournir — « la pièce tient sur son socle » —
+ * n'existe que si les cotes viennent réellement du fichier qu'un fork édite.
+ */
+const config = parseMuseumConfig(
+  JSON.parse(readFileSync(`${process.cwd()}/museum.config.json`, 'utf8')),
+)
+// `MuseumConfig.sculptures` est OPTIONNEL dans le type (les fixtures et les
+// forks n'ont aucune raison de porter un tableau vide), même si le schéma zod
+// lui donne `.default([])` à l'exécution : le `??` est donc requis par `tsc`,
+// pas par une vraie incertitude sur la valeur qui sort de `parseMuseumConfig`.
+const BAVETTE = (config.sculptures ?? []).find((s) => s.id === 'bavette')
+if (BAVETTE === undefined) {
+  throw new Error(
+    'museum.config.json : aucune sculpture « bavette » déclarée — ce fichier de test n’a plus rien à mesurer',
+  )
+}
+const SOCLE = BAVETTE.plinth
+const HAUTEUR = BAVETTE.height
 
 describe('bavette.glb', () => {
   it('ne dépasse pas le budget de triangles', () => {

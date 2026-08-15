@@ -30,20 +30,30 @@ import { useEffect, useMemo, useState } from 'react'
 import { CuboidCollider, RigidBody } from '@react-three/rapier'
 
 import { buildPlinth } from '../builders/plinth'
-import { placeSculptures } from '../domain/sculptures'
 import type { SculpturePlacement } from '../domain/sculptures'
 import type { Museum, ThemeId } from '../domain/types'
 import { SculptureCartel } from './SculptureCartel'
 import { matiereDeDalle, useMatiere } from './materials'
 import type { SculptureAssets } from './sculptureAssets'
 import { sculptureAssetsResource } from './sculptureAssets'
+import { useSculpturePlacements } from './useSculpturePlacements'
 
 export interface SculptureLayerProps {
   museum: Museum
 }
 
 export function SculptureLayer({ museum }: SculptureLayerProps) {
-  const placements = useMemo(() => placeSculptures(museum), [museum])
+  /*
+    ⚠️ CONTRAT AVEC `PropsLayer` : ce qu'il RÉSERVE
+    (`emprisesDeSculptures(useSculpturePlacements(museum))`, dans son propre
+    fichier) doit être EXACTEMENT ce qu'on DESSINE ici. Les deux calques
+    consommaient chacun leur propre appel à `placeSculptures(museum)` ; le
+    hook partagé les fait maintenant lire la MÊME liste. Une divergence entre
+    les deux serait silencieuse — aucun test, aucun avertissement, juste un
+    socle qui pousse à travers un banc ou une place réservée qui reste vide
+    à côté de la pièce.
+  */
+  const placements = useSculpturePlacements(museum)
   const fichiers = useMemo(() => placements.map((p) => p.file), [placements])
   const assets = useSculptureAssets(fichiers)
 
@@ -131,9 +141,11 @@ function UneSculpture({ placement, objet, theme }: UneSculptureProps) {
           ⚠️ L'ORDRE DES TROIS DEMI-COTES : `args` est positionnel, et le socle
           de Bavette est CARRÉ (1,10 × 1,10). Intervertir la largeur et la
           profondeur ne se verrait donc ni à l'écran ni dans un test — c'est le
-          motif trouvé DEUX fois dans ce lot, et `scene/` n'a aucun test
-          unitaire pour l'attraper. L'ordre est `[x, y, z]`, donc
-          `[largeur/2, hauteur/2, profondeur/2]`.
+          motif trouvé DEUX fois dans ce lot. `scene/__tests__/` a cinq suites,
+          dont `propAssets.test.ts`, frère direct de ce fichier — mais aucune
+          ne REND un composant R3F (`@react-three/test-renderer` n'est pas une
+          dépendance du projet), donc rien n'exécute jamais ce JSX en test.
+          L'ordre est `[x, y, z]`, donc `[largeur/2, hauteur/2, profondeur/2]`.
         */}
         <RigidBody type="fixed" colliders={false} name={`sculpture:${placement.id}`}>
           <CuboidCollider

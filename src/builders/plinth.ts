@@ -34,6 +34,14 @@ export interface PlinthResult {
  * d'un seul côté. Elle ramène les 24 sommets de `BoxGeometry` — trois par coin,
  * un par face, pour que les normales des arêtes vives restent distinctes — aux
  * 8 coins réels.
+ *
+ * ⚠️ Le `collider` rendu ici n'est aujourd'hui consommé par PERSONNE :
+ * `SculptureLayer` n'utilise que `socle.geometry` pour l'affichage, et le
+ * collider physique réel du socle est un `CuboidCollider` écrit à la main
+ * (emprise socle + pièce). On le garde quand même — retirer le champ casserait
+ * les tests qui verrouillent les deux pièges d'`ExtrudeGeometry` (biseau,
+ * indexation) pour le jour où ce socle gagnera un chanfrein et basculera sur
+ * une géométrie extrudée, où un trimesh redeviendra le collider réel.
  */
 export function buildPlinth(width: number, depth: number, height: number): PlinthResult {
   if (width <= 0 || depth <= 0 || height <= 0) {

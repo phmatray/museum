@@ -424,6 +424,24 @@ describe('parseMuseumConfig — sculptures', () => {
     ).toThrow(/height/)
   })
 
+  it('refuse un socle de hauteur nulle — buildPlinth ne sait pas poser une pièce à même le sol', () => {
+    expect(() =>
+      parseMuseumConfig({
+        ...base,
+        sculptures: [
+          {
+            id: 'x',
+            file: 'x.glb',
+            height: 1,
+            facing: 'south',
+            plinth: { width: 1, depth: 1, height: 0 },
+            cartel: { title: 'X' },
+          },
+        ],
+      }),
+    ).toThrow(/socle/)
+  })
+
   it('refuse une orientation inconnue', () => {
     expect(() =>
       parseMuseumConfig({
@@ -471,5 +489,60 @@ describe('parseMuseumConfig — sculptures', () => {
     expect(() =>
       parseMuseumConfig({ ...base, sculptures: [{ ...s, id: 'a' }, { ...s, id: 'a' }] }),
     ).toThrow(/identifiant en double/)
+  })
+
+  it('refuse deux sculptures sur le même fichier — <primitive> ne peut reparenter qu’un objet à la fois', () => {
+    const s = {
+      file: 'x.glb',
+      height: 1,
+      facing: 'south' as const,
+      plinth: { width: 1, depth: 1, height: 0.25 },
+      cartel: { title: 'X' },
+    }
+    expect(() =>
+      parseMuseumConfig({
+        ...base,
+        sculptures: [
+          { ...s, id: 'a' },
+          { ...s, id: 'b' },
+        ],
+      }),
+    ).toThrow(/fichier en double/)
+  })
+
+  it('refuse deux sculptures dans la même salle explicite — leurs socles se superposeraient au centre', () => {
+    const s = {
+      height: 1,
+      facing: 'south' as const,
+      plinth: { width: 1, depth: 1, height: 0.25 },
+      cartel: { title: 'X' },
+      room: 'rdc-honneur',
+    }
+    expect(() =>
+      parseMuseumConfig({
+        ...base,
+        sculptures: [
+          { ...s, id: 'a', file: 'a.glb' },
+          { ...s, id: 'b', file: 'b.glb' },
+        ],
+      }),
+    ).toThrow(/salle en double/)
+  })
+
+  it('accepte deux sculptures sans room — le défaut partagé n’est pas ce que cette règle couvre', () => {
+    const s = {
+      height: 1,
+      facing: 'south' as const,
+      plinth: { width: 1, depth: 1, height: 0.25 },
+      cartel: { title: 'X' },
+    }
+    const config = parseMuseumConfig({
+      ...base,
+      sculptures: [
+        { ...s, id: 'a', file: 'a.glb' },
+        { ...s, id: 'b', file: 'b.glb' },
+      ],
+    })
+    expect(config.sculptures).toHaveLength(2)
   })
 })
