@@ -119,6 +119,15 @@ describe('boiteDeSculpture', () => {
       ).toBe(false)
     }
   })
+
+  it('distingue la largeur de la profondeur du socle', () => {
+    const [p] = placeSculptures(
+      avec([{ ...BAVETTE, plinth: { width: 1.4, depth: 0.8, height: 0.25 } }]),
+    )
+    const b = boiteDeSculpture(p)
+    expect(b.maxX - b.minX).toBeCloseTo(1.4, 6)
+    expect(b.maxZ - b.minZ).toBeCloseTo(0.8, 6)
+  })
 })
 
 describe('le mobilier contourne la pièce', () => {
@@ -161,6 +170,65 @@ describe('le mobilier contourne la pièce', () => {
     // cesse d'être une précaution et devient indispensable — et le test au-dessus
     // est ce qui l'aura déjà couvert.
     expect(sansReservation.length).toBe(0)
+  })
+})
+
+/**
+ * Cherche une salle dont le CENTRE est réellement occupé par du mobilier.
+ *
+ * Cherchée dans le musée plutôt que codée en dur : le bâtiment est régénéré à
+ * chaque build, et un identifiant de salle figé se périmerait au premier
+ * changement de dépôts. Mesuré au moment d'écrire : 13 salles conviennent,
+ * `poserLesSocles` posant un socle au centre exact de toute salle dont l'aire
+ * tombe entre 70 et 150 m².
+ *
+ * La boîte est construite par `boiteDeSculpture`, jamais recalculée à la main :
+ * un test qui refait le calcul du code testé ne teste que lui-même.
+ */
+function salleAuCentreOccupe(musee: Museum, modele: Sculpture) {
+  const base = placeProps(musee)
+  for (const floor of musee.floors) {
+    for (const room of floor.rooms) {
+      const essai = placeSculptures({
+        ...musee,
+        config: { ...musee.config, sculptures: [{ ...modele, room: room.id }] },
+      })
+      if (essai.length === 0) continue
+      const boite = boiteDeSculpture(essai[0])
+      const occupants = base.filter(
+        (p) => p.floorId === floor.id && croisent(boiteDuProp(p), boite),
+      )
+      if (occupants.length > 0) return { room, floor, boite }
+    }
+  }
+  return null
+}
+
+describe('le mobilier contourne la pièce — la preuve, pas la garde', () => {
+  const hote = salleAuCentreOccupe(reel, BAVETTE)
+
+  it('une salle au centre occupé existe, sinon ce bloc ne prouve rien', () => {
+    expect(hote).not.toBeNull()
+  })
+
+  it('sans réservation, un prop occupe la place de la pièce', () => {
+    const occupants = placeProps(reel).filter(
+      (p) => p.floorId === hote!.floor.id && croisent(boiteDuProp(p), hote!.boite),
+    )
+    expect(occupants.length).toBeGreaterThan(0)
+  })
+
+  it('avec réservation, plus aucun prop ne la croise', () => {
+    const musee = {
+      ...reel,
+      config: { ...reel.config, sculptures: [{ ...BAVETTE, room: hote!.room.id }] },
+    }
+    const sculptures = placeSculptures(musee)
+    const fautifs = placeProps(musee, emprisesDeSculptures(sculptures))
+      .filter((p) => p.floorId === sculptures[0].floorId)
+      .filter((p) => croisent(boiteDuProp(p), boiteDeSculpture(sculptures[0])))
+      .map((p) => `${p.id} en (${p.position.x.toFixed(2)}, ${p.position.z.toFixed(2)})`)
+    expect(fautifs).toEqual([])
   })
 })
 
