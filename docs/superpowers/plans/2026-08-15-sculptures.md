@@ -2103,39 +2103,59 @@ function UneSculpture({ placement, objet, theme }: UneSculptureProps) {
   const { x, y, z } = placement.position
 
   return (
-    <group position={[x, y, z]}>
-      <mesh geometry={socle.geometry} material={matiere} castShadow={false} receiveShadow />
-
+    <>
       {/*
-        La pièce est déjà à l'échelle, ancrée au sol et orientée vers +Z : c'est
-        `build-sculptures.py` qui le garantit et `sculptureAssets.test.ts` qui le
-        vérifie sur le fichier réel. Il ne reste qu'à la monter sur son socle et
-        à lui donner son lacet.
-      */}
-      {objet !== null && (
-        <group position={[0, plinth.height, 0]} rotation={[0, placement.rotation, 0]}>
-          <primitive object={objet} />
-        </group>
-      )}
+        ⚠️ LE CARTEL EST DEHORS, et c'est une décision.
 
-      {/*
-        Le collider couvre le socle ET la pièce : `CuboidCollider` prend des
-        DEMI-dimensions, et son origine est son centre — d'où le décalage d'une
-        demi-hauteur.
+        `SculptureCartel` lit `placement.position` comme des coordonnées MONDE —
+        c'est ce que le type documente. Le monter DANS le groupe déjà translaté
+        ci-dessous l'aurait décalé deux fois, et la parade évidente — lui passer
+        un placement dont la position est remise à zéro — marche mais pose un
+        piège : un composant qui exige qu'on lui mente sur son entrée casse en
+        silence au premier qui déplace la ligne. Frère du groupe plutôt
+        qu'enfant, il reçoit le placement RÉEL et personne n'a rien à compenser.
       */}
-      <RigidBody type="fixed" colliders={false} name={`sculpture:${placement.id}`}>
-        <CuboidCollider
-          args={[
-            plinth.width / 2,
-            (plinth.height + placement.height) / 2,
-            plinth.depth / 2,
-          ]}
-          position={[0, (plinth.height + placement.height) / 2, 0]}
-        />
-      </RigidBody>
+      <SculptureCartel placement={placement} theme={theme} />
 
-      <SculptureCartel placement={{ ...placement, position: { x: 0, y: 0, z: 0 } }} theme={theme} />
-    </group>
+      <group position={[x, y, z]}>
+        <mesh geometry={socle.geometry} material={matiere} castShadow={false} receiveShadow />
+
+        {/*
+          La pièce est déjà à l'échelle, ancrée au sol et orientée vers +Z :
+          c'est `build-sculptures.py` qui le garantit et
+          `sculptureAssets.test.ts` qui le vérifie sur le fichier réel. Il ne
+          reste qu'à la monter sur son socle et à lui donner son lacet.
+        */}
+        {objet !== null && (
+          <group position={[0, plinth.height, 0]} rotation={[0, placement.rotation, 0]}>
+            <primitive object={objet} />
+          </group>
+        )}
+
+        {/*
+          Le collider couvre le socle ET la pièce. `CuboidCollider` prend des
+          DEMI-dimensions, et son origine est son centre — d'où le décalage
+          d'une demi-hauteur.
+
+          ⚠️ L'ORDRE DES TROIS DEMI-COTES : `args` est positionnel, et le socle
+          de Bavette est CARRÉ (1,10 × 1,10). Intervertir la largeur et la
+          profondeur ne se verrait donc ni à l'écran ni dans un test — c'est le
+          motif trouvé DEUX fois dans ce lot, et `scene/` n'a aucun test
+          unitaire pour l'attraper. L'ordre est `[x, y, z]`, donc
+          `[largeur/2, hauteur/2, profondeur/2]`.
+        */}
+        <RigidBody type="fixed" colliders={false} name={`sculpture:${placement.id}`}>
+          <CuboidCollider
+            args={[
+              plinth.width / 2,
+              (plinth.height + placement.height) / 2,
+              plinth.depth / 2,
+            ]}
+            position={[0, (plinth.height + placement.height) / 2, 0]}
+          />
+        </RigidBody>
+      </group>
+    </>
   )
 }
 
@@ -2173,7 +2193,7 @@ function useSculptureAssets(fichiers: readonly string[]): SculptureAssets | null
 }
 ```
 
-⚠️ Le `placement` passé à `<SculptureCartel>` a sa position remise à zéro : le cartel est monté DANS le groupe déjà translaté, ses coordonnées y sont donc locales. Sans ça la pièce serait décalée deux fois.
+⚠️ **`<SculptureCartel>` est FRÈRE du groupe translaté, pas son enfant.** Il lit `placement.position` comme des coordonnées MONDE — c'est ce que le type documente. Une première version de ce plan le montait dans le groupe et compensait en lui passant un placement dont la position était remise à zéro : ça marche, et ça pose un piège. Un composant qui exige qu'on lui mente sur son entrée casse en silence au premier qui déplace la ligne. Sorti du groupe, il reçoit le placement réel et personne n'a rien à compenser.
 
 ⚠️ **`<CuboidCollider args={[…, …, …]} />` porte le motif de permutation d'axes, deux fois rencontré dans ce lot.** Trois demi-cotes, un ordre positionnel implicite, et un socle **carré** dans la configuration de Bavette : intervertir la largeur et la profondeur ne se verrait ni à l'écran ni dans un test. Les deux instances précédentes — la fixture carrée de `boiteDeSculpture` (Task 3) et `BoxGeometry(1.1, 1.1, 0.25)` (Task 4) — ont toutes deux été trouvées par mutation, jamais par lecture. `scene/` n'ayant pas de test unitaire, la seule garde ici est la relecture : écrire les trois arguments dans l'ordre `[width/2, height/2, depth/2]` et le commenter.
 
