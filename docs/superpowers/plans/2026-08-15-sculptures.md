@@ -379,24 +379,30 @@ describe('placeProps — les emprises réservées', () => {
    * doit continuer à le faire si la pièce change de taille ou disparaît.
    */
   const rdc = museum.floors.find((f) => f.level === 0)!
-  const salle = rdc.rooms[0]
-  const cx = salle.footprint.x + salle.footprint.width / 2
-  const cz = salle.footprint.z + salle.footprint.depth / 2
+
+  /**
+   * Un point RÉELLEMENT disputé, choisi par la mesure et non par intuition.
+   *
+   * `poserLesSocles` pose DEUX socles dès que la salle dépasse 150 m² — à ±1/3
+   * de son axe long, soit x = ±10 pour la salle d'honneur — et un seul, au
+   * centre exact, entre 70 et 150 m². À 270 m² le centre est donc LIBRE.
+   */
+  const cible = { x: -10, z: -10.5 }
   const boite: Boite = {
-    minX: cx - 0.55,
-    maxX: cx + 0.55,
-    minZ: cz - 0.55,
-    maxZ: cz + 0.55,
+    minX: cible.x - 0.55,
+    maxX: cible.x + 0.55,
+    minZ: cible.z - 0.55,
+    maxZ: cible.z + 0.55,
     minY: rdc.elevation,
     maxY: rdc.elevation + 1.15,
   }
   const reservee = { floorId: rdc.id, boite }
 
-  it('sans réservation, le mobilier ENVAHIT la place — sinon ce test n’a pas de dents', () => {
-    const envahisseurs = placeProps(museum).filter(
+  it('sans réservation, le mobilier occupe la place — sinon ce test n’a pas de dents', () => {
+    const occupants = placeProps(museum).filter(
       (p) => p.floorId === rdc.id && croisent(boiteDuProp(p), boite),
     )
-    expect(envahisseurs.length).toBeGreaterThan(0)
+    expect(occupants.length).toBeGreaterThan(0)
   })
 
   it('avec réservation, AUCUN prop ne croise l’emprise', () => {
@@ -425,6 +431,10 @@ describe('placeProps — les emprises réservées', () => {
 ```
 
 ⚠️ Le premier test est le seul qui donne du sens aux autres : si le mobilier ne tombait de toute façon jamais là, réserver ne prouverait rien. **S'il échoue, ne pas le supprimer** — il signifie que le placement a changé et que l'invariant n'est plus mis à l'épreuve ; il faut alors trouver un autre point de contact, pas baisser la garde.
+
+⚠️ **La cible `x = −10` est le résultat d'une mesure, pas d'une intuition — et la première version de ce plan visait le centre, où RIEN ne tombe.** Mesuré sur le musée réel : 40 props au rez-de-chaussée, **zéro** croisant une boîte de 1,10 m au centre `(0, −10.5)`, le plus proche à 2,65 m. Le test aurait passé sans rien éprouver, et sa réputation d'« avoir des dents » aurait été usurpée pour tout le reste du lot. La cause : à 270 m², `poserLesSocles` pose deux socles à ±1/3 de l'axe long ; le centre exact n'est occupé que pour une aire dans [70, 150).
+
+Commande de la mesure, pour la rejouer : charger `public/data/museum.json`, appeler `placeProps(museum)`, filtrer sur `floorId === 'rdc'` et compter les `croisent(boiteDuProp(p), boite)`.
 
 - [ ] **Step 2: Lancer le test pour vérifier qu'il échoue**
 
@@ -668,12 +678,29 @@ describe('le mobilier contourne la pièce', () => {
     expect(fautifs).toEqual([])
   })
 
-  it('sans réservation, il l’envahirait — c’est ce qui donne des dents au test', () => {
+  /**
+   * ⚠️ Ce test PASSE aujourd'hui même sans réservation, et c'est mesuré : au
+   * rez-de-chaussée actuel, aucun des 40 props ne tombe au centre de la salle
+   * d'honneur — le plus proche est à 2,65 m.
+   *
+   * Il reste utile, mais il faut savoir ce qu'il est : un GARDE DE RÉGRESSION,
+   * pas une preuve du mécanisme. `poserLesSocles` pose un socle au centre exact
+   * dès qu'une salle tombe entre 70 et 150 m² ; l'aire de la salle d'honneur
+   * dérive du nombre de dépôts, qui change à chaque nuit. Le jour où elle
+   * passera sous 150 m², c'est ce test qui parlera.
+   *
+   * La preuve du mécanisme, elle, vit dans `props.test.ts`, sur un point
+   * réellement disputé.
+   */
+  it('l’emprise reste libre — garde de régression, pas preuve du mécanisme', () => {
     const boite = boiteDeSculpture(sculptures[0])
-    const envahisseurs = placeProps(musee).filter(
+    const sansReservation = placeProps(musee).filter(
       (p) => p.floorId === sculptures[0].floorId && croisent(boiteDuProp(p), boite),
     )
-    expect(envahisseurs.length).toBeGreaterThan(0)
+    // Aujourd'hui zéro. Si ce compte devient non nul un jour, la réservation
+    // cesse d'être une précaution et devient indispensable — et le test au-dessus
+    // est ce qui l'aura déjà couvert.
+    expect(sansReservation.length).toBe(0)
   })
 })
 

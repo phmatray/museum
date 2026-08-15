@@ -166,15 +166,42 @@ le bâtiment.
 
 ### 5.3 L'ordre de placement est un invariant, pas un détail
 
-**`placeSculptures` tourne AVANT `placeProps`, et ses emprises entrent dans les obstacles.**
+**`placeSculptures` tourne AVANT `placeProps`, et ses emprises sont réservées.**
 
-Sans cela : `poserLeBanc` cherche le mur le plus garni — l'extérieur, 5 œuvres — et pose son
-banc à 2,60 m de ce mur, soit `z = −12.4`, à moins de deux mètres de la pièce. Et `poserLesSocles`
-vise le centre de l'axe long quand la salle n'en reçoit qu'un.
+⚠️ **Une première rédaction de ce spec justifiait cette règle par une collision qui N'EXISTE PAS.**
+Elle affirmait que `poserLeBanc` posait son banc à `z = −12.4`, « à moins de deux mètres de la
+pièce ». Mesuré sur le musée réel au moment d'implémenter :
 
-Le mécanisme existe déjà et n'est pas à inventer : `placeProps` accumule ses poses dans `poses`
-et les traite comme obstacles pour les suivantes. Une sculpture est une entrée pré-semée dans ce
-même tableau.
+```
+salle rdc-honneur : 30 × 9 = 270 m², centre (0.00, −10.50)
+props sur rdc : 40 · socles à (−10.0, −10.5) et (10.0, −10.5)
+boîte 1,10 × 1,10 au centre : 0 prop la croise
+prop le plus proche : 2,65 m — une jardinière en (0.00, −13.15)
+```
+
+Le banc de la salle d'honneur **n'est pas posé du tout** : les trois bancs du niveau sont ceux de
+l'atrium, et le sien a été refusé par une jardinière placée avant lui. Le chiffre venait d'une
+lecture du code, pas d'une exécution — exactement le piège que le projet documente ailleurs.
+
+**La vraie justification, et elle est meilleure : le bâtiment est génératif et régénéré chaque
+nuit.** Le centre n'est libre que par un effet de seuil — `poserLesSocles` pose DEUX socles à
+±1/3 de l'axe long au-delà de 150 m², et **UN SEUL, au centre exact, entre 70 et 150 m²**. L'aire
+de la salle d'honneur dépend du plan en anneau, qui dépend de la taille de l'atrium, qui dépend du
+nombre de dépôts. Un dépôt de plus ou de moins peut donc faire tomber cette salle sous 150 m² et
+poser un socle très exactement là où se trouve la pièce.
+
+La réservation n'est donc pas la correction d'une collision constatée : c'est la garde qui empêche
+une collision que rien d'autre n'empêche. Elle est plus justifiée ainsi, pas moins.
+
+Le mécanisme existe déjà et n'est pas à inventer : `placeProps` accumule ses poses dans `poses` et
+les traite comme obstacles pour les suivantes. Une sculpture est une entrée pré-semée dans ce même
+tableau. Un candidat refusé est **abandonné**, jamais déplacé — le socle qui tomberait sur la pièce
+disparaîtrait simplement.
+
+**Conséquence pour les tests :** l'invariant « aucun prop ne croise la pièce » passe aujourd'hui
+même sans réservation. Il reste un test utile — c'est un garde de régression contre le jour où le
+compte de dépôts changera — mais il ne PROUVE pas le mécanisme. Le mécanisme se prouve séparément,
+sur un point réellement disputé : un des deux socles à `x = ±10`.
 
 ## 6. Chaîne d'asset
 
