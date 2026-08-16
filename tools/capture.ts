@@ -345,6 +345,69 @@ async function attendreScene(page: Page): Promise<void> {
   )
 }
 
+/**
+ * D'OÙ viennent les draw calls, groupe par groupe.
+ *
+ * ── Pourquoi cette ventilation manquait ──
+ *
+ * Le compteur du §9 dit « 269 pour un plafond de 150 » et s'arrête là. On sait
+ * donc qu'on dépasse, jamais de combien chaque poste y contribue — et une
+ * optimisation choisie sans ce relevé est une intuition qu'on paie en heures.
+ * Le plan nomme un levier (« fusionner les murs par matière, −65 appels ») :
+ * ce chiffre-là est une PRÉVISION, et rien ne l'a jamais vérifiée.
+ *
+ * On compte les objets rendables VISIBLES, groupés par le nœud nommé le plus
+ * proche. Ce n'est pas exactement le compte du pilote — le post-traitement
+ * ajoute ses passes plein écran, et le culling par frustum en retire — mais
+ * c'est la seule décomposition que la scène puisse donner, et elle suffit
+ * amplement à dire OÙ chercher.
+ */
+const SCRIPT_APPELS = `(() => {
+  const parGroupe = {}
+  const compter = (o) => {
+    if (!o.visible) return
+    const rendable = o.isMesh || o.isInstancedMesh || o.isLine || o.isPoints
+    if (rendable) {
+      let n = o
+      let nom = '(sans nom)'
+      while (n) { if (n.name) { nom = n.name; break } n = n.parent }
+      const groupes = o.geometry && o.geometry.groups ? o.geometry.groups.length : 0
+      parGroupe[nom] = (parGroupe[nom] || 0) + Math.max(1, groupes)
+    }
+    for (const e of o.children) compter(e)
+  }
+  compter(window.__MUSEUM__.scene)
+  return parGroupe
+})()`
+
+async function ventiler(page: Page, vue: Vue): Promise<void> {
+  await page.evaluate(`window.__MUSEUM__.survol(${vue.de.join(',')}, ${vue.vers.join(',')})`)
+  await new Promise((r) => setTimeout(r, 350))
+  const parGroupe = (await page.evaluate(SCRIPT_APPELS)) as Record<string, number>
+  // ⚠️ Regroupé par PRÉFIXE (`wall:rdc-nord` → `wall`). Sans ça, chaque mur
+  // portant son propre nom, les soixante-et-onze murs du bâtiment sortaient en
+  // soixante-et-onze lignes à 1 — c'est-à-dire invisibles sous n'importe quel
+  // filtre, alors qu'ils sont le premier poste du compteur. Une ventilation qui
+  // éparpille son plus gros poste ne ventile rien.
+  const parFamille: Record<string, number> = {}
+  for (const [nom, n] of Object.entries(parGroupe)) {
+    // Les couches nomment leurs nœuds `famille:instance` ; les MURS, eux, portent
+    // leur rôle en suffixe (`etage-2-north-galerie-0-outer`). Sans cette seconde
+    // règle, les soixante-et-onze murs sortaient en soixante-et-onze lignes à 1,
+    // c'est-à-dire noyés — alors qu'ils sont à eux seuls la moitié du compteur.
+    const mur = /-(outer|inner|side-[ab]|enclosure)$/.exec(nom)
+    const famille = mur ? `mur:${mur[1].replace(/-[ab]$/, '')}` : nom.split(':')[0]
+    parFamille[famille] = (parFamille[famille] ?? 0) + n
+  }
+  const lignes = Object.entries(parFamille).sort((a, b) => b[1] - a[1])
+  const total = lignes.reduce((s, [, n]) => s + n, 0)
+  console.log(`\nventilation des maillages visibles \u2014 vue \u00ab ${vue.nom} \u00bb\n`)
+  for (const [nom, n] of lignes) {
+    console.log(`  ${nom.padEnd(28)} ${String(n).padStart(4)}  ${((100 * n) / total).toFixed(1)} %`)
+  }
+  console.log(`  ${'TOTAL'.padEnd(28)} ${String(total).padStart(4)}`)
+}
+
 async function capturer(page: Page, vue: Vue): Promise<Rapport> {
   await page.evaluate(
     `window.__MUSEUM__.setPostFx(${vue.sansPostFx ? 'false' : 'true'})`,
@@ -461,6 +524,11 @@ async function main() {
 
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 60_000 })
     await attendreScene(page)
+
+    if (process.argv.includes('--appels')) {
+      await ventiler(page, vues[0])
+      return
+    }
 
     const rapports: Rapport[] = []
     for (const vue of vues) rapports.push(await capturer(page, vue))
