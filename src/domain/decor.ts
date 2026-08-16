@@ -42,6 +42,7 @@ import type { Museum, Rect, Vec3 } from './types'
 export type DecorId =
   // ── Structure ──
   | 'nervure-atrium'
+  | 'nervure-lanterneau'
   | 'mat-arborescent'
   | 'console'
   | 'sculpture-atrium'
@@ -79,14 +80,13 @@ export type DecorId =
  *    plateaux. Une troisième main courante au même endroit ne se lirait pas
  *    comme du soin, elle se lirait comme un doublon. La pièce reste dans le kit,
  *    prête pour l'escalier sculpté, qui n'est pas encore fait.
- *  - `nervure-lanterneau` — elle attend la lanterne zénithale. La poser avant
- *    son support serait un anneau de côtes flottant sous une toiture pleine.
  *
  * Une pièce présente dans le kit mais absente d'ici ne coûte que sa place dans
  * le GLB commité : `assemblerLeDecor` ne charge que ce qui est placé.
  */
 export const DECOR_IDS: readonly DecorId[] = [
   'nervure-atrium',
+  'nervure-lanterneau',
   'mat-arborescent',
   'console',
   'sculpture-atrium',
@@ -182,6 +182,7 @@ export interface DecorMetrics {
 export const DECOR_METRICS: Record<DecorId, DecorMetrics> = {
   // Relevé par `node tools/measure-props.ts --decor` sur les kits réels.
   'nervure-atrium': { radius: 1.327, minY: -0.007, maxY: 4.301, collision: null },
+  'nervure-lanterneau': { radius: 0.901, minY: -0.004, maxY: 2.603, collision: null },
   'mat-arborescent': { radius: 2.851, minY: -0.005, maxY: 4.001, collision: null },
   console: { radius: 0.742, minY: -0.002, maxY: 0.601, collision: null },
   // minY négatif : ces deux-là PENDENT. Leur ancre est le plan de suspension.
@@ -311,6 +312,7 @@ export function placeDecor(museum: Museum): DecorPlacement[] {
     }
   }
 
+  placements.push(...lanterneZenithale(museum))
   placements.push(...suspensionsDAtrium(museum))
   placements.push(...mobilierDuHall(museum))
   placements.push(...mobilierDesSalles(museum))
@@ -493,6 +495,141 @@ function consolesDeTremie(floorId: string, elevation: number, trou: Rect): Decor
     pose('console', p.x, elevation - DECOR_METRICS.console.maxY, p.z, versLePoint(p.x, p.z, cx, cz), floorId),
   )
 }
+
+/**
+ * La LANTERNE ZÉNITHALE : la couronne de côtes qui coiffe le puits de lumière.
+ *
+ * ── Pourquoi elle manquait, et ce qu'elle répare ──
+ *
+ * La toiture reprend exactement la découpe des dalles : l'atrium débouche donc
+ * sur le ciel, ce qui donne la verrière zénithale sans modéliser de verrière.
+ * C'est économe et c'est juste — mais vu de dessous, le puits s'arrête sur un
+ * TROU. Il n'y a rien qui dise « voici où le bâtiment s'ouvre » : la lumière
+ * arrive d'un vide rectangulaire, et le geste le plus fort de tout le plan n'a
+ * aucun couronnement.
+ *
+ * Vingt-quatre côtes posées sur la rive de toiture, penchées vers l'intérieur,
+ * font ce couronnement. Elles ne portent rien — la toiture tient toute seule —
+ * et c'est très exactement le même parti que les consoles de trémie : ce qui
+ * manque à un vide de douze mètres, ce n'est pas de la structure, c'est une
+ * ÉPAISSEUR qui dise à l'œil où la matière s'arrête.
+ *
+ * ── Zéro géométrie neuve ──
+ *
+ * `nervure-lanterneau` était générée et inutilisée. La toiture percée sert de
+ * ceinture, les côtes sont la lanterne : procédural pour ce qui est exact — la
+ * rive, qui est déjà là — et Meshy pour ce qui est sculpté. C'est la règle qui a
+ * déjà sorti le brise-soleil et le rail d'éclairage de la commande, appliquée
+ * dans l'autre sens.
+ *
+ * ⛔ `floorId: null`, et ce n'est pas un détail. Le culling écarte un plateau
+ * avec tout ce qui lui est attaché ; la lanterne appartient à la TOITURE, pas au
+ * dernier étage, et l'attacher à celui-ci la ferait disparaître exactement quand
+ * on la regarde — de l'extérieur, ou d'en bas depuis le rez-de-chaussée.
+ */
+function lanterneZenithale(museum: Museum): DecorPlacement[] {
+  const haut = [...museum.floors].sort((a, b) => b.elevation - a.elevation)[0]
+  const trou = haut?.slabHoles[0]
+  if (!haut || !trou) return []
+
+  const cx = trou.x + trou.width / 2
+  const cz = trou.z + trou.depth / 2
+  // Sur la RIVE de toiture : le sommet du dernier niveau, plus l'épaisseur de
+  // couverture. La cote de toiture vit dans `FloorMesh` et le domaine ne peut
+  // pas l'importer — on la reprend ici, et l'épreuve d'encadrement la garde.
+  const y = haut.elevation + haut.ceilingHeight + EPAISSEUR_TOITURE
+
+  // Le pas se dérive du rayon de la côte À SON ÉCHELLE : deux côtes voisines ne
+  // doivent pas se traverser, et la corde qui coupe un angle est plus courte que
+  // l'arc — d'où le facteur √2 déjà payé sur la trémie.
+  const pas = 2 * DECOR_METRICS['nervure-lanterneau'].radius * ECHELLE_LANTERNE * Math.SQRT2
+  const combien = Math.max(8, Math.floor((2 * (trou.width + trou.depth)) / pas))
+
+  return semisSurPourtour(
+    {
+      x: trou.x - RECUL_LANTERNE,
+      z: trou.z - RECUL_LANTERNE,
+      width: trou.width + 2 * RECUL_LANTERNE,
+      depth: trou.depth + 2 * RECUL_LANTERNE,
+    },
+    0,
+    combien,
+  ).map((p) => ({
+    id: 'nervure-lanterneau' as DecorId,
+    position: { x: p.x, y, z: p.z },
+    /*
+      ⚠️ Le BASCULEMENT vit dans `z`, et le lacet dans `y`. Ce n'est pas
+      interchangeable, et ça se démontre.
+
+      `assemblerLeDecor` compose l'Euler en ordre `XYZ`, donc la matrice vaut
+      `Rx·Ry·Rz` : c'est Rz qui s'applique EN PREMIER, dans le repère de la
+      pièce, puis le lacet fait pivoter le tout. Un basculement écrit dans `x`
+      tomberait après le lacet et coucherait les côtes sur le côté — juste sur
+      deux rives de l'oculus, faux sur les deux autres.
+
+      Écrit dans `z`, le basculement penche la pièce vers son propre +X, et c'est
+      ce +X que le lacet envoie vers le centre. Les vingt-quatre côtes penchent
+      donc toutes vers l'oculus, quel que soit le côté où elles sont posées.
+
+      Signe négatif : `Rz(θ)` envoie +Y vers −X pour θ positif. On veut l'inverse.
+    */
+    rotation: { x: 0, y: versLePoint(p.x, p.z, cx, cz), z: -BASCULE_LANTERNE },
+    scale: { x: ECHELLE_LANTERNE, y: ECHELLE_LANTERNE, z: ECHELLE_LANTERNE },
+    floorId: null,
+  }))
+}
+
+/**
+ * Épaisseur de la couverture, en mètres.
+ *
+ * ⚠️ Recopiée de `ROOF_THICKNESS` (`scene/FloorMesh.tsx`), et c'est délibéré :
+ * le domaine ne peut pas importer la scène — c'est la règle de couches de ce
+ * dépôt, et l'inverser pour une constante serait payer très cher un octet. Le
+ * jour où la toiture change d'épaisseur, la lanterne s'enfoncera ou flottera de
+ * l'écart ; l'épreuve d'encadrement de hauteur le dira.
+ */
+const EPAISSEUR_TOITURE = 0.3
+
+/**
+ * Recul de la côte par rapport à la rive de toiture, en mètres.
+ *
+ * Négatif serait au-dessus du vide, où rien ne la porte. 0,35 m la pose sur la
+ * matière tout en la laissant pencher au-dessus de l'oculus : le porte-à-faux
+ * EST le geste, comme sur les nervures d'atrium.
+ */
+const RECUL_LANTERNE = 0.55
+
+/**
+ * Échelle des côtes de lanterne.
+ *
+ * ⚠️ 1,9 et non 1, et le chiffre vient de la vue `lanterne`, pas d'un goût.
+ *
+ * À l'échelle du modèle — 2,60 m — les côtes existaient : le compteur les
+ * comptait, le plan les plaçait, le budget les tenait. Et depuis le
+ * rez-de-chaussée, quinze mètres plus bas et à travers un oculus de douze
+ * mètres, on n'en voyait que les PIEDS : une frise de plots pâles sur la rive,
+ * qui ne couronnait rien. Portées à 4,94 m, leur porte-à-faux entre dans le
+ * cadre et la couronne se lit comme une couronne.
+ *
+ * L'échelle est gratuite : elle ne change pas un triangle. Ce qu'elle coûte est
+ * le PAS — une côte 1,9 fois plus large tient 1,9 fois moins de place sur la
+ * rive — et c'est pour ça qu'elle entre dans son calcul plutôt que d'être
+ * appliquée après coup.
+ */
+const ECHELLE_LANTERNE = 1.9
+
+/**
+ * Basculement des côtes vers l'oculus, en radians.
+ *
+ * Sans lui, les côtes sont VERTICALES, et vues du rez-de-chaussée on les prend
+ * par la tranche : elles rendent une frise de moignons pâles sur la rive, pas
+ * une couronne. 26° les fait passer au-dessus du vide, où leur profil se
+ * découpe sur le ciel — le seul endroit d'où une côte se lit comme une côte.
+ *
+ * C'est exactement l'argument du porte-à-faux des nervures d'atrium : ce qui
+ * fait la pièce, ce n'est pas qu'elle soit là, c'est qu'elle penche.
+ */
+const BASCULE_LANTERNE = 0.45
 
 /**
  * Ce qui pend dans le vide de l'atrium.

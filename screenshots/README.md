@@ -10,14 +10,14 @@ node tools/screenshots.ts
 
 Elles sont ici pour qu'un chantier de RENDU se relise sans avoir à le rejouer : on ne juge pas un éclairage sur un tableau de chiffres, et refaire ces images demande Chrome, le serveur Vite et 345 Mo de sources de végétation.
 
-Redimensionnées à 1440 px et encodées en WebP q80 — 1.29 Mo au total, contre 56 Mo de PNG bruts. Les originaux en 2880×1800 restent dans `.captures/`, qui n'est pas versionné.
+Redimensionnées à 1440 px et encodées en WebP q80 — 1.35 Mo au total, contre 56 Mo de PNG bruts. Les originaux en 2880×1800 restent dans `.captures/`, qui n'est pas versionné.
 
 ## Budget §9, sur la vue la plus chère
 
 | Poste | Relevé | Plafond | |
 |---|--:|--:|---|
 | calls | 269 | 150 | ✗ |
-| triangles | 854 622 | 1 000 000 | ✓ |
+| triangles | 860 913 | 1 000 000 | ✓ |
 | lights | 12 | 12 | ✓ |
 | shadowCasters | 1 | 2 | ✓ |
 
@@ -54,7 +54,7 @@ Trait plein : ce qui est au sol, dans lequel on se cogne. Trait pointillé : ce 
 
 | draw calls | triangles | noir < 25 | blanc > 250 | luminance | σ |
 |--:|--:|--:|--:|--:|--:|
-| 269 | 854 550 | 0.11 % | 0.01 % | 140.2 | 32.5 |
+| 269 | 860 841 | 0.11 % | 0.01 % | 140.2 | 32.5 |
 
 ### `exterieur`
 
@@ -64,7 +64,7 @@ Trait plein : ce qui est au sol, dans lequel on se cogne. Trait pointillé : ce 
 
 | draw calls | triangles | noir < 25 | blanc > 250 | luminance | σ |
 |--:|--:|--:|--:|--:|--:|
-| 266 | 854 622 | 0.01 % | 0 % | 156 | 41.7 |
+| 266 | 860 913 | 0.01 % | 0 % | 156.6 | 42.1 |
 
 ### `atrium-plongee`
 
@@ -74,7 +74,7 @@ Trait plein : ce qui est au sol, dans lequel on se cogne. Trait pointillé : ce 
 
 | draw calls | triangles | noir < 25 | blanc > 250 | luminance | σ |
 |--:|--:|--:|--:|--:|--:|
-| 235 | 848 792 | 0 % | 0 % | 133.3 | 33.1 |
+| 235 | 855 083 | 0 % | 0 % | 133.3 | 33.1 |
 
 ### `ligne-de-vue`
 
@@ -84,7 +84,7 @@ Trait plein : ce qui est au sol, dans lequel on se cogne. Trait pointillé : ce 
 
 | draw calls | triangles | noir < 25 | blanc > 250 | luminance | σ |
 |--:|--:|--:|--:|--:|--:|
-| 260 | 853 142 | 0.09 % | 0 % | 144.7 | 41 |
+| 260 | 859 433 | 0.09 % | 0 % | 144.7 | 41 |
 
 ### `atrium-nervures`
 
@@ -94,7 +94,17 @@ Trait plein : ce qui est au sol, dans lequel on se cogne. Trait pointillé : ce 
 
 | draw calls | triangles | noir < 25 | blanc > 250 | luminance | σ |
 |--:|--:|--:|--:|--:|--:|
-| 253 | 852 338 | 0.04 % | 0 % | 173.7 | 33.6 |
+| 253 | 858 629 | 0.04 % | 0 % | 173.8 | 33.7 |
+
+### `lanterne`
+
+![lanterne](lanterne.webp)
+
+**Ce qu'elle prouve** — le zénith : la couronne de côtes doit border l’oculus, et le ciel passer entre elles
+
+| draw calls | triangles | noir < 25 | blanc > 250 | luminance | σ |
+|--:|--:|--:|--:|--:|--:|
+| 247 | 859 329 | 0.01 % | 0 % | 177.4 | 26.8 |
 
 ### `coin`
 
@@ -104,7 +114,7 @@ Trait plein : ce qui est au sol, dans lequel on se cogne. Trait pointillé : ce 
 
 | draw calls | triangles | noir < 25 | blanc > 250 | luminance | σ |
 |--:|--:|--:|--:|--:|--:|
-| 168 | 832 162 | 0.83 % | 0 % | 140.9 | 38.2 |
+| 168 | 838 453 | 0.83 % | 0 % | 140.9 | 38.2 |
 
 ### `coin-sans-postfx`
 
@@ -114,7 +124,7 @@ Trait plein : ce qui est au sol, dans lequel on se cogne. Trait pointillé : ce 
 
 | draw calls | triangles | noir < 25 | blanc > 250 | luminance | σ |
 |--:|--:|--:|--:|--:|--:|
-| 112 | 831 297 | 2.68 % | 0.01 % | 149 | 38.3 |
+| 112 | 837 588 | 2.68 % | 0.01 % | 149 | 38.3 |
 
 ### `escalier`
 
@@ -124,7 +134,7 @@ Trait plein : ce qui est au sol, dans lequel on se cogne. Trait pointillé : ce 
 
 | draw calls | triangles | noir < 25 | blanc > 250 | luminance | σ |
 |--:|--:|--:|--:|--:|--:|
-| 256 | 852 482 | 0.09 % | 0 % | 148.1 | 37.3 |
+| 256 | 858 773 | 0.09 % | 0 % | 148.1 | 37.3 |
 
 ### `fenetre`
 
@@ -134,7 +144,7 @@ Trait plein : ce qui est au sol, dans lequel on se cogne. Trait pointillé : ce 
 
 | draw calls | triangles | noir < 25 | blanc > 250 | luminance | σ |
 |--:|--:|--:|--:|--:|--:|
-| 145 | 826 362 | 0.03 % | 0 % | 172.7 | 57.8 |
+| 145 | 832 653 | 0.03 % | 0 % | 172.7 | 57.8 |
 
 ### `palier`
 
@@ -144,7 +154,7 @@ Trait plein : ce qui est au sol, dans lequel on se cogne. Trait pointillé : ce 
 
 | draw calls | triangles | noir < 25 | blanc > 250 | luminance | σ |
 |--:|--:|--:|--:|--:|--:|
-| 246 | 849 922 | 0.21 % | 0 % | 134.2 | 34.2 |
+| 246 | 856 213 | 0.21 % | 0 % | 134.2 | 34.2 |
 
 ### `plafond`
 
@@ -154,4 +164,4 @@ Trait plein : ce qui est au sol, dans lequel on se cogne. Trait pointillé : ce 
 
 | draw calls | triangles | noir < 25 | blanc > 250 | luminance | σ |
 |--:|--:|--:|--:|--:|--:|
-| 197 | 842 758 | 0 % | 0.02 % | 199.3 | 36.2 |
+| 197 | 849 049 | 0 % | 0.02 % | 199.3 | 36.2 |

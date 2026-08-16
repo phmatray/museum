@@ -140,6 +140,23 @@ const VUES: Vue[] = [
     preuve: 'les nervures d’atrium : de la structure sur trois niveaux, pas un bandeau flottant',
   },
   {
+    // LA VUE QUI MANQUAIT POUR LA LANTERNE.
+    //
+    // `plafond` regarde le plafond d'une SALLE — du plâtre à trois mètres — et
+    // `atrium-nervures` monte à 45°, où l'oculus n'est qu'un bord de cadre.
+    // Aucune des onze ne pouvait donc voir le couronnement du puits de lumière,
+    // et j'ai posé vingt-quatre côtes sans qu'un seul contrôle sache dire si
+    // elles existaient. Un instrument qui ne sait pas regarder ce qu'on vient de
+    // construire ne le garde pas.
+    //
+    // Plein zénith, depuis le rez-de-chaussée, décalé du centre pour ne pas
+    // avoir l'hélice dans l'axe.
+    nom: 'lanterne',
+    de: [2.6, 1.7, 2.6],
+    vers: [0, 18, 0],
+    preuve: 'le zénith : la couronne de côtes doit border l’oculus, et le ciel passer entre elles',
+  },
+  {
     nom: 'coin',
     de: [-8.5, 1.6, -8.5],
     vers: [-11, 1.4, -11],
