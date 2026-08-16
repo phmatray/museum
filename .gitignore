@@ -41,6 +41,18 @@ public/assets/plants/*
 !public/assets/plants/park-lod.glb
 !public/assets/plants/plants-lod.glb
 
+# QUATRIÈME exception, même raison que les trois précédentes : produite par
+# `tools/blender/build-sculptures.py`, et la CI n'a pas Blender.
+#
+# Différence avec les trois autres, et elle compte : leur SOURCE se retélécharge
+# (`node tools/fetch-assets.ts`), celle-ci non — c'est un fichier personnel de
+# 80 Mo qui n'a pas sa place dans un dépôt public. La reproductibilité est donc
+# conditionnelle, et `SOURCES.md` dit de quoi.
+!public/assets/sculptures/
+public/assets/sculptures/*
+!public/assets/sculptures/bavette.glb
+!public/assets/sculptures/SOURCES.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

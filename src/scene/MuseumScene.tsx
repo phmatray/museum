@@ -69,6 +69,7 @@ import { ParkLayer } from './ParkLayer'
 */
 import { HAUTEUR_OEIL } from '../components/Player'
 import { PropsLayer } from './PropsLayer'
+import { SculptureLayer } from './SculptureLayer'
 import { RampMesh } from './RampMesh'
 import { RoomLights } from './RoomLights'
 import type { FloorCulling } from './floorCulling'
@@ -471,6 +472,19 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
         l'éclairage des toiles reste peint dans le shader (§9.2).
       */}
       <PropsLayer museum={museum} />
+
+      {/*
+        Les pièces en volume déclarées par l'instance (spec 2026-08-15).
+
+        APRÈS les props dans le JSX, mais leur emprise est réservée AVANT dans le
+        calcul : `PropsLayer` sème son mobilier en contournant ce que
+        `placeSculptures` a posé. L'ordre du JSX, lui, n'a aucune incidence — il
+        n'y a pas de tri de transparence ici.
+
+        C'est le seul objet du bâtiment qui porte un collider sans être du
+        bâtiment : on ne traverse pas une pièce qu'on est venu regarder.
+      */}
+      <SculptureLayer museum={museum} />
 
       {/*
         LE PARC. Hors de tout groupe d'étage, et c'est délibéré : il

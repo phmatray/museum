@@ -118,6 +118,54 @@ export interface Curation {
 
 // ── Configuration d'instance ─────────────────────────────────────────────
 
+/** Les quatre lignes d'un cartel de sculpture, dans l'ordre où elles se lisent. */
+export interface SculptureCartel {
+  author?: string
+  title: string
+  year?: number
+  /** Technique. 3ᵉ ligne. */
+  medium?: string
+  /** Provenance ou appartenance. 4ᵉ ligne. */
+  credit?: string
+}
+
+/**
+ * Une pièce en volume exposée par cette instance.
+ *
+ * `height` est une DONNÉE et jamais une constante : les générateurs de modèles
+ * normalisent leur sortie dans une boîte d'environ deux unités, si bien que
+ * l'échelle réelle de l'objet n'est nulle part dans le fichier. La coder en dur
+ * donnerait un musée qui ne sait exposer que des objets de cette taille-là.
+ *
+ * `facing` existe parce qu'une pièce n'est pas forcément lisible sous tous les
+ * angles — une reconstruction photogrammétrique ne l'est presque jamais. Sans
+ * orientation déclarée, elle serait posée dos au visiteur une fois sur deux.
+ *
+ * ⚠️ `facing` réutilise `Side` avec un sens DIFFÉRENT de `Room.side`, et les deux
+ * se lisent dans ce fichier. `Room.side: 'north'` dit OÙ EST la salle dans
+ * l'anneau ; `Sculpture.facing: 'south'` dit VERS OÙ REGARDE la pièce. Une salle
+ * au nord reçoit donc une pièce qui regarde au sud : c'est un objet qui fait face
+ * à ceux qui entrent, pas une contradiction.
+ */
+export interface Sculpture {
+  /** Slug ; clé stable, et graine de tout déterminisme la concernant. */
+  id: string
+  /** Nom de fichier, relatif à `public/assets/sculptures/`. */
+  file: string
+  /** Hauteur réelle visée, en mètres. */
+  height: number
+  facing: Side
+  /**
+   * Le socle. C'est une DÉCISION, pas une mesure : l'humain déclare le socle
+   * qu'il veut, et un test vérifie que la pièce y tient. L'inverse — déduire le
+   * socle de la pièce — obligerait `domain/` à lire un GLB.
+   */
+  plinth: { width: number; depth: number; height: number }
+  /** Identifiant de salle. Absent : la salle d'honneur du niveau 0. */
+  room?: string
+  cartel: SculptureCartel
+}
+
 export interface MuseumConfig {
   schemaVersion: 1
   name: string
@@ -141,6 +189,16 @@ export interface MuseumConfig {
     minClusterSize: number
     maxClusterSize: number
   }
+  /**
+   * Pièces en volume. Absent ou vide sur toute instance qui n'en déclare pas.
+   *
+   * OPTIONNEL dans le type alors que le schéma lui donne `.default([])` : après
+   * un `parseMuseumConfig` le champ est toujours là, mais un `MuseumConfig`
+   * construit À LA MAIN — les fixtures de test, et le code d'un fork — n'a
+   * aucune raison de porter un tableau vide. Le rendre requis cassait quatre
+   * fixtures existantes sans rien garantir de plus.
+   */
+  sculptures?: Sculpture[]
 }
 
 // ── Étage 3 : bâtiment dérivé ────────────────────────────────────────────

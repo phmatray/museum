@@ -40,7 +40,7 @@ import type * as THREE from 'three'
 
 import type { CartelSpec, PanelText } from '../domain/cartels'
 import { CARTEL_WIDTH } from '../domain/cartels'
-import type { ThemeId } from '../domain/types'
+import { THEME_INK } from './cartelStyle'
 
 // ── Réglages typographiques ──────────────────────────────────────────────
 
@@ -52,21 +52,6 @@ const CARTEL_LINE_HEIGHT = 1.35
 const PANEL_HEADING_SIZE = 0.034
 const PANEL_BODY_SIZE = 0.022
 const PANEL_WIDTH = CARTEL_WIDTH
-
-/**
- * Encre du texte, par thème de salle.
- *
- * Les murs sont clairs partout sauf en réserve (`vault`), assez sombre pour
- * qu'une encre foncée y disparaisse. Ce tableau est local et non importé de
- * `lighting.ts` : un cartel doit rester lisible même si la palette des murs
- * change, ce sont deux décisions distinctes.
- */
-const THEME_INK: Record<ThemeId, string> = {
-  classic: '#2a2620',
-  modern: '#22242a',
-  immersive: '#23262e',
-  vault: '#f3ecdd',
-}
 
 /** Vitesse du fondu, en unités d'opacité par seconde. */
 const FADE_SPEED = 4.5

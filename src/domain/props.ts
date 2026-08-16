@@ -300,6 +300,19 @@ export interface Boite {
 }
 
 /**
+ * Une emprise que le placement doit contourner, déjà occupée par autre chose.
+ *
+ * Elle existe pour les pièces en volume (`domain/sculptures.ts`), mais son type
+ * ne les nomme pas : ce module n'a pas à savoir CE QUI occupe la place, seulement
+ * qu'elle est prise. C'est aussi ce qui évite un import croisé entre les deux
+ * modules — la dépendance ne va que dans un sens.
+ */
+export interface EmpriseReservee {
+  floorId: string
+  boite: Boite
+}
+
+/**
  * Un obstacle est une boîte OU un disque.
  *
  * Le disque n'est pas un raffinement gratuit : l'hélice d'une rampe est
@@ -372,7 +385,10 @@ export function boiteDuProp(placement: PropPlacement): Boite {
  * d'instances par simple parcours et qu'un ordre instable ferait scintiller les
  * matrices d'un rechargement à l'autre.
  */
-export function placeProps(museum: Museum): PropPlacement[] {
+export function placeProps(
+  museum: Museum,
+  reservees: readonly EmpriseReservee[] = [],
+): PropPlacement[] {
   const resultat: PropPlacement[] = []
 
   for (const floor of museum.floors) {
@@ -380,7 +396,15 @@ export function placeProps(museum: Museum): PropPlacement[] {
     // Les props déjà posés deviennent à leur tour des obstacles : sans ça, deux
     // salles adjacentes peuvent poser chacune une jardinière de part et d'autre
     // d'une cloison mince et les faire se chevaucher au travers.
-    const poses: Boite[] = []
+    //
+    // Les emprises RÉSERVÉES sont semées ici, avant tout le reste : ce qui les
+    // occupe est posé par un autre module, et le mobilier doit les contourner
+    // exactement comme il contourne un banc déjà placé. Les semer dans `poses`
+    // plutôt que dans `obstacles` n'est pas un détail — c'est ce qui leur donne
+    // le jeu de `ENTRE_PROPS`, c'est-à-dire de quoi passer devant.
+    const poses: Boite[] = reservees
+      .filter((r) => r.floorId === floor.id)
+      .map((r) => r.boite)
 
     // Le poseur travaille par GROUPE et non par pièce, parce que certaines
     // pièces n'ont aucun sens seules : une plante posée sur sa jardinière
