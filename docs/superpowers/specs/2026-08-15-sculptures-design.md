@@ -79,9 +79,12 @@ interface Sculpture {
   height: number        // hauteur réelle VISÉE, en mètres, > 0
   facing: Side          // 'north' | 'east' | 'south' | 'west'
   room?: string         // id de salle ; défaut : la salle d'honneur du niveau 0
-  plinth?: number       // hauteur du socle, strictement positive — `buildPlinth` refuse une
-                        // cote non positive, et rien dans le rendu ne sait aujourd'hui poser
-                        // une pièce sans socle ; défaut 0.25 si absent
+  plinth: { width: number; depth: number; height: number }  // le socle, REQUIS — `buildPlinth`
+                        // refuse une cote non positive, et rien dans le rendu ne sait aujourd'hui
+                        // poser une pièce sans socle. C'est une DÉCISION et non une mesure :
+                        // l'humain déclare le socle qu'il veut, un test vérifie que la pièce y
+                        // tient (l'inverse — déduire le socle de la pièce — obligerait `domain/`
+                        // à lire un GLB)
   cartel: {
     author?: string
     title: string
@@ -121,7 +124,7 @@ L'entrée retenue pour l'instance de référence :
   "file": "bavette.glb",
   "height": 0.9,
   "facing": "south",
-  "plinth": 0.25,
+  "plinth": { "width": 1.1, "depth": 1.1, "height": 0.25 },
   "cartel": {
     "author": "Philippe Matray",
     "title": "Bavette endormi",
@@ -262,11 +265,20 @@ ce qui fabrique de la géométrie dans `builders/`, ce qui rend dans `scene/`.
 schema/index.ts            + Sculpture, zod, message d'erreur exploitable
 domain/sculptures.ts       placeSculptures(museum, sculptures) → SculpturePlacement[]   PUR
 domain/props.ts            accepte des emprises pré-semées (une ligne de signature)
-builders/plinth.ts         buildPlinth(emprise, hauteur) → BufferGeometry + collider     PUR
+builders/plinth.ts         buildPlinth(width, depth, height) → BufferGeometry + collider  PUR
 scene/sculptureAssets.ts   chargement GLB mémorisé, comme propAssets.ts
 scene/SculptureLayer.tsx   rend la pièce, son socle, son collider
 tools/blender/build-sculptures.py
 ```
+
+⚠️ **`buildPlinth(width, depth, height)` n'a PAS le même ordre que `BoxGeometry(width, height,
+depth)`, qu'il appelle en interne.** Appris à ses dépens pendant ce lot : le socle de Bavette est
+CARRÉ (1,10 × 1,10), donc une permutation de `width` et `depth` à l'appel ne se verrait NI à
+l'écran NI dans un test de bounding box — rien ne distingue les deux axes tant qu'ils ont la même
+cote. C'est le motif trouvé DEUX FOIS dans ce lot, la seconde fois sur les demi-cotes positionnelles
+du `CuboidCollider` de `SculptureLayer.tsx`. Dans les deux cas, l'appel nomme ses arguments plutôt
+que de passer des littéraux positionnels bruts, précisément pour que l'inversion reste au moins
+visible en relecture.
 
 Pas d'`InstancedMesh` : un exemplaire unique n'a rien à instancier.
 
