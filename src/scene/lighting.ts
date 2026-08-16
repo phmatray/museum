@@ -127,8 +127,26 @@ export interface ThemePalette {
  * Choisie entre le plus clair et le plus sombre des thèmes (#eeece7 et #7f7768)
  * plutôt qu'à l'un des deux bouts : l'enveloppe doit lire comme du béton banché,
  * ni comme du plâtre blanc ni comme un mur de cave.
+ *
+ * ── Éclaircie le 2026-08-16, avec la pose du brise-soleil ──
+ *
+ * `#cec8bc` était un béton banché honnête, et c'est exactement pour ça qu'il ne
+ * convenait plus. Le peigne de lames ne se lit que par CONTRASTE avec ce qu'il
+ * raye : sur une masse sombre et chaude, des lames claires se voyaient, mais le
+ * bâtiment restait une boîte grise avec un accessoire dessus.
+ *
+ * Cette architecture est blanche, et le blanc n'est pas une teinte de plus —
+ * c'est ce qui fait que l'ombre portée devient le dessin. Une rayure d'ombre sur
+ * un mur clair est l'image même de cette écriture ; sur un mur foncé elle est
+ * une salissure.
+ *
+ * `#dedad2` reste un BÉTON — légèrement chaud, jamais le blanc de plâtre des
+ * salles (#eeece7), pour que l'enveloppe et l'intérieur ne se confondent pas
+ * quand on les voit ensemble par une baie. Vérifié à la mesure : `exterieur`
+ * passe à 1,9 % de pixels quasi blancs, très loin des 12 % où l'image part en
+ * voile, et son écart-type MONTE — le contraste augmente au lieu de s'écraser.
  */
-const BETON_ENCEINTE = '#cec8bc'
+const BETON_ENCEINTE = '#dedad2'
 
 /** Le béton brut est plus mat que n'importe quel enduit de salle. */
 const RUGOSITE_ENCEINTE = 0.95
@@ -682,7 +700,21 @@ export const REBOND = {
  * demi-mètre suffit à ce que la lumière lèche le plafond, ce qui est aussi la
  * hauteur réelle d'une suspension muséale sous rail.
  */
-export const RETRAIT_PLAFOND = 0.55
+/*
+  Relevé de 0,55 à 0,85 le 2026-08-16, sur mesure.
+
+  À 55 cm, une source ponctuelle qui décroît en 1/d² frappe la dalle juste
+  au-dessus d'elle à bout portant : la vue `plafond` sortait à 34,3 % de pixels
+  quasi blancs, 2,59 % d'ÉCRÊTÉS, et l'écart-type le plus faible des dix vues —
+  un aplat crème surexposé, c'est-à-dire l'inverse exact du défaut du §9.4 et
+  tout aussi illisible.
+
+  0,85 m divise l'éclairement au zénith par 2,4 et ÉLARGIT la flaque au lieu de
+  la creuser. La raison d'être du retrait ne change pas — un point collé au
+  plafond ne l'éclaire plus du tout — on la calibre simplement sur ce qui a été
+  mesuré plutôt que sur la hauteur d'une suspension de catalogue.
+*/
+export const RETRAIT_PLAFOND = 0.85
 
 /**
  * Rayon utile d'un plafonnier, en mètres — bornes.

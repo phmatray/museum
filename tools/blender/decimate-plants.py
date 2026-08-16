@@ -91,8 +91,41 @@ FICHIERS_PARC = [
 # chacune — sont les premieres a etre effondrees, et l'arbre sort en SQUELETTE.
 # Un tronc et des branches nues, sur toute la parcelle. Le budget doit laisser
 # de quoi garder les feuilles, qui sont ce qu'on regarde.
-BUDGET_ARBRE = 22_000
-BUDGET_ARBUSTE = 4_000
+#
+# ── Révision du 2026-08-15 : 22 000 -> 16 000 ──
+#
+# Le parc pesait 610 855 triangles à l'écran, soit **64 % de toute la scène**,
+# pour 22 arbres vus entre 30 et 80 m derrière un bâtiment — quand le bâtiment
+# lui-même en pèse 16 000. Relevé par `node tools/measure-props.ts`, qui compte
+# sur les GLB et non sur un commentaire.
+#
+# Ce n'est pas un plafond qu'on baisse pour éteindre un voyant : c'est le seul
+# poste du musée dont le coût soit sans rapport avec ce qu'on regarde. 16 000
+# reste 2,7 fois au-dessus du point de rupture mesuré (6 000, où les cartes de
+# feuilles s'effondraient et l'arbre sortait en squelette), et libère 132 000
+# triangles — de quoi payer tout le décor d'architecture.
+#
+# Le contrôle n'est pas le compteur, c'est la vue `exterieur` de
+# `tools/capture.ts`, en A/B avec le relevé de référence.
+#
+# ── Révision du 2026-08-16 : 16 000 -> 11 000, et 4 000 -> 2 600 ──
+#
+# Deuxième passage, pour la même raison et sur la même mesure. Après la vague
+# d'ogives le musée était à 993 728 triangles pour un plafond de 1 000 000 :
+# 6 272 de marge, quand les vingt-neuf pièces d'architecture qui restent à poser
+# en demandent 136 000. Le relevé de `measure-props.ts` disait toujours la même
+# chose — le parc pèse 478 841 triangles, soit 58 % de tout ce qui est dessiné,
+# pour des sujets vus entre 30 et 80 m.
+#
+# 11 000 reste 1,8 fois au-dessus du point de rupture mesuré (6 000), et libère
+# 135 200 triangles. C'est ce qui paie le décor, et il n'y a aucun autre poste du
+# musée où l'on puisse prendre autant sans que le visiteur le voie.
+#
+# ⚠️ Le seul juge reste l'A/B sur la vue `exterieur` : à 6 000, le COMPTEUR ÉTAIT
+# VERT et les arbres étaient des squelettes. Un budget tenu ne dit rien de la
+# forme qui reste.
+BUDGET_ARBRE = 11_000
+BUDGET_ARBUSTE = 2_600
 
 GARDES = {
     "plante-01": ["anthurium_botany_01_a"],

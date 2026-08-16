@@ -86,6 +86,7 @@
 import * as THREE from 'three'
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { Opening, Wall } from '../domain/types'
+import { contourDeBaie, intrados, resoudreOgive } from './profiles'
 
 // ── Constantes ───────────────────────────────────────────────────────────
 
@@ -220,6 +221,19 @@ interface Step {
   from: number
   to: number
   h: number
+  /**
+   * Cette marche peut-elle recevoir un arc ?
+   *
+   * ⛔ Vrai UNIQUEMENT quand la marche décrit une ouverture isolée. Deux
+   * ouvertures jointives ont été fusionnées par `skyline` en un escalier, et
+   * arquer une de ses marches ferait couper le contour par lui-même à la
+   * jonction — `ExtrudeGeometry` ne lève pas là-dessus, elle triangule de
+   * travers et l'aire percée cesse silencieusement d'être celle qu'on croit.
+   *
+   * Sur le musée réel les 34 ouvertures au sol sont toutes isolées ; le cas
+   * jointif n'existe que dans les tests, et il continue d'y passer inchangé.
+   */
+  arche?: boolean
 }
 
 /**
@@ -339,17 +353,26 @@ function openingGroups(openings: Opening[], length: number, height: number): Ste
   let courant: Step[] = []
   let fin = -Infinity
 
+  // Une seule ouverture dans le groupe ⇒ son profil est une marche unique, dont
+  // le sommet est un segment horizontal franc : on peut le remplacer par un arc
+  // sans qu'aucun contour n'en croise un autre. Voir `Step.arche`.
+  const fermer = (lot: Step[]): void => {
+    const marches = skyline(lot)
+    if (marches.length === 1 && lot.length === 1) marches[0].arche = true
+    if (marches.length > 0) groups.push(marches)
+  }
+
   for (const r of rects) {
     if (courant.length > 0 && r.from > fin + EPS) {
-      groups.push(skyline(courant))
+      fermer(courant)
       courant = []
     }
     courant.push(r)
     fin = Math.max(fin, r.to)
   }
-  if (courant.length > 0) groups.push(skyline(courant))
+  if (courant.length > 0) fermer(courant)
 
-  return groups.filter((s) => s.length > 0)
+  return groups
 }
 
 /**
@@ -408,12 +431,33 @@ function pieceShape(piece: Piece, height: number, trous: Trou[] = []): THREE.Sha
   }
   if (piece.to - u > EPS) profil.push({ from: u, to: piece.to, h: 0 })
 
-  const points: THREE.Vector2[] = [new THREE.Vector2(piece.from, profil[0].h)]
-  for (let i = 1; i < profil.length; i++) {
-    points.push(new THREE.Vector2(profil[i].from, profil[i - 1].h))
-    points.push(new THREE.Vector2(profil[i].from, profil[i].h))
+  // Chaque marche résout son arc UNE FOIS, et en tire deux choses : la hauteur à
+  // laquelle son jambage s'arrête, et les points de son intrados.
+  //
+  // ⚠️ Le jambage monte jusqu'à la NAISSANCE, jamais jusqu'au sommet de
+  // l'ouverture. Le faire monter plus haut puis redescendre repasserait sur la
+  // même verticale : un aller-retour d'épaisseur nulle, que `mergeVertices` ne
+  // souderait pas et que la triangulation rendrait en sifflet.
+  const traits = profil.map((s) => {
+    const ogive = s.arche && s.h > EPS ? resoudreOgive((s.to - s.from) / 2, s.h, height) : null
+    return {
+      from: s.from,
+      hJambage: ogive ? ogive.naissance : s.h,
+      arc: ogive ? intrados(s.from, s.to, ogive.naissance, ogive.cle) : [],
+    }
+  })
+
+  const points: THREE.Vector2[] = [new THREE.Vector2(piece.from, traits[0].hJambage)]
+  points.push(...traits[0].arc)
+  for (let i = 1; i < traits.length; i++) {
+    points.push(new THREE.Vector2(traits[i].from, traits[i - 1].hJambage))
+    points.push(new THREE.Vector2(traits[i].from, traits[i].hJambage))
+    // L'intrados ne rend que ses points INTÉRIEURS : les deux naissances sont
+    // celles que le jambage vient de poser et que le suivant posera. Aucun
+    // sommet dupliqué, donc aucun triangle d'aire nulle.
+    points.push(...traits[i].arc)
   }
-  points.push(new THREE.Vector2(piece.to, profil[profil.length - 1].h))
+  points.push(new THREE.Vector2(piece.to, traits[traits.length - 1].hJambage))
   points.push(new THREE.Vector2(piece.to, height))
   points.push(new THREE.Vector2(piece.from, height))
 
@@ -424,13 +468,16 @@ function pieceShape(piece: Piece, height: number, trous: Trou[] = []): THREE.Sha
   // chaque montée de version — c'est déjà la convention de `buildSlab`.
   for (const t of trous) {
     if (t.from < piece.from - EPS || t.to > piece.to + EPS) continue
+    const baie = contourDeBaie(t.from, t.to, t.bas, t.haut)
     shape.holes.push(
-      new THREE.Path([
-        new THREE.Vector2(t.from, t.bas),
-        new THREE.Vector2(t.from, t.haut),
-        new THREE.Vector2(t.to, t.haut),
-        new THREE.Vector2(t.to, t.bas),
-      ]),
+      new THREE.Path(
+        baie ?? [
+          new THREE.Vector2(t.from, t.bas),
+          new THREE.Vector2(t.from, t.haut),
+          new THREE.Vector2(t.to, t.haut),
+          new THREE.Vector2(t.to, t.bas),
+        ],
+      ),
     )
   }
 

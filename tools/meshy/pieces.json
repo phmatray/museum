@@ -1,0 +1,159 @@
+{
+  "_pourquoi": [
+    "Le catalogue des pièces demandées à Meshy. C'est la SOURCE de tout ce qui vit",
+    "dans public/assets/props/ : sans ces prompts, aucune de ces pièces n'est",
+    "reproductible, et le dépôt ne contiendrait plus qu'un binaire opaque.",
+    "",
+    "Séparation volontaire d'avec la table PIECES de tools/blender/process-meshy.py :",
+    "ce fichier dit CE QU'ON DEMANDE, cette table-là dit CE QU'ON EN FAIT (échelle,",
+    "ancrage, budget, couleur). Un test vérifie que les deux jeux de clés coïncident —",
+    "c'est le seul lien mécanique entre la commande et le traitement.",
+    "",
+    "CE QUI N'EST PAS ICI, ET POURQUOI : ni le brise-soleil ni le rail d'éclairage.",
+    "Ce sont des extrusions à SECTION CONSTANTE. Le procédural les rend exacts pour",
+    "300 triangles ; la décimation d'un modèle génératif les rendrait mous, et c'est",
+    "le mode de défaillance déjà payé sur les arbres du parc. La règle qui a tranché :",
+    "Meshy pour la double courbure, le procédural pour ce qui se décrit par une",
+    "section et un chemin."
+  ],
+  "_suffixe": "White sculptural architecture object, ribbed organic tapering structure, matte white cast concrete and white painted steel, solid closed surfaces, no perforations, no lattice, no thin wires, no text or lettering, one single isolated object, plain medium grey background, no floor, no shadow, soft even studio light, three-quarter view",
+  "_pourquoi_le_suffixe": [
+    "Le fond est GRIS MOYEN et jamais blanc : nos objets sont blancs, et sur fond",
+    "blanc le reconstructeur n'a aucune silhouette à segmenter.",
+    "Ni sol ni ombre : elles deviendraient de la géométrie.",
+    "« no perforations, no lattice, no thin wires » est la leçon du jacaranda —",
+    "des îlots séparés ne se laissent pas fusionner par COLLAPSE.",
+    "Aucun texte : modélisé en relief, il ressort en croûte après décimation.",
+    "Et surtout : LE MÊME SUFFIXE SUR LES 29. C'est lui, et rien d'autre, qui fait",
+    "que vingt-neuf générations indépendantes lisent comme un seul bâtiment."
+  ],
+  "_tiers": {
+    "A": "nano-banana-pro (9 cr) + meshy-6 (20 cr) = 29 cr — les pièces vues de près ou qui portent le langage",
+    "B": "nano-banana (3 cr) + meshy-6 (20 cr) = 23 cr — le mobilier répété, vu à distance"
+  },
+  "pieces": {
+    "banc": {
+      "tier": "B",
+      "remplace": "museum-kit.glb/Banc",
+      "sujet": "A museum bench: one continuous seat slab 1.8 m long carried by two tapering blade legs that flare outward where they meet the seat, no backrest, single solid piece."
+    },
+    "socle": {
+      "tier": "B",
+      "remplace": "museum-kit.glb/Socle",
+      "sujet": "A museum display plinth: a square pedestal 0.4 m wide and 1.0 m tall, faces tapering very slightly inward toward the top, a recessed shadow gap running around its base."
+    },
+    "projecteur": {
+      "tier": "B",
+      "remplace": "museum-kit.glb/Projecteur",
+      "sujet": "A compact museum spotlight: a smooth cylindrical barrel held in a short U yoke under a flat round ceiling mount, tilted down at an angle, very simple, few features."
+    },
+    "jardiniere": {
+      "tier": "B",
+      "remplace": "museum-kit.glb/Jardiniere",
+      "sujet": "A low round planter bowl 0.6 m across, thick rounded rim, body tapering down to a narrow foot, the top closed flat and level with soil."
+    },
+
+    "vitrine": {
+      "tier": "A",
+      "sujet": "A museum display vitrine: a clear frameless glass box sitting on a solid tapering white base, 1.2 m wide and 1.5 m tall overall, the base swelling slightly at the floor."
+    },
+    "pupitre-cartel": {
+      "tier": "B",
+      "sujet": "An angled museum label lectern 1.1 m tall: a blank sloped reading panel carried by one tapering stem rising from a flat oval foot, panel completely blank."
+    },
+    "poteau-file": {
+      "tier": "B",
+      "sujet": "A museum queue post 1 m tall: a slender column tapering upward from a heavy round disc base, with one smooth ring collar near the top."
+    },
+    "banque-accueil": {
+      "tier": "A",
+      "sujet": "A museum reception desk 3 m wide: a long counter curving in plan, its front panel sculpted into vertical rippling ribs, a plain flat worktop overhanging the ribs."
+    },
+    "corbeille": {
+      "tier": "B",
+      "sujet": "A museum waste bin 0.9 m tall: a smooth oval column tapering toward the floor, the top capped by a shallow dome with one narrow opening slot."
+    },
+    "portemanteau": {
+      "tier": "B",
+      "sujet": "A coat stand 1.8 m tall: a central mast tapering upward from a three lobed foot, six short curved branch arms swelling out near the top, each arm ending in a rounded knob."
+    },
+    "borne-info": {
+      "tier": "B",
+      "sujet": "A museum information kiosk 1.4 m tall: a rectangular pillar leaning slightly back, a blank angled screen face recessed into its front, completely blank surfaces."
+    },
+    "totem": {
+      "tier": "B",
+      "sujet": "A tall signage totem 3 m tall: a blade shaped fin, narrow and rounded at the top, widening toward the base, standing on a flat foot, both faces entirely blank."
+    },
+    "socle-haut": {
+      "tier": "B",
+      "sujet": "A tall narrow display pedestal 1.4 m tall and 0.3 m wide, hexagonal in plan, tapering upward, with a flat top and a recessed base."
+    },
+    "socle-bas": {
+      "tier": "B",
+      "sujet": "A wide low display platform 0.35 m tall and 1.2 m wide, rectangular with softly rounded edges, a recessed shadow gap at the floor."
+    },
+    "jardiniere-longue": {
+      "tier": "B",
+      "sujet": "A long rectangular planter trough 1.8 m long and 0.5 m tall, its long side walls sculpted into shallow vertical ripples, the top closed flat and level with soil."
+    },
+    "jardiniere-ronde": {
+      "tier": "B",
+      "sujet": "A round planter urn 0.8 m tall: a waisted profile narrowing at mid height and flaring out again at the rim, the top closed flat and level with soil."
+    },
+    "lampadaire": {
+      "tier": "B",
+      "sujet": "A floor lamp 1.8 m tall: a slender mast curving over at the top into a downturned shade shaped like a smooth open shell, standing on a heavy round disc base."
+    },
+    "suspension-atrium": {
+      "tier": "A",
+      "sujet": "A large hanging light sculpture 2.5 m across: nested curved blades radiating from a central hub like an opening flower, each blade tapering to a fine edge, hung from a short stem at the top."
+    },
+    "banc-courbe": {
+      "tier": "A",
+      "sujet": "A curved museum bench: one continuous ribbon seat sweeping through a gentle arc 2.4 m long, carried by three tapering blade legs, no backrest, single solid piece."
+    },
+
+    "mat-arborescent": {
+      "tier": "A",
+      "sujet": "A branching structural column 4 m tall: one thick trunk rising from a flared foot and splitting into four tapering arms that spread upward and outward, each arm ending in a flat pad."
+    },
+    "balustrade-nervuree": {
+      "tier": "A",
+      "sujet": "A balustrade panel 1.6 m long and 1.1 m tall: closely spaced vertical ribs of varying depth swelling out at mid height, framed top and bottom by a continuous rounded rail, all ribs joined into one solid slab."
+    },
+    "nervure-lanterneau": {
+      "tier": "A",
+      "sujet": "A curved structural rib 3.2 m long: an arc rising from a wide flat foot to a narrow pointed tip, its section deepest at mid span and thinning at both ends, like a bone."
+    },
+    "console": {
+      "tier": "A",
+      "sujet": "A structural bracket 0.9 m long: a corbel growing out of a flat wall plate, its underside swelling into a smooth curve and tapering to a fine tip, top surface flat."
+    },
+
+    "portique": {
+      "tier": "A",
+      "sujet": "A freestanding entrance pylon 5 m tall: one leaning tapering mast rising from a wide splayed foot and reaching over at the top into a cantilevered arm, section deepest at the bend."
+    },
+    "sculpture-parvis": {
+      "tier": "A",
+      "sujet": "A monumental abstract sculpture 4 m tall: three tapering blades twisting upward around a shared axis and meeting at a point, each blade swelling at mid height, standing on a low round base."
+    },
+    "sculpture-atrium": {
+      "tier": "A",
+      "sujet": "A suspended abstract sculpture 3 m across: a nested spiral of tapering ribbons furling around an empty centre, the ribbons broad at the outside and thinning inward, hung from a single point at the top."
+    },
+    "banc-parc": {
+      "tier": "B",
+      "sujet": "An outdoor park bench 1.8 m long: a slatted seat and low back formed as one folded shell, carried by two solid tapering side panels, all surfaces closed and solid."
+    },
+    "borne-parc": {
+      "tier": "B",
+      "sujet": "An outdoor bollard 0.9 m tall: a tapering square post with softly rounded corners, a shallow chamfer at the top, standing on a slightly wider base pad."
+    },
+    "vasque": {
+      "tier": "B",
+      "sujet": "A shallow water basin 1.6 m across and 0.5 m tall: a wide circular bowl with a thick rounded rim, carried by a single flaring stem on a round base, the water surface closed flat and level with the rim."
+    }
+  }
+}

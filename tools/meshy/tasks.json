@@ -1,0 +1,192 @@
+{
+  "_pourquoi": [
+    "Le registre de provenance : quelle tâche Meshy a produit quelle pièce.",
+    "Versionné parce qu'une image de référence sans son identifiant de tâche ne",
+    "permet ni de rejouer, ni de réclamer, ni de dire d'où vient un maillage —",
+    "et parce que ces identifiants sont la seule chose qu'un compactage de",
+    "contexte ne peut pas reconstituer.",
+    "",
+    "`image` = tâche text-to-image. `modele` = tâche image-to-3d, chaînée sur la",
+    "première par `input_task_id` (aucun ré-upload, aucun crédit d'image perdu)."
+  ],
+  "_lot": "2026-08-16",
+  "pieces": {
+    "nervure-atrium": {
+      "tier": "A",
+      "image": "(pilote, lot 2026-08-15)",
+      "modele": "(pilote)"
+    },
+    "vitrine": {
+      "tier": "A",
+      "image": "01a007b6-6e69-7cb1-9ed0-c6734cc7a959",
+      "modele": "01a007c5-d18f-7717-b6cc-6abc9abe0576",
+      "image_lot_precedent": "01a0079c-a6d8-700d-8742-efadff7235f7",
+      "reprise": "lot 4 : le VERRE s'etait reconstruit opaque — Meshy ne sait pas rendre une transparence. Redemandee en SOCLE seul ; la boite de verre sera procedurale."
+    },
+    "banque-accueil": {
+      "tier": "A",
+      "image": "01a007b6-7b35-74af-ac08-af54f16a3e5c",
+      "modele": "01a007c5-dc0d-7725-91ba-c6f8429b4aef",
+      "image_lot_precedent": "01a0079c-ad8f-7a72-949b-1c758baa99e4",
+      "reprise": "lot 4 : les nervures, qui etaient tout le sujet, avaient fondu en une dalle lisse. Redemandees PROFONDES (15 cm) et ondulantes, vues de face."
+    },
+    "suspension-atrium": {
+      "tier": "A",
+      "image": "01a0079c-b89b-7a73-9d86-2895eecdd7a3",
+      "modele": "01a007a4-5e20-7a7c-b410-25ef2b375ab2"
+    },
+    "banc-courbe": {
+      "tier": "A",
+      "image": "01a0079c-c0f1-7014-b3ad-c9407b52740e",
+      "modele": "01a007a4-65b6-7a2c-996d-e6104737aad9"
+    },
+    "mat-arborescent": {
+      "tier": "A",
+      "image": "01a0079c-cc73-7a76-a7e0-7e6821df91f6",
+      "modele": "01a007a4-70bc-7a7f-afff-be18ec83e9a6"
+    },
+    "balustrade-nervuree": {
+      "tier": "A",
+      "image": "01a0079c-d394-701d-9b5f-72323a20845e",
+      "modele": "01a007a4-792e-7a2e-a797-2991af83b4af"
+    },
+    "nervure-lanterneau": {
+      "tier": "A",
+      "image": "01a0079d-0991-78e0-9c86-0ec0272500c9",
+      "modele": "01a007a4-8408-715b-af8b-aedf8b44cd9b"
+    },
+    "console": {
+      "tier": "A",
+      "image": "01a0079d-1304-7029-9843-9f32a4432438",
+      "modele": "01a007a4-8f12-715c-bb48-f3b0bd4ac309"
+    },
+    "portique": {
+      "tier": "A",
+      "image": "01a007b6-88c9-7d50-9839-98b68bb34093",
+      "modele": "01a007c5-e2c9-7727-a20e-ac49d9634b97",
+      "image_lot_precedent": "01a0079d-1b91-702a-baff-fcb23ee6624b",
+      "reprise": "lot 4 : le maillage etait fidele a l'image, et l'image montrait une fourche au lieu d'un mat penche. C'est l'IMAGE qui etait a reprendre, pas la 3D."
+    },
+    "sculpture-parvis": {
+      "tier": "A",
+      "image": "01a0079d-26c3-78d2-bc7e-ba1c161d49a6",
+      "modele": "01a007a4-f906-7b65-ba44-42ea7e835a70"
+    },
+    "sculpture-atrium": {
+      "tier": "A",
+      "image": "01a0079d-2ec3-7a81-9ad9-5e2806b39778",
+      "modele": "01a007a4-fff0-7aa3-95b6-5dce4e4c6a90"
+    },
+    "banc": {
+      "tier": "B",
+      "image": "01a007a2-90ab-7b28-92dd-d55c87c1bd0a",
+      "image_lot1": "01a0079d-39f7-7a82-a76d-b519e2e23d0d",
+      "reprise": "lot 2 : la 1re image portait un objet parasite (plante, sculpture, jet) ou trop de detail pour son budget de triangles",
+      "modele": "01a007a5-0c27-7b67-90e8-f556cc5c3cd1"
+    },
+    "socle": {
+      "tier": "B",
+      "image": "01a007a2-4547-79cf-813c-0e5c398023d9",
+      "image_lot1": "01a0079d-4226-702d-9d75-848e81a2d6f8",
+      "reprise": "lot 2 : la 1re image portait un objet parasite (plante, sculpture, jet) ou trop de detail pour son budget de triangles",
+      "modele": "01a007a5-133d-7a43-9619-f24a86506f0f"
+    },
+    "projecteur": {
+      "tier": "B",
+      "image": "01a007a2-8c06-7b27-bc5c-472b50474a66",
+      "image_lot1": "01a0079d-4a5d-78f9-9811-b9d003320f8c",
+      "reprise": "lot 2 : la 1re image portait un objet parasite (plante, sculpture, jet) ou trop de detail pour son budget de triangles",
+      "modele": "01a007a5-1b93-7a46-86cf-dd74736adbff"
+    },
+    "jardiniere": {
+      "tier": "B",
+      "image": "01a007a2-7ac3-710d-ac64-064600e27867",
+      "image_lot1": "01a0079d-553b-7a84-903e-bb3f1fb3f77c",
+      "reprise": "lot 2 : la 1re image portait un objet parasite (plante, sculpture, jet) ou trop de detail pour son budget de triangles",
+      "modele": "01a007a5-23d5-7a47-aa31-272af2108421"
+    },
+    "pupitre-cartel": {
+      "tier": "B",
+      "image": "01a0079d-5e36-78db-bd51-c485179c6f12",
+      "modele": "01a007a5-2ed5-7b73-a801-d51441eaa17b"
+    },
+    "poteau-file": {
+      "tier": "B",
+      "image": "01a0079d-6626-78fc-a618-a43169f7b6c4",
+      "modele": "01a007a5-3719-7a49-845e-2705c7523269"
+    },
+    "corbeille": {
+      "tier": "B",
+      "image": "01a0079d-6cd8-7031-b4d8-37ca3876cddb",
+      "modele": "01a007a5-3f64-7a4a-9160-4c1b7b4678ef"
+    },
+    "portemanteau": {
+      "tier": "B",
+      "image": "01a0079d-b627-7a90-b092-86abbf9b456e",
+      "modele": "01a007a5-4a65-7a4b-9a9a-e21ce7289576"
+    },
+    "borne-info": {
+      "tier": "B",
+      "image": "01a0079d-bd90-7910-8371-82425fcc843c",
+      "modele": "01a007a5-52c7-7a4d-bd8a-7205491435ad"
+    },
+    "totem": {
+      "tier": "B",
+      "image": "01a0079d-c82e-78f7-9e49-68e9dc240206",
+      "modele": "01a007a5-595c-7b7a-9a45-4440d3ce3d27"
+    },
+    "socle-haut": {
+      "tier": "B",
+      "image": "01a007a2-6f9c-710c-b6be-4342e632e2c1",
+      "image_lot1": "01a0079d-d0fb-78f8-baee-4fa7d5b5494a",
+      "reprise": "lot 2 : la 1re image portait un objet parasite (plante, sculpture, jet) ou trop de detail pour son budget de triangles",
+      "modele": "01a007a5-86ff-7a5a-8b51-b5a630d0e328"
+    },
+    "socle-bas": {
+      "tier": "B",
+      "image": "01a007a4-2a5c-7a1f-abd9-a97f180d01ab",
+      "image_lot1": "01a0079d-d997-7900-81ef-cf33dd7d26f7",
+      "reprise": "lot 3 : decrite comme un VOLUME et non par sa fonction — « socle » et « jardiniere » appelaient un objet pose dessus, meme avec une clause negative explicite",
+      "image_lot2": "01a007a2-7506-7b26-8cbb-ba4946939b46",
+      "modele": "01a007b3-cec8-7c48-a054-a6f8631bb2c7"
+    },
+    "jardiniere-longue": {
+      "tier": "B",
+      "image": "01a007a4-3498-7b52-a936-3e301e6c7155",
+      "image_lot1": "01a0079d-e12a-7913-916c-6148b9abe275",
+      "reprise": "lot 3 : decrite comme un VOLUME et non par sa fonction — « socle » et « jardiniere » appelaient un objet pose dessus, meme avec une clause negative explicite",
+      "image_lot2": "01a007a2-8082-710f-aec7-c2d07007ff13",
+      "modele": "01a007b3-d8a2-741a-b732-2da378ca013f"
+    },
+    "jardiniere-ronde": {
+      "tier": "B",
+      "image": "01a007a4-3f15-7a79-8f17-f6f868c8d546",
+      "image_lot1": "01a0079d-ec06-704b-a2d9-00f9597d9bed",
+      "reprise": "lot 3 : decrite comme un VOLUME et non par sa fonction — « socle » et « jardiniere » appelaient un objet pose dessus, meme avec une clause negative explicite",
+      "image_lot2": "01a007a2-8689-79d5-a670-0f6cee011901",
+      "modele": "01a007b3-def5-7cf8-ad61-8a8898183273"
+    },
+    "lampadaire": {
+      "tier": "B",
+      "image": "01a0079d-f44f-791b-b0cf-acf543b60dcb",
+      "modele": "01a007a5-90e2-7b88-8100-bdbe87380890"
+    },
+    "banc-parc": {
+      "tier": "B",
+      "image": "01a0079d-ff56-704d-aa37-0e5f2aed50f2",
+      "modele": "01a007a5-9922-7a5c-980e-8ca052ed6b99"
+    },
+    "borne-parc": {
+      "tier": "B",
+      "image": "01a0079e-079d-7904-b516-db06d458a611",
+      "modele": "01a007a5-a42a-7b8d-9041-6760983ca4d3"
+    },
+    "vasque": {
+      "tier": "B",
+      "image": "01a007a2-9632-7a0b-8d1b-0f2dfa004b68",
+      "image_lot1": "01a0079e-0fe7-7906-86c3-d266b602932c",
+      "reprise": "lot 2 : la 1re image portait un objet parasite (plante, sculpture, jet) ou trop de detail pour son budget de triangles",
+      "modele": "01a007a5-aaff-7b8e-bc73-5d697c76ddb6"
+    }
+  }
+}

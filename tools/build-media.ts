@@ -31,6 +31,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 import type { Artwork, AtlasIndex, Catalogue, Curation, MuseumConfig, RepoKey } from '../src/domain/types.ts'
+import { resolveToken } from './fetch-github.ts'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const MEDIA = resolve(ROOT, 'public/media')
@@ -66,7 +67,7 @@ const PIPELINE_SIG = `v1:${NEAR_W}x${NEAR_H}q${NEAR_QUALITY}:${TILE_W}x${TILE_H}
 
 // ── Cache sur disque ─────────────────────────────────────────────────────
 
-type Source = 'og' | 'custom' | 'fallback'
+type Source = 'banner' | 'og' | 'custom' | 'fallback'
 
 interface CacheFile {
   schemaVersion: 1
@@ -278,6 +279,33 @@ function ogUrl(key: RepoKey, owner: string, name: string): string {
   return `https://opengraph.githubassets.com/${sha1(key)}/${owner}/${name}`
 }
 
+/**
+ * La bannière du dépôt, et la RAISON pour laquelle elle passe avant l'OG image.
+ *
+ * Le portefeuille pose une `.github/banner.png` sur ses dépôts, produite par
+ * `Atypical-Consulting/og-engine` : c'est le visuel que le README affiche, donc
+ * l'image que le propriétaire a CHOISIE pour ce dépôt. L'OG image de GitHub,
+ * elle, est une carte générée à la volée à partir des métadonnées.
+ *
+ * Trois raisons de préférer la bannière, et la dernière est la plus concrète :
+ *
+ *  1. c'est le visuel voulu, pas un rendu par défaut ;
+ *  2. elle est en 1280 × 640, soit exactement le 2:1 des toiles du musée —
+ *     aucun recadrage ;
+ *  3. **elle n'a pas de quota.** Le service OG plafonne à 100 rendus par
+ *     fenêtre : sur 116 dépôts, la première exécution en a servi 2 et posé
+ *     114 replis, et le musée a été relu pendant des heures avec 114 rectangles
+ *     verts à la place des œuvres. L'API Contents autorise 5 000 requêtes par
+ *     heure avec un jeton.
+ *
+ * On passe par l'API Contents et non par `raw.githubusercontent.com` parce
+ * qu'elle accepte un jeton : sans ça, tous les dépôts privés — la majorité du
+ * portefeuille — retomberaient sur le repli.
+ */
+function bannerUrl(owner: string, name: string): string {
+  return `https://api.github.com/repos/${owner}/${name}/contents/.github/banner.png`
+}
+
 /** `transient` distingue « ce dépôt n'a pas d'image » de « le réseau a lâché ». */
 interface Fetched {
   buffer: Buffer | null
@@ -292,23 +320,49 @@ interface Fetched {
  */
 const quota = { exhausted: false, retryAfterSec: 0 }
 
-async function download(url: string): Promise<Fetched> {
-  if (quota.exhausted) return { buffer: null, transient: true }
+/**
+ * Le jeton, résolu UNE fois.
+ *
+ * `null` est un mode dégradé assumé, pas une erreur : sans jeton on perd les
+ * bannières des dépôts privés, et le musée retombe sur l'OG image puis sur le
+ * repli. Le build reste possible, il est simplement moins beau — et le compteur
+ * de fin le dit.
+ */
+const jeton = resolveToken()
+
+async function download(url: string, authentifie = false): Promise<Fetched> {
+  // Le quota ne concerne QUE le service OG. L'API Contents a le sien, bien plus
+  // large, et le confondre ferait renoncer aux bannières dès la 101ᵉ œuvre.
+  if (!authentifie && quota.exhausted) return { buffer: null, transient: true }
 
   for (let attempt = 1; attempt <= HTTP_ATTEMPTS; attempt++) {
     try {
+      const entetes: Record<string, string> = {
+        'user-agent': 'virtual-museum-build-media',
+      }
+      if (authentifie) {
+        // `raw` rend le FICHIER, pas la fiche JSON qui le décrit.
+        entetes.accept = 'application/vnd.github.raw'
+        if (jeton) entetes.authorization = `Bearer ${jeton}`
+      }
       const res = await fetch(url, {
-        headers: { 'user-agent': 'virtual-museum-build-media' },
+        headers: entetes,
         signal: AbortSignal.timeout(HTTP_TIMEOUT_MS),
       })
-      if (res.status === 429) {
+      if (res.status === 429 || (authentifie && res.status === 403)) {
         const wait = Number(res.headers.get('retry-after') ?? 0)
         if (wait > 0 && wait <= MAX_THROTTLE_WAIT_S && attempt < HTTP_ATTEMPTS) {
           await sleep(wait * 1000)
           continue
         }
-        quota.exhausted = true
-        quota.retryAfterSec = wait
+        // Un 403 de l'API Contents peut être un quota comme un droit manquant ;
+        // dans les deux cas c'est PROVISOIRE du point de vue du cache, et la
+        // prochaine exécution retentera. On ne condamne pas le service OG pour
+        // autant : les deux quotas sont indépendants.
+        if (!authentifie) {
+          quota.exhausted = true
+          quota.retryAfterSec = wait
+        }
         return { buffer: null, transient: true }
       }
       // 404 et consorts sont définitifs : ce dépôt n'aura jamais d'OG image.
@@ -430,14 +484,26 @@ async function processJob(job: Job, cache: CacheFile, force: boolean): Promise<O
     if (buffer) source = 'custom'
     else warning = `${job.art.key} : image curée introuvable (${job.image}), repli généré`
   } else {
-    const fetched = await download(ogUrl(job.art.key, job.art.owner, job.art.name))
-    buffer = fetched.buffer
-    if (buffer) source = 'og'
-    else {
-      retry = fetched.transient
-      warning = fetched.transient
-        ? `${job.art.key} : OG image inaccessible (quota ou réseau), repli PROVISOIRE`
-        : `${job.art.key} : pas d'OG image (404), repli définitif`
+    // 1. La bannière du dépôt : le visuel CHOISI, sans quota. Voir `bannerUrl`.
+    const banniere = await download(bannerUrl(job.art.owner, job.art.name), true)
+    if (banniere.buffer) {
+      buffer = banniere.buffer
+      source = 'banner'
+    } else {
+      // 2. À défaut, l'OG image de GitHub — une carte générée depuis les
+      //    métadonnées. Tous les dépôts n'ont pas de bannière.
+      const fetched = await download(ogUrl(job.art.key, job.art.owner, job.art.name))
+      buffer = fetched.buffer
+      if (buffer) source = 'og'
+      else {
+        // Le repli n'est PROVISOIRE que si l'un des deux chemins peut encore
+        // aboutir : un dépôt sans bannière et sans OG image n'en aura jamais,
+        // et le retenter à chaque build coûterait deux requêtes pour rien.
+        retry = fetched.transient || banniere.transient
+        warning = retry
+          ? `${job.art.key} : bannière et OG inaccessibles (quota ou réseau), repli PROVISOIRE`
+          : `${job.art.key} : ni bannière ni OG image (404), repli définitif`
+      }
     }
   }
 
@@ -661,6 +727,7 @@ async function main() {
 
   console.log(
     `\n${jobs.length} dépôts traités, aucun sans visuel\n` +
+      `  bannières        : ${count('banner')}${jeton ? '' : ' (SANS JETON — les dépôts privés sont hors de portée)'}\n` +
       `  téléchargés (OG) : ${count('og')}\n` +
       `  images curées    : ${count('custom')}\n` +
       `  toiles de repli  : ${count('fallback')} (dont ${provisional} provisoire(s), à retenter)\n` +

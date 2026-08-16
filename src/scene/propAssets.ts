@@ -57,74 +57,34 @@ export interface PropPiece {
 /** Tout ce qu'il faut pour dessiner le mobilier. Vide si le chargement a échoué. */
 export type PropAssets = ReadonlyMap<PropId, readonly PropPiece[]>
 
-export const KIT_PATH = 'assets/props/museum-kit.glb'
-export const DRACO_PATH = 'draco/'
-
 /**
- * Le nœud du kit qui porte chaque prop.
+ * Le catalogue — chemins et noms de nœuds — vit dans `kits.ts`, qui n'importe ni
+ * `three` ni Vite. Il est réexporté ici pour que rien de ce qui consommait déjà
+ * ce module n'ait à changer d'import.
  *
- * Les noms viennent du fichier Blender, pas d'une convention : les lire ici
- * plutôt que de se fier à l'ordre des nœuds fait qu'un remaniement du kit
- * casse bruyamment au chargement au lieu d'intervertir silencieusement le banc
- * et le socle.
+ * La séparation n'est pas cosmétique : `tools/measure-props.ts` a besoin de ces
+ * tables et de rien d'autre, et les lire depuis ce fichier-ci l'obligeait à
+ * charger le moteur de rendu — ce que `tsc -b` refuse à bon droit côté Node.
+ *
+ * `PLANTS_LOD` mérite son mot d'explication, qui n'a pas sa place dans une table
+ * de données : on ne lit plus les glTF de Poly Haven directement parce que ce
+ * sont des modèles de RENDU HORS LIGNE. Leurs quatre sujets pesaient 46 100
+ * triangles et 8,4 Mo de cartes 1K, or le musée en instancie 13 à 18 par espèce —
+ * 780 000 triangles à l'écran, pour des sujets d'1,20 m vus entre 2 et 8 m. Et ce
+ * sont des PLANCHES : le fichier de l'anthurium contient six sujets, celui du
+ * calathéa cinq, dont un seul était instancié — les autres étaient téléchargés
+ * puis jetés.
  */
-export const NOEUDS_DU_KIT: Record<string, PropId> = {
-  Banc: 'banc',
-  Socle: 'socle',
-  Projecteur: 'projecteur',
-  Jardiniere: 'jardiniere',
-}
+export {
+  DRACO_PATH,
+  ESPECES_GLB,
+  KIT_PATH,
+  NOEUDS_DU_KIT,
+  PLANTS_LOD,
+} from './kits'
+export type { EspeceGlb } from './kits'
 
-/**
- * Les quatre espèces, et le spécimen retenu dans chaque fichier.
- *
- * Poly Haven livre plusieurs sujets par fichier (`_a`, `_b`, `_c`…) : ce sont
- * des individus distincts du même relevé photogrammétrique, pas des niveaux de
- * détail. On en choisit UN par espèce — celui dont la silhouette est la plus
- * franche — parce que chaque géométrie retenue coûte un lot d'instances.
- *
- * Deux de ces quatre modèles sont des planches BOTANIQUES : le sujet s'arrête à
- * la motte, sans contenant. `domain/props.ts` leur adjoint une jardinière (voir
- * `ESPECES` et son drapeau `autoportante`), sans quoi le feuillage flotterait à
- * quelques centimètres du sol.
- */
-export interface EspeceGlb {
-  id: PropId
-  /**
-   * Les nœuds du sujet dans `plants-lod.glb`. Plusieurs quand le sujet est
-   * réparti sur ses pièces — pot, feuillage, terre.
-   *
-   * DOIT rester synchronisée avec `GARDES` de `tools/blender/decimate-plants.py`,
-   * qui décide de ce que le fichier contient. Un test le vérifie.
-   */
-  noeuds: readonly string[]
-}
-
-export const ESPECES_GLB: readonly EspeceGlb[] = [
-  { id: 'plante-01', noeuds: ['anthurium_botany_01_a'] },
-  { id: 'plante-02', noeuds: ['calathea_orbifolia_01_a'] },
-  { id: 'plante-03', noeuds: ['potted_plant_02_leaves', 'potted_plant_02_pot'] },
-  {
-    id: 'plante-04',
-    noeuds: ['potted_plant_04_pot', 'potted_plant_04_plant', 'potted_plant_04_ground'],
-  },
-]
-
-/**
- * La végétation allégée, produite par `tools/blender/decimate-plants.py`.
- *
- * On ne lit plus les glTF de Poly Haven directement, et pour deux raisons
- * mesurées. Ce sont des modèles de RENDU HORS LIGNE : leurs quatre sujets
- * pesaient 46 100 triangles et 8,4 Mo de cartes 1K, or le musée en instancie 16
- * à 21 par espèce — 780 000 triangles à l'écran, 98 % du budget géométrique,
- * pour des sujets d'1,20 m vus entre 2 et 8 m. Et ce sont des PLANCHES : le
- * fichier de l'anthurium contient six sujets, celui du calathéa cinq, dont un
- * seul était instancié — les autres étaient téléchargés puis jetés.
- *
- * Blender en extrait les seuls sujets utiles, les ramène à 3 500 triangles
- * chacun et leurs cartes à 512 : 14 700 triangles et 1,53 Mo, en un fichier.
- */
-export const PLANTS_LOD = 'assets/plants/plants-lod.glb'
+import { ESPECES_GLB, KIT_PATH, NOEUDS_DU_KIT, PLANTS_LOD, DRACO_PATH } from './kits'
 
 // ── Chargement ───────────────────────────────────────────────────────────
 

@@ -50,6 +50,7 @@
  * deux bâtiments différents.
  */
 import { use, useEffect, useMemo } from 'react'
+import * as THREE from 'three'
 
 import { useGameStore } from '../stores/gameStore'
 import { useThree } from '@react-three/fiber'
@@ -69,6 +70,8 @@ import { ParkLayer } from './ParkLayer'
 */
 import { HAUTEUR_OEIL } from '../components/Player'
 import { PropsLayer } from './PropsLayer'
+import { DecorLayer } from './DecorLayer'
+import { placeDecor } from '../domain/decor'
 import { RampMesh } from './RampMesh'
 import { RoomLights } from './RoomLights'
 import type { FloorCulling } from './floorCulling'
@@ -294,6 +297,71 @@ function ToneMapping() {
  * déjà. Elle sert au spéculaire — sans elle, tout ce qui est métallique dans le
  * bâtiment (les garde-corps de l'atrium) réfléchit le noir.
  */
+/**
+ * Un ciel en dégradé vertical, posé en fond de scène.
+ *
+ * ── Pourquoi une texture et pas une couleur ──
+ *
+ * `<color attach="background" />` ne sait faire qu'un aplat. Or le fond n'est pas
+ * un détail ici : il remplit chaque fenêtre et la moitié de la vue extérieure.
+ * Un aplat prive le bâtiment de silhouette, parce qu'une arête de toit ne
+ * découpe rien quand ce qu'elle découpe est uniforme.
+ *
+ * ── Pourquoi `EquirectangularReflectionMapping` sur deux pixels de large ──
+ *
+ * Le fond équirectangulaire mappe la hauteur de l'image sur l'angle vertical :
+ * une colonne de pixels suffit donc à décrire un dégradé du zénith à l'horizon,
+ * et la largeur n'a aucun effet. On en met deux pour que l'interpolation
+ * horizontale n'ait rien à extrapoler aux bords.
+ *
+ * ⚠️ La texture ne touche PAS `scene.environment`, qui reste le HDRI
+ * pré-filtré : le fond décide de ce qu'on voit, l'environnement de ce qui se
+ * reflète, et confondre les deux ferait réfléchir un dégradé plat dans les
+ * garde-corps au lieu d'un studio.
+ */
+function CielDegrade() {
+  const { scene } = useThree()
+
+  useEffect(() => {
+    const hauteur = 64
+    const data = new Uint8Array(hauteur * 2 * 4)
+    // Du zénith (ligne 0) vers l'horizon : un bleu plus dense en haut, qui
+    // s'éclaircit et se désature en descendant. C'est le sens d'un ciel réel, et
+    // c'est aussi ce qui fait ressortir une masse claire posée devant.
+    const zenith = [0x74, 0x8d, 0xb0]
+    const horizon = [0xc2, 0xcb, 0xd6]
+    for (let y = 0; y < hauteur; y++) {
+      // Puissance 1,6 : le dégradé reste dense sur le haut du champ et se
+      // resserre près de l'horizon, au lieu de filer linéairement — un ciel
+      // linéaire se lit immédiatement comme un dégradé de logiciel.
+      const t = (y / (hauteur - 1)) ** 1.6
+      for (let x = 0; x < 2; x++) {
+        const i = (y * 2 + x) * 4
+        for (let c = 0; c < 3; c++) {
+          data[i + c] = Math.round(zenith[c] + (horizon[c] - zenith[c]) * t)
+        }
+        data[i + 3] = 255
+      }
+    }
+    const ciel = new THREE.DataTexture(data, 2, hauteur, THREE.RGBAFormat)
+    ciel.colorSpace = THREE.SRGBColorSpace
+    ciel.mapping = THREE.EquirectangularReflectionMapping
+    ciel.minFilter = THREE.LinearFilter
+    ciel.magFilter = THREE.LinearFilter
+    ciel.needsUpdate = true
+
+    /* eslint-disable react-hooks/immutability */
+    scene.background = ciel
+    /* eslint-enable react-hooks/immutability */
+    return () => {
+      scene.background = null
+      ciel.dispose()
+    }
+  }, [scene])
+
+  return null
+}
+
 function AmbientEnvironment() {
   const { gl, scene } = useThree()
   useEffect(() => {
@@ -332,6 +400,10 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
   const paliers = useMemo(() => landings(museum), [museum])
   const culling = useFloorCullingRegistry(paliers)
 
+  // Le décor d'architecture, calculé une seule fois pour les DEUX calques qui en
+  // dépendent : `DecorLayer` le dessine, `PropsLayer` l'évite.
+  const decor = useMemo(() => placeDecor(museum), [museum])
+
   return (
     <>
       <SceneDebugHandle culling={culling} />
@@ -345,7 +417,21 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
         noirs et tirait toute l'image vers le bas. Un ciel diurne les rend à ce
         qu'elles sont : du dehors.
       */}
-      <color attach="background" args={['#9aabc0']} />
+      {/*
+        LE CIEL, en dégradé et non en aplat.
+
+        `#9aabc0` uni était le fond de toutes les fenêtres et de toute la vue
+        extérieure — c'est-à-dire la moitié de l'image dès qu'on regarde dehors.
+        Un aplat ne donne aucune profondeur et, surtout, il ne donne aucune
+        SILHOUETTE au bâtiment : sans variation, la ligne du toit se confond avec
+        ce qu'elle découpe.
+
+        Le dégradé est vertical, plus soutenu au zénith qu'à l'horizon — le sens
+        d'un vrai ciel — et il coûte une texture de 2 × 64 pixels. Il n'ajoute
+        aucun draw call : le fond de scène est dessiné à la place de
+        l'effacement, pas en plus.
+      */}
+      <CielDegrade />
 
       {/*
         Le sol de l'hémisphérique est volontairement CLAIR (et non un gris
@@ -470,7 +556,22 @@ export function MuseumBuilding({ museum }: MuseumBuildingProps) {
         Aucune lumière n'entre ici. Les projecteurs du plafond sont des objets ;
         l'éclairage des toiles reste peint dans le shader (§9.2).
       */}
-      <PropsLayer museum={museum} />
+      <PropsLayer museum={museum} decor={decor} />
+
+      {/*
+        LE DÉCOR D'ARCHITECTURE (lot 9) : les nervures d'atrium, et ce qui
+        suivra. Une seule couche, un seul maillage, un seul draw call — la
+        fusion est faite dans `decorAssets.ts`, pas ici.
+
+        Il vit hors des groupes d'étage volontairement : une nervure naît du nez
+        de dalle d'un niveau et penche au-dessus du vide, donc elle appartient
+        autant à l'étage qui la porte qu'à celui qui la regarde d'en dessous.
+
+        Le placement est calculé ICI et non dans les deux calques, et descendu
+        aux deux : l'architecture est décidée avant le mobilier, et le mobilier
+        l'évite. Deux calculs séparés ne seraient pas garantis d'accord.
+      */}
+      <DecorLayer museum={museum} decor={decor} />
 
       {/*
         LE PARC. Hors de tout groupe d'étage, et c'est délibéré : il

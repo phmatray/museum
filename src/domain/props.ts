@@ -45,6 +45,11 @@
  * végétation du bâtiment.
  */
 import type { Floor, Museum, Ramp, Rect, Room, Vec2, Vec3, Wall } from './types'
+// `decor.ts` n'importe rien d'ici : la dépendance ne va que dans ce sens, et il
+// n'y a donc pas de cycle. C'est aussi ce qui rend l'ordre lisible — le décor se
+// calcule d'abord, le mobilier ensuite.
+import { DECOR_METRICS } from './decor'
+import type { DecorPlacement } from './decor'
 
 // ── Contrat public ───────────────────────────────────────────────────────
 
@@ -100,21 +105,66 @@ export interface PropMetrics {
 }
 
 /**
+ * La pièce PEND-elle sous son ancrage, ou repose-t-elle dessus ?
+ *
+ * ── Pourquoi cette fonction existe, et pourquoi elle vit ICI ──
+ *
+ * La question se pose partout où l'on compare deux emprises au sol : un
+ * projecteur suspendu à 3,90 m au-dessus d'un banc n'est pas une collision,
+ * c'est un musée. Elle était donc écrite TROIS FOIS — dans `tools/plan.ts`,
+ * dans l'épreuve de placement du décor, dans l'épreuve du mobilier — et les
+ * trois fois de la même façon fautive : `maxY <= 0`.
+ *
+ * 🔴 Le kit Meshy l'a fait tomber d'un coup. Le nouveau projecteur mesure
+ * `minY = −0,222 ; maxY = +0,002` : il pend, sans le moindre doute, et deux
+ * millimètres de sa platine dépassent au-dessus du plan d'ancrage parce que
+ * l'effondrement d'arêtes déplace des sommets. Comparer une borne à zéro EXACT
+ * a fait basculer les trois tests à la fois, et le plan coté a sorti des
+ * recouvrements entre un objet à 3,75 m de haut et une plante de 84 cm.
+ *
+ * On ne demande donc plus « la pièce dépasse-t-elle son ancrage » — question
+ * dont la réponse tient dans un micromètre — mais « DE QUEL CÔTÉ est-elle »,
+ * à laquelle le milieu de son étendue répond sans ambiguïté : −0,11 pour le
+ * projecteur, +0,22 pour un banc.
+ *
+ * Une règle, une implémentation : le dépôt a déjà payé pour apprendre que la
+ * même règle recopiée à trois endroits diverge, et que réparer là où on l'a vue
+ * ne la répare pas là où elle se répète.
+ */
+export function pendAuPlafond(m: { minY: number; maxY: number }): boolean {
+  return (m.minY + m.maxY) / 2 < 0
+}
+
+/**
  * Mesuré sur les GLB eux-mêmes (bornes des accesseurs POSITION, transformation
  * de nœud comprise), pas estimé. Une valeur trop petite ici ferait passer les
  * tests d'intersection tout en enfonçant une plante dans un mur à l'écran.
  */
 export const PROP_METRICS: Record<PropId, PropMetrics> = {
-  // 1,60 × 0,42 m : demi-diagonale 0,83 — le banc est le seul prop franchement
+  // ── Les quatre pièces du kit, RELEVÉES sur le kit Meshy du 2026-08-16 ──
+  //
+  // Les hauteurs sont inchangées au millimètre (0,45 / 1,05 / 0,22 / 0,50) : la
+  // table `PIECES` de `process-meshy.py` les a reprises exprès du kit
+  // procédural qu'elle remplace, parce que `HAUTEUR_JARDINIERE` porte 33
+  // plantes et que `DEGAGEMENT_BANC` porte les bancs de trémie. Ce qui a bougé,
+  // ce sont les RAYONS — les nouvelles pièces n'ont pas la même empreinte —
+  // et c'est l'épreuve de mesure qui l'a dit, pas une relecture.
+  //
+  // ⚠️ Les résidus à ±1 mm (`banc.minY = −0,001`, `projecteur.maxY = 0,002`)
+  // sont réels : ils viennent de l'effondrement d'arêtes, qui déplace des
+  // sommets. On les écrit tels que mesurés plutôt que de les arrondir à zéro —
+  // arrondir ici, c'est écrire un vœu à la place d'une mesure.
+  //
+  // 1,61 × 0,44 m : demi-diagonale 0,80 — le banc est le seul prop franchement
   // allongé, et c'est justement celui qu'on fait tourner face au mur.
-  banc: { radius: 0.827, minY: 0, maxY: 0.45 },
-  socle: { radius: 0.318, minY: 0, maxY: 1.05 },
+  banc: { radius: 0.805, minY: -0.001, maxY: 0.45 },
+  socle: { radius: 0.339, minY: 0, maxY: 1.05 },
   // Ancré sur le PLAN DE PLAFOND : la platine affleure la dalle, le corps pend
-  // en dessous. Le rayon vaut une fois et demie celui du fût parce que la tête
-  // est INCLINÉE de 28° vers la cimaise — la pièce déborde de son propre axe,
-  // et c'est ce débord que `RECUL_RAIL` doit pouvoir absorber.
-  projecteur: { radius: 0.123, minY: -0.22, maxY: 0 },
-  jardiniere: { radius: 0.495, minY: 0, maxY: 0.5 },
+  // en dessous. Le rayon a FONDU de 0,123 à 0,095 : la pièce Meshy est un simple
+  // fût dans un étrier, là où la précédente portait une tête inclinée à 28° qui
+  // débordait de son axe. `RECUL_RAIL` a donc désormais de la marge, pas moins.
+  projecteur: { radius: 0.095, minY: -0.222, maxY: 0.002 },
+  jardiniere: { radius: 0.529, minY: 0, maxY: 0.503 },
   // L'anthurium est un buisson bas et TRÈS étalé : son rayon dépasse sa
   // hauteur. C'est ce qui en fait un bon casseur d'angle droit, et ce qui
   // oblige à lui réserver près d'un mètre soixante d'envergure.
@@ -218,8 +268,19 @@ const PAS_ANNEAU = 3.4
  */
 const MARGE_RAMPE = 1.5
 
-/** Hauteur de la jardinière : les plantes qu'elle reçoit s'y posent. */
-const HAUTEUR_JARDINIERE = 0.5
+/**
+ * Hauteur de la jardinière : les plantes qu'elle reçoit s'y posent.
+ *
+ * DÉRIVÉE du modèle, et non recopiée. Elle valait `0.5` en dur, ce qui était la
+ * cote du bac de l'époque — un nombre juste, donc invisible, et qui serait
+ * devenu faux à la première jardinière remodelée. Le défaut aurait été muet :
+ * un bac de 0,44 m aurait laissé les 33 plantes non autoportantes flotter à six
+ * centimètres au-dessus de leur terreau, ce qu'aucune épreuve ne regarde et que
+ * seul un coup d'œil sous le bon angle attrape.
+ *
+ * `maxY` de la jardinière EST sa hauteur : c'est la même mesure, prise une fois.
+ */
+const HAUTEUR_JARDINIERE = PROP_METRICS.jardiniere.maxY
 
 /**
  * Enfoncement d'une plante dans sa jardinière, en mètres.
@@ -372,11 +433,32 @@ export function boiteDuProp(placement: PropPlacement): Boite {
  * d'instances par simple parcours et qu'un ordre instable ferait scintiller les
  * matrices d'un rechargement à l'autre.
  */
-export function placeProps(museum: Museum): PropPlacement[] {
+/**
+ * @param decor Les pièces d'architecture DÉJÀ posées, qui deviennent des
+ *   obstacles au même titre qu'un mur.
+ *
+ *   L'ordre n'est pas arbitraire : **l'architecture existe avant le mobilier, et
+ *   c'est le mobilier qui cède.** Une nervure naît du nez de dalle, elle y est ou
+ *   le bâtiment est faux ; un banc, lui, a toujours un autre endroit où aller.
+ *
+ *   Par défaut vide, et c'est ce qui rend l'ajout sûr : les épreuves écrites
+ *   avant le décor appellent toujours `placeProps(museum)` et voient exactement
+ *   ce qu'elles voyaient.
+ *
+ *   Le besoin n'a pas été deviné, il a été MESURÉ : `tools/plan.ts` a montré
+ *   l'anneau de jardinières du pourtour d'atrium traversant les nervures sur
+ *   deux niveaux, jusqu'à 0,75 m de recouvrement. Rien ne pouvait l'empêcher —
+ *   les deux modules placent contre des géométries différentes et ne se
+ *   connaissaient pas.
+ */
+export function placeProps(
+  museum: Museum,
+  decor: readonly DecorPlacement[] = [],
+): PropPlacement[] {
   const resultat: PropPlacement[] = []
 
   for (const floor of museum.floors) {
-    const obstacles = obstaclesDuNiveau(museum, floor)
+    const obstacles = obstaclesDuNiveau(museum, floor, decor)
     // Les props déjà posés deviennent à leur tour des obstacles : sans ça, deux
     // salles adjacentes peuvent poser chacune une jardinière de part et d'autre
     // d'une cloison mince et les faire se chevaucher au travers.
@@ -416,10 +498,30 @@ export function placeProps(museum: Museum): PropPlacement[] {
  * placement a réellement vu — un prop mal posé vient presque toujours d'un
  * obstacle manquant, pas d'un test d'intersection faux.
  */
-export function obstaclesDuNiveau(museum: Museum, floor: Floor): Obstacle[] {
+export function obstaclesDuNiveau(
+  museum: Museum,
+  floor: Floor,
+  decor: readonly DecorPlacement[] = [],
+): Obstacle[] {
   const obstacles: Obstacle[] = []
   const bas = floor.elevation
   const haut = floor.elevation + floor.ceilingHeight
+
+  // Le décor d'architecture, en disques : une pièce qui penche déborde de son
+  // axe, et le cylindre englobant est la seule emprise qui reste vraie quel que
+  // soit son lacet — la même raison qui fait que `PropMetrics` mesure un rayon.
+  for (const piece of decor) {
+    if (piece.floorId !== null && piece.floorId !== floor.id) continue
+    const m = DECOR_METRICS[piece.id]
+    obstacles.push({
+      forme: 'disque',
+      x: piece.position.x,
+      z: piece.position.z,
+      rayon: m.radius * Math.max(piece.scale.x, piece.scale.z),
+      minY: piece.position.y + m.minY * piece.scale.y,
+      maxY: piece.position.y + m.maxY * piece.scale.y,
+    })
+  }
 
   for (const room of floor.rooms) {
     for (const wall of room.walls) {
@@ -797,11 +899,25 @@ function borderLesTremies(floor: Floor, poser: Poseur): void {
   }
 }
 
+/**
+ * Dégagement derrière l'anneau, pour que le banc tienne entier.
+ *
+ * DÉRIVÉ du banc, et non recopié. La valeur était `0.9` en dur, c'est-à-dire la
+ * demi-longueur du banc plus un jeu — encore un nombre juste tant que le banc ne
+ * bougeait pas. Le lire sur `PROP_METRICS` fait que rallonger le banc écarte
+ * l'anneau tout seul, au lieu de le laisser mordre sur le vide de la trémie.
+ *
+ * Le jeu de 7 cm est ce qui reste quand on retire le rayon mesuré (0,828 m) de
+ * l'ancienne constante : la géométrie ne bouge donc que de trois millimètres, ce
+ * qui est le prix de ne plus avoir de nombre magique.
+ */
+const DEGAGEMENT_BANC = PROP_METRICS.banc.radius + 0.07
+
 function bancsDeTremie(floor: Floor, hole: Rect): PropPlacement[] {
   const cx = hole.x + hole.width / 2
   const cz = hole.z + hole.depth / 2
-  const dx = hole.width / 2 + RECUL_ANNEAU + 0.9
-  const dz = hole.depth / 2 + RECUL_ANNEAU + 0.9
+  const dx = hole.width / 2 + RECUL_ANNEAU + DEGAGEMENT_BANC
+  const dz = hole.depth / 2 + RECUL_ANNEAU + DEGAGEMENT_BANC
   // Nord et sud : banc allongé selon X. Est et ouest : allongé selon Z.
   const cotes: { x: number; z: number; rotation: number }[] = [
     { x: cx, z: cz - dz, rotation: 0 },

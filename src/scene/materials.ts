@@ -170,10 +170,52 @@ export interface ReglageMatiere {
  * l'autre est un albédo de métal brossé que le rendu doit sortir du noir.
  */
 export const REGLAGE_MATIERE: Record<MatiereId, ReglageMatiere> = {
-  beton: { gain: 1.45, roughness: 1, metalness: 0, rebond: 0.24, motif: 2.6 },
+  // `gain` ramené de 1,45 à 1,15 le 2026-08-16 : le béton porte les sous-faces
+  // de dalle ET les murs d'enveloppe, c'est-à-dire les deux plus grandes
+  // surfaces du musée. À 1,45 il renvoyait assez pour saturer sous les
+  // plafonniers — la vue `plafond` écrêtait 2,59 % de ses pixels. Un béton qui
+  // brûle ne montre plus son relief, et le SSAO n'a plus rien à creuser.
+  beton: { gain: 1.15, roughness: 1, metalness: 0, rebond: 0.24, motif: 2.6 },
+  /**
+   * L'ENVELOPPE : même carte que `beton`, gain nettement plus haut.
+   *
+   * 1,85 et non 1,15. Ce n'est pas une préférence de teinte, c'est ce qu'il faut
+   * pour que le brise-soleil existe : un peigne de lames claires ne se lit que
+   * par CONTRASTE avec ce qu'il raye, et sur la masse sombre du béton de dalle
+   * il restait un accessoire posé sur une boîte grise. Éclaircir la façade fait
+   * de l'ombre portée le dessin, ce qui est toute l'écriture de cette
+   * architecture.
+   *
+   * Pourquoi une matière séparée plutôt que remonter `beton` : la même matière
+   * porte les SOUS-FACES DE DALLE, dont le gain vient d'être baissé de 1,45 à
+   * 1,15 parce qu'elles écrêtaient 2,59 % de leurs pixels sous les plafonniers.
+   * Un seul réglage ne peut pas éclaircir la façade et calmer le plafond.
+   *
+   * Le `rebond` tombe à zéro : c'est le lèche-lumière peint sous les faces
+   * tournées vers le bas, et une façade verticale n'en a aucune.
+   */
+  // ⚠️ 1,85 et pas 2,35 — second A/B refusé le 2026-08-16.
+  //
+  // L'intuition était que le bâtiment lit beige et qu'un albédo plus haut le
+  // rendrait blanc. La mesure dit non : de 1,85 à 2,35, soit +27 % d'albédo, la
+  // vue `exterieur` gagne 3 points de luminance sur 156 — parce que le mappage
+  // tonal ACES COMPRESSE les hautes lumières, et qu'à ce niveau on pousse
+  // contre le rouleau. Pendant ce temps la vue `fenetre`, dont l'embrasure
+  // occupe un tiers du cadre, passe de 9,6 % à 23,1 % de quasi-blanc.
+  //
+  // Le blanc de cette architecture ne se gagne donc pas sur l'albédo. Le levier
+  // est l'EXPOSITION et l'occlusion — l'étape E6 du plan les règle ensemble,
+  // neuf constantes, chacune A/B-able seule grâce à la paire témoin
+  // `coin` / `coin-sans-postfx`. Un demi-réglage y serait pire que rien.
+  'beton-blanc': { gain: 1.85, roughness: 0.95, metalness: 0, rebond: 0, motif: 2.6 },
   platre: { gain: 1.25, roughness: 1, metalness: 0, rebond: 0.14, motif: 3.2 },
   'platre-peint': { gain: 1.45, roughness: 1, metalness: 0, rebond: 0.14, motif: 3.2 },
-  parquet: { gain: 1.2, roughness: 0.9, metalness: 0, rebond: 0.2, motif: 3 },
+  // `motif` ramené de 3 m à 1,9 m le 2026-08-16. À 3 m, une lame de `WoodFloor007`
+  // mesurait près de 40 cm de large à l'écran : ce n'est plus un parquet, c'est
+  // un plancher de scène, et la tuile se lisait franchement sur la longueur
+  // d'une salle. 1,9 m ramène la lame à ~25 cm, la largeur d'un parquet
+  // contrecollé courant, et casse la répétition dans le même geste.
+  parquet: { gain: 1.2, roughness: 0.9, metalness: 0, rebond: 0.2, motif: 1.9 },
   /**
    * Le sol du hall et de l'atrium — la plus grande surface du musée.
    *
@@ -208,7 +250,13 @@ export const REGLAGE_MATIERE: Record<MatiereId, ReglageMatiere> = {
     roughness: 1.3,
     metalness: 0,
     rebond: 0.24,
-    motif: 0.9,
+    // `motif` ramené de 0,90 m à 0,62 m le 2026-08-16. Le raisonnement d'origine
+    // tient — c'est bien la maille qui donne le calibre des éclats — mais 3,5 cm
+    // sur le plus grand sol du musée donnait du CONFETTI : des points noirs
+    // francs sur un fond blanc, lus comme du bruit et non comme une matière.
+    // 0,62 m ramène l'éclat à 2,4 cm, le calibre d'un terrazzo fin ; à cette
+    // taille les points se fondent au lieu de grésiller.
+    motif: 0.62,
   },
   /**
    * Les mains courantes et les cadres. Depuis que le panneau du garde-corps est
@@ -269,7 +317,10 @@ const PROGRAM_CACHE_KEY = 'museum:matiere:v1'
  * est une information sur ce qu'elle est, pas une économie de matière.
  */
 export function matiereDeMur(kind: WallKind, theme: ThemeId): MatiereId {
-  if (kind === 'outer') return 'beton'
+  // L'enveloppe a sa propre matière depuis la pose du brise-soleil : voir
+  // `beton-blanc` dans `REGLAGE_MATIERE`. C'est le POINT UNIQUE qui décide, et
+  // c'est pour ça que `RoomMesh` et `FloorMesh` restent d'accord sans se parler.
+  if (kind === 'outer') return 'beton-blanc'
   switch (theme) {
     case 'classic':
       return 'platre'

@@ -29,7 +29,7 @@
  * image entière ; c'est elle qu'on appelle, jamais `stats()`.
  */
 /// <reference types="node" />
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -44,8 +44,27 @@ const CHROME =
   process.env.CHROME_PATH ??
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 
-/** Le port de `npm run dev`. Vite en prend un autre s'il est occupé : `--url`. */
-const DEFAULT_URL = 'http://localhost:5174/'
+/**
+ * Les ports où chercher `npm run dev`, et comment on reconnaît le BON.
+ *
+ * ⛔ Une URL en dur ne peut pas marcher ici, et pas seulement « parfois ».
+ *
+ * Vite prend 5173, puis 5174, puis 5175 selon ce qui est déjà occupé. Ce dépôt
+ * se travaille en WORKTREES : plusieurs copies du musée, sur plusieurs branches,
+ * peuvent servir en même temps. Une constante fige donc le NUMÉRO d'un port sans
+ * rien dire de QUI est derrière — et c'est arrivé : `5174` était écrit ici, le
+ * serveur de cette session écoutait sur 5173, et l'oracle a rendu onze vues
+ * complètes et cohérentes… mesurées sur le musée d'une autre session.
+ *
+ * Le remède n'est pas une meilleure devinette de port, c'est une PREUVE
+ * D'IDENTITÉ : on demande au serveur son `data/museum.json` et on le compare,
+ * octet pour octet, à celui du disque. Deux worktrees sur deux branches n'ont
+ * pas le même bâtiment ; celui qui répond le nôtre EST le nôtre.
+ *
+ * Et si aucun ne répond, on échoue en le disant, plutôt que de mesurer le musée
+ * du voisin.
+ */
+const PORTS = [5173, 5174, 5175, 5176, 5177]
 
 /** 1440×900 en DPR 2. Assez grand pour juger, assez petit pour tenir en mémoire. */
 const VIEWPORT = { width: 1440, height: 900, deviceScaleFactor: 2 }
@@ -90,6 +109,52 @@ const VUES: Vue[] = [
     de: [4.2, 8.4, 4.2],
     vers: [-1, 0, -1],
     preuve: 'la rampe vue de haut : garde-corps et sous-face du tablier',
+  },
+  {
+    // LA VUE QUI MANQUAIT, et son absence a coûté cher.
+    //
+    // Trente-neuf nervures posées sur trois niveaux formaient une palissade à
+    // hauteur d'œil : depuis l'entrée comme depuis l'escalier, on ne voyait plus
+    // l'atrium, on voyait à travers une claire-voie. Aucun contrôle ne l'a dit.
+    // Le plan coté validait le placement — et il avait raison sur ce qu'il
+    // mesure : il vérifie qu'on ne se COGNE pas, pas qu'on VOIT quelque chose.
+    //
+    // Celle-ci est une ligne de vue rasante : à hauteur d'œil, depuis un bord de
+    // l'atrium vers le bord opposé. Ce qu'elle prouve n'est pas une jolie image,
+    // c'est que la traversée visuelle du bâtiment reste ouverte — et elle
+    // rougirait à la première pièce qui la refermerait.
+    nom: 'ligne-de-vue',
+    de: [-5.4, 1.62, 5.4],
+    vers: [5.4, 1.62, -5.4],
+    preuve: 'traversée de l’atrium à hauteur d’œil : le vide doit rester un vide',
+  },
+  {
+    // Depuis le rez-de-chaussée, dans le vide de l'atrium, regard vers le haut
+    // et vers un angle : c'est le seul cadrage d'où les nervures des trois
+    // niveaux se voient ENSEMBLE, en enfilade. La vue `atrium-plongee` est
+    // dominée par l'escalier et n'en montre que des bribes ; la vue `plafond`
+    // regarde à la verticale et les prend par la tranche.
+    nom: 'atrium-nervures',
+    de: [3.6, 1.7, 3.6],
+    vers: [-5.5, 9.5, -5.5],
+    preuve: 'les nervures d’atrium : de la structure sur trois niveaux, pas un bandeau flottant',
+  },
+  {
+    // LA VUE QUI MANQUAIT POUR LA LANTERNE.
+    //
+    // `plafond` regarde le plafond d'une SALLE — du plâtre à trois mètres — et
+    // `atrium-nervures` monte à 45°, où l'oculus n'est qu'un bord de cadre.
+    // Aucune des onze ne pouvait donc voir le couronnement du puits de lumière,
+    // et j'ai posé vingt-quatre côtes sans qu'un seul contrôle sache dire si
+    // elles existaient. Un instrument qui ne sait pas regarder ce qu'on vient de
+    // construire ne le garde pas.
+    //
+    // Plein zénith, depuis le rez-de-chaussée, décalé du centre pour ne pas
+    // avoir l'hélice dans l'axe.
+    nom: 'lanterne',
+    de: [2.6, 1.7, 2.6],
+    vers: [0, 18, 0],
+    preuve: 'le zénith : la couronne de côtes doit border l’oculus, et le ciel passer entre elles',
   },
   {
     nom: 'coin',
@@ -197,13 +262,42 @@ interface Rapport {
   /** Part de pixels quasi noirs. C'est la métrique du défaut « on ne voit rien ». */
   pctSous25: number
   pctSous10: number
+  /**
+   * Part de pixels quasi blancs — le SYMÉTRIQUE des deux précédentes.
+   *
+   * Elles n'existaient pas, et leur absence n'était pas visible tant que le
+   * bâtiment était gris. Les trois métriques d'origine attrapent toutes le même
+   * défaut, le NOIR, parce que c'est celui que le lot 2 avait produit (§9.4).
+   * Un instrument qui ne sait mesurer qu'un côté d'une erreur laisse passer
+   * l'autre sans un mot.
+   *
+   * `pctSur250` compte les pixels réellement écrêtés : là, de l'information est
+   * PERDUE, pas seulement claire. `pctSur230` attrape l'image qui part en voile
+   * avant d'écrêter.
+   */
+  pctSur230: number
+  pctSur250: number
   /** Luminance moyenne, pour repérer une image qui vire globalement. */
   luminanceMoyenne: number
+  /**
+   * Écart-type de la luminance. La métrique du défaut « c'est PLAT ».
+   *
+   * C'est la seule des six qui attrape les DEUX échecs à la fois : un aplat noir
+   * et un aplat blanc ont tous deux un écart-type effondré, alors qu'ils sont aux
+   * antipodes sur la moyenne. C'est elle qu'il aurait fallu au lot 2 — « le rendu
+   * s'est révélé plat et sombre » sont deux constats distincts, et un seul des
+   * deux était mesuré.
+   *
+   * Elle ne se compare pas à un seuil absolu mais au relevé de référence : une
+   * vue de plafond n'a pas le contraste d'une vue de façade, et c'est normal.
+   */
+  ecartType: number
   mesure: Mesure | null
 }
 
 /**
- * Compte les pixels sombres et la luminance moyenne, dans la page.
+ * Compte les pixels sombres, les pixels brûlés, la luminance moyenne et sa
+ * dispersion — dans la page.
  *
  * Fait côté navigateur sur un canvas 2D plutôt que sur le PNG rapatrié : le
  * transfert d'une image de 8 Mo par vue coûterait plus que la mesure elle-même,
@@ -217,20 +311,30 @@ const SCRIPT_LUMINANCE = `(() => {
   const g = c.getContext('2d')
   g.drawImage(canvas, 0, 0, w, h)
   const d = g.getImageData(0, 0, w, h).data
-  let sous25 = 0, sous10 = 0, somme = 0
+  let sous25 = 0, sous10 = 0, sur230 = 0, sur250 = 0, somme = 0, somme2 = 0
   for (let i = 0; i < d.length; i += 4) {
     // Luminance perceptuelle (Rec. 601) : le vert pèse plus que le bleu, donc
     // un bleu sombre ne doit pas compter comme « aussi noir » qu'un gris sombre.
     const l = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]
     somme += l
+    somme2 += l * l
     if (l < 25) sous25++
     if (l < 10) sous10++
+    if (l > 230) sur230++
+    if (l > 250) sur250++
   }
   const n = d.length / 4
+  const moyenne = somme / n
+  // Variance par la somme des carrés : une seule passe, et sur des octets la
+  // perte de précision de cette forme est sans objet.
+  const variance = Math.max(0, somme2 / n - moyenne * moyenne)
   return {
     pctSous25: +(100 * sous25 / n).toFixed(2),
     pctSous10: +(100 * sous10 / n).toFixed(2),
-    luminanceMoyenne: +(somme / n).toFixed(1),
+    pctSur230: +(100 * sur230 / n).toFixed(2),
+    pctSur250: +(100 * sur250 / n).toFixed(2),
+    luminanceMoyenne: +(moyenne).toFixed(1),
+    ecartType: +(Math.sqrt(variance)).toFixed(1),
   }
 })()`
 
@@ -256,6 +360,69 @@ async function attendreScene(page: Page): Promise<void> {
      })()`,
     { timeout: 60_000, polling: 500 },
   )
+}
+
+/**
+ * D'OÙ viennent les draw calls, groupe par groupe.
+ *
+ * ── Pourquoi cette ventilation manquait ──
+ *
+ * Le compteur du §9 dit « 269 pour un plafond de 150 » et s'arrête là. On sait
+ * donc qu'on dépasse, jamais de combien chaque poste y contribue — et une
+ * optimisation choisie sans ce relevé est une intuition qu'on paie en heures.
+ * Le plan nomme un levier (« fusionner les murs par matière, −65 appels ») :
+ * ce chiffre-là est une PRÉVISION, et rien ne l'a jamais vérifiée.
+ *
+ * On compte les objets rendables VISIBLES, groupés par le nœud nommé le plus
+ * proche. Ce n'est pas exactement le compte du pilote — le post-traitement
+ * ajoute ses passes plein écran, et le culling par frustum en retire — mais
+ * c'est la seule décomposition que la scène puisse donner, et elle suffit
+ * amplement à dire OÙ chercher.
+ */
+const SCRIPT_APPELS = `(() => {
+  const parGroupe = {}
+  const compter = (o) => {
+    if (!o.visible) return
+    const rendable = o.isMesh || o.isInstancedMesh || o.isLine || o.isPoints
+    if (rendable) {
+      let n = o
+      let nom = '(sans nom)'
+      while (n) { if (n.name) { nom = n.name; break } n = n.parent }
+      const groupes = o.geometry && o.geometry.groups ? o.geometry.groups.length : 0
+      parGroupe[nom] = (parGroupe[nom] || 0) + Math.max(1, groupes)
+    }
+    for (const e of o.children) compter(e)
+  }
+  compter(window.__MUSEUM__.scene)
+  return parGroupe
+})()`
+
+async function ventiler(page: Page, vue: Vue): Promise<void> {
+  await page.evaluate(`window.__MUSEUM__.survol(${vue.de.join(',')}, ${vue.vers.join(',')})`)
+  await new Promise((r) => setTimeout(r, 350))
+  const parGroupe = (await page.evaluate(SCRIPT_APPELS)) as Record<string, number>
+  // ⚠️ Regroupé par PRÉFIXE (`wall:rdc-nord` → `wall`). Sans ça, chaque mur
+  // portant son propre nom, les soixante-et-onze murs du bâtiment sortaient en
+  // soixante-et-onze lignes à 1 — c'est-à-dire invisibles sous n'importe quel
+  // filtre, alors qu'ils sont le premier poste du compteur. Une ventilation qui
+  // éparpille son plus gros poste ne ventile rien.
+  const parFamille: Record<string, number> = {}
+  for (const [nom, n] of Object.entries(parGroupe)) {
+    // Les couches nomment leurs nœuds `famille:instance` ; les MURS, eux, portent
+    // leur rôle en suffixe (`etage-2-north-galerie-0-outer`). Sans cette seconde
+    // règle, les soixante-et-onze murs sortaient en soixante-et-onze lignes à 1,
+    // c'est-à-dire noyés — alors qu'ils sont à eux seuls la moitié du compteur.
+    const mur = /-(outer|inner|side-[ab]|enclosure)$/.exec(nom)
+    const famille = mur ? `mur:${mur[1].replace(/-[ab]$/, '')}` : nom.split(':')[0]
+    parFamille[famille] = (parFamille[famille] ?? 0) + n
+  }
+  const lignes = Object.entries(parFamille).sort((a, b) => b[1] - a[1])
+  const total = lignes.reduce((s, [, n]) => s + n, 0)
+  console.log(`\nventilation des maillages visibles \u2014 vue \u00ab ${vue.nom} \u00bb\n`)
+  for (const [nom, n] of lignes) {
+    console.log(`  ${nom.padEnd(28)} ${String(n).padStart(4)}  ${((100 * n) / total).toFixed(1)} %`)
+  }
+  console.log(`  ${'TOTAL'.padEnd(28)} ${String(total).padStart(4)}`)
 }
 
 async function capturer(page: Page, vue: Vue): Promise<Rapport> {
@@ -287,8 +454,46 @@ function argument(nom: string): string | undefined {
   return i >= 0 ? process.argv[i + 1] : undefined
 }
 
+/**
+ * Trouve le serveur qui sert CE musée-ci. Voir `PORTS` pour le pourquoi.
+ *
+ * La preuve d'identité est le `museum.json` : il est dérivé du dépôt GitHub et
+ * de la branche, donc deux worktrees en ont deux versions différentes dès que
+ * l'un des deux a touché à `derive-museum.ts`. Comparer sa longueur suffit —
+ * c'est un fichier de plusieurs dizaines de kilo-octets, une collision de taille
+ * entre deux bâtiments différents n'arrive pas par hasard.
+ */
+async function trouverLeServeur(): Promise<string> {
+  const local = await readFile(resolve(ROOT, 'public', 'data', 'museum.json'))
+  const echecs: string[] = []
+
+  for (const port of PORTS) {
+    const base = `http://localhost:${port}/`
+    try {
+      const reponse = await fetch(`${base}data/museum.json`, {
+        signal: AbortSignal.timeout(1500),
+      })
+      if (!reponse.ok) {
+        echecs.push(`${port}: HTTP ${reponse.status}`)
+        continue
+      }
+      const servi = Buffer.from(await reponse.arrayBuffer())
+      if (servi.equals(local)) return base
+      echecs.push(`${port}: un AUTRE musée (${servi.length} o. contre ${local.length})`)
+    } catch {
+      echecs.push(`${port}: fermé`)
+    }
+  }
+
+  throw new Error(
+    `Aucun serveur ne sert CE musée.\n  ${echecs.join('\n  ')}\n` +
+      'Lancer `npm run dev` dans ce worktree, ou passer --url explicitement.',
+  )
+}
+
 async function main() {
-  const url = argument('url') ?? DEFAULT_URL
+  const url = argument('url') ?? (await trouverLeServeur())
+  console.log(`serveur : ${url}`)
   const only = argument('only')?.split(',').map((s) => s.trim())
   const vues = only ? VUES.filter((v) => only.includes(v.nom)) : VUES
   if (vues.length === 0) {
@@ -309,6 +514,25 @@ async function main() {
     })
     const page = await browser.newPage()
 
+    /*
+      ⛔ CACHE COUPÉ, et ce n'est pas une précaution de confort.
+
+      Mesuré le 2026-08-16 : après avoir régénéré `park-lod.glb` — 135 200
+      triangles de moins, fichier neuf sur le disque, servi neuf par Vite — les
+      ONZE vues ont rendu EXACTEMENT les mêmes chiffres qu'au passage précédent,
+      au triangle près. Le navigateur relisait sa copie.
+
+      Un oracle qui mesure un cache est pire qu'un oracle absent : il rend un
+      relevé complet, cohérent, plausible, et FAUX. Il aurait fait conclure que
+      la reprise sur le parc n'avait rien donné, et le budget des vingt-neuf
+      pièces d'architecture aurait été taillé sur ce constat.
+
+      C'est la même famille que le premier oracle pris sans assets et que le
+      board qui servait un JSON de six jours : un instrument doit dire ce qui EST
+      là, jamais ce qu'il a vu la dernière fois.
+    */
+    await page.setCacheEnabled(false)
+
     const erreurs: string[] = []
     page.on('pageerror', (e) => erreurs.push(String(e)))
     page.on('console', (m) => {
@@ -318,14 +542,25 @@ async function main() {
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 60_000 })
     await attendreScene(page)
 
+    if (process.argv.includes('--appels')) {
+      await ventiler(page, vues[0])
+      return
+    }
+
     const rapports: Rapport[] = []
     for (const vue of vues) rapports.push(await capturer(page, vue))
 
-    console.log(`\n${'vue'.padEnd(20)} ${'noir<25'.padStart(8)} ${'noir<10'.padStart(8)} ${'lum'.padStart(6)} ${'calls'.padStart(6)} ${'tris'.padStart(9)}`)
+    console.log(
+      `\n${'vue'.padEnd(20)} ${'noir<25'.padStart(8)} ${'noir<10'.padStart(8)} ` +
+        `${'blanc>230'.padStart(9)} ${'blanc>250'.padStart(9)} ` +
+        `${'lum'.padStart(6)} ${'σ'.padStart(6)} ${'calls'.padStart(6)} ${'tris'.padStart(9)}`,
+    )
     for (const r of rapports) {
       console.log(
         `${r.vue.padEnd(20)} ${`${r.pctSous25} %`.padStart(8)} ${`${r.pctSous10} %`.padStart(8)} ` +
-          `${String(r.luminanceMoyenne).padStart(6)} ${String(r.mesure?.calls ?? '—').padStart(6)} ` +
+          `${`${r.pctSur230} %`.padStart(9)} ${`${r.pctSur250} %`.padStart(9)} ` +
+          `${String(r.luminanceMoyenne).padStart(6)} ${String(r.ecartType).padStart(6)} ` +
+          `${String(r.mesure?.calls ?? '—').padStart(6)} ` +
           `${String(r.mesure?.triangles ?? '—').padStart(9)}`,
       )
       console.log(`${' '.repeat(20)} ${r.preuve}`)

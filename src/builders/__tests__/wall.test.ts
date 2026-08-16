@@ -22,6 +22,13 @@ import type { Museum, Opening, Wall } from '../../domain/types'
 import type { BuiltWall } from '../wall'
 import { buildGlazing, creerVitrage } from '../glazing'
 import {
+  FLECHE_MIN,
+  GABARIT_PASSAGE,
+  aireDOgive,
+  longueurDIntrados,
+  resoudreOgive,
+} from '../profiles'
+import {
   CHAMFER,
   PLINTH_HEIGHT,
   PLINTH_PROJECTION,
@@ -176,14 +183,55 @@ function volumeSigne(built: BuiltWall): number {
   return v
 }
 
+/**
+ * Une ouverture est-elle ISOLÉE, c'est-à-dire seule dans son groupe ?
+ *
+ * C'est la condition d'arc de `wall.ts` (voir `Step.arche`), réécrite ici plutôt
+ * qu'importée. Volontaire : une épreuve qui appellerait la fonction du code
+ * mesurerait le code contre lui-même et passerait au vert quel que soit son
+ * verdict. Deux implémentations indépendantes qui se contredisent, elles,
+ * disent quelque chose.
+ */
+function isolee(wall: Wall, o: Opening): boolean {
+  const [a, b] = [Math.min(o.start, o.end), Math.max(o.start, o.end)]
+  return !wall.openings.some((x) => {
+    if (x === o) return false
+    const [c, d] = [Math.min(x.start, x.end), Math.max(x.start, x.end)]
+    return c <= b + 1e-9 && d >= a - 1e-9
+  })
+}
+
+/**
+ * L'aire percée ANALYTIQUE d'un mur, arcs compris.
+ *
+ * ⚠️ Elle n'est PAS l'aire du polygone que produit `buildWall` : l'intrados y
+ * est approché par des cordes, donc INSCRIT, donc l'aire réelle est toujours un
+ * peu plus petite. Comparer les deux par une égalité approchée serait déjà utile ;
+ * comparer par l'INÉGALITÉ l'est davantage, parce que le sens de l'écart prouve
+ * en plus que la courbe ne gonfle jamais vers l'extérieur du vide.
+ *
+ * Le vide d'une ouverture va de son ALLÈGE à son linteau. Compter depuis le sol
+ * reviendrait à percer l'allège d'une fenêtre, qui est justement ce qui en fait
+ * une fenêtre.
+ */
 function airePercee(wall: Wall): number {
-  // Le vide d'une ouverture va de son ALLÈGE à son linteau. Compter depuis le
-  // sol reviendrait à percer l'allège d'une fenêtre, qui est justement ce qui
-  // en fait une fenêtre.
   return wall.openings.reduce((s, o) => {
     const haut = Math.min(o.height, wall.height)
     const bas = Math.max(0, Math.min(o.sill ?? 0, haut))
-    return s + (o.end - o.start) * (haut - bas)
+    const largeur = o.end - o.start
+    const demi = Math.abs(largeur) / 2
+
+    // Une fenêtre : ellipse pointue INSCRITE dans le rectangle du jour.
+    if (bas > 0.05) {
+      const demiHauteur = (haut - bas) / 2
+      if (demiHauteur >= FLECHE_MIN && demi > 0) return s + 2 * aireDOgive(demi, demiHauteur)
+      return s + largeur * (haut - bas)
+    }
+
+    // Une ouverture au sol : rectangle jusqu'à la naissance, puis l'ogive.
+    const ogive = isolee(wall, o) ? resoudreOgive(demi, haut, wall.height) : null
+    if (!ogive) return s + largeur * haut
+    return s + largeur * ogive.naissance + aireDOgive(demi, ogive.cle - ogive.naissance)
   }, 0)
 }
 
@@ -198,8 +246,72 @@ function boiteOuverture(o: Opening, wall: Wall, marge = 0.02): THREE.Box3 {
   )
 }
 
+/**
+ * Boîte du GABARIT DE PASSAGE d'une ouverture : le vide sous la naissance.
+ *
+ * ── Pourquoi cette boîte-là, et pas celle du rectangle nominal ──
+ *
+ * Un arc rend de la matière : sur une porte de 3,70 m dont l'arc naît à 2,15 m,
+ * les écoinçons rentrent dans le rectangle déclaré, et c'est le GESTE — pas un
+ * défaut. Ce que l'épreuve doit protéger n'a jamais été le rectangle, c'était le
+ * PASSAGE : la garantie qu'on traverse sans rien heurter. Sous la naissance, le
+ * vide est intégral et le reste.
+ *
+ * Formulée ainsi, l'épreuve est plus utile qu'avant : elle dit ce qui compte
+ * pour le visiteur au lieu de dire ce qui arrangeait la construction.
+ */
+function boiteDePassage(o: Opening, wall: Wall, marge = 0.02): THREE.Box3 {
+  const haut = Math.min(o.height, wall.height)
+  const bas = Math.max(0, Math.min(o.sill ?? 0, haut))
+  const demi = Math.abs(o.end - o.start) / 2
+
+  // Une FENETRE : le vide est une ellipse pointue, qu'aucune boite ne decrit.
+  // On controle donc le rectangle INSCRIT — demi-cotes centres — qui tient
+  // largement dans l'ellipse (verifie : a mi-largeur, l'intrados est encore a
+  // 88 cm du centre pour une demi-hauteur de 1,125 m).
+  if (bas > 0.05) {
+    const cx = (o.start + o.end) / 2
+    const cy = (bas + haut) / 2
+    const dy = (haut - bas) / 4
+    return new THREE.Box3(
+      new THREE.Vector3(cx - demi / 2, cy - dy, -1),
+      new THREE.Vector3(cx + demi / 2, cy + dy, 1),
+    )
+  }
+
+  const ogive = isolee(wall, o) ? resoudreOgive(demi, haut, wall.height) : null
+  const plafond = ogive ? Math.min(haut, ogive.naissance) : haut
+  return new THREE.Box3(
+    new THREE.Vector3(o.start + marge, bas + marge, -1),
+    new THREE.Vector3(o.end - marge, plafond - marge, 1),
+  )
+}
+
 function trianglesDansLaBoite(wall: Wall, built: BuiltWall, boite: THREE.Box3): number {
   return trianglesLocaux(wall, built).filter((t) => boite.intersectsTriangle(t)).length
+}
+
+/**
+ * L'aire de la face vue, contrôlée contre l'aire percée ANALYTIQUE.
+ *
+ * Deux assertions, et la seconde n'est pas la même que la première :
+ *
+ *  · l'aire mesurée ne peut jamais être PLUS PETITE que l'analytique, parce que
+ *    le polygone de l'intrados est inscrit dans l'arc — il perce donc un peu
+ *    moins, et laisse un peu plus de face. Une aire plus petite voudrait dire
+ *    que la courbe gonfle vers l'extérieur du vide, c'est-à-dire que le contour
+ *    déborde de l'ouverture. C'est le défaut qu'aucune égalité approchée
+ *    n'attraperait, puisqu'il tomberait dans la même tolérance.
+ *  · et pas beaucoup plus grande : un pour cent de l'aire percée, soit l'ordre
+ *    de grandeur de la corde de nos segments.
+ */
+function attendAireFace(w: Wall, built: BuiltWall, message = ''): void {
+  const percee = airePercee(w)
+  const analytique = wallLength(w) * w.height - percee
+  const mesuree = aireFaceInterieure(w, built)
+  const corde = Math.max(5e-4, percee * 0.01)
+  expect(mesuree, `${message} : la courbe gonfle hors du vide`).toBeGreaterThan(analytique - 5e-4)
+  expect(mesuree, `${message} : le vide perce trop`).toBeLessThan(analytique + corde)
 }
 
 // ── Piège n°1 : le biseau ────────────────────────────────────────────────
@@ -321,9 +433,12 @@ describe('aire de la face', () => {
     expect(aireFaceInterieure(w, buildWall(w))).toBeCloseTo(40, 3)
   })
 
-  it('une porte : l’aire de la porte en moins', () => {
+  it('une porte : l’aire de la porte, ARC COMPRIS, en moins', () => {
     const w = mur({ openings: [porte(4, 6)] })
-    expect(aireFaceInterieure(w, buildWall(w))).toBeCloseTo(40 - 2 * 2.1, 3)
+    attendAireFace(w, buildWall(w))
+    // Et l'arc perce VRAIMENT quelque chose : sans cette borne, une ogive de
+    // flèche nulle passerait l'assertion précédente sans rien dessiner.
+    expect(airePercee(w)).toBeGreaterThan(2 * 2.1 + 1)
   })
 
   it('trois ouvertures : la somme des aires percées en moins', () => {
@@ -337,19 +452,19 @@ describe('aire de la face', () => {
         porte(32.5, 34.5),
       ],
     })
-    expect(aireFaceInterieure(w, buildWall(w))).toBeCloseTo(38 * 4.3 - airePercee(w), 3)
+    attendAireFace(w, buildWall(w))
   })
 
   it('ouverture collée à une extrémité', () => {
     for (const o of [porte(0, 2), porte(8, 10)]) {
       const w = mur({ openings: [o] })
-      expect(aireFaceInterieure(w, buildWall(w))).toBeCloseTo(40 - 2 * 2.1, 3)
+      attendAireFace(w, buildWall(w))
     }
   })
 
   it('ouvertures aux deux extrémités à la fois', () => {
     const w = mur({ openings: [porte(0, 2), porte(8, 10)] })
-    expect(aireFaceInterieure(w, buildWall(w))).toBeCloseTo(40 - 2 * (2 * 2.1), 3)
+    attendAireFace(w, buildWall(w))
   })
 
   it('ouverture pleine hauteur : le mur se scinde sans se casser', () => {
@@ -411,8 +526,8 @@ describe('traversabilité', () => {
       openings: [porte(3, 5)],
     })
     const b = buildWall(oblique)
-    expect(trianglesDansLaBoite(oblique, b, boiteOuverture(oblique.openings[0], oblique))).toBe(0)
-    expect(aireFaceInterieure(oblique, b)).toBeCloseTo(wallLength(oblique) * 4 - 2 * 2.1, 2)
+    expect(trianglesDansLaBoite(oblique, b, boiteDePassage(oblique.openings[0], oblique))).toBe(0)
+    attendAireFace(oblique, b, 'mur oblique')
   })
 })
 
@@ -465,7 +580,7 @@ describe('orientation', () => {
 
   it('volume signé positif : aucun miroir, aucune face retournée', () => {
     const w = mur({ openings: [porte(4, 6)] })
-    const attendu = volumeNominal(40 - 2 * 2.1, 10 - 2)
+    const attendu = volumeNominal(40 - airePercee(w), 10 - 2)
     const mesure = volumeSigne(buildWall(w))
     expect(mesure).toBeGreaterThan(attendu)
     expect(mesure).toBeLessThan(attendu * 1.01)
@@ -481,10 +596,10 @@ describe('orientation', () => {
     const bb = built.geometry.boundingBox!
     expect(bb.min.z).toBeCloseTo(0, 4)
     expect(bb.max.z).toBeCloseTo(WALL_THICKNESS + PLINTH_PROJECTION, 4)
-    const attendu = volumeNominal(40 - 2 * 2.1, 10 - 2)
+    const attendu = volumeNominal(40 - airePercee(w), 10 - 2)
     expect(volumeSigne(built)).toBeGreaterThan(attendu)
     expect(volumeSigne(built)).toBeLessThan(attendu * 1.01)
-    expect(aireFaceInterieure(w, built)).toBeCloseTo(40 - 2 * 2.1, 3)
+    attendAireFace(w, built, 'normale opposée')
   })
 })
 
@@ -506,21 +621,67 @@ describe('embrasure (spec §9.4)', () => {
   // l'embrasure est d'autant moins profonde.
   const profondeurDroite = WALL_THICKNESS - 2 * CHAMFER
 
-  it('montre le jambage gauche sur toute la tranche', () => {
+  /**
+   * Le jambage court du sol à la NAISSANCE de l'arc, plus un chanfrein.
+   *
+   * ⚠️ Ce chanfrein en trop n'est pas une tolérance de confort, c'est une
+   * mesure : l'ogive part TANGENTE au jambage — sa dérivée est verticale à la
+   * naissance, par construction du tracé à deux centres. L'angle vif que le
+   * linteau plat formait autrefois n'existe donc plus, et le biseau
+   * d'`ExtrudeGeometry`, qui le mitrait, prolonge maintenant l'arête de
+   * `CHAMFER` au lieu de la couper. Si un jour ce terme disparaissait, ce serait
+   * le signe que l'arc a repris un angle à l'imposte — le défaut le plus visible
+   * qu'une ogive puisse avoir, et le seul que ce chiffre sache dire.
+   */
+  const naissanceDe = (ouv: Opening, w: Wall): number =>
+    resoudreOgive(Math.abs(ouv.end - ouv.start) / 2, Math.min(ouv.height, w.height), w.height)
+      ?.naissance ?? Math.min(ouv.height, w.height)
+
+  it('montre le jambage gauche du sol à la naissance de l’arc', () => {
     // Face verticale qui regarde VERS l'ouverture, donc vers les u croissants.
     const a = aire(fs, (f) => jambage(f, o.start + CHAMFER, 1))
-    expect(a).toBeCloseTo(o.height * profondeurDroite, 4)
+    expect(a).toBeCloseTo((naissanceDe(o, w) + CHAMFER) * profondeurDroite, 4)
   })
 
-  it('montre le jambage droit sur toute la tranche', () => {
+  it('montre le jambage droit du sol à la naissance de l’arc', () => {
     const a = aire(fs, (f) => jambage(f, o.end - CHAMFER, -1))
-    expect(a).toBeCloseTo(o.height * profondeurDroite, 4)
+    expect(a).toBeCloseTo((naissanceDe(o, w) + CHAMFER) * profondeurDroite, 4)
   })
 
-  it('montre le linteau sur toute la tranche', () => {
-    // Face horizontale qui regarde vers le BAS, donc vers l'ouverture.
-    const a = aire(fs, (f) => linteau(f, o))
-    expect(a).toBeCloseTo((o.end - o.start - 2 * CHAMFER) * profondeurDroite, 4)
+  it('montre l’INTRADOS sur toute la tranche, et il est courbe', () => {
+    /*
+      Il n'y a plus de linteau plat à mesurer : l'ancien contrôle cherchait une
+      facette horizontale à `o.height`, et il rendait zéro — ce qui aurait pu
+      passer pour « l'embrasure a disparu » alors que c'est « le linteau est
+      devenu un arc ». On mesure donc la bonne chose : l'aire développée de
+      l'intrados, contre sa longueur d'arc analytique.
+
+      Le polygone étant inscrit, il est plus COURT que l'arc : l'inégalité tient
+      dans un sens seulement, et c'est elle qui prouve que la courbe ne gonfle
+      pas vers l'extérieur.
+    */
+    const ogive = resoudreOgive((o.end - o.start) / 2, o.height, w.height)!
+    expect(ogive).toBeTruthy()
+
+    // Toutes les facettes de tranche entre les deux jambages, au-dessus de la
+    // naissance : c'est l'intrados, quelle que soit sa forme.
+    const surLaTranche = (f: Facette): boolean =>
+      f.centre.z > CHAMFER &&
+      f.centre.z < WALL_THICKNESS - CHAMFER &&
+      f.centre.x > o.start + 1e-3 &&
+      f.centre.x < o.end - 1e-3 &&
+      f.centre.y > ogive.naissance + 0.02 &&
+      Math.abs(f.normale.z) < 0.5
+    const developpee = aire(fs, surLaTranche) / profondeurDroite
+    const arc = longueurDIntrados((o.end - o.start) / 2, ogive.cle - ogive.naissance)
+
+    expect(developpee, 'l’intrados est plus long que son arc : il gonfle').toBeLessThan(arc)
+    expect(developpee, 'l’intrados manque').toBeGreaterThan(arc * 0.97)
+
+    // Et il est COURBE : une corde unique aurait exactement la longueur du
+    // segment naissance→clé→naissance, franchement plus courte que l'arc.
+    const corde = 2 * Math.hypot((o.end - o.start) / 2, ogive.cle - ogive.naissance)
+    expect(developpee, 'l’intrados est un simple chevron, pas un arc').toBeGreaterThan(corde * 1.02)
   })
 
   it('ne montre AUCUN seuil : l’ouverture descend au plancher', () => {
@@ -571,13 +732,9 @@ describe('embrasure (spec §9.4)', () => {
     for (const ouv of multiple.openings) {
       const gauche = aire(fm, (f) => jambage(f, ouv.start + CHAMFER, 1))
       const droit = aire(fm, (f) => jambage(f, ouv.end - CHAMFER, -1))
-      const dessus = aire(fm, (f) => linteau(f, ouv))
-      expect(gauche, `${ouv.kind} gauche`).toBeCloseTo(ouv.height * profondeurDroite, 4)
-      expect(droit, `${ouv.kind} droit`).toBeCloseTo(ouv.height * profondeurDroite, 4)
-      expect(dessus, `${ouv.kind} linteau`).toBeCloseTo(
-        (ouv.end - ouv.start - 2 * CHAMFER) * profondeurDroite,
-        4,
-      )
+      const attendu = (naissanceDe(ouv, multiple) + CHAMFER) * profondeurDroite
+      expect(gauche, `${ouv.kind} gauche`).toBeCloseTo(attendu, 4)
+      expect(droit, `${ouv.kind} droit`).toBeCloseTo(attendu, 4)
     }
   })
 })
@@ -629,12 +786,19 @@ describe('chanfrein (spec §9.4)', () => {
     const fs = facettes(w, buildWall(w))
     // Une facette de chanfrein de jambage regarde à la fois vers l'ouverture
     // (±u) et vers une face du mur (±w), à parts égales.
+    // ⚠️ Restreint SOUS la naissance de l'arc. Au-dessus, le chanfrein suit une
+    // courbe : ses facettes sont plus nombreuses et plus courtes, et les diviser
+    // par une hauteur droite ne voudrait plus rien dire. Ce qu'on veut vérifier
+    // ici est la COTE du chanfrein, pas le compte de facettes — on la mesure donc
+    // là où elle est mesurable, sur le jambage droit.
+    const naissance = resoudreOgive(1, 2.1, 4)!.naissance
     const biais = fs.filter(
       (f) =>
         Math.abs(Math.abs(f.normale.x) - Math.SQRT1_2) < 0.02 &&
         Math.abs(Math.abs(f.normale.z) - Math.SQRT1_2) < 0.02 &&
         f.centre.x > 4 - 1e-3 &&
-        f.centre.x < 6 + 1e-3,
+        f.centre.x < 6 + 1e-3 &&
+        f.centre.y < naissance,
     )
     // Quatre : deux jambages, deux faces de mur.
     expect(biais.length).toBeGreaterThanOrEqual(4)
@@ -729,10 +893,7 @@ describe('musée réel (public/data/museum.json)', () => {
   })
 
   it('conserve l’aire percée de chaque mur', () => {
-    for (const w of murs) {
-      const attendu = wallLength(w) * w.height - airePercee(w)
-      expect(aireFaceInterieure(w, buildWall(w)), w.id).toBeCloseTo(attendu, 2)
-    }
+    for (const w of murs) attendAireFace(w, buildWall(w), w.id)
   })
 
   it('respecte les cotes du plan : longueur × hauteur × 0,32', () => {
@@ -751,19 +912,45 @@ describe('musée réel (public/data/museum.json)', () => {
     }
   })
 
-  it('le vide de chaque ouverture est réellement vide', () => {
-    // Vrai des portes comme des fenêtres : dans les deux cas le mur ne doit
-    // laisser aucun triangle DANS l'ouverture. La différence est la hauteur à
-    // laquelle ce vide commence, et c'est `boiteOuverture` qui la porte.
+  it('le gabarit de passage de chaque ouverture est réellement vide', () => {
+    // Vrai des portes comme des fenêtres : sous la naissance de l'arc, le mur ne
+    // laisse AUCUN triangle. La différence entre les deux est la hauteur à
+    // laquelle ce vide commence, et c'est `boiteDePassage` qui la porte.
     let controlees = 0
     for (const w of murs) {
       const built = buildWall(w)
       for (const o of w.openings) {
-        expect(trianglesDansLaBoite(w, built, boiteOuverture(o, w)), `${w.id} ${o.kind}`).toBe(0)
+        expect(trianglesDansLaBoite(w, built, boiteDePassage(o, w)), `${w.id} ${o.kind}`).toBe(0)
         controlees++
       }
     }
     expect(controlees).toBeGreaterThanOrEqual(4)
+  })
+
+  it('les arcs du musée réel naissent tous sur la MÊME ligne d’imposte', () => {
+    /*
+      Le geste, mesuré : ce qui fait lire une enfilade d'ouvertures comme une
+      arcade est l'alignement de leurs naissances. Une régression qui rendrait
+      la naissance dépendante de la hauteur d'ouverture repasserait toutes les
+      autres épreuves — les aires, les volumes, les gabarits — sans qu'aucune ne
+      bronche, parce qu'aucune ne regarde DEUX ouvertures à la fois.
+    */
+    const naissances = new Set<number>()
+    let arches = 0
+    for (const w of murs) {
+      for (const o of w.openings.filter((x) => (x.sill ?? 0) <= 0.05 && isolee(w, x))) {
+        const ogive = resoudreOgive(Math.abs(o.end - o.start) / 2, Math.min(o.height, w.height), w.height)
+        if (!ogive) continue
+        arches++
+        naissances.add(Number(ogive.naissance.toFixed(3)))
+        expect(ogive.naissance, `${w.id} ${o.kind}`).toBeLessThanOrEqual(GABARIT_PASSAGE + 1e-9)
+      }
+    }
+    expect(arches, 'aucune ouverture du musée n’est archée').toBeGreaterThan(20)
+    // Les seules naissances admises sont le gabarit lui-même, et — pour une
+    // ouverture PLUS BASSE que lui — son propre sommet. Deux valeurs au plus.
+    expect([...naissances].sort(), 'les naissances se dispersent').toHaveLength(2)
+    expect(Math.max(...naissances) - Math.min(...naissances)).toBeLessThan(0.1)
   })
 
   it('on FRANCHIT une porte et on ne franchit pas une fenêtre', () => {
@@ -814,13 +1001,18 @@ describe('fenêtres', () => {
 
   it('laisse de la matière SOUS la fenêtre — c’est l’allège', () => {
     /*
-      Ce qui distingue une fenêtre d'une porte, c'est que le mur passe SOUS
-      elle. On le prouve par les sommets de l'arête basse du jour, et non en
-      cherchant un triangle entier sous l'allège : la face d'un mur percé est
-      une seule polyligne triangulée par earcut, dont les triangles enjambent
-      volontiers le jour. Leur absence ne prouverait rien.
+      Ce qui distingue une fenêtre d'une porte, c'est que le mur passe SOUS elle.
+
+      ⚠️ L'ancienne rédaction le prouvait par les COINS du jour, cherchés à
+      (3 ; 0,95) et (4,5 ; 2,6). Le jour n'a plus de coins : c'est une ellipse
+      pointue, dont les extrémités sont les deux naissances À MI-HAUTEUR et dont
+      le haut et le bas sont des POINTES. Le contrôle rendait donc zéro — et
+      « zéro coin » se lit exactement comme « la fenêtre a disparu », alors que
+      la fenêtre est là et que c'est sa forme qui a changé. On mesure donc les
+      quatre points que l'ellipse possède réellement.
     */
-    const built = buildWall(mur({ openings: [fenetre(3, 4.5, 0.95, 2.6)] }))
+    const w = mur({ openings: [fenetre(3, 4.5, 0.95, 2.6)] })
+    const built = buildWall(w)
     const pos = built.geometry.getAttribute('position') as THREE.BufferAttribute
 
     const boite = new THREE.Box3().setFromBufferAttribute(pos)
@@ -829,17 +1021,28 @@ describe('fenêtres', () => {
 
     // Le chanfrein de 3 mm déplace les sommets d'autant : on cherche à 2 cm près.
     const proche = (v: number, cible: number) => Math.abs(v - cible) < 0.02
-    let coinsBas = 0
-    let coinsHaut = 0
+    let naissances = 0
+    let pointeBasse = 0
+    let pointeHaute = 0
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i)
       const y = pos.getY(i)
-      if (!proche(x, 3) && !proche(x, 4.5)) continue
-      if (proche(y, 0.95)) coinsBas++
-      if (proche(y, 2.6)) coinsHaut++
+      // Les deux naissances : aux bords du jour, à mi-hauteur.
+      if ((proche(x, 3) || proche(x, 4.5)) && proche(y, (0.95 + 2.6) / 2)) naissances++
+      if (!proche(x, (3 + 4.5) / 2)) continue
+      if (proche(y, 0.95)) pointeBasse++
+      if (proche(y, 2.6)) pointeHaute++
     }
-    expect(coinsBas, "l'arête basse du jour n'existe pas : ce n'est pas une fenêtre").toBeGreaterThan(0)
-    expect(coinsHaut, 'le linteau du jour n’existe pas').toBeGreaterThan(0)
+    expect(naissances, 'les naissances du jour n’existent pas').toBeGreaterThan(0)
+    expect(pointeBasse, 'la pointe basse du jour n’existe pas').toBeGreaterThan(0)
+    expect(pointeHaute, 'la pointe haute du jour n’existe pas').toBeGreaterThan(0)
+
+    // Et l'allège porte toujours : sous la pointe basse, il y a du mur plein.
+    const sousAllege = new THREE.Box3(
+      new THREE.Vector3(3.1, 0.05, -1),
+      new THREE.Vector3(4.4, 0.9, 1),
+    )
+    expect(trianglesDansLaBoite(w, built, sousAllege), 'allège percée').toBeGreaterThan(0)
   })
 
   it('une allège sous le seuil retombe sur une ouverture au sol', () => {
