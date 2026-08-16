@@ -148,7 +148,7 @@ sa propre base :
 |---|--:|--:|---|
 | socle existant, 1,05 m | 1,47 m | **5,7°** | invisible — on voit l'assise par la tranche, la traverse et le plaid l'occultent, et le dossier culmine à 1,95 m |
 | socle bas, 0,25 m | 0,67 m | 32° | pleinement visible |
-| à même le sol | 0,42 m | 38° | pleinement visible |
+| à même le sol *(écartée)* | 0,42 m | 38° | pleinement visible géométriquement, mais **écartée** au profit du socle bas — voir la raison non géométrique ci-dessous. **Non prise en charge par le schéma aujourd'hui** : `plinth.height` doit être strictement positif |
 
 Le socle bas est retenu contre le sol nu pour une raison qui n'est pas géométrique : posé à même
 le parquet, un fauteuil se lit comme du **mobilier**, et un visiteur essaiera de s'y asseoir.
@@ -263,7 +263,8 @@ ce qui fabrique de la géométrie dans `builders/`, ce qui rend dans `scene/`.
 
 ```
 schema/index.ts            + Sculpture, zod, message d'erreur exploitable
-domain/sculptures.ts       placeSculptures(museum, sculptures) → SculpturePlacement[]   PUR
+domain/sculptures.ts       placeSculptures(museum) → SculpturePlacement[]   PUR — les pièces
+                            sont lues dans museum.config.sculptures, pas passées à part
 domain/props.ts            accepte des emprises pré-semées (une ligne de signature)
 builders/plinth.ts         buildPlinth(width, depth, height) → BufferGeometry + collider  PUR
 scene/sculptureAssets.ts   chargement GLB mémorisé, comme propAssets.ts

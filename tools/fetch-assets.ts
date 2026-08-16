@@ -279,7 +279,8 @@ Les **pièces en volume** de \`sculptures/\` n'en font pas partie : ce sont des
 licence sont dans \`sculptures/SOURCES.md\`.
 
 Récupérés par \`node tools/fetch-assets.ts\`, non versionnés — sauf les LOD de
-végétation et le kit de props, qui exigent Blender et sont donc commités.
+végétation, le kit de props et les pièces en volume, qui exigent Blender et
+sont donc commités.
 
 | Asset | Source | Licence | Usage |
 |---|---|---|---|
