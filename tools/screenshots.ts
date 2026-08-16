@@ -158,9 +158,24 @@ async function main(): Promise<void> {
         .join('\n') +
       `\n\n` +
       `Le plafond de draw calls est dépassé, et il l'était avant ce chantier — ` +
-      `le compteur est laissé rouge parce qu'il dit quelque chose de vrai. ` +
-      `Le levier qui le fermerait est connu et non tiré : fusionner les murs d'un plateau ` +
-      `par matière (71 murs, un appel chacun).\n\n` +
+      `le compteur est laissé rouge parce qu'il dit quelque chose de vrai.\n\n` +
+      `**Le levier qui le fermerait est connu, et désormais CHIFFRÉ** — ` +
+      `\`node tools/capture.ts --appels --only entree\` ventile les 160 maillages ` +
+      `rendables visibles :\n\n` +
+      `| poste | maillages | |\n|---|--:|---|\n` +
+      `| murs | **64** | 40 % à eux seuls — un appel par mur |\n` +
+      `| œuvres | 28 | déjà groupées par plateau |\n` +
+      `| dalles | 26 | deux groupes de matériau chacune |\n` +
+      `| props | 10 | un \`InstancedMesh\` par type |\n` +
+      `| parc | 10 | idem |\n` +
+      `| **décor** | **1** | 218 pièces, fusionnées en coordonnées monde |\n\n` +
+      `Fusionner les murs par (étage, matière, porte-l-ombre) donne **71 maillages → 7**, ` +
+      `soit **64 appels rendus**. Ce n'est plus une prévision : les sept groupes sont ` +
+      `énumérables sur le musée réel. Le coût est de sortir les uniformes de flaques du ` +
+      `matériau — ils sont par mur — vers une texture de données indexée par un attribut ` +
+      `de sommet. C'est la seule raison pour laquelle le levier n'est pas tiré : il touche ` +
+      `le shader qui peint les flaques, c'est-à-dire ce qui fait que ce bâtiment lit comme ` +
+      `un musée, pour un gain que le visiteur ne voit pas.\n\n` +
       (lignesPlans.length > 0
         ? `## Les plans cotés\n\n` +
           `Un par niveau, produits par \`node tools/plan.ts\`. Ils portent le mobilier, ` +

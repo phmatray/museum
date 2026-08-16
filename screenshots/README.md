@@ -21,7 +21,20 @@ Redimensionnées à 1440 px et encodées en WebP q80 — 1.35 Mo au total, contr
 | lights | 12 | 12 | ✓ |
 | shadowCasters | 1 | 2 | ✓ |
 
-Le plafond de draw calls est dépassé, et il l'était avant ce chantier — le compteur est laissé rouge parce qu'il dit quelque chose de vrai. Le levier qui le fermerait est connu et non tiré : fusionner les murs d'un plateau par matière (71 murs, un appel chacun).
+Le plafond de draw calls est dépassé, et il l'était avant ce chantier — le compteur est laissé rouge parce qu'il dit quelque chose de vrai.
+
+**Le levier qui le fermerait est connu, et désormais CHIFFRÉ** — `node tools/capture.ts --appels --only entree` ventile les 160 maillages rendables visibles :
+
+| poste | maillages | |
+|---|--:|---|
+| murs | **64** | 40 % à eux seuls — un appel par mur |
+| œuvres | 28 | déjà groupées par plateau |
+| dalles | 26 | deux groupes de matériau chacune |
+| props | 10 | un `InstancedMesh` par type |
+| parc | 10 | idem |
+| **décor** | **1** | 218 pièces, fusionnées en coordonnées monde |
+
+Fusionner les murs par (étage, matière, porte-l-ombre) donne **71 maillages → 7**, soit **64 appels rendus**. Ce n'est plus une prévision : les sept groupes sont énumérables sur le musée réel. Le coût est de sortir les uniformes de flaques du matériau — ils sont par mur — vers une texture de données indexée par un attribut de sommet. C'est la seule raison pour laquelle le levier n'est pas tiré : il touche le shader qui peint les flaques, c'est-à-dire ce qui fait que ce bâtiment lit comme un musée, pour un gain que le visiteur ne voit pas.
 
 ## Les plans cotés
 
