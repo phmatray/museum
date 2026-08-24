@@ -1,5 +1,51 @@
 # React + TypeScript + Vite
 
+<!-- portfolio-badges:start -->
+<!-- Identity -->
+[![phmatray - museum](https://img.shields.io/static/v1?label=phmatray&message=museum&color=blue&logo=github)](https://github.com/phmatray/museum)
+![Top language](https://img.shields.io/github/languages/top/phmatray/museum)
+[![Stars](https://img.shields.io/github/stars/phmatray/museum?style=social)](https://github.com/phmatray/museum/stargazers)
+[![Forks](https://img.shields.io/github/forks/phmatray/museum?style=social)](https://github.com/phmatray/museum/network/members)
+
+<!-- Activity -->
+[![Issues](https://img.shields.io/github/issues/phmatray/museum)](https://github.com/phmatray/museum/issues)
+[![Pull requests](https://img.shields.io/github/issues-pr/phmatray/museum)](https://github.com/phmatray/museum/pulls)
+[![Last commit](https://img.shields.io/github/last-commit/phmatray/museum)](https://github.com/phmatray/museum/commits)
+<!-- portfolio-badges:end -->
+
+<!-- portfolio-toc:start -->
+
+## Table of Contents
+
+- [Getting Started](#getting-started)
+- [React Compiler](#react-compiler)
+- [Expanding the ESLint configuration](#expanding-the-eslint-configuration)
+- [Tech Stack](#tech-stack)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+
+<!-- portfolio-toc:end -->
+
+<!-- portfolio-getstarted:start -->
+
+## Getting Started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/)
+
+### Run
+
+```bash
+git clone https://github.com/phmatray/museum.git
+cd museum
+npm install
+npm run dev
+```
+
+<!-- portfolio-getstarted:end -->
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:
@@ -71,3 +117,45 @@ export default defineConfig([
   },
 ])
 ```
+
+---
+
+<!-- portfolio-techstack:start -->
+
+## Tech Stack
+
+- **TypeScript**
+- @react-three/drei
+- @react-three/fiber
+- @react-three/postprocessing
+- @react-three/rapier
+- postprocessing
+- react
+- react-dom
+- three
+
+<!-- portfolio-techstack:end -->
+
+<!-- portfolio-roadmap:start -->
+
+## Roadmap
+
+Planned work and known limitations are tracked in the [open issues](https://github.com/phmatray/museum/issues). Contributions toward them are welcome.
+
+<!-- portfolio-roadmap:end -->
+
+<!-- portfolio-sections:start -->
+
+## Contributing
+
+Contributions are welcome. Open an issue first to discuss any significant change.
+
+1. Fork the repository and create your branch (`git checkout -b feat/my-feature`)
+2. Commit your changes (`git commit -m 'feat: ...'`)
+3. Push the branch and open a Pull Request
+
+## License
+
+No license has been declared for this repository yet. Until one is added, default copyright applies — see [choosealicense.com](https://choosealicense.com/).
+
+<!-- portfolio-sections:end -->
