@@ -1,5 +1,6 @@
 /**
- * La marche au rez-de-chaussée : les murs arrêtent, les portes laissent passer.
+ * La marche dans le plan : les murs arrêtent, les portes laissent passer,
+ * l'escalier impérial monte à l'étage noble et les garde-corps retiennent.
  *
  * Chaque cas part du point d'arrivée du plan et marche, sans téléporter : si
  * une ouverture ou un mur disparaît du plan, l'un de ces cas casse.
@@ -13,7 +14,7 @@ import { step, type Walker } from '../walk.ts'
 const RAYON = 0.3
 const DT = 1 / 120
 
-const depart = (): Walker => ({ ...MUSEE.spawn, y: 0, yaw: 0 })
+const depart = (): Walker => ({ ...MUSEE.spawn, surface: '0:hall', y: 0, yaw: 0 })
 
 /** Le cap qui regarde de (x, z) vers la cible : l'avant est −z tourné du lacet. */
 const capVers = (w: Walker, x: number, z: number) => Math.atan2(-(x - w.x), -(z - w.z))
@@ -26,10 +27,27 @@ const marcher = (w: Walker, yaw: number, secondes: number, dt = DT, hate = false
   return w
 }
 
+/** Marche droit vers (x, z), en recalant le cap à chaque pas, jusqu'à y être ou être bloqué. */
+const vers = (w: Walker, x: number, z: number, apres?: (w: Walker) => void) => {
+  for (let i = 0; i < 20 / DT && Math.hypot(x - w.x, z - w.z) > 0.02; i++) {
+    w = step(MUSEE, w, { forward: 1, strafe: 0, yaw: capVers(w, x, z) }, DT)
+    apres?.(w)
+  }
+  return w
+}
+
+/** Une suite de points de passage, depuis le point d'apparition. */
+const parcours = (points: [number, number][], apres?: (w: Walker) => void) =>
+  points.reduce((w, [x, z]) => vers(w, x, z, apres), depart())
+
+/** Du hall au palier par la volée centrale, puis au balcon ouest par la volée ouest. */
+const AU_PALIER: [number, number][] = [[24, 14]]
+const AU_BALCON_OUEST: [number, number][] = [...AU_PALIER, [17.5, 14], [17.5, 24]]
+
 describe('la marche au rez-de-chaussée', () => {
-  it('s’arrête contre le dessous du palier en marchant vers le nord', () => {
+  it('s’arrête contre le dessous du palier en marchant vers le nord, à côté de la volée', () => {
     let franchi = false
-    const w = marcher(depart(), 0, 20, DT, false, (w) => { if (w.z < 15.5 + RAYON - 1e-6) franchi = true })
+    const w = marcher(vers(depart(), 20, 30), 0, 20, DT, false, (w) => { if (w.z < 15.5 + RAYON - 1e-6) franchi = true })
     expect(franchi).toBe(false)
     expect(w.z).toBeCloseTo(15.5 + RAYON, 3)
     expect(w.y).toBe(0)
@@ -71,5 +89,48 @@ describe('la marche au rez-de-chaussée', () => {
       expect((w.x - w0.x) / DT).toBeCloseTo(d.x * VITESSE_MARCHE, 6)
       expect((w.z - w0.z) / DT).toBeCloseTo(d.z * VITESSE_MARCHE, 6)
     }
+  })
+})
+
+describe("l'escalier impérial", () => {
+  it("monte de l'entrée à la salle d'honneur, sans saut de cote", () => {
+    const cotes: number[] = []
+    const w = parcours(
+      [...AU_BALCON_OUEST, [14, 24], [8, 24], [8, 11], [8, 6], [20, 6]],
+      (w) => cotes.push(w.y),
+    )
+    expect(w.surface).toBe('1:honneur')
+    expect(w.level).toBe(1)
+    expect(w.y).toBeCloseTo(4.8, 6)
+    expect(cotes.some((y) => Math.abs(y - 2.4) < 1e-6)).toBe(true)
+    const sauts = cotes.slice(1).map((y, i) => Math.abs(y - cotes[i]))
+    expect(Math.max(...sauts)).toBeLessThanOrEqual(0.05)
+  })
+
+  it('arrête au garde-corps du palier entre deux volées, et laisse entrer dans une volée latérale', () => {
+    const palier = parcours([...AU_PALIER, [20, 14]])
+    expect(palier.surface).toBe('palier:palier')
+    expect(palier.y).toBeCloseTo(2.4, 6)
+
+    const bloque = marcher(palier, Math.PI, 5)
+    expect(bloque.surface).toBe('palier:palier')
+    expect(bloque.z).toBeCloseTo(15.5 - RAYON, 3)
+
+    const entre = marcher(vers(palier, 17.5, 14), Math.PI, 1)
+    expect(entre.surface).toBe('volee:volee-ouest')
+    expect(entre.y).toBeGreaterThan(2.4)
+  })
+
+  it("arrête au garde-corps du balcon ouest vers l'est, et mène au balcon sud", () => {
+    const balcon = parcours([...AU_BALCON_OUEST, [17.5, 30]])
+    expect(balcon.surface).toBe('1:balcon-o')
+
+    const bloque = marcher(balcon, -Math.PI / 2, 5)
+    expect(bloque.x).toBeCloseTo(19 - RAYON, 3)
+    expect(bloque.surface).toBe('1:balcon-o')
+
+    const sud = vers(vers(balcon, 17.5, 38.5), 24, 38.5)
+    expect(sud.surface).toBe('1:balcon-s')
+    expect(sud.y).toBeCloseTo(4.8, 6)
   })
 })

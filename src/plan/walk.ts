@@ -5,26 +5,50 @@
  * visiteur est un cercle de 0,30 m qui glisse contre eux. Pas besoin de Rapier
  * pour ça, et la marche se teste comme le reste du plan : des nombres entrent,
  * des nombres sortent. La 3D ne fait que poser la caméra là où `step` la rend.
+ *
+ * ── Les surfaces ──
+ *
+ * Le visiteur est toujours sur une SURFACE : une salle d'un niveau, le palier,
+ * ou une volée (les noms de `surfaceAt`). Une volée est un plan incliné : sa
+ * cote est `flightElevation`, sans marche ni saut. On ne change de cote que par
+ * le départ ou l'arrivée d'une volée — ses côtés sont des garde-corps, lus dans
+ * `guardrails` comme ceux du palier et des balcons.
  */
 import { VITESSE_HATE, VITESSE_MARCHE } from '../domain/locomotion.ts'
-import { edges, sameLine, subtract, type Edge, type Interval, type Segment } from './geometry.ts'
-import { PASSABLE } from './rules.ts'
-import type { Plan } from './types.ts'
+import { edges, guardrails, sameLine, subtract, type Edge, type Interval, type Segment } from './geometry.ts'
+import { PASSABLE, flightElevation, flightEnds, surfaceAt } from './rules.ts'
+import type { Flight, Plan, Rect } from './types.ts'
 
 const RAYON = 0.3
 
 export interface Walker {
+  /** Le niveau dont relève la surface : celui du plancher sous le pied, ou sous la volée. */
   level: number
+  /** `<niveau>:<salle>`, `palier:<id>` ou `volee:<id>`. */
+  surface: string
   x: number
   z: number
   y: number
   yaw: number
 }
 
+const EPS = 1e-6
+
+/** L'arête de départ (cote `bottom`) ou d'arrivée (cote `top`) d'une volée, comme un trou sur sa droite. */
+function bout(f: Flight, cote: number): { axis: 'x' | 'z'; at: number; span: Interval } | null {
+  const bas = Math.abs(f.bottom - cote) < EPS
+  if (!bas && Math.abs(f.top - cote) > EPS) return null
+  const [x, z] = bas ? flightEnds(f).bottom : flightEnds(f).top
+  return f.direction === 'north' || f.direction === 'south'
+    ? { axis: 'x', at: z, span: [f.x, f.x + f.width] }
+    : { axis: 'z', at: x, span: [f.z, f.z + f.depth] }
+}
+
 /**
  * Les murs d'un niveau : arêtes des salles, du périmètre et des obstacles,
  * fusionnées par droite — une cloison partagée par deux salles n'est qu'un mur —
- * puis percées de chaque ouverture praticable. Une baie reste un mur.
+ * puis percées de chaque ouverture praticable et de chaque bout de volée posé
+ * au plancher (l'arrivée sur un balcon). Une baie reste un mur.
  * `obstacles = false` pour la 3D : sous le palier, on se cogne, mais on ne bâtit pas.
  */
 export function wallSegments(plan: Plan, levelId: number, obstacles = true): Segment[] {
@@ -52,10 +76,14 @@ export function wallSegments(plan: Plan, levelId: number, obstacles = true): Seg
     // Une ouverture est centrée sur l'arête qui la porte : même droite, donc.
     const trous: Interval[] = level.openings
       .filter((o) => PASSABLE.has(o.kind) && Math.abs((axis === 'x' ? o.z : o.x) - at) < 1e-6)
-      .map((o) => {
+      .map((o): Interval => {
         const c = axis === 'x' ? o.x : o.z
         return [c - o.width / 2, c + o.width / 2]
       })
+    for (const f of plan.flights) {
+      const b = bout(f, level.elevation)
+      if (b && b.axis === axis && Math.abs(b.at - at) < EPS) trous.push(b.span)
+    }
     for (const span of union)
       for (const [s, t] of subtract(span, trous))
         out.push(axis === 'x' ? { x1: s, z1: at, x2: t, z2: at } : { x1: at, z1: s, x2: at, z2: t })
@@ -79,6 +107,45 @@ function repousser(p: { x: number; z: number }, murs: Segment[]) {
   }
 }
 
+/** Le niveau dont relève une cote : le plus haut dont le plancher est dessous. */
+const niveauDe = (plan: Plan, cote: number) =>
+  plan.levels.filter((l) => l.elevation <= cote + EPS).reduce((a, b) => (b.elevation > a.elevation ? b : a)).id
+
+/** Strictement dedans : un point sur l'arête n'a pas encore franchi le bout d'une volée. */
+const dedans = (r: Rect, x: number, z: number) => x > r.x && x < r.x + r.width && z > r.z && z < r.z + r.depth
+
+/** Ce qu'il faut savoir d'une surface pour y marcher. */
+function lire(plan: Plan, surface: string) {
+  const i = surface.indexOf(':')
+  const [genre, id] = [surface.slice(0, i), surface.slice(i + 1)]
+  let niveau: number
+  let volee: Flight | undefined
+  let cote: (x: number, z: number) => number
+  if (genre === 'volee') {
+    const f = plan.flights.find((f) => f.id === id)
+    if (!f) throw new Error(`volée inconnue : ${surface}`)
+    volee = f
+    niveau = niveauDe(plan, f.bottom)
+    cote = (x, z) => flightElevation(f, x, z)
+  } else if (genre === 'palier') {
+    const l = plan.landings.find((l) => l.id === id)
+    if (!l) throw new Error(`palier inconnu : ${surface}`)
+    niveau = niveauDe(plan, l.elevation)
+    cote = () => l.elevation
+  } else {
+    const level = plan.levels.find((l) => String(l.id) === genre)
+    if (!level) throw new Error(`niveau inconnu : ${surface}`)
+    niveau = level.id
+    cote = () => level.elevation
+  }
+  // Les obstacles ne ferment que le plancher : le palier passe au-dessus du sien.
+  // ponytail: les garde-corps d'un niveau arrêtent aussi son plancher — vrai ici, où
+  // tout ce qu'ils bordent au-dessus du sol est déclaré en obstacle.
+  // ponytail: murs recalculés à chaque pas et à chaque changement de surface, à mettre en cache si le profil le montre.
+  const murs = [...wallSegments(plan, niveau, !volee && genre !== 'palier'), ...guardrails(plan, niveau)]
+  return { niveau, volee, cote, murs }
+}
+
 /**
  * Un pas de marche de durée `dt`. `yaw` est le cap absolu (0 = −z, comme
  * `directionMarche`), `forward`/`strafe` dans [−1, 1].
@@ -93,10 +160,8 @@ export function step(
   input: { forward: number; strafe: number; yaw: number; hate?: boolean },
   dt: number,
 ): Walker {
-  const level = plan.levels.find((l) => l.id === walker.level)
-  if (!level) throw new Error(`niveau inconnu : ${walker.level}`)
-  // ponytail: murs recalculés à chaque pas, à mettre en cache par niveau si le profil le montre.
-  const murs = wallSegments(plan, walker.level)
+  let surface = walker.surface
+  let s = lire(plan, surface)
 
   const { forward: a, strafe: c, yaw } = input
   const norme = Math.max(1, Math.hypot(a, c))
@@ -109,17 +174,33 @@ export function step(
   const n = Math.max(1, Math.ceil(Math.hypot(dx, dz) / (RAYON / 2)))
   const p = { x: walker.x, z: walker.z }
   for (let i = 0; i < n; i++) {
+    const avant = { ...p }
     p.x += dx / n
     p.z += dz / n
     // Deux passes : sortir d'un mur peut enfoncer dans l'autre, dans un angle.
-    repousser(p, murs)
-    repousser(p, murs)
+    repousser(p, s.murs)
+    repousser(p, s.murs)
     // L'entrée est un trou dans la façade, mais dehors il n'y a encore ni sol
     // ni parvis : on reste dans l'emprise.
     // ponytail: bornage à l'emprise, à retirer quand le parvis existera.
     p.x = Math.min(Math.max(p.x, RAYON), plan.width - RAYON)
     p.z = Math.min(Math.max(p.z, RAYON), plan.depth - RAYON)
+
+    let suivante: string | null
+    if (s.volee) {
+      // Sortir d'une volée, c'est franchir un de ses bouts : on pose le pied à sa cote.
+      suivante = dedans(s.volee, p.x, p.z) ? surface : surfaceAt(plan, p.x, p.z, s.cote(p.x, p.z))
+      if (!suivante) Object.assign(p, avant)
+    } else {
+      // Les côtés d'une volée sont des garde-corps : y entrer, c'est passer par un bout à notre cote.
+      const e = s.cote(p.x, p.z)
+      const f = plan.flights.find((f) => dedans(f, p.x, p.z) && (Math.abs(f.bottom - e) < EPS || Math.abs(f.top - e) < EPS))
+      suivante = f ? `volee:${f.id}` : surfaceAt(plan, p.x, p.z, e)
+    }
+    if (suivante && suivante !== surface) {
+      surface = suivante
+      s = lire(plan, surface)
+    }
   }
-  // ponytail: sol plat au niveau du plancher ; volées et paliers viendront avec l'étage.
-  return { level: walker.level, x: p.x, z: p.z, y: level.elevation, yaw }
+  return { level: s.niveau, surface, x: p.x, z: p.z, y: s.cote(p.x, p.z), yaw }
 }

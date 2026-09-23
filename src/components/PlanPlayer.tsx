@@ -10,6 +10,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import { PAS_FIXE, cadencer } from '../domain/locomotion'
 import { MUSEE } from '../plan/musee'
+import { surfaceAt } from '../plan/rules'
 import { step, type Walker } from '../plan/walk'
 import { useGameStore } from '../stores/gameStore'
 import { HAUTEUR_OEIL } from './Player'
@@ -20,7 +21,9 @@ export function PlanPlayer() {
   const paused = useGameStore((s) => s.paused)
   const { level, x, z } = MUSEE.spawn
   const elevation = MUSEE.levels.find((l) => l.id === level)?.elevation ?? 0
-  const walker = useRef<Walker>({ level, x, z, y: elevation, yaw: 0 })
+  const surface = surfaceAt(MUSEE, x, z, elevation)
+  if (!surface) throw new Error("le point d'apparition n'est sur aucune surface")
+  const walker = useRef<Walker>({ level, surface, x, z, y: elevation, yaw: 0 })
   const reste = useRef(0)
 
   // Cadrage initial, face au nord (yaw 0 = −z) : l'accueil s'affiche en pause,
