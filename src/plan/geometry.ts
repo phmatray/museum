@@ -17,12 +17,12 @@ export interface Segment {
   z2: number
 }
 
-type Interval = [number, number]
-type Edge = { axis: 'x' | 'z'; at: number; span: Interval }
+export type Interval = [number, number]
+export type Edge = { axis: 'x' | 'z'; at: number; span: Interval }
 
 const EPS = 1e-6
 
-function subtract(base: Interval, cuts: Interval[]): Interval[] {
+export function subtract(base: Interval, cuts: Interval[]): Interval[] {
   let out: Interval[] = [base]
   for (const [a, b] of cuts)
     out = out.flatMap(([s, e]): Interval[] =>
@@ -31,7 +31,7 @@ function subtract(base: Interval, cuts: Interval[]): Interval[] {
 }
 
 /** Les quatre arêtes d'un rectangle : `axis` est la direction de l'arête. */
-function edges(r: Rect): Edge[] {
+export function edges(r: Rect): Edge[] {
   return [
     { axis: 'x', at: r.z, span: [r.x, r.x + r.width] },
     { axis: 'x', at: r.z + r.depth, span: [r.x, r.x + r.width] },
@@ -40,7 +40,7 @@ function edges(r: Rect): Edge[] {
   ]
 }
 
-const sameLine = (a: Edge, b: Edge) => a.axis === b.axis && Math.abs(a.at - b.at) < EPS
+export const sameLine = (a: Edge, b: Edge) => a.axis === b.axis && Math.abs(a.at - b.at) < EPS
 
 /**
  * Garde-corps des surfaces en hauteur dont la cote de départ tombe dans le
