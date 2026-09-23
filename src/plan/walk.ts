@@ -25,11 +25,12 @@ export interface Walker {
  * Les murs d'un niveau : arêtes des salles, du périmètre et des obstacles,
  * fusionnées par droite — une cloison partagée par deux salles n'est qu'un mur —
  * puis percées de chaque ouverture praticable. Une baie reste un mur.
+ * `obstacles = false` pour la 3D : sous le palier, on se cogne, mais on ne bâtit pas.
  */
-export function wallSegments(plan: Plan, levelId: number): Segment[] {
+export function wallSegments(plan: Plan, levelId: number, obstacles = true): Segment[] {
   const level = plan.levels.find((l) => l.id === levelId)
   if (!level) return []
-  const toutes = [...level.rooms, { x: 0, z: 0, width: plan.width, depth: plan.depth }, ...level.obstacles].flatMap(edges)
+  const toutes = [...level.rooms, { x: 0, z: 0, width: plan.width, depth: plan.depth }, ...(obstacles ? level.obstacles : [])].flatMap(edges)
 
   const droites: Edge[][] = []
   for (const e of toutes) {
