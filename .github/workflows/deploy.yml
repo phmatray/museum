@@ -32,6 +32,18 @@ jobs:
 
       - run: npm ci
 
+      # Les tests portent sur le code et les données versionnées (catalogue,
+      # musée, kit de props), jamais sur le catalogue régénéré la nuit même :
+      # sinon un simple changement de topics/description d'un dépôt fait
+      # bouger le clustering, casse des tests écrits contre les données
+      # versionnées, et bloque tout le déploiement (#13). Une dérivation qui
+      # échoue la nuit échoue toujours à son propre pas (`npm run derive`),
+      # plus bas.
+      - name: Vérifier
+        run: |
+          npm run lint
+          npx vitest run
+
       # Les médias sont l'étape lente (un téléchargement par dépôt). On les
       # garde d'un build à l'autre ; build-media ne retélécharge que ce qui a
       # changé dans le catalogue.
@@ -100,11 +112,6 @@ jobs:
 
       - name: Dériver le musée
         run: npm run derive
-
-      - name: Vérifier
-        run: |
-          npm run lint
-          npx vitest run
 
       - name: Construire le site
         env:
