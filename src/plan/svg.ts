@@ -20,8 +20,9 @@ const C = {
 const FILL = { gallery: C.gallery, honneur: C.honneur, hall: C.hall, balcony: C.hall }
 const S = 14
 const PAD = 70
-const INT = 0.15
-const EXT = 0.45
+// Demi-épaisseurs de mur, partagées avec l'extrusion 3D (mesh.ts).
+export const INT = 0.15
+export const EXT = 0.45
 
 const n = (v: number) => +(v * S).toFixed(1)
 const rect = (r: Rect, attrs: string, grow = 0) =>
