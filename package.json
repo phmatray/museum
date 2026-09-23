@@ -13,7 +13,8 @@
     "derive": "node tools/derive-museum.ts",
     "plan": "node tools/derive-museum.ts --plan",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "plan:svg": "node tools/plan-svg.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
