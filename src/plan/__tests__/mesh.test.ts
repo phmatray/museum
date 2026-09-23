@@ -7,6 +7,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { meshLevel, type Box } from '../mesh.ts'
+import { EXT } from '../svg.ts'
 import { MUSEE } from '../musee.ts'
 
 const boxes = meshLevel(MUSEE, 0)
@@ -57,5 +58,18 @@ describe('meshLevel au rez-de-chaussée', () => {
       expect(m.y - m.h / 2).toBeCloseTo(niveau.elevation)
       expect(m.h).toBeCloseTo(MUSEE.storey - MUSEE.slab)
     }
+  })
+
+  it('ne bâtit pas de mur sous le palier : un obstacle arrête la marche, pas le regard', () => {
+    const sous = boxes.filter((b) => b.kind === 'wall' && b.x > 16 + 0.5 && b.x < 32 - 0.5 && b.z > 12 + 0.5 && b.z < 20)
+    expect(sous).toEqual([])
+  })
+
+  it('ferme la façade jusqu\'aux angles extérieurs', () => {
+    const murs = boxes.filter((b) => b.kind === 'wall')
+    expect(Math.min(...murs.map((b) => b.x - b.w / 2))).toBeCloseTo(-EXT)
+    expect(Math.max(...murs.map((b) => b.x + b.w / 2))).toBeCloseTo(MUSEE.width + EXT)
+    expect(Math.min(...murs.map((b) => b.z - b.d / 2))).toBeCloseTo(-EXT)
+    expect(Math.max(...murs.map((b) => b.z + b.d / 2))).toBeCloseTo(MUSEE.depth + EXT)
   })
 })
