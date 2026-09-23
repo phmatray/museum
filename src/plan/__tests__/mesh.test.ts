@@ -8,6 +8,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { guardrails } from '../geometry.ts'
+import { flightElevation } from '../rules.ts'
 import { meshLevel, type Box } from '../mesh.ts'
 import { EXT } from '../svg.ts'
 import { MUSEE } from '../musee.ts'
@@ -48,7 +49,7 @@ describe('meshLevel au rez-de-chaussée', () => {
   })
 
   it('pose des dalles qui couvrent l\'emprise, dessus au plancher', () => {
-    const dalles = boxes.filter((b) => b.kind === 'slab' && b.y + b.h / 2 === niveau.elevation)
+    const dalles = boxes.filter((b) => b.kind === 'slab' && Math.abs(b.y + b.h / 2 - niveau.elevation) < 1e-6)
     expect(dalles.reduce((s, b) => s + b.w * b.d, 0)).toBeCloseTo(MUSEE.width * MUSEE.depth)
     for (const d of dalles) expect(d.h).toBe(MUSEE.slab)
   })
@@ -86,9 +87,9 @@ describe("meshLevel et l'escalier impérial", () => {
     expect(Math.max(...marches.map(dessus))).toBeCloseTo(4.8)
   })
 
-  it('bâtit un garde-corps de 1,00 m sur toute la longueur de chaque segment de guardrails()', () => {
-    const rampes = boxes.filter((b) => b.kind === 'railing')
-    const segments = guardrails(MUSEE, 0)
+  it.each([0, 1])('bâtit un garde-corps de 1,00 m sur toute la longueur de chaque segment de guardrails(), au niveau %i', (id) => {
+    const rampes = meshLevel(MUSEE, id).filter((b) => b.kind === 'railing')
+    const segments = guardrails(MUSEE, id)
     expect(segments.length).toBeGreaterThan(0)
     for (const g of segments) {
       const long = Math.hypot(g.x2 - g.x1, g.z2 - g.z1)
@@ -96,9 +97,30 @@ describe("meshLevel et l'escalier impérial", () => {
         const [x, z] = [g.x1 + ((g.x2 - g.x1) * t) / long, g.z1 + ((g.z2 - g.z1) * t) / long]
         const ici = rampes.filter((b) => Math.abs(b.x - x) <= b.w / 2 + 1e-6 && Math.abs(b.z - z) <= b.d / 2 + 1e-6)
         expect(ici.length, `${JSON.stringify(g)} en ${t}`).toBeGreaterThan(0)
-        expect(Math.min(...ici.map((b) => Math.min(b.w, b.d)))).toBeCloseTo(0.05)
+        for (const b of ici) {
+          expect(Math.min(b.w, b.d)).toBeCloseTo(0.05)
+          expect(b.h).toBeCloseTo(1)
+        }
+        // Le pied du garde-corps : la cote du palier, du balcon, ou d'une marche au-dessus de la rampe.
+        const volee = MUSEE.flights.find((f) => x >= f.x - 1e-6 && x <= f.x + f.width + 1e-6 && z >= f.z - 1e-6 && z <= f.z + f.depth + 1e-6)
+        const pied = Math.min(...ici.map((b) => b.y - b.h / 2))
+        if (volee) {
+          const rampe = flightElevation(volee, x, z)
+          expect(pied).toBeGreaterThanOrEqual(rampe - 1e-6)
+          expect(pied).toBeLessThanOrEqual(rampe + 0.16 + 1e-6)
+        } else expect(pied).toBeCloseTo(id === 0 ? 2.4 : 4.8)
       }
     }
+  })
+
+  it('pose chaque marche, sauf la première, sur sa part de paillasse', () => {
+    const marches = boxes.filter((b) => b.kind === 'step')
+    const dalles = boxes.filter((b) => b.kind === 'slab')
+    const sous = (m: Box) => dalles.filter((d) => d.x === m.x && d.z === m.z && d.w === m.w && d.d === m.d && Math.abs(dessus(d) - (m.y - m.h / 2)) < 1e-6)
+    const posees = marches.filter((m) => sous(m).length === 1)
+    // Les trois premières marches posent sur le sol ou le palier.
+    expect(posees).toHaveLength(45 - 3)
+    for (const m of posees) expect(sous(m)[0].h).toBeCloseTo(MUSEE.slab)
   })
 
   it('pose le palier à sa cote', () => {

@@ -107,6 +107,17 @@ describe("l'escalier impérial", () => {
     expect(Math.max(...sauts)).toBeLessThanOrEqual(0.05)
   })
 
+  it('redescend du balcon ouest au hall, sans saut de cote', () => {
+    const cotes: number[] = []
+    const w = parcours([...AU_BALCON_OUEST, [17.5, 14], [24, 14], [24, 30]], (w) => cotes.push(w.y))
+    expect(w.surface).toBe('0:hall')
+    expect(w.level).toBe(0)
+    expect(w.y).toBe(0)
+    expect(Math.max(...cotes)).toBeCloseTo(4.8, 6)
+    const sauts = cotes.slice(1).map((y, i) => Math.abs(y - cotes[i]))
+    expect(Math.max(...sauts)).toBeLessThanOrEqual(0.05)
+  })
+
   it('arrête au garde-corps du palier entre deux volées, et laisse entrer dans une volée latérale', () => {
     const palier = parcours([...AU_PALIER, [20, 14]])
     expect(palier.surface).toBe('palier:palier')
