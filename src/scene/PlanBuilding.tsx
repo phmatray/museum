@@ -12,6 +12,7 @@ import { meshLevel, type Box } from '../plan/mesh'
 import { creerVitrageGardeCorps } from '../builders/glazing'
 import { matiereDeDalle, useMatiere } from './materials'
 import { AMBIANCE, SOLEIL } from './lighting'
+import { PlanToiles } from './PlanToiles'
 
 // Un cube unité partagé, étiré par instance. Les UV s'étirent avec — assumé
 // pour cette tranche : le plan cherche la volumétrie, pas encore la finition.
@@ -57,6 +58,7 @@ function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
       <Boites boites={de.get('step') ?? AUCUNE} material={pierre} />
       <Boites boites={de.get('railing') ?? AUCUNE} material={verre} />
       <Boites boites={de.get('glass') ?? AUCUNE} material={verre} />
+      <PlanToiles level={level} />
     </>
   )
 }

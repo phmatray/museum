@@ -295,7 +295,7 @@ interface CanvasInstancesProps {
   masquees: ReadonlySet<string>
 }
 
-function CanvasInstances({ texture, hangings, masquees }: CanvasInstancesProps) {
+export function CanvasInstances({ texture, hangings, masquees }: CanvasInstancesProps) {
   const mesh = useRef<THREE.InstancedMesh>(null)
 
   // La géométrie porte l'attribut d'instance : c'est ce quad-là, avec ces
@@ -363,7 +363,7 @@ function CanvasInstances({ texture, hangings, masquees }: CanvasInstancesProps) 
 
 // ── Les cadres ───────────────────────────────────────────────────────────
 
-function FrameInstances({ hangings }: { hangings: readonly Hanging[] }) {
+export function FrameInstances({ hangings }: { hangings: readonly Pick<Hanging, 'frame'>[] }) {
   const mesh = useRef<THREE.InstancedMesh>(null)
 
   const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), [])

@@ -14,7 +14,8 @@
     "plan": "node tools/derive-museum.ts --plan",
     "test": "vitest run",
     "test:watch": "vitest",
-    "plan:svg": "node tools/plan-svg.ts"
+    "plan:svg": "node tools/plan-svg.ts",
+    "accrocher": "node tools/accrocher.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
