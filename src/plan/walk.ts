@@ -114,6 +114,11 @@ export function step(
     // Deux passes : sortir d'un mur peut enfoncer dans l'autre, dans un angle.
     repousser(p, murs)
     repousser(p, murs)
+    // L'entrée est un trou dans la façade, mais dehors il n'y a encore ni sol
+    // ni parvis : on reste dans l'emprise.
+    // ponytail: bornage à l'emprise, à retirer quand le parvis existera.
+    p.x = Math.min(Math.max(p.x, RAYON), plan.width - RAYON)
+    p.z = Math.min(Math.max(p.z, RAYON), plan.depth - RAYON)
   }
   // ponytail: sol plat au niveau du plancher ; volées et paliers viendront avec l'étage.
   return { level: walker.level, x: p.x, z: p.z, y: level.elevation, yaw }

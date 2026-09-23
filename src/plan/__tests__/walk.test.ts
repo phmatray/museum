@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { DELTA_MAX } from '../../domain/locomotion.ts'
+import { DELTA_MAX, VITESSE_MARCHE, directionMarche } from '../../domain/locomotion.ts'
 import { MUSEE } from '../musee.ts'
 import { step, type Walker } from '../walk.ts'
 
@@ -51,5 +51,25 @@ describe('la marche au rez-de-chaussée', () => {
     w = marcher(w, Math.PI / 2, 20, DELTA_MAX, true, (w) => { minX = Math.min(minX, w.x) })
     expect(minX).toBeGreaterThanOrEqual(16 + RAYON - 1e-6)
     expect(w.x).toBeCloseTo(16 + RAYON, 3)
+  })
+
+  it('ne sort pas par l’entrée : dehors, il n’y a pas encore de sol', () => {
+    let w = depart()
+    for (let t = 0; t < 10; t += DT) w = step(MUSEE, w, { forward: -1, strafe: 0, yaw: 0 }, DT)
+    expect(w.z).toBeCloseTo(MUSEE.depth - RAYON, 3)
+  })
+
+  it('va de côté et en diagonale dans la direction et à la vitesse de directionMarche', () => {
+    const cas = [
+      { forward: 0, strafe: 1, touches: { forward: false, backward: false, left: false, right: true } },
+      { forward: 1, strafe: -1, touches: { forward: true, backward: false, left: true, right: false } },
+    ]
+    for (const { forward, strafe, touches } of cas) {
+      const w0 = depart()
+      const w = step(MUSEE, w0, { forward, strafe, yaw: 0.3 }, DT)
+      const d = directionMarche(touches, 0.3)
+      expect((w.x - w0.x) / DT).toBeCloseTo(d.x * VITESSE_MARCHE, 6)
+      expect((w.z - w0.z) / DT).toBeCloseTo(d.z * VITESSE_MARCHE, 6)
+    }
   })
 })

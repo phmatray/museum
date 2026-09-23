@@ -46,7 +46,9 @@ export function PointerLockCamera() {
   return null
 }
 
-export function PointerLockOverlay() {
+// `tour` à false là où aucune visite guidée n'est montée (le bâtiment du plan) :
+// le bouton y figerait le regard sans offrir de sortie.
+export function PointerLockOverlay({ tour = true }: { tour?: boolean }) {
   const paused = useGameStore((s) => s.paused)
   const setPaused = useGameStore((s) => s.setPaused)
   const setTourActive = useGameStore((s) => s.setTourActive)
@@ -100,7 +102,7 @@ export function PointerLockOverlay() {
       <p style={{ fontSize: '0.9rem', opacity: 0.6 }}>
         WASD to move | Mouse to look | Escape to pause
       </p>
-      <button
+      {tour && <button
         onClick={handleStartTour}
         style={{
           marginTop: '1rem',
@@ -114,7 +116,7 @@ export function PointerLockOverlay() {
         }}
       >
         Start Guided Tour
-      </button>
+      </button>}
     </div>
   )
 }
