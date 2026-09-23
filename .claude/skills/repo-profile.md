@@ -30,21 +30,22 @@
 - (deploy workflow only: `npm run fetch`, `npm run media`, `npm run derive` — a failed fetch degrades to the cached catalogue)
 
 ## Integration style
-- **Merge mode:** merge (merge commits on `main`: "Merge pull request #N from …"; squash and rebase are also allowed)
+- **Merge mode:** squash (squash-only since `setup-repo`, 2026-09-24; `delete_branch_on_merge` on). Older history shows merge commits.
 - **PR title convention:** Conventional Commits prefix `<type>(scope): ` in French, as the log shows
-  (`feat(plan): …`, `fix(assets): …`); no semantic-PR-title CI check. Add `(#issue)` when an issue is linked.
+  (`feat(plan): …`, `fix(assets): …`); no semantic-PR-title CI check. Title ends in `(#issue)` when an issue is linked; squash appends `(#PR)`.
 - **Branch naming:** `<type>/<slug>` (e.g. `feat/plan-b`), or `<type>/<issue>-<slug>` when an issue exists
 
 ## Labels (apply verbatim; read live before use, this is a snapshot)
 - **Type:** `bug`, `enhancement` (also `documentation`, `dependencies`, `security`)
-- **Priority tiers:** none — `setup-repo` creates the taxonomy
-- **Effort sizes:** none — `setup-repo` creates the taxonomy
-- **Scope/area:** none — `setup-repo` creates the taxonomy
+- **Priority tiers:** `priority: high` (pull first) · `priority: medium` (default) · `priority: low` (when the queue is empty)
+- **Effort sizes:** `effort: small` (one task) · `effort: medium` (a handful of tasks in one layer) · `effort: large` (cross-layer or phased — decompose)
+- **Scope/area:** `area: plan` (src/plan/, docs/plan/) · `area: scene` (src/scene/, src/components/, src/App.tsx) · `area: pipeline` (tools/, public/data/, src/domain/, src/io/) · `area: ci` (.github/) — exactly one per issue
+- **Source:** `.github/repo-setup.yml` (converged with `setup-repo`)
 
 ## Issue templates
-- **Location:** none — no `.github/ISSUE_TEMPLATE/`; `setup-repo` creates the forms
-- **Forms:** none
-- **Default for ideas:** none · **for defects:** none
+- **Location:** `.github/ISSUE_TEMPLATE/`
+- **Forms:** feature_request.yml, bug_report.yml (Area dropdown generated from the manifest)
+- **Default for ideas:** feature_request · **for defects:** bug_report
 
 ## Tracker
 - **Tracker:** github (github.com)
