@@ -15,6 +15,8 @@ import { MuseumErrorBoundary } from './components/MuseumErrorBoundary'
 import { EditorMount } from './editor/EditorMount'
 import { useGameStore } from './stores/gameStore'
 import { VisitorTracker } from './hooks/useRoomTransition'
+import { PlanBuilding } from './scene/PlanBuilding'
+import { PlanPlayer } from './components/PlanPlayer'
 
 // Objet constant plutôt qu'`enum` : `erasableSyntaxOnly` interdit les enums,
 // qui émettent du code au lieu de disparaître au strip des types.
@@ -25,6 +27,25 @@ const Controls = {
   right: 'right',
   hate: 'hate',
 } as const
+
+// Codes PHYSIQUES (KeyW…) : ZQSD sur un clavier AZERTY, sans rien configurer.
+const keyMap = [
+  { name: Controls.forward, keys: ['ArrowUp', 'KeyW'] },
+  { name: Controls.backward, keys: ['ArrowDown', 'KeyS'] },
+  { name: Controls.left, keys: ['ArrowLeft', 'KeyA'] },
+  { name: Controls.right, keys: ['ArrowRight', 'KeyD'] },
+  /*
+    La HÂTE, et pourquoi elle est apparue en même temps que la vitesse de
+    marche a baissé.
+
+    La vitesse était réglée à 4 m/s, soit 14,4 km/h : celle d'un coureur. À
+    cette allure une salle de sept mètres se traverse en moins de deux
+    secondes et rien ne se regarde. Elle est passée à 1,80 m/s — un pas
+    soutenu — mais traverser un plateau déjà vu deviendrait long : Maj rend
+    les 3,80 m/s à qui sait où il va.
+  */
+  { name: Controls.hate, keys: ['ShiftLeft', 'ShiftRight'] },
+]
 
 /**
  * Le musée est chargé ICI, au-dessus du `Canvas`.
@@ -37,6 +58,9 @@ const Controls = {
  * que le plan en dessine un autre.
  */
 export default function App() {
+  // Le bâtiment du plan (issue #14) se branche AVANT `<Museum/>` : il n'a pas
+  // besoin de `museum.json`, et ne doit pas attendre son chargement.
+  if (new URLSearchParams(location.search).get('batiment') === 'plan') return <PlanMuseum />
   return (
     // La frontière ENGLOBE le Suspense, et pas l'inverse : `use()` sur une
     // promesse rejetée relance pendant le rendu de l'enfant, et une frontière
@@ -67,27 +91,6 @@ function Museum() {
     useGameStore.getState().setTourActive(false)
     useGameStore.getState().setPaused(true)
   }, [])
-
-  const keyMap = useMemo(
-    () => [
-      { name: Controls.forward, keys: ['ArrowUp', 'KeyW'] },
-      { name: Controls.backward, keys: ['ArrowDown', 'KeyS'] },
-      { name: Controls.left, keys: ['ArrowLeft', 'KeyA'] },
-      { name: Controls.right, keys: ['ArrowRight', 'KeyD'] },
-      /*
-        La HÂTE, et pourquoi elle est apparue en même temps que la vitesse de
-        marche a baissé.
-
-        La vitesse était réglée à 4 m/s, soit 14,4 km/h : celle d'un coureur. À
-        cette allure une salle de sept mètres se traverse en moins de deux
-        secondes et rien ne se regarde. Elle est passée à 1,80 m/s — un pas
-        soutenu — mais traverser un plateau déjà vu deviendrait long : Maj rend
-        les 3,80 m/s à qui sait où il va.
-      */
-      { name: Controls.hate, keys: ['ShiftLeft', 'ShiftRight'] },
-    ],
-    []
-  )
 
   return (
     <>
@@ -169,6 +172,27 @@ function Museum() {
               bâtiment vide et sa première image serait un fond nu.
             */}
             <PostProcessing />
+          </Suspense>
+        </Canvas>
+      </KeyboardControls>
+    </>
+  )
+}
+
+/**
+ * Le rez-de-chaussée du plan, sans Rapier : `plan/walk.ts` fait les collisions.
+ * Même clavier, même verrouillage du pointeur que le musée.
+ */
+function PlanMuseum() {
+  return (
+    <>
+      <PointerLockOverlay />
+      <KeyboardControls map={keyMap}>
+        <Canvas camera={{ fov: 75, near: 0.1, far: 1000 }} gl={{ preserveDrawingBuffer: import.meta.env.DEV }}>
+          <Suspense fallback={null}>
+            <PointerLockCamera />
+            <PlanBuilding level={0} />
+            <PlanPlayer />
           </Suspense>
         </Canvas>
       </KeyboardControls>
