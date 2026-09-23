@@ -16,6 +16,7 @@ import { DEFAULT_ASPECT, hangRoom } from '../domain/hanging.ts'
 import { WALL_CORNER_MARGIN, type Artwork, type RepoKey, type Room as SalleDomaine, type Wall } from '../domain/types.ts'
 import { edges } from './geometry.ts'
 import { capacity, NORMES } from './rules.ts'
+import { INT as DEMI_MUR } from './svg.ts'
 import type { Level, Plan, Room } from './types.ts'
 
 export interface Salle {
@@ -39,8 +40,8 @@ export function exposedRooms(plan: Plan): { room: Room; level: Level }[] {
     level.rooms.filter((r) => r.kind === 'gallery' || r.kind === 'honneur').map((room) => ({ room, level })))
 }
 
-/** L'aile d'une salle, lue dans son id : `r-o2` → `o`, `e-e1` → `e`. */
-const aile = (id: string) => id.replace(/^[a-z]+-/, '').replace(/\d+$/, '')
+/** L'aile d'une salle sur son niveau, lue dans son id : `r-o2` → `r-o`, `e-e1` → `e-e`. */
+const aile = (id: string) => id.replace(/\d+$/, '')
 
 /**
  * Répartit la collection : les plus étoilés en salle d'honneur, le reste en
@@ -80,28 +81,36 @@ export function assignRooms(plan: Plan, artworks: Artwork[]): Map<string, Salle>
     const i = groupes.reduce((m, g, j) => (g.artworks.length > groupes[m].artworks.length ? j : m), 0)
     const g = groupes[i]
     const moitie = Math.ceil(g.artworks.length / 2)
+    // Même convention que le clustering pour un nom en double : « Thème 2 », « Thème 3 »…
+    const base = g.name.replace(/ \d+$/, '')
+    const libre = (k: number): string => (groupes.some((h) => h.name === `${base} ${k}`) ? libre(k + 1) : `${base} ${k}`)
     groupes.splice(i, 1,
       { name: g.name, artworks: g.artworks.slice(0, moitie) },
-      { name: `${g.name} (suite)`, artworks: g.artworks.slice(moitie) })
+      { name: libre(2), artworks: g.artworks.slice(moitie) })
   }
 
   galeries.forEach((g, i) => {
     if (groupes[i]) out.set(g.room.id, { name: groupes[i].name, artworks: [...groupes[i].artworks].sort(parEtoiles) })
   })
 
-  // Débordement : l'excédent d'une galerie (ses moins étoilés) passe dans une
-  // galerie de la même aile qui a de la place, à défaut dans n'importe laquelle.
-  for (const g of galeries) {
+  // Débordement : l'excédent d'une galerie (ses moins étoilés) passe dans la
+  // galerie de la même aile la plus proche qui a de la place. À défaut, dans la
+  // plus proche tout court : la capacité d'une salle ne se négocie pas.
+  galeries.forEach((g, i) => {
     const salle = out.get(g.room.id)!
+    const proches = galeries
+      .map((h, j) => ({ h, d: Math.abs(i - j) + (aile(h.room.id) === aile(g.room.id) ? 0 : galeries.length) }))
+      .filter(({ h }) => h !== g)
+      .sort((a, b) => a.d - b.d)
+      .map(({ h }) => h)
     while (salle.artworks.length > g.cap) {
-      const libre = (h: Exposee) => h !== g && out.get(h.room.id)!.artworks.length < h.cap
-      const cible = galeries.find((h) => libre(h) && aile(h.room.id) === aile(g.room.id)) ?? galeries.find(libre)
+      const cible = proches.find((h) => out.get(h.room.id)!.artworks.length < h.cap)
       // ponytail: collection plus grande que le musée entier — l'excédent reste, hangRoom le laissera tomber.
       if (!cible) break
       const dest = out.get(cible.room.id)!
       dest.artworks = [...dest.artworks, salle.artworks.pop()!].sort(parEtoiles)
     }
-  }
+  })
   return out
 }
 
@@ -120,8 +129,6 @@ export interface Accrochage {
 
 /** Hauteur d'axe des toiles, au-dessus du plancher du niveau. */
 export const AXE_TOILES = 1.55
-/** Demi-épaisseur d'une cloison (`INT` de `svg.ts`) : la face du mur est à 0,15 m de l'arête. */
-const DEMI_MUR = 0.15
 const EPS = 1e-6
 const mm = (v: number) => Math.round(v * 1000) / 1000
 

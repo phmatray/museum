@@ -363,7 +363,7 @@ export function CanvasInstances({ texture, hangings, masquees }: CanvasInstances
 
 // ── Les cadres ───────────────────────────────────────────────────────────
 
-export function FrameInstances({ hangings }: { hangings: readonly Hanging[] }) {
+export function FrameInstances({ hangings }: { hangings: readonly Pick<Hanging, 'frame'>[] }) {
   const mesh = useRef<THREE.InstancedMesh>(null)
 
   const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), [])

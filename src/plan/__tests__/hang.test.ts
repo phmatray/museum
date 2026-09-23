@@ -46,6 +46,10 @@ describe('assignRooms', () => {
     const seuil = Math.min(...honneur.map((a) => a.stars))
     const dehors = ARTWORKS.filter((a) => !honneur.includes(a))
     expect(Math.max(...dehors.map((a) => a.stars))).toBeLessThanOrEqual(seuil)
+    // À égalité d'étoiles au seuil, la clé départage : les retenus précèdent les exclus.
+    const exAequo = dehors.filter((a) => a.stars === seuil).map((a) => a.key)
+    const retenus = honneur.filter((a) => a.stars === seuil).map((a) => a.key)
+    for (const k of retenus) for (const e of exAequo) expect(k < e, `${k} / ${e}`).toBe(true)
   })
 
   it('rend un résultat identique d’un appel à l’autre', () => {
@@ -86,6 +90,29 @@ describe('hangPlan', () => {
         }
       }
     }
+  })
+
+  it('pose chaque toile sur la face intérieure d’un mur, tournée vers la salle', () => {
+    for (const r of accrochage.rooms) {
+      const room = MUSEE.levels.find((l) => l.id === r.level)!.rooms.find((x) => x.id === r.id)!
+      const [cx, cz] = [room.x + room.width / 2, room.z + room.depth / 2]
+      for (const p of r.placements) {
+        const [nx, nz] = p.normal
+        expect(nx * (cx - p.x) + nz * (cz - p.z), p.key).toBeGreaterThan(0)
+        expect(p.x).toBeGreaterThan(room.x)
+        expect(p.x).toBeLessThan(room.x + room.width)
+        expect(p.z).toBeGreaterThan(room.z)
+        expect(p.z).toBeLessThan(room.z + room.depth)
+        // À la demi-épaisseur d'une cloison de l'arête qu'elle regarde.
+        const bords = nx !== 0 ? [room.x, room.x + room.width].map((b) => Math.abs(p.x - b)) : [room.z, room.z + room.depth].map((b) => Math.abs(p.z - b))
+        expect(Math.min(...bords), p.key).toBeCloseTo(0.15, 3)
+      }
+    }
+  })
+
+  it('est celui que `npm run accrocher` a versionné', () => {
+    const fichier = readFileSync(resolve(__dirname, '../../../public/data/accrochage.json'), 'utf8')
+    expect(fichier).toBe(`${JSON.stringify(accrochage, null, 2)}\n`)
   })
 
   it('rend un JSON identique octet pour octet d’un appel à l’autre', () => {
