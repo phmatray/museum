@@ -1,14 +1,15 @@
 /**
- * Le bâtiment du PLAN (`?batiment=plan`), un niveau extrudé.
+ * Le bâtiment du PLAN (`?batiment=plan`), tous ses niveaux extrudés.
  *
  * Tout est décidé dans `plan/mesh.ts` : ici on ne fait qu'instancier des boîtes.
- * Un `InstancedMesh` par sorte de boîte, soit trois appels de dessin pour tout
- * un niveau, là où un maillage par mur en coûterait une centaine.
+ * Un `InstancedMesh` par sorte de boîte et par niveau, soit une poignée d'appels
+ * de dessin par niveau, là où un maillage par mur en coûterait une centaine.
  */
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { MUSEE } from '../plan/musee'
 import { meshLevel, type Box } from '../plan/mesh'
+import { creerVitrageGardeCorps } from '../builders/glazing'
 import { matiereDeDalle, useMatiere } from './materials'
 import { AMBIANCE, SOLEIL } from './lighting'
 import { PlanToiles } from './PlanToiles'
@@ -16,20 +17,47 @@ import { PlanToiles } from './PlanToiles'
 // Un cube unité partagé, étiré par instance. Les UV s'étirent avec — assumé
 // pour cette tranche : le plan cherche la volumétrie, pas encore la finition.
 const CUBE = new THREE.BoxGeometry(1, 1, 1)
+const AUCUNE: Box[] = []
 
-export function PlanBuilding({ level }: { level: number }) {
-  const boites = useMemo(() => meshLevel(MUSEE, level), [level])
+export function PlanBuilding() {
+  // La baie et les garde-corps sont vitrés, comme les garde-corps de l'ancien atrium.
+  const verre = useMemo(() => creerVitrageGardeCorps(), [])
+  useEffect(() => () => verre.dispose(), [verre])
+  return (
+    <>
+      {/* Pas de plafond à l'étage : le soleil tombe droit dans les salles. */}
+      <hemisphereLight args={[AMBIANCE.ciel, AMBIANCE.sol, AMBIANCE.intensite]} />
+      <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
+      {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} />)}
+    </>
+  )
+}
+
+function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
+  // Une liste par sorte, calculée une fois : une nouvelle liste à chaque rendu
+  // referait l'envoi de toutes les matrices d'instance.
+  const de = useMemo(() => {
+    const par = new Map<Box['kind'], Box[]>()
+    for (const b of meshLevel(MUSEE, level)) {
+      const liste = par.get(b.kind)
+      if (liste) liste.push(b)
+      else par.set(b.kind, [b])
+    }
+    return par
+  }, [level])
   const platre = useMatiere('platre')
   const dalle = useMatiere(matiereDeDalle(level))
+  const pierre = useMatiere('marbre')
 
   return (
     <>
-      {/* Pas de plafond encore : le soleil tombe droit dans les salles. */}
-      <hemisphereLight args={[AMBIANCE.ciel, AMBIANCE.sol, AMBIANCE.intensite]} />
-      <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
-      <Boites boites={boites.filter((b) => b.kind === 'wall')} material={platre} />
-      <Boites boites={boites.filter((b) => b.kind === 'lintel')} material={platre} />
-      <Boites boites={boites.filter((b) => b.kind === 'slab')} material={dalle} />
+      <Boites boites={de.get('wall') ?? AUCUNE} material={platre} />
+      <Boites boites={de.get('lintel') ?? AUCUNE} material={platre} />
+      <Boites boites={de.get('slab') ?? AUCUNE} material={dalle} />
+      <Boites boites={de.get('landing') ?? AUCUNE} material={pierre} />
+      <Boites boites={de.get('step') ?? AUCUNE} material={pierre} />
+      <Boites boites={de.get('railing') ?? AUCUNE} material={verre} />
+      <Boites boites={de.get('glass') ?? AUCUNE} material={verre} />
       <PlanToiles level={level} />
     </>
   )

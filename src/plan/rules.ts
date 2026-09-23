@@ -39,7 +39,8 @@ export const NORMES = {
 const EPS = 1e-6
 export const PASSABLE = new Set<Opening['kind']>(['door', 'entrance', 'open'])
 
-const contains = (r: Rect, x: number, z: number, eps = EPS) =>
+/** (x, z) est-il dans `r`, bords compris à `eps` près ? */
+export const contains = (r: Rect, x: number, z: number, eps = EPS) =>
   x >= r.x - eps && x <= r.x + r.width + eps && z >= r.z - eps && z <= r.z + r.depth + eps
 
 const overlapArea = (a: Rect, b: Rect) =>
@@ -91,8 +92,12 @@ export function flightEnds(f: Flight): { bottom: [number, number]; top: [number,
   }
 }
 
-/** Le nœud (salle ou palier) sur lequel on pose le pied en (x, z) à la cote `elevation`. */
-function surfaceAt(plan: Plan, x: number, z: number, elevation: number): string | null {
+/**
+ * Le nœud (salle ou palier) sur lequel on pose le pied en (x, z) à la cote
+ * `elevation` : `<niveau>:<salle>` ou `palier:<id>`. Une volée se nomme
+ * `volee:<id>`, mais on n'y arrive que par ses bouts (voir `walk.ts`).
+ */
+export function surfaceAt(plan: Plan, x: number, z: number, elevation: number): string | null {
   for (const level of plan.levels) {
     if (Math.abs(level.elevation - elevation) > EPS) continue
     const room = level.rooms.find((r) => contains(r, x, z))

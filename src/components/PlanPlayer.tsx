@@ -10,17 +10,25 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import { PAS_FIXE, cadencer } from '../domain/locomotion'
 import { MUSEE } from '../plan/musee'
+import { surfaceAt } from '../plan/rules'
 import { step, type Walker } from '../plan/walk'
 import { useGameStore } from '../stores/gameStore'
 import { HAUTEUR_OEIL } from './Player'
+
+/** Le visiteur au point d'apparition, calculé une fois : un plan faux casse à l'import. */
+const DEPART: Walker = (() => {
+  const { level, x, z } = MUSEE.spawn
+  const y = MUSEE.levels.find((l) => l.id === level)?.elevation ?? 0
+  const surface = surfaceAt(MUSEE, x, z, y)
+  if (!surface) throw new Error("le point d'apparition n'est sur aucune surface")
+  return { level, surface, x, z, y, yaw: 0 }
+})()
 
 export function PlanPlayer() {
   const { camera } = useThree()
   const [, getKeys] = useKeyboardControls()
   const paused = useGameStore((s) => s.paused)
-  const { level, x, z } = MUSEE.spawn
-  const elevation = MUSEE.levels.find((l) => l.id === level)?.elevation ?? 0
-  const walker = useRef<Walker>({ level, x, z, y: elevation, yaw: 0 })
+  const walker = useRef<Walker>(DEPART)
   const reste = useRef(0)
 
   // Cadrage initial, face au nord (yaw 0 = −z) : l'accueil s'affiche en pause,
@@ -32,6 +40,15 @@ export function PlanPlayer() {
     camera.rotation.set(0, 0, 0)
     camera.position.set(w.x, w.y + HAUTEUR_OEIL, w.z)
     /* eslint-enable react-hooks/immutability */
+  }, [camera])
+
+  // En développement seulement : de quoi suivre le visiteur depuis un navigateur
+  // piloté (cap, pause, surface sous le pied), comme `window.__MUSEUM__`.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const w = window as unknown as { __PLAN__?: unknown }
+    w.__PLAN__ = { camera, walker: () => walker.current, reprendre: () => useGameStore.setState({ paused: false }) }
+    return () => { delete w.__PLAN__ }
   }, [camera])
 
   useFrame((_, delta) => {
