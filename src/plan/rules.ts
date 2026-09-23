@@ -39,7 +39,8 @@ export const NORMES = {
 const EPS = 1e-6
 export const PASSABLE = new Set<Opening['kind']>(['door', 'entrance', 'open'])
 
-const contains = (r: Rect, x: number, z: number, eps = EPS) =>
+/** (x, z) est-il dans `r`, bords compris à `eps` près ? */
+export const contains = (r: Rect, x: number, z: number, eps = EPS) =>
   x >= r.x - eps && x <= r.x + r.width + eps && z >= r.z - eps && z <= r.z + r.depth + eps
 
 const overlapArea = (a: Rect, b: Rect) =>

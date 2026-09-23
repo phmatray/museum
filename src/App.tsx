@@ -180,7 +180,7 @@ function Museum() {
 }
 
 /**
- * Le rez-de-chaussée du plan, sans Rapier : `plan/walk.ts` fait les collisions.
+ * Le bâtiment du plan, sans Rapier : `plan/walk.ts` fait les collisions.
  * Même clavier, même verrouillage du pointeur que le musée.
  */
 function PlanMuseum() {

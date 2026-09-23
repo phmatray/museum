@@ -38,7 +38,8 @@ const EPS = 1e-6
 function bout(f: Flight, cote: number): { axis: 'x' | 'z'; at: number; span: Interval } | null {
   const bas = Math.abs(f.bottom - cote) < EPS
   if (!bas && Math.abs(f.top - cote) > EPS) return null
-  const [x, z] = bas ? flightEnds(f).bottom : flightEnds(f).top
+  const ends = flightEnds(f)
+  const [x, z] = bas ? ends.bottom : ends.top
   return f.direction === 'north' || f.direction === 'south'
     ? { axis: 'x', at: z, span: [f.x, f.x + f.width] }
     : { axis: 'z', at: x, span: [f.z, f.z + f.depth] }
@@ -108,8 +109,11 @@ function repousser(p: { x: number; z: number }, murs: Segment[]) {
 }
 
 /** Le niveau dont relève une cote : le plus haut dont le plancher est dessous. */
-const niveauDe = (plan: Plan, cote: number) =>
-  plan.levels.filter((l) => l.elevation <= cote + EPS).reduce((a, b) => (b.elevation > a.elevation ? b : a)).id
+function niveauDe(plan: Plan, cote: number): number {
+  const dessous = plan.levels.filter((l) => l.elevation <= cote + EPS)
+  if (!dessous.length) throw new Error(`aucun niveau sous la cote ${cote}`)
+  return dessous.reduce((a, b) => (b.elevation > a.elevation ? b : a)).id
+}
 
 /** Strictement dedans : un point sur l'arête n'a pas encore franchi le bout d'une volée. */
 const dedans = (r: Rect, x: number, z: number) => x > r.x && x < r.x + r.width && z > r.z && z < r.z + r.depth
@@ -190,14 +194,15 @@ export function step(
     if (s.volee) {
       // Sortir d'une volée, c'est franchir un de ses bouts : on pose le pied à sa cote.
       suivante = dedans(s.volee, p.x, p.z) ? surface : surfaceAt(plan, p.x, p.z, s.cote(p.x, p.z))
-      if (!suivante) Object.assign(p, avant)
     } else {
       // Les côtés d'une volée sont des garde-corps : y entrer, c'est passer par un bout à notre cote.
       const e = s.cote(p.x, p.z)
       const f = plan.flights.find((f) => dedans(f, p.x, p.z) && (Math.abs(f.bottom - e) < EPS || Math.abs(f.top - e) < EPS))
       suivante = f ? `volee:${f.id}` : surfaceAt(plan, p.x, p.z, e)
     }
-    if (suivante && suivante !== surface) {
+    // Plus de sol sous le pied (le vide du hall, si un garde-corps manquait) : on n'y va pas.
+    if (!suivante) Object.assign(p, avant)
+    else if (suivante !== surface) {
       surface = suivante
       s = lire(plan, surface)
     }

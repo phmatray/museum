@@ -16,37 +16,47 @@ import { AMBIANCE, SOLEIL } from './lighting'
 // Un cube unité partagé, étiré par instance. Les UV s'étirent avec — assumé
 // pour cette tranche : le plan cherche la volumétrie, pas encore la finition.
 const CUBE = new THREE.BoxGeometry(1, 1, 1)
+const AUCUNE: Box[] = []
 
 export function PlanBuilding() {
+  // La baie et les garde-corps sont vitrés, comme les garde-corps de l'ancien atrium.
+  const verre = useMemo(() => creerVitrageGardeCorps(), [])
+  useEffect(() => () => verre.dispose(), [verre])
   return (
     <>
       {/* Pas de plafond à l'étage : le soleil tombe droit dans les salles. */}
       <hemisphereLight args={[AMBIANCE.ciel, AMBIANCE.sol, AMBIANCE.intensite]} />
       <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
-      {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} />)}
+      {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} />)}
     </>
   )
 }
 
-function Niveau({ level }: { level: number }) {
-  const boites = useMemo(() => meshLevel(MUSEE, level), [level])
+function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
+  // Une liste par sorte, calculée une fois : une nouvelle liste à chaque rendu
+  // referait l'envoi de toutes les matrices d'instance.
+  const de = useMemo(() => {
+    const par = new Map<Box['kind'], Box[]>()
+    for (const b of meshLevel(MUSEE, level)) {
+      const liste = par.get(b.kind)
+      if (liste) liste.push(b)
+      else par.set(b.kind, [b])
+    }
+    return par
+  }, [level])
   const platre = useMatiere('platre')
   const dalle = useMatiere(matiereDeDalle(level))
   const pierre = useMatiere('marbre')
-  // La baie et les garde-corps sont vitrés, comme les garde-corps de l'ancien atrium.
-  const verre = useMemo(() => creerVitrageGardeCorps(), [])
-  useEffect(() => () => verre.dispose(), [verre])
-  const de = (kind: Box['kind']) => boites.filter((b) => b.kind === kind)
 
   return (
     <>
-      <Boites boites={de('wall')} material={platre} />
-      <Boites boites={de('lintel')} material={platre} />
-      <Boites boites={de('slab')} material={dalle} />
-      <Boites boites={de('landing')} material={pierre} />
-      <Boites boites={de('step')} material={pierre} />
-      <Boites boites={de('railing')} material={verre} />
-      <Boites boites={de('glass')} material={verre} />
+      <Boites boites={de.get('wall') ?? AUCUNE} material={platre} />
+      <Boites boites={de.get('lintel') ?? AUCUNE} material={platre} />
+      <Boites boites={de.get('slab') ?? AUCUNE} material={dalle} />
+      <Boites boites={de.get('landing') ?? AUCUNE} material={pierre} />
+      <Boites boites={de.get('step') ?? AUCUNE} material={pierre} />
+      <Boites boites={de.get('railing') ?? AUCUNE} material={verre} />
+      <Boites boites={de.get('glass') ?? AUCUNE} material={verre} />
     </>
   )
 }

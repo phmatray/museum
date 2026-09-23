@@ -8,9 +8,10 @@
  * Un niveau porte aussi ce qui PART de son plancher sans atteindre le suivant :
  * au rez-de-chaussée, le palier et les trois volées de l'escalier impérial.
  */
-import { guardrails, subtract, type Interval } from './geometry.ts'
+import { guardrails, subtract, type Interval, type Segment } from './geometry.ts'
+import { contains } from './rules.ts'
 import { EXT, INT } from './svg.ts'
-import type { Flight, Opening, Plan, Rect } from './types.ts'
+import type { Flight, Opening, Plan } from './types.ts'
 import { wallSegments } from './walk.ts'
 
 /** Hauteur sous linteau : une porte est un trou de 2,40 m, le mur continue au-dessus. */
@@ -19,29 +20,26 @@ const GARDE_CORPS = 1
 const EP_GARDE_CORPS = 0.05
 const EPS = 1e-6
 
-const contient = (r: Rect, x: number, z: number) =>
-  x >= r.x - EPS && x <= r.x + r.width + EPS && z >= r.z - EPS && z <= r.z + r.depth + EPS
-
 /**
  * Les marches d'une volée, du bas vers le haut : pour chacune, l'intervalle
  * qu'elle couvre le long de la montée (en coordonnées du plan) et la cote de
- * son dessus. Le nez de la marche k est à k·g du départ, g = run / (risers − 1)
- * comme pour Blondel ; la première et la dernière n'ont qu'un demi-giron, pour
- * que les 15 marches tiennent entre le départ et l'arrivée.
+ * son dessus. Les `risers` marches se partagent la volée à parts égales : le
+ * dessus de la marche k est au haut de la rampe que suit `flightElevation` au
+ * fond de la marche, si bien que le pied du visiteur n'est jamais au-dessus
+ * d'une marche, et au plus une contremarche en dessous.
  */
-function marches(f: Flight): { de: number; a: number; dessus: number }[] {
+function marches(f: Flight): { de: number; a: number; dessus: number; h: number }[] {
   const nordSud = f.direction === 'north' || f.direction === 'south'
-  const run = nordSud ? f.depth : f.width
-  const g = run / (f.risers - 1)
+  const giron = (nordSud ? f.depth : f.width) / f.risers
   const h = (f.top - f.bottom) / f.risers
   return Array.from({ length: f.risers }, (_, k) => {
-    const [u, v] = [Math.max(0, (k - 0.5) * g), Math.min(run, (k + 0.5) * g)]
+    const [u, v] = [k * giron, (k + 1) * giron]
     const [de, a] =
       f.direction === 'north' ? [f.z + f.depth - v, f.z + f.depth - u]
       : f.direction === 'south' ? [f.z + u, f.z + v]
       : f.direction === 'east' ? [f.x + u, f.x + v]
       : [f.x + f.width - v, f.x + f.width - u]
-    return { de, a, dessus: f.bottom + (k + 1) * h }
+    return { de, a, dessus: f.bottom + (k + 1) * h, h }
   })
 }
 
@@ -92,15 +90,47 @@ export function meshLevel(plan: Plan, levelId: number): Box[] {
   const out: Box[] = level.rooms.map((r) =>
     pave(r.x, r.x + r.width, level.elevation - plan.slab, level.elevation, r.z, r.z + r.depth, 'slab'))
 
-  // Les garde-corps remplacent les murs sur le vide (le bord d'un balcon), une
-  // baie est vitrée : on les retire des murs, droite par droite.
-  const rails = guardrails(plan, levelId)
+  const volees = plan.flights.filter((f) => bande(f.bottom))
+
+  // Un garde-corps de 1,00 m au-dessus de la surface qu'il borde ; le long d'une
+  // volée, il suit ses marches, par gradins.
+  // ponytail: la surface d'un garde-corps est retrouvée par son milieu ; que
+  // guardrails() la rende avec le segment le jour où cette devinette se trompe.
+  const rails: Box[] = []
+  const auSol: Segment[] = []
+  const e = EP_GARDE_CORPS / 2
+  for (const g of guardrails(plan, levelId)) {
+    const long = g.z1 === g.z2
+    const [mx, mz] = [(g.x1 + g.x2) / 2, (g.z1 + g.z2) / 2]
+    const f = volees.find((f) => contains(f, mx, mz) && (long ? f.direction === 'east' || f.direction === 'west' : f.direction === 'north' || f.direction === 'south'))
+    if (f) {
+      const [s, t] = long ? [g.x1, g.x2] : [g.z1, g.z2]
+      for (const { de, a, dessus } of marches(f)) {
+        const [u, v] = [Math.max(s, de), Math.min(t, a)]
+        if (v - u < EPS) continue
+        rails.push(long ? pave(u, v, dessus, dessus + GARDE_CORPS, g.z1 - e, g.z1 + e, 'railing') : pave(g.x1 - e, g.x1 + e, dessus, dessus + GARDE_CORPS, u, v, 'railing'))
+      }
+      continue
+    }
+    const cote =
+      plan.landings.find((l) => bande(l.elevation) && contains(l, mx, mz))?.elevation ??
+      plan.levels.find((l) => bande(l.elevation) && l.rooms.some((r) => r.kind === 'balcony' && contains(r, mx, mz)))?.elevation
+    if (cote === undefined) throw new Error(`garde-corps sans surface : ${JSON.stringify(g)}`)
+    if (Math.abs(cote - level.elevation) < EPS) auSol.push(g)
+    rails.push(long
+      ? pave(g.x1, g.x2, cote, cote + GARDE_CORPS, g.z1 - e, g.z1 + e, 'railing')
+      : pave(g.x1 - e, g.x1 + e, cote, cote + GARDE_CORPS, g.z1, g.z2, 'railing'))
+  }
+
+  // Un garde-corps posé au plancher remplace le mur sur le vide (le bord d'un
+  // balcon), une baie est vitrée : on les retire des murs, droite par droite.
+  // Un garde-corps plus haut (le palier) laisse le mur de dessous entier.
   const baies = level.openings.filter((o) => o.kind === 'bay').map(poser).filter((b) => b !== null)
   for (const m of wallSegments(plan, levelId, false)) {
     const axis = m.z1 === m.z2 ? 'x' : 'z'
     const [at, span]: [number, Interval] = axis === 'x' ? [m.z1, [m.x1, m.x2]] : [m.x1, [m.z1, m.z2]]
     const cuts: Interval[] = [
-      ...rails
+      ...auSol
         .filter((g) => (axis === 'x' ? g.z1 === g.z2 && Math.abs(g.z1 - at) < EPS : g.x1 === g.x2 && Math.abs(g.x1 - at) < EPS))
         .map((g): Interval => (axis === 'x' ? [g.x1, g.x2] : [g.z1, g.z2])),
       ...baies.filter((b) => b.axis === axis && Math.abs(b.at - at) < EPS).map((b): Interval => [b.s, b.t]),
@@ -120,41 +150,14 @@ export function meshLevel(plan: Plan, levelId: number): Box[] {
 
   // Chaque marche pose sur sa part de paillasse : une dalle en escalier dessous,
   // faute de boîte inclinée. La première pose sur le sol ou le palier.
-  const volees = plan.flights.filter((f) => bande(f.bottom))
   for (const f of volees) {
-    const h = (f.top - f.bottom) / f.risers
     const nordSud = f.direction === 'north' || f.direction === 'south'
-    for (const { de, a, dessus } of marches(f)) {
+    for (const { de, a, dessus, h } of marches(f)) {
       const [x0, x1, z0, z1] = nordSud ? [f.x, f.x + f.width, de, a] : [de, a, f.z, f.z + f.depth]
       out.push(pave(x0, x1, dessus - h, dessus, z0, z1, 'step'))
       if (dessus - h > f.bottom + EPS) out.push(pave(x0, x1, dessus - h - plan.slab, dessus - h, z0, z1, 'slab'))
     }
   }
-
-  // Un garde-corps de 1,00 m au-dessus de la surface qu'il borde ; le long d'une
-  // volée, il suit ses marches, par gradins.
-  const e = EP_GARDE_CORPS / 2
-  for (const g of rails) {
-    const long = g.z1 === g.z2
-    const [mx, mz] = [(g.x1 + g.x2) / 2, (g.z1 + g.z2) / 2]
-    const f = volees.find((f) => contient(f, mx, mz) && (long ? f.direction === 'east' || f.direction === 'west' : f.direction === 'north' || f.direction === 'south'))
-    if (f) {
-      const [s, t] = long ? [g.x1, g.x2] : [g.z1, g.z2]
-      for (const { de, a, dessus } of marches(f)) {
-        const [u, v] = [Math.max(s, de), Math.min(t, a)]
-        if (v - u < EPS) continue
-        const y0 = dessus - (f.top - f.bottom) / f.risers
-        out.push(long ? pave(u, v, y0, dessus + GARDE_CORPS, g.z1 - e, g.z1 + e, 'railing') : pave(g.x1 - e, g.x1 + e, y0, dessus + GARDE_CORPS, u, v, 'railing'))
-      }
-      continue
-    }
-    const cote =
-      plan.landings.find((l) => bande(l.elevation) && contient(l, mx, mz))?.elevation ??
-      plan.levels.find((l) => bande(l.elevation) && l.rooms.some((r) => r.kind === 'balcony' && contient(r, mx, mz)))?.elevation
-    if (cote === undefined) continue
-    out.push(long
-      ? pave(g.x1, g.x2, cote, cote + GARDE_CORPS, g.z1 - e, g.z1 + e, 'railing')
-      : pave(g.x1 - e, g.x1 + e, cote, cote + GARDE_CORPS, g.z1, g.z2, 'railing'))
-  }
+  out.push(...rails)
   return out
 }
