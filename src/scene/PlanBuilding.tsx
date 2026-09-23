@@ -1,14 +1,15 @@
 /**
- * Le bâtiment du PLAN (`?batiment=plan`), un niveau extrudé.
+ * Le bâtiment du PLAN (`?batiment=plan`), tous ses niveaux extrudés.
  *
  * Tout est décidé dans `plan/mesh.ts` : ici on ne fait qu'instancier des boîtes.
- * Un `InstancedMesh` par sorte de boîte, soit trois appels de dessin pour tout
- * un niveau, là où un maillage par mur en coûterait une centaine.
+ * Un `InstancedMesh` par sorte de boîte et par niveau, soit une poignée d'appels
+ * de dessin par niveau, là où un maillage par mur en coûterait une centaine.
  */
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { MUSEE } from '../plan/musee'
 import { meshLevel, type Box } from '../plan/mesh'
+import { creerVitrageGardeCorps } from '../builders/glazing'
 import { matiereDeDalle, useMatiere } from './materials'
 import { AMBIANCE, SOLEIL } from './lighting'
 
@@ -16,19 +17,36 @@ import { AMBIANCE, SOLEIL } from './lighting'
 // pour cette tranche : le plan cherche la volumétrie, pas encore la finition.
 const CUBE = new THREE.BoxGeometry(1, 1, 1)
 
-export function PlanBuilding({ level }: { level: number }) {
+export function PlanBuilding() {
+  return (
+    <>
+      {/* Pas de plafond à l'étage : le soleil tombe droit dans les salles. */}
+      <hemisphereLight args={[AMBIANCE.ciel, AMBIANCE.sol, AMBIANCE.intensite]} />
+      <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
+      {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} />)}
+    </>
+  )
+}
+
+function Niveau({ level }: { level: number }) {
   const boites = useMemo(() => meshLevel(MUSEE, level), [level])
   const platre = useMatiere('platre')
   const dalle = useMatiere(matiereDeDalle(level))
+  const pierre = useMatiere('marbre')
+  // La baie et les garde-corps sont vitrés, comme les garde-corps de l'ancien atrium.
+  const verre = useMemo(() => creerVitrageGardeCorps(), [])
+  useEffect(() => () => verre.dispose(), [verre])
+  const de = (kind: Box['kind']) => boites.filter((b) => b.kind === kind)
 
   return (
     <>
-      {/* Pas de plafond encore : le soleil tombe droit dans les salles. */}
-      <hemisphereLight args={[AMBIANCE.ciel, AMBIANCE.sol, AMBIANCE.intensite]} />
-      <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
-      <Boites boites={boites.filter((b) => b.kind === 'wall')} material={platre} />
-      <Boites boites={boites.filter((b) => b.kind === 'lintel')} material={platre} />
-      <Boites boites={boites.filter((b) => b.kind === 'slab')} material={dalle} />
+      <Boites boites={de('wall')} material={platre} />
+      <Boites boites={de('lintel')} material={platre} />
+      <Boites boites={de('slab')} material={dalle} />
+      <Boites boites={de('landing')} material={pierre} />
+      <Boites boites={de('step')} material={pierre} />
+      <Boites boites={de('railing')} material={verre} />
+      <Boites boites={de('glass')} material={verre} />
     </>
   )
 }

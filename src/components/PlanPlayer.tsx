@@ -37,6 +37,15 @@ export function PlanPlayer() {
     /* eslint-enable react-hooks/immutability */
   }, [camera])
 
+  // En développement seulement : de quoi suivre le visiteur depuis un navigateur
+  // piloté (cap, pause, surface sous le pied), comme `window.__MUSEUM__`.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const w = window as unknown as { __PLAN__?: unknown }
+    w.__PLAN__ = { camera, walker: () => walker.current, reprendre: () => useGameStore.setState({ paused: false }) }
+    return () => { delete w.__PLAN__ }
+  }, [camera])
+
   useFrame((_, delta) => {
     if (paused) return
     const t = getKeys() as { forward: boolean; backward: boolean; left: boolean; right: boolean; hate?: boolean }

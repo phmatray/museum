@@ -191,7 +191,7 @@ function PlanMuseum() {
         <Canvas camera={{ fov: 75, near: 0.1, far: 1000 }} gl={{ preserveDrawingBuffer: import.meta.env.DEV }}>
           <Suspense fallback={null}>
             <PointerLockCamera />
-            <PlanBuilding level={0} />
+            <PlanBuilding />
             <PlanPlayer />
           </Suspense>
         </Canvas>
