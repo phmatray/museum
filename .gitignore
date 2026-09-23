@@ -67,3 +67,8 @@ public/assets/sculptures/*
 # Captures de constat visuel : 55 Mo de PNG en 2880x1800, regenerables a la
 # demande. Le depot est public, elles ne valent pas leur poids dans lhistorique.
 .captures/
+
+# Kit tagout : worktrees et télémétrie locale
+.claude/worktrees/
+.worktrees/
+.claude/decision-events.jsonl
