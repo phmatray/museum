@@ -11,6 +11,7 @@ import { MUSEE } from '../plan/musee'
 import { meshLevel, type Box } from '../plan/mesh'
 import { matiereDeDalle, useMatiere } from './materials'
 import { AMBIANCE, SOLEIL } from './lighting'
+import { PlanToiles } from './PlanToiles'
 
 // Un cube unité partagé, étiré par instance. Les UV s'étirent avec — assumé
 // pour cette tranche : le plan cherche la volumétrie, pas encore la finition.
@@ -29,6 +30,7 @@ export function PlanBuilding({ level }: { level: number }) {
       <Boites boites={boites.filter((b) => b.kind === 'wall')} material={platre} />
       <Boites boites={boites.filter((b) => b.kind === 'lintel')} material={platre} />
       <Boites boites={boites.filter((b) => b.kind === 'slab')} material={dalle} />
+      <PlanToiles level={level} />
     </>
   )
 }
