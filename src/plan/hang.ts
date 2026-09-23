@@ -12,8 +12,10 @@
  * Tout est déterministe : même catalogue, même accrochage, octet pour octet.
  */
 import { clusterArtworks } from '../domain/clustering.ts'
-import type { Artwork } from '../domain/types.ts'
-import { capacity } from './rules.ts'
+import { DEFAULT_ASPECT, hangRoom } from '../domain/hanging.ts'
+import { WALL_CORNER_MARGIN, type Artwork, type RepoKey, type Room as SalleDomaine, type Wall } from '../domain/types.ts'
+import { edges } from './geometry.ts'
+import { capacity, NORMES } from './rules.ts'
 import type { Level, Plan, Room } from './types.ts'
 
 export interface Salle {
@@ -101,4 +103,101 @@ export function assignRooms(plan: Plan, artworks: Artwork[]): Map<string, Salle>
     }
   }
   return out
+}
+
+// ── Sur les murs ─────────────────────────────────────────────────────────
+
+/** Ce qu'écrit `npm run accrocher` et que lit la scène : des toiles en coordonnées monde. */
+export interface Accrochage {
+  generatedAt: string
+  rooms: {
+    id: string
+    level: number
+    name: string
+    placements: { key: RepoKey; x: number; y: number; z: number; normal: [number, number]; width: number }[]
+  }[]
+}
+
+/** Hauteur d'axe des toiles, au-dessus du plancher du niveau. */
+export const AXE_TOILES = 1.55
+/** Demi-épaisseur d'une cloison (`INT` de `svg.ts`) : la face du mur est à 0,15 m de l'arête. */
+const DEMI_MUR = 0.15
+const EPS = 1e-6
+const mm = (v: number) => Math.round(v * 1000) / 1000
+
+/**
+ * Les quatre murs d'une salle, posés sur leur FACE intérieure, avec chaque
+ * ouverture de la salle élargie de son dégagement — les mêmes règles que
+ * `capacity()`. `hangRoom` laisse `WALL_CORNER_MARGIN` dans chaque angle : on
+ * raccourcit le mur du reste pour retrouver le mètre libre de `NORMES.angle`.
+ */
+function murs(room: Room, level: Level, hauteur: number): Wall[] {
+  const cx = room.x + room.width / 2
+  const cz = room.z + room.depth / 2
+  const ouvertures = level.openings.filter((o) => o.a === room.id || o.b === room.id)
+  const retrait = DEMI_MUR + NORMES.angle - WALL_CORNER_MARGIN
+  return edges(room).map((e, i) => {
+    // Normale vers l'intérieur de la salle ; `le_long` projette sur l'arête.
+    const n = e.axis === 'x' ? { x: 0, z: Math.sign(cz - e.at) } : { x: Math.sign(cx - e.at), z: 0 }
+    const face = e.at + DEMI_MUR * (e.axis === 'x' ? n.z : n.x)
+    const [s0, s1] = [e.span[0] + retrait, e.span[1] - retrait]
+    const point = (u: number) => (e.axis === 'x' ? { x: u, z: face } : { x: face, z: u })
+    return {
+      id: `${room.id}-${i}`,
+      a: point(s0),
+      b: point(s1),
+      height: hauteur,
+      kind: 'inner',
+      normal: n,
+      openings: ouvertures
+        .filter((o) => Math.abs((e.axis === 'x' ? o.z : o.x) - e.at) < EPS)
+        .map((o) => {
+          const c = (e.axis === 'x' ? o.x : o.z) - s0
+          const demi = o.width / 2 + NORMES.dégagement
+          return { kind: o.kind === 'bay' ? 'bay' : 'door', start: c - demi, end: c + demi, height: hauteur, sill: 0 }
+        }),
+      placements: [],
+    }
+  })
+}
+
+/**
+ * Accroche chaque salle sur ses murs avec `hangRoom`. `generatedAt` vient du
+ * catalogue, jamais de l'horloge : même catalogue, même fichier.
+ */
+export function hangPlan(plan: Plan, salles: Map<string, Salle>, generatedAt: string): Accrochage {
+  const hauteur = plan.storey - plan.slab
+  const rooms = exposedRooms(plan).map(({ room, level }) => {
+    const salle = salles.get(room.id) ?? { name: room.name, artworks: [] }
+    const domaine: SalleDomaine = {
+      id: room.id,
+      name: salle.name,
+      side: 'north',
+      footprint: { x: room.x, z: room.z, width: room.width, depth: room.depth },
+      theme: 'classic',
+      walls: murs(room, level, hauteur),
+      topics: [],
+      keys: salle.artworks.map((a) => a.key),
+    }
+    const entrees = salle.artworks.map((a) => ({ key: a.key, stars: a.stars, aspect: DEFAULT_ASPECT, atlas: 0, layer: 0 }))
+    const accrochee = hangRoom(domaine, entrees, { centerHeight: AXE_TOILES })
+    return {
+      id: room.id,
+      level: level.id,
+      name: salle.name,
+      placements: accrochee.walls.flatMap((w) => {
+        const len = Math.hypot(w.b.x - w.a.x, w.b.z - w.a.z)
+        const [dx, dz] = [(w.b.x - w.a.x) / len, (w.b.z - w.a.z) / len]
+        return w.placements.map((p) => ({
+          key: p.key,
+          x: mm(w.a.x + dx * p.u),
+          y: mm(level.elevation + p.centerHeight),
+          z: mm(w.a.z + dz * p.u),
+          normal: [w.normal.x, w.normal.z] as [number, number],
+          width: mm(p.width),
+        }))
+      }),
+    }
+  })
+  return { generatedAt, rooms }
 }

@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest'
 
 import { MUSEE } from '../musee.ts'
 import { capacity } from '../rules.ts'
-import { assignRooms } from '../hang.ts'
+import { assignRooms, hangPlan } from '../hang.ts'
 import type { Artwork } from '../../domain/types.ts'
 
 const catalogue = JSON.parse(readFileSync(resolve(__dirname, '../../../public/data/catalogue.json'), 'utf8'))
@@ -52,5 +52,44 @@ describe('assignRooms', () => {
     const json = (m: ReturnType<typeof assignRooms>) => JSON.stringify([...m])
     expect(json(assignRooms(MUSEE, ARTWORKS))).toBe(json(salles))
     expect(json(assignRooms(MUSEE, [...ARTWORKS].reverse()))).toBe(json(salles))
+  })
+})
+
+describe('hangPlan', () => {
+  const salles = assignRooms(MUSEE, ARTWORKS)
+  const accrochage = hangPlan(MUSEE, salles, catalogue.generatedAt)
+
+  it('accroche chaque œuvre attribuée, et rien d’autre', () => {
+    for (const r of accrochage.rooms) {
+      const attendues = salles.get(r.id)!.artworks.map((a) => a.key).sort()
+      expect(r.placements.map((p) => p.key).sort(), r.id).toEqual(attendues)
+    }
+  })
+
+  // Des salles pleines à leur capacité : c'est là que les toiles frôlent les portes.
+  const pleines = hangPlan(MUSEE, new Map(exposees.map(({ room, level }) =>
+    [room.id, { name: room.name, artworks: ARTWORKS.slice(-capacity(room, level)) }])), '')
+
+  it('ne pose aucune toile sur une ouverture ni sur son dégagement de 0,60 m', () => {
+    for (const r of [...accrochage.rooms, ...pleines.rooms]) {
+      const level = MUSEE.levels.find((l) => l.id === r.level)!
+      const ouvertures = level.openings.filter((o) => o.a === r.id || o.b === r.id)
+      for (const p of r.placements) {
+        for (const o of ouvertures) {
+          // L'ouverture est sur une arête ; la toile est sur le même mur si elle
+          // en est à moins d'une épaisseur, le long de sa normale.
+          const [nx] = p.normal
+          const ecart = Math.abs(nx !== 0 ? p.x - o.x : p.z - o.z)
+          if (ecart > 0.3) continue
+          const leLong = Math.abs(nx !== 0 ? p.z - o.z : p.x - o.x)
+          expect(leLong, `${p.key} / ${o.a}-${o.b}`).toBeGreaterThanOrEqual(o.width / 2 + 0.6 + p.width / 2 - 1e-6)
+        }
+      }
+    }
+  })
+
+  it('rend un JSON identique octet pour octet d’un appel à l’autre', () => {
+    const encore = hangPlan(MUSEE, assignRooms(MUSEE, ARTWORKS), catalogue.generatedAt)
+    expect(JSON.stringify(encore)).toBe(JSON.stringify(accrochage))
   })
 })
