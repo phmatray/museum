@@ -57,8 +57,6 @@ interface DracoDecodeur {
   GetEncodedGeometryType(tableau: Int8Array): number
   DecodeArrayToMesh(tableau: Int8Array, byteLength: number, maillage: DracoMaillage): DracoStatut
   GetAttributeByUniqueId(maillage: DracoMaillage, id: number): DracoAttribut
-  GetAttributeId(maillage: DracoMaillage, type: number): number
-  GetAttribute(maillage: DracoMaillage, id: number): DracoAttribut
   GetTrianglesUInt32Array(maillage: DracoMaillage, byteLength: number, ptr: number): void
   GetAttributeDataArrayForAllPoints(
     maillage: DracoMaillage,
@@ -89,7 +87,6 @@ interface DracoModule {
 interface TacheDecodage {
   attributeIDs: Record<string, number>
   attributeTypes: Record<string, string>
-  useUniqueIDs: boolean
 }
 
 type ConstructeurTypedArray =
@@ -172,7 +169,17 @@ function decoderIndex(draco: DracoModule, decodeur: DracoDecodeur, maillage: Dra
   return { array: index, itemSize: 1 }
 }
 
-/** Reprend `decodeGeometry` de `DRACOWorker` (three.js examples, MIT), sur draco3d direct. */
+/**
+ * Reprend `decodeGeometry` de `DRACOWorker` (three.js examples, MIT), sur draco3d direct.
+ *
+ * `GLTFLoader` est le seul appelant ici et construit toujours `taskConfig` avec des ID uniques par
+ * attribut (`useUniqueIDs: true` dans `decodeDracoFile`) : le mode ID-par-nom de `DRACOWorker`, pour
+ * des fichiers `.drc` autonomes chargés hors glTF, ne s'exerce jamais par cette voie — non repris.
+ *
+ * ponytail : seul `TRIANGULAR_MESH` est géré (pas `POINT_CLOUD`, que `DRACOWorker` sait aussi
+ * décoder) — les trois GLB de ce test n'en contiennent pas. À reprendre depuis `DRACOWorker` si un
+ * futur test charge un nuage de points compressé.
+ */
 function decoderGeometrieDraco(draco: DracoModule, decodeur: DracoDecodeur, tableau: Int8Array, tache: TacheDecodage) {
   const maillage = new draco.Mesh()
   const type = decodeur.GetEncodedGeometryType(tableau)
@@ -183,14 +190,7 @@ function decoderGeometrieDraco(draco: DracoModule, decodeur: DracoDecodeur, tabl
   const geometrie: { index: unknown; attributes: unknown[] } = { index: null, attributes: [] }
   for (const nom in tache.attributeIDs) {
     const TypedArray = CONSTRUCTEURS_TYPED_ARRAY[tache.attributeTypes[nom]]
-    let attribut: DracoAttribut
-    if (tache.useUniqueIDs) {
-      attribut = decodeur.GetAttributeByUniqueId(maillage, tache.attributeIDs[nom])
-    } else {
-      const id = decodeur.GetAttributeId(maillage, tache.attributeIDs[nom])
-      if (id === -1) continue
-      attribut = decodeur.GetAttribute(maillage, id)
-    }
+    const attribut = decodeur.GetAttributeByUniqueId(maillage, tache.attributeIDs[nom])
     geometrie.attributes.push(decoderAttribut(draco, decodeur, maillage, nom, TypedArray, attribut))
   }
   geometrie.index = decoderIndex(draco, decodeur, maillage)
