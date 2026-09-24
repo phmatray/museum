@@ -8,7 +8,7 @@
  * Un niveau porte aussi ce qui PART de son plancher sans atteindre le suivant :
  * au rez-de-chaussée, le palier et les trois volées de l'escalier impérial.
  */
-import { guardrails, subtract, type Interval, type Segment } from './geometry.ts'
+import { guardrails, isNordSud, subtract, type Interval, type Segment } from './geometry.ts'
 import { contains } from './rules.ts'
 import { EXT, INT } from './svg.ts'
 import type { Flight, Opening, Plan } from './types.ts'
@@ -29,7 +29,7 @@ const EPS = 1e-6
  * d'une marche, et au plus une contremarche en dessous.
  */
 function marches(f: Flight): { de: number; a: number; dessus: number; h: number }[] {
-  const nordSud = f.direction === 'north' || f.direction === 'south'
+  const nordSud = isNordSud(f)
   const giron = (nordSud ? f.depth : f.width) / f.risers
   const h = (f.top - f.bottom) / f.risers
   return Array.from({ length: f.risers }, (_, k) => {
@@ -102,7 +102,7 @@ export function meshLevel(plan: Plan, levelId: number): Box[] {
   for (const g of guardrails(plan, levelId)) {
     const long = g.z1 === g.z2
     const [mx, mz] = [(g.x1 + g.x2) / 2, (g.z1 + g.z2) / 2]
-    const f = volees.find((f) => contains(f, mx, mz) && (long ? f.direction === 'east' || f.direction === 'west' : f.direction === 'north' || f.direction === 'south'))
+    const f = volees.find((f) => contains(f, mx, mz) && (long ? !isNordSud(f) : isNordSud(f)))
     if (f) {
       const [s, t] = long ? [g.x1, g.x2] : [g.z1, g.z2]
       for (const { de, a, dessus } of marches(f)) {
@@ -151,7 +151,7 @@ export function meshLevel(plan: Plan, levelId: number): Box[] {
   // Chaque marche pose sur sa part de paillasse : une dalle en escalier dessous,
   // faute de boîte inclinée. La première pose sur le sol ou le palier.
   for (const f of volees) {
-    const nordSud = f.direction === 'north' || f.direction === 'south'
+    const nordSud = isNordSud(f)
     for (const { de, a, dessus, h } of marches(f)) {
       const [x0, x1, z0, z1] = nordSud ? [f.x, f.x + f.width, de, a] : [de, a, f.z, f.z + f.depth]
       out.push(pave(x0, x1, dessus - h, dessus, z0, z1, 'step'))

@@ -8,7 +8,7 @@
  * l'ancien escalier inaccessible. Le plan SVG et la 3D les lisent ici.
  */
 import { flightEnds } from './rules.ts'
-import type { Plan, Rect } from './types.ts'
+import type { Flight, Plan, Rect } from './types.ts'
 
 export interface Segment {
   x1: number
@@ -21,6 +21,11 @@ export type Interval = [number, number]
 export type Edge = { axis: 'x' | 'z'; at: number; span: Interval }
 
 const EPS = 1e-6
+
+/** Une volée court-elle nord-sud (vs est-ouest) ? #28 : un seul point de vérité. */
+export function isNordSud(f: Flight): boolean {
+  return f.direction === 'north' || f.direction === 'south'
+}
 
 export function subtract(base: Interval, cuts: Interval[]): Interval[] {
   let out: Interval[] = [base]
@@ -57,7 +62,7 @@ export function guardrails(plan: Plan, levelId: number): Segment[] {
   for (const l of plan.landings) hautes.push({ rect: l, elevation: l.elevation, ends: [] })
   for (const f of plan.flights) {
     const [n, s, w, e] = edges(f)
-    hautes.push({ rect: f, elevation: f.bottom, ends: f.direction === 'north' || f.direction === 'south' ? [n, s] : [w, e] })
+    hautes.push({ rect: f, elevation: f.bottom, ends: isNordSud(f) ? [n, s] : [w, e] })
   }
 
   // Les murs : les arêtes des salles qui ne sont pas des balcons, à tout niveau.

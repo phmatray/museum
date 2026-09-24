@@ -12,6 +12,7 @@
  * `checkPlan` rend la liste des violations, en français, avec leurs cotes. Une
  * liste vide veut dire que le plan est constructible.
  */
+import { isNordSud } from './geometry.ts'
 import type { Flight, Level, Opening, Plan, Rect, Room } from './types.ts'
 
 /** Seuils, en mètres. */
@@ -225,8 +226,8 @@ export function checkPlan(plan: Plan, collection: number): string[] {
 
   for (const f of plan.flights) {
     const h = (f.top - f.bottom) / f.risers
-    const run = f.direction === 'north' || f.direction === 'south' ? f.depth : f.width
-    const large = f.direction === 'north' || f.direction === 'south' ? f.width : f.depth
+    const run = isNordSud(f) ? f.depth : f.width
+    const large = isNordSud(f) ? f.width : f.depth
     const g = run / (f.risers - 1)
     if (h < NORMES.contremarche[0] || h > NORMES.contremarche[1]) out.push(`volée ${f.id} : contremarche de ${h.toFixed(3)} m`)
     if (g < NORMES.giron[0] || g > NORMES.giron[1]) out.push(`volée ${f.id} : giron de ${g.toFixed(3)} m`)
