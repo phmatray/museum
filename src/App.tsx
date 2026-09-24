@@ -39,7 +39,7 @@ const keyMap = [
  * fait les collisions, et le visiteur apparaît au sud du hall.
  *
  * `preserveDrawingBuffer` en développement seulement : sans lui, relire le
- * canvas (`tools/capture.ts`) rend une image noire ; en production personne ne
+ * canvas depuis un navigateur piloté rend une image noire ; en production personne ne
  * le relit, et le tampon peut être recyclé.
  */
 export default function App() {

@@ -69,7 +69,7 @@ export interface WallAxes {
  * Repère orthonormé d'un mur, reconstruit depuis ses seules extrémités.
  *
  * Même parti pris que `builders/wall.ts`, et pour la même raison : `wall.normal`
- * est arrondie au micromètre par `layout.ts`, elle sert donc à choisir le CÔTÉ
+ * est arrondie au micromètre par le générateur, elle sert donc à choisir le CÔTÉ
  * et jamais d'axe. La perpendiculaire est recalculée depuis `a → b`, sans quoi
  * la toile serait très légèrement gauchie par rapport au mur qui la porte — un
  * défaut invisible de face, flagrant en rasant le mur du regard.
@@ -94,7 +94,7 @@ export function wallAxes(wall: Wall): WallAxes {
   }
 
   const along = new THREE.Vector3(dx / length, 0, dz / length)
-  // Perpendiculaire canonique, celle que produit `layout.ts` : (dir.z, −dir.x).
+  // Perpendiculaire canonique, celle que produit le générateur : (dir.z, −dir.x).
   const inward = new THREE.Vector3(along.z, 0, -along.x)
   if (inward.x * wall.normal.x + inward.z * wall.normal.z < 0) inward.negate()
 

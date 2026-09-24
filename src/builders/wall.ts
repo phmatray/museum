@@ -163,7 +163,7 @@ interface WallFrame {
 /**
  * Repère orthonormé du mur.
  *
- * La normale du contrat est arrondie au micromètre par `layout.ts` : on ne s'en
+ * La normale du contrat est arrondie au micromètre par le générateur : on ne s'en
  * sert que pour choisir le CÔTÉ, jamais comme axe. La direction exacte est
  * recalculée depuis `a → b`, sinon le mur serait très légèrement gauchi et ses
  * faces ne seraient plus parallèles.
@@ -188,7 +188,7 @@ function wallFrame(wall: Wall): WallFrame {
 
   const ex = new THREE.Vector3(dx / length, 0, dz / length)
   const ez = new THREE.Vector3(-ex.z, 0, ex.x) // = ex × (0,1,0)
-  // Perpendiculaire canonique, celle que `layout.ts` produit : (dir.z, −dir.x).
+  // Perpendiculaire canonique, celle que produit le générateur : (dir.z, −dir.x).
   const perp = new THREE.Vector3(ex.z, 0, -ex.x)
   const inward = perp.dot(new THREE.Vector3(wall.normal.x, 0, wall.normal.z)) < 0 ? perp.negate() : perp
 

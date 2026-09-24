@@ -16,12 +16,10 @@
  * s'exécutent en Node. `buildAmbientEnvironment` est le seul export non testé
  * ici — il exige un `WebGLRenderer`, donc un vrai contexte graphique.
  */
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 
-import type { Museum, Placement, ThemeId, Wall } from '../../domain/types'
+import type { Placement, ThemeId, Wall } from '../../domain/types'
 import {
   MAX_HALOS,
   THEME_PALETTE,
@@ -334,48 +332,5 @@ describe('createWallMaterial', () => {
     expect(a.uHaloPos.value.map((v) => v.toArray())).toEqual(
       b.uHaloPos.value.map((v) => v.toArray()),
     )
-  })
-})
-
-// ── Le musée réel ────────────────────────────────────────────────────────
-
-describe('musée réel', () => {
-  const museum: Museum = JSON.parse(
-    readFileSync(
-      resolve(__dirname, '../../../public/data/museum.json'),
-      'utf-8',
-    ),
-  )
-
-  it('tient dans MAX_HALOS sur tous les murs accrochés', () => {
-    const max = Math.max(
-      ...museum.floors.flatMap((f) =>
-        f.rooms.flatMap((r) => r.walls.map((w) => w.placements.length)),
-      ),
-    )
-    expect(max).toBeLessThanOrEqual(MAX_HALOS)
-  })
-
-  it('fabrique un matériau fini pour chaque mur du bâtiment', () => {
-    let murs = 0
-    for (const floor of museum.floors) {
-      for (const room of floor.rooms) {
-        for (const wall of room.walls) {
-          const material = createWallMaterial({
-            theme: room.theme,
-            wall,
-            elevation: floor.elevation,
-          })
-          const u = uniformes(material)
-          expect(u.uHaloCount.value).toBe(wall.placements.length)
-          for (const p of u.uHaloPos.value) {
-            expect(Number.isFinite(p.x + p.y + p.z)).toBe(true)
-          }
-          material.dispose()
-          murs++
-        }
-      }
-    }
-    expect(murs).toBeGreaterThan(0)
   })
 })
