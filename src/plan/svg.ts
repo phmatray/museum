@@ -9,7 +9,7 @@
  * Pur : (plan, niveau) → chaîne. Le même rendu sert au dossier `docs/plan` et
  * pourra servir à la minimap.
  */
-import { guardrails } from './geometry.ts'
+import { guardrails, isNordSud } from './geometry.ts'
 import { capacity } from './rules.ts'
 import type { Plan, Rect } from './types.ts'
 
@@ -71,7 +71,7 @@ export function renderLevel(plan: Plan, levelId: number): string {
     const dessus = f.bottom > level.elevation + 1e-6 && !inLevel(f.bottom)
     const partiel = f.bottom > level.elevation + 1e-6
     o.push(rect(f, `fill="${C.stair}" stroke="${C.ink2}" stroke-width="1" ${partiel && !dessus ? 'stroke-dasharray="4 3"' : ''}`))
-    const ns = f.direction === 'north' || f.direction === 'south'
+    const ns = isNordSud(f)
     const run = ns ? f.depth : f.width
     for (let i = 1; i < f.risers - 1; i++) {
       const t = (i * run) / (f.risers - 1)
