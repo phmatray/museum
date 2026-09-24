@@ -398,6 +398,7 @@ export function creerMatiere(
 
   appliquerCartes(material, jeu, id)
   peindreRebond(material, options.rebond ?? reglage.rebond)
+  appliquerEchelleInstance(material)
   return material
 }
 
@@ -471,6 +472,79 @@ export function peindreRebond(
   material.customProgramCacheKey = () => PROGRAM_CACHE_KEY
 
   return material
+}
+
+/**
+ * Corrige l'étirement des matières PBR sur les Boites d'une `InstancedMesh`
+ * (#38).
+ *
+ * Toutes les instances de `Boites` (garde-corps, mobilier…) partagent une seule
+ * géométrie — un `BoxGeometry` unité — et ne diffèrent que par leur matrice
+ * d'instance, qui les met à l'échelle. Mais `repeat` est un réglage du
+ * matériau, donc UNIQUE pour tout le batch : une grande Boite montre un motif
+ * étiré, une petite un motif écrasé, quelle que soit la valeur choisie.
+ *
+ * La correction lit un futur attribut D'INSTANCE, `aTailleBoite` (vec3 =
+ * largeur, hauteur, profondeur en mètres, posé côté CPU par
+ * `PlanBuilding.tsx` — pas ce fichier), et multiplie l'UV par les deux
+ * dimensions TANGENTES à la face rendue, avant que `repeat`/`offset`
+ * s'appliquent : la densité de texel redevient constante quelle que soit la
+ * taille de l'instance.
+ *
+ * Injecté dans `#include <uv_vertex>`, donc AVANT `#include
+ * <beginnormal_vertex>` : `objectNormal` n'existe pas encore à ce point. On lit
+ * `normal`, l'attribut brut — rigoureusement équivalent ici, puisque
+ * `beginnormal_vertex` n'est qu'une copie (`objectNormal = vec3(normal)`) et
+ * que ces Boites n'ont ni squelette ni morph.
+ *
+ * `uv_vertex` ne calcule pas un `vUv` unique mais `vMapUv`, `vNormalMapUv`,
+ * `vRoughnessMapUv` — un par carte active, chacun déjà multiplié par sa propre
+ * matrice `xxxTransform`. Comme `repeterJeu` ne pose qu'un `repeat` sur ces
+ * cartes (jamais d'`offset` ni de rotation), cette matrice est une échelle
+ * diagonale pure, et multiplier APRÈS elle par la même échelle revient à
+ * multiplier l'UV brut avant : une échelle diagonale commute avec une autre.
+ *
+ * Chaîne sur `onBeforeCompile` au lieu de l'écraser : `peindreRebond`, appelé
+ * juste avant par `creerMatiere`, y a déjà posé son propre patch.
+ */
+export function appliquerEchelleInstance(material: THREE.MeshStandardMaterial): void {
+  const precedent = material.onBeforeCompile
+
+  material.onBeforeCompile = (shader, renderer) => {
+    precedent(shader, renderer)
+
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+         attribute vec3 aTailleBoite;`,
+      )
+      .replace(
+        '#include <uv_vertex>',
+        `#include <uv_vertex>
+         {
+           // Les Boites sont des cubes parfaitement axe-alignés (pas de blend
+           // triplanaire à faire) : la face dominante se lit directement sur la
+           // composante la plus grande de la normale, sans epsilon.
+           vec2 echelle = aTailleBoite.xy;
+           if (abs(normal.x) > abs(normal.y) && abs(normal.x) > abs(normal.z)) {
+             echelle = aTailleBoite.zy; // faces ±X : tangentes = profondeur, hauteur
+           } else if (abs(normal.y) > abs(normal.z)) {
+             echelle = aTailleBoite.xz; // faces ±Y : tangentes = largeur, profondeur
+           }
+           // faces ±Z (cas par défaut ci-dessus) : tangentes = largeur, hauteur
+           #ifdef USE_MAP
+             vMapUv *= echelle;
+           #endif
+           #ifdef USE_NORMALMAP
+             vNormalMapUv *= echelle;
+           #endif
+           #ifdef USE_ROUGHNESSMAP
+             vRoughnessMapUv *= echelle;
+           #endif
+         }`,
+      )
+  }
 }
 
 // ── Accès React ──────────────────────────────────────────────────────────

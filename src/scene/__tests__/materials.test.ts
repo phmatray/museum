@@ -62,6 +62,7 @@ function shaderJouet() {
     vertexShader: [
       '#include <common>',
       'void main() {',
+      '#include <uv_vertex>',
       '#include <beginnormal_vertex>',
       '}',
     ].join('\n'),
@@ -260,6 +261,33 @@ describe('peindreRebond', () => {
     const b = creerMatiere('marbre', null, { rebond: 0.1 })
     expect(a.customProgramCacheKey()).toBe(b.customProgramCacheKey())
     expect(a.customProgramCacheKey()).not.toBe('')
+  })
+})
+
+describe('appliquerEchelleInstance', () => {
+  it("déclare l'attribut d'instance et met l'UV des cartes à l'échelle de la face rendue", () => {
+    // #38 : les Boites d'une InstancedMesh partagent un cube UNITÉ et un seul
+    // `repeat` — sans ce patch, une grande Boite étire le motif et une petite
+    // l'écrase. `aTailleBoite` (posé par `PlanBuilding.tsx`, lot 2) doit être
+    // déclaré ET utilisé pour corriger l'UV avant `repeat`/`offset`.
+    const material = creerMatiere('beton', null)
+    const shader = compiler(material)
+
+    expect(shader.vertexShader).toContain('attribute vec3 aTailleBoite')
+    expect(shader.vertexShader).toContain('vMapUv *=')
+
+    // Déclaré une fois, puis RÉUTILISÉ dans l'injection de `uv_vertex` : une
+    // seule occurrence signifierait un attribut mort.
+    const occurrences = shader.vertexShader.match(/aTailleBoite/g) ?? []
+    expect(occurrences.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('ne casse pas le programme unique en ajoutant son propre patch', () => {
+    // Le patch est inconditionnel et identique pour toutes les matières : il ne
+    // doit donc introduire aucune divergence de clé de cache.
+    const a = creerMatiere('beton', null)
+    const b = creerMatiere('marbre', null, { rebond: 0.1 })
+    expect(a.customProgramCacheKey()).toBe(b.customProgramCacheKey())
   })
 })
 
