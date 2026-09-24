@@ -84,9 +84,11 @@ export function Boites({ boites, material }: { boites: Box[]; material: THREE.Ma
     // La taille par instance, pour que `appliquerEchelleInstance` (materials.ts,
     // #38) corrige l'étirement des UV PBR. Dans le MÊME effet que les matrices
     // ci-dessus, jamais un second : tailles et matrices doivent rester en phase.
+    // Pas de `needsUpdate` à poser : l'attribut est neuf à chaque passage de cet
+    // effet, et three envoie toujours le tout premier buffer d'un attribut
+    // jamais vu, `needsUpdate` ne servant qu'à REenvoyer un buffer déjà connu.
     const tailles = new Float32Array(boites.flatMap((b) => [b.w, b.h, b.d]))
     mesh.geometry.setAttribute('aTailleBoite', new THREE.InstancedBufferAttribute(tailles, 3))
-    mesh.geometry.getAttribute('aTailleBoite').needsUpdate = true
   }, [boites])
 
   // `key` : le nombre d'instances est fixé à la construction, il faut remonter

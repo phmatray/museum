@@ -506,6 +506,14 @@ export function peindreRebond(
  *
  * Chaîne sur `onBeforeCompile` au lieu de l'écraser : `peindreRebond`, appelé
  * juste avant par `creerMatiere`, y a déjà posé son propre patch.
+ *
+ * Le tout est gardé par `#ifdef USE_INSTANCING` — le `#define` que three pose
+ * lui-même sur tout objet `InstancedMesh`, jamais sur un `Mesh` ordinaire.
+ * `useMatiere`/`creerMatiere` n'ont aujourd'hui qu'un seul appelant (`Boites`,
+ * toujours instancié), mais rien ne l'impose : sans ce garde, une matière
+ * posée un jour sur un `Mesh` simple n'aurait pas `aTailleBoite` en mémoire,
+ * lirait la valeur par défaut de three pour un attribut non lié — `vec3(0)` —
+ * et verrait son UV écrasé à `(0, 0)` sur toute sa surface.
  */
 export function appliquerEchelleInstance(material: THREE.MeshStandardMaterial): void {
   const precedent = material.onBeforeCompile
@@ -517,11 +525,14 @@ export function appliquerEchelleInstance(material: THREE.MeshStandardMaterial): 
       .replace(
         '#include <common>',
         `#include <common>
-         attribute vec3 aTailleBoite;`,
+         #ifdef USE_INSTANCING
+         attribute vec3 aTailleBoite;
+         #endif`,
       )
       .replace(
         '#include <uv_vertex>',
         `#include <uv_vertex>
+         #ifdef USE_INSTANCING
          {
            // Les Boites sont des cubes parfaitement axe-alignés (pas de blend
            // triplanaire à faire) : la face dominante se lit directement sur la
@@ -542,7 +553,8 @@ export function appliquerEchelleInstance(material: THREE.MeshStandardMaterial): 
            #ifdef USE_ROUGHNESSMAP
              vRoughnessMapUv *= echelle;
            #endif
-         }`,
+         }
+         #endif`,
       )
   }
 }
