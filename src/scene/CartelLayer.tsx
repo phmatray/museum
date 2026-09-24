@@ -15,7 +15,11 @@ import { cartelPlacements, cartelTexte, type CartelPlacement } from '../plan/car
 import { Cartel } from './Cartel'
 
 const PORTEE = 6
-/** Recalcul du voisinage quatre fois par seconde : le visiteur marche à 1,80 m/s. */
+/**
+ * Recalcul du voisinage quatre fois par seconde. Le cas le plus rapide est la
+ * hâte (`VITESSE_HATE` = 6 m/s) : entre deux recalculs le visiteur parcourt au
+ * plus 6 * 0,25 = 1,5 m, bien en deçà de `PORTEE` (6 m).
+ */
 const PERIODE = 0.25
 
 export function CartelLayer() {
