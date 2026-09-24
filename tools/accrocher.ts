@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
-// Même crochet que `derive-museum.ts` : le domaine importe sans extension, à la
+// Le domaine importe sans extension, à la
 // manière de Vite, et Node exige l'extension. Imports dynamiques APRÈS le crochet.
 registerHooks({
   resolve(specifier, context, nextResolve) {

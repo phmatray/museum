@@ -71,7 +71,7 @@ export function PointerLockOverlay({ tour = true }: { tour?: boolean }) {
 
   return (
     <div
-      // Repère stable pour `tools/capture.ts`, qui doit escamoter cet écran
+      // Repère stable pour un navigateur piloté, qui doit escamoter cet écran
       // avant de mesurer la luminance de la scène — il couvre tout le cadre.
       // Le retirer par un clic est impossible en headless : le clic demande le
       // verrouillage du pointeur, que Chrome refuse hors interaction réelle.

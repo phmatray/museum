@@ -13,7 +13,12 @@ import { MUSEE } from '../plan/musee'
 import { surfaceAt } from '../plan/rules'
 import { step, type Walker } from '../plan/walk'
 import { useGameStore } from '../stores/gameStore'
-import { HAUTEUR_OEIL } from './Player'
+
+/**
+ * 1,62 m : l'œil d'un adulte de 1,75 m. C'est l'unique référence d'échelle d'une
+ * vue subjective ; 38 cm de trop rapetissaient tout le bâtiment.
+ */
+const HAUTEUR_OEIL = 1.62
 
 /** Le visiteur au point d'apparition, calculé une fois : un plan faux casse à l'import. */
 const DEPART: Walker = (() => {
@@ -43,7 +48,7 @@ export function PlanPlayer() {
   }, [camera])
 
   // En développement seulement : de quoi suivre le visiteur depuis un navigateur
-  // piloté (cap, pause, surface sous le pied), comme `window.__MUSEUM__`.
+  // piloté (cap, pause, surface sous le pied).
   useEffect(() => {
     if (!import.meta.env.DEV) return
     const w = window as unknown as { __PLAN__?: unknown }
