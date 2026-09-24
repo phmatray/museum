@@ -487,9 +487,9 @@ export function peindreRebond(
  * La correction lit un futur attribut D'INSTANCE, `aTailleBoite` (vec3 =
  * largeur, hauteur, profondeur en mètres, posé côté CPU par
  * `PlanBuilding.tsx` — pas ce fichier), et multiplie l'UV par les deux
- * dimensions TANGENTES à la face rendue, avant que `repeat`/`offset`
+ * dimensions TANGENTES à la face rendue, AVANT que `repeat`/`offset`
  * s'appliquent : la densité de texel redevient constante quelle que soit la
- * taille de l'instance.
+ * taille de l'instance, quels que soient `repeat`/`offset` par ailleurs.
  *
  * Injecté dans `#include <uv_vertex>`, donc AVANT `#include
  * <beginnormal_vertex>` : `objectNormal` n'existe pas encore à ce point. On lit
@@ -497,12 +497,15 @@ export function peindreRebond(
  * `beginnormal_vertex` n'est qu'une copie (`objectNormal = vec3(normal)`) et
  * que ces Boites n'ont ni squelette ni morph.
  *
- * `uv_vertex` ne calcule pas un `vUv` unique mais `vMapUv`, `vNormalMapUv`,
- * `vRoughnessMapUv` — un par carte active, chacun déjà multiplié par sa propre
- * matrice `xxxTransform`. Comme `repeterJeu` ne pose qu'un `repeat` sur ces
- * cartes (jamais d'`offset` ni de rotation), cette matrice est une échelle
- * diagonale pure, et multiplier APRÈS elle par la même échelle revient à
- * multiplier l'UV brut avant : une échelle diagonale commute avec une autre.
+ * `uv_vertex` calcule `vMapUv`, `vNormalMapUv`, `vRoughnessMapUv` — un par
+ * carte active — chacun à partir de la MÊME variable `uv` (aucune de ces
+ * cartes n'utilise un canal UV différent ici), multipliée par sa propre
+ * matrice `xxxTransform` (repeat/offset/rotation). Plutôt que de corriger
+ * chaque varying séparément après coup — ce qui ne serait exact que tant
+ * qu'aucun `offset` n'est posé sur ces cartes, une hypothèse qu'aucun type ne
+ * garantit — on OMBRE `uv` lui-même dans un bloc, juste avant `uv_vertex` : la
+ * correction s'applique alors à la source commune, avant `repeat`/`offset`,
+ * exactement comme documenté ci-dessus, quoi que `repeterJeu` fasse un jour.
  *
  * Chaîne sur `onBeforeCompile` au lieu de l'écraser : `peindreRebond`, appelé
  * juste avant par `creerMatiere`, y a déjà posé son propre patch.
@@ -531,8 +534,7 @@ export function appliquerEchelleInstance(material: THREE.MeshStandardMaterial): 
       )
       .replace(
         '#include <uv_vertex>',
-        `#include <uv_vertex>
-         #ifdef USE_INSTANCING
+        `#ifdef USE_INSTANCING
          {
            // Les Boites sont des cubes parfaitement axe-alignés (pas de blend
            // triplanaire à faire) : la face dominante se lit directement sur la
@@ -544,16 +546,16 @@ export function appliquerEchelleInstance(material: THREE.MeshStandardMaterial): 
              echelle = aTailleBoite.xz; // faces ±Y : tangentes = largeur, profondeur
            }
            // faces ±Z (cas par défaut ci-dessus) : tangentes = largeur, hauteur
-           #ifdef USE_MAP
-             vMapUv *= echelle;
-           #endif
-           #ifdef USE_NORMALMAP
-             vNormalMapUv *= echelle;
-           #endif
-           #ifdef USE_ROUGHNESSMAP
-             vRoughnessMapUv *= echelle;
-           #endif
+
+           // uv brut d'abord, dans un nom SÉPARÉ : réutiliser le nom uv tout de
+           // suite lirait sa propre valeur non initialisée sur son membre de
+           // droite, pas l'attribut — l'ombrage ne doit commencer qu'après.
+           vec2 uvBrut = uv;
+           vec2 uv = uvBrut * echelle;
+           #include <uv_vertex>
          }
+         #else
+         #include <uv_vertex>
          #endif`,
       )
   }
