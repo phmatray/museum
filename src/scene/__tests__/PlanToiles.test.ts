@@ -8,12 +8,14 @@
  * décalage `FRAME_DEPTH`) ferait pivoter ou décaler silencieusement toutes les
  * toiles du plan — c'est le trou que #16 avait laissé (« vérifié à l'œil »).
  */
+import { renderHook, waitFor } from '@testing-library/react'
 import * as THREE from 'three'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { FRAME_BORDER, FRAME_DEPTH } from '../../builders/artwork'
 import { DEFAULT_ASPECT } from '../../domain/hanging'
 import type { Accrochage } from '../../plan/hang'
+import { useAccrochage } from '../PlanToiles'
 import { computePoses } from '../planToilesGeometry'
 
 type Room = Accrochage['rooms'][number]
@@ -80,5 +82,40 @@ describe('computePoses', () => {
     expect(position.x).toBeCloseTo(p.x + p.normal[0] * (FRAME_DEPTH / 2))
     expect(scale.x).toBeCloseTo(p.width + 2 * FRAME_BORDER)
     expect(scale.z).toBeCloseTo(FRAME_DEPTH)
+  })
+})
+
+// `useAccrochage` est la SEULE traversée du schéma zod à l'exécution — `computePoses`
+// ci-dessus ne voit plus cette étape. Sans ce test, remplacer `parseAccrochage` par un
+// bricolage qui ne valide plus rien resterait vert partout (issue #24).
+function reponse(corps: unknown, ok = true): Response {
+  return { ok, status: ok ? 200 : 404, json: () => Promise.resolve(corps) } as Response
+}
+
+describe('useAccrochage', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('charge un accrochage bien formé', async () => {
+    const valide: Accrochage = { generatedAt: '2026-07-25T22:06:37.149Z', rooms: [room([placement()])] }
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(reponse(valide)))
+
+    const { result } = renderHook(() => useAccrochage())
+    await waitFor(() => expect(result.current).not.toBeNull())
+
+    expect(result.current?.rooms).toHaveLength(1)
+  })
+
+  it('rejette un accrochage mal formé sans lancer d’erreur non attrapée, et journalise un message lisible', async () => {
+    const espion = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(reponse({ rooms: [{ id: 'x' }] })))
+
+    const { result } = renderHook(() => useAccrochage())
+    await waitFor(() => expect(espion).toHaveBeenCalled())
+
+    expect(result.current).toBeNull()
+    expect(espion.mock.calls[0][0]).toBe('accrochage.json indisponible')
+    expect(String((espion.mock.calls[0][1] as Error).message)).toContain('generatedAt')
+
+    espion.mockRestore()
   })
 })

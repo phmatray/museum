@@ -24,6 +24,7 @@ import type {
   Curation,
   MuseumConfig,
 } from '../domain/types'
+import type { Accrochage } from '../plan/hang'
 
 /** Seule version de schéma que ce code sait lire. */
 export const SCHEMA_VERSION = 1
@@ -32,6 +33,7 @@ const FICHIER_CATALOGUE = 'catalogue.json'
 const FICHIER_CURATION = 'curation.json'
 const FICHIER_CONFIG = 'museum.config.json'
 const FICHIER_ATLAS = 'atlas.json'
+const FICHIER_ACCROCHAGE = 'accrochage.json'
 
 // ── Erreur ───────────────────────────────────────────────────────────────
 
@@ -559,4 +561,39 @@ export function parseAtlasIndex(raw: unknown): AtlasIndex {
   if (!resultat.success) lever(FICHIER_ATLAS, resultat.error, raw)
   const index: AtlasIndex = resultat.data
   return index
+}
+
+// ── Accrochage (généré) ───────────────────────────────────────────────────
+
+const accrochagePlacementSchema = z.object({
+  key: cleDepot,
+  x: z.number(),
+  y: z.number(),
+  z: z.number(),
+  normal: z.tuple([z.number(), z.number()]),
+  width: z.number(),
+})
+
+const accrochageRoomSchema = z.object({
+  id: z.string().min(1),
+  level: z.number().int(),
+  name: z.string().min(1),
+  placements: z.array(accrochagePlacementSchema),
+})
+
+/**
+ * Pas de `schemaVersion` ici : `tools/accrocher.ts` écrit `Accrochage` tel
+ * quel (`generatedAt` + `rooms`), sans jamais y ajouter ce champ — inutile
+ * de le réclamer, il n'existera jamais.
+ */
+export const accrochageSchema = z.object({
+  generatedAt: z.iso.datetime(),
+  rooms: z.array(accrochageRoomSchema),
+})
+
+export function parseAccrochage(raw: unknown): Accrochage {
+  const resultat = accrochageSchema.safeParse(raw)
+  if (!resultat.success) lever(FICHIER_ACCROCHAGE, resultat.error, raw)
+  const accrochage: Accrochage = resultat.data
+  return accrochage
 }
