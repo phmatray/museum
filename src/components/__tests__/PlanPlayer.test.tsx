@@ -25,7 +25,7 @@ import { KeyboardControls } from '@react-three/drei'
 import type * as THREE from 'three'
 
 import { PlanPlayer } from '../PlanPlayer'
-import { useGameStore } from '../../stores/gameStore'
+import { toucher, useGameStore } from '../../stores/gameStore'
 import { PAS_FIXE } from '../../domain/locomotion'
 
 /** Les quatre directions que `PlanPlayer` lit — toutes présentes, même à `false`. */
@@ -101,5 +101,59 @@ describe('PlanPlayer', () => {
     await renderer.advanceFrames(5, PAS_FIXE)
 
     expect(camera.position.z).not.toBeCloseTo(zInitial)
+  })
+
+  // #31 : le joystick tactile passe par le même `step()` que le clavier, et le
+  // glissé du regard tourne la même caméra que la souris.
+  it('avance et tourne au joystick tactile, sans clavier', async () => {
+    const { renderer, camera } = await monterPlanPlayer()
+    const zInitial = camera.position.z
+    const yawInitial = camera.rotation.y
+
+    await act(async () => useGameStore.setState({ paused: false }))
+    Object.assign(toucher, { forward: 1, strafe: 0, lookX: 0, lookY: 0 })
+    await renderer.advanceFrames(5, PAS_FIXE)
+    expect(camera.position.z).toBeLessThan(zInitial) // yaw 0 = −z
+
+    toucher.forward = 0
+    toucher.lookX = 100
+    await renderer.advanceFrames(1, PAS_FIXE)
+    expect(camera.rotation.y).toBeLessThan(yawInitial)
+    expect(toucher.lookX).toBe(0) // consommé une fois, pas rejoué à chaque image
+  })
+
+  // #31 : la visite guidée conduit le visiteur sans clavier ni joystick, vers
+  // le premier arrêt, et publie l'étape en cours pour le cartouche.
+  it('marche seule vers le premier arrêt pendant la visite guidée', async () => {
+    const { renderer, camera } = await monterPlanPlayer()
+    const avant = camera.position.clone()
+    Object.assign(toucher, { forward: 0, strafe: 0, lookX: 0, lookY: 0 })
+
+    await act(async () => useGameStore.setState({ paused: false, tourActive: true, tourEtape: -1 }))
+    await renderer.advanceFrames(30, 1 / 60)
+
+    expect(camera.position.distanceTo(avant)).toBeGreaterThan(0.5)
+    expect(useGameStore.getState().tourEtape).toBe(0)
+    await act(async () => useGameStore.setState({ tourActive: false }))
+  })
+
+  // Relevé en revue : l'itinéraire part du point d'apparition. Lancée ailleurs,
+  // sa première ligne droite buterait contre un mur — la visite y ramène d'abord.
+  it("repart du point d'apparition quand une visite commence ailleurs", async () => {
+    const { renderer, camera } = await monterPlanPlayer()
+    await act(async () => useGameStore.setState({ paused: false, tourActive: false }))
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', bubbles: true }))
+    })
+    await renderer.advanceFrames(60, 1 / 60)
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW', bubbles: true }))
+    })
+    expect(camera.position.z).toBeLessThan(36)
+
+    await act(async () => useGameStore.setState({ tourActive: true }))
+    await renderer.advanceFrames(1, 1 / 60)
+    expect(camera.position.z).toBeGreaterThan(36.9)
+    await act(async () => useGameStore.setState({ tourActive: false }))
   })
 })
