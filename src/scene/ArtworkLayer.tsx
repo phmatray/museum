@@ -353,7 +353,10 @@ export function CanvasInstances({ texture, hangings, masquees }: CanvasInstances
   return (
     <instancedMesh
       ref={mesh}
-      args={[geometry, material, hangings.length]}
+      // Matériau en prop, pas dans `args` : changer de texture reconstruirait
+      // sinon le maillage sans ses matrices (#35).
+      args={[geometry, undefined, hangings.length]}
+      material={material}
       // Le shader est non éclairé : ni ombre portée ni ombre reçue à calculer.
       castShadow={false}
       receiveShadow={false}
@@ -391,7 +394,8 @@ export function FrameInstances({ hangings }: { hangings: readonly Pick<Hanging, 
   return (
     <instancedMesh
       ref={mesh}
-      args={[geometry, material, hangings.length]}
+      args={[geometry, undefined, hangings.length]}
+      material={material}
       // Une seule shadow map dans tout le budget (§9), celle de la verrière : un
       // cadre de six centimètres n'a rien à y apporter.
       castShadow={false}
