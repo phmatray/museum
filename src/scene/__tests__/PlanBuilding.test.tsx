@@ -12,11 +12,13 @@
  */
 import { describe, expect, it } from 'vitest'
 import ReactThreeTestRenderer from '@react-three/test-renderer'
+import { Color } from 'three'
 import type * as THREE from 'three'
 
 import { PlanBuilding } from '../PlanBuilding'
 import { MUSEE } from '../../plan/musee'
 import { meshLevel, type Box } from '../../plan/mesh'
+import { CIEL } from '../lighting'
 
 // Ordre exact des <Boites> par niveau dans PlanBuilding.tsx : un InstancedMesh
 // par sorte, toujours dans cet ordre, même vide.
@@ -62,5 +64,19 @@ describe('PlanBuilding', () => {
     // planter, seulement produire un InstancedMesh à zéro instance.
     const comptesAZero = meshes.filter((m) => m.count === 0)
     expect(comptesAZero.length).toBeGreaterThan(0)
+  })
+
+  it('monte CIEL comme fond de scène (#46)', async () => {
+    // `lighting.test.ts` prouve que CIEL est une couleur claire ; ce test-ci
+    // protège l'autre moitié du contrat, que rien ne couvrait avant #46 : que
+    // ce fond est bien MONTÉ dans la scène rendue, pas seulement exporté.
+    // Sans lui, retirer le <color attach="background"> de PlanBuilding.tsx
+    // repasserait le ciel au noir sans qu'aucun test ne le remarque.
+    const renderer = await ReactThreeTestRenderer.create(<PlanBuilding />)
+    const scene = renderer.scene.instance as THREE.Scene
+    expect(scene.background).toBeDefined()
+    expect((scene.background as THREE.Color).getHexString()).toBe(
+      new Color(CIEL).getHexString(),
+    )
   })
 })
