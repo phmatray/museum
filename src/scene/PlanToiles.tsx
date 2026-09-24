@@ -14,6 +14,7 @@ import { atlasResource, type AtlasTextures } from '../io/arrayTexture'
 import type { Accrochage } from '../plan/hang'
 import { MUSEE } from '../plan/musee'
 import { INT as DEMI_MUR } from '../plan/svg'
+import { parseAccrochage } from '../schema'
 import { CanvasInstances, FrameInstances } from './ArtworkLayer'
 import { THEME_INK } from './cartelStyle'
 import { computePoses } from './planToilesGeometry'
@@ -80,15 +81,19 @@ const AUCUNE: ReadonlySet<string> = new Set()
 /**
  * Chargé en effet, pas par `use()` : un accrochage absent ou en retard ne doit
  * ni masquer les murs derrière le Suspense, ni faire tomber la visite.
+ *
+ * Exporté pour le test : c'est le seul point où `accrochage.json` traverse le
+ * schéma zod, et `computePoses` (testé à part) ne voit plus cette étape.
  */
-function useAccrochage(): Accrochage | null {
+// eslint-disable-next-line react-refresh/only-export-components -- exporté pour le test, pas pour être réutilisé ailleurs
+export function useAccrochage(): Accrochage | null {
   const [accrochage, setAccrochage] = useState<Accrochage | null>(null)
   useEffect(() => {
     let vivant = true
     fetch(`${import.meta.env.BASE_URL}data/accrochage.json`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json() as Promise<Accrochage>
+        return r.json().then(parseAccrochage)
       })
       .then(
         (charge) => vivant && setAccrochage(charge),
