@@ -54,7 +54,8 @@ export function PointerLockOverlay() {
   const handleClick = () => {
     const canvas = document.querySelector('canvas')
     if (canvas) {
-      canvas.requestPointerLock()
+      // Absent sur iPhone, refusé ailleurs au toucher : la visite doit démarrer quand même (#31).
+      Promise.resolve(canvas.requestPointerLock?.()).catch(() => {})
       setPaused(false)
     }
   }

@@ -11,6 +11,7 @@
  * Pur : ni three ni React.
  */
 import { exposedRooms } from './hang.ts'
+import { MUSEE } from './musee.ts'
 import { PASSABLE, flightEnds, surfaceAt } from './rules.ts'
 import type { Plan, Rect } from './types.ts'
 
@@ -118,3 +119,6 @@ export function avancer(stops: TourStop[], c: Curseur, w: { x: number; z: number
   while (point < pts.length && Math.hypot(pts[point][0] - w.x, pts[point][1] - w.z) < ATTEINT) point++
   return { stop: c.stop, point }
 }
+
+/** L'itinéraire du musée publié, calculé une fois : `PlanPlayer` le marche, le cartouche le lit. */
+export const VISITE = buildTourItinerary(MUSEE)

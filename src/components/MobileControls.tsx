@@ -4,7 +4,7 @@
  * gestes s'écrivent dans `toucher`, que `PlanPlayer` passe au même `step()`
  * que le clavier.
  */
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { toucher } from '../stores/gameStore'
 
 /** Pixels de débattement pour un joystick à fond. */
@@ -24,6 +24,8 @@ const cercle = (cote: 'left' | 'right'): React.CSSProperties => ({
 export function MobileControlsOverlay() {
   const joystick = useRef<{ id: number; x: number; y: number } | null>(null)
   const regards = useRef(new Map<number, { x: number; y: number }>())
+  // Démonté doigt posé (un clavier branché) : le joystick ne doit pas rester enfoncé.
+  useEffect(() => () => { toucher.forward = toucher.strafe = 0 }, [])
 
   const debut = (e: React.TouchEvent) => {
     for (const t of Array.from(e.changedTouches)) {

@@ -12,7 +12,7 @@ import { useKeyboardControls } from '@react-three/drei'
 import { PAS_FIXE, cadencer } from '../domain/locomotion'
 import { MUSEE } from '../plan/musee'
 import { surfaceAt } from '../plan/rules'
-import { avancer, buildTourItinerary, capVers, type Curseur } from '../plan/tour'
+import { VISITE as ITINERAIRE, avancer, capVers, type Curseur } from '../plan/tour'
 import { step, type Walker } from '../plan/walk'
 import { toucher, useGameStore } from '../stores/gameStore'
 
@@ -25,8 +25,6 @@ const HAUTEUR_OEIL = 1.62
 /** Radians par pixel de glissé : la même sensibilité que la souris. */
 const SENSIBILITE_TOUCHER = 0.002
 
-/** L'itinéraire de la visite guidée (#31), calculé une fois comme le départ. */
-const ITINERAIRE = buildTourItinerary(MUSEE)
 /** Secondes d'arrêt au centre de chaque salle de la visite. */
 const PAUSE_VISITE = 4
 /** Vitesse de convergence du regard vers le cap de la visite, en s⁻¹. */
@@ -81,6 +79,17 @@ export function PlanPlayer() {
     /* eslint-enable react-hooks/immutability */
   }, [camera])
 
+  // Chaque visite repart du point d'apparition, où commence son itinéraire :
+  // lancée depuis l'étage, sa première ligne droite buterait contre un mur.
+  useEffect(() => {
+    curseur.current = null
+    attente.current = 0
+    if (tourActive) {
+      walker.current = DEPART
+      useGameStore.setState({ tourEtape: 0 })
+    }
+  }, [tourActive])
+
   // En développement seulement : de quoi suivre le visiteur depuis un navigateur
   // piloté (cap, pause, surface sous le pied).
   useEffect(() => {
@@ -111,7 +120,6 @@ export function PlanPlayer() {
       yaw: camera.rotation.y,
       hate: t.hate,
     }
-    if (!tourActive) curseur.current = null
     let w = walker.current
     for (let i = 0; i < pas; i++) {
       const entree = tourActive ? guider(w, PAS_FIXE) : input

@@ -1,8 +1,10 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useIsMobile } from '../useIsMobile'
 
 describe('useIsMobile', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
   it('returns false when matchMedia does not match', () => {
     vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({
       matches: false,

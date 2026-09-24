@@ -3,11 +3,8 @@
  * La marche elle-même est conduite par `PlanPlayer` le long de
  * `buildTourItinerary`, par le même `step()` que le clavier.
  */
-import { MUSEE } from '../plan/musee'
-import { buildTourItinerary } from '../plan/tour'
+import { VISITE as STOPS } from '../plan/tour'
 import { useGameStore } from '../stores/gameStore'
-
-const STOPS = buildTourItinerary(MUSEE)
 
 export function GuidedTour() {
   const tourActive = useGameStore((s) => s.tourActive)

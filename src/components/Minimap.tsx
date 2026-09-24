@@ -35,7 +35,7 @@ export function Minimap() {
   return (
     <figure
       style={{
-        position: 'fixed', bottom: '1rem', right: '1rem', margin: 0, width: LARGEUR, zIndex: 200,
+        position: 'fixed', bottom: '1rem', right: '1rem', margin: 0, width: `min(${LARGEUR}px, 30vw)`, zIndex: 200,
         background: 'rgba(0,0,0,0.6)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, overflow: 'hidden',
         pointerEvents: 'none',
       }}

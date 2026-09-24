@@ -136,4 +136,24 @@ describe('PlanPlayer', () => {
     expect(useGameStore.getState().tourEtape).toBe(0)
     await act(async () => useGameStore.setState({ tourActive: false }))
   })
+
+  // Relevé en revue : l'itinéraire part du point d'apparition. Lancée ailleurs,
+  // sa première ligne droite buterait contre un mur — la visite y ramène d'abord.
+  it("repart du point d'apparition quand une visite commence ailleurs", async () => {
+    const { renderer, camera } = await monterPlanPlayer()
+    await act(async () => useGameStore.setState({ paused: false, tourActive: false }))
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', bubbles: true }))
+    })
+    await renderer.advanceFrames(60, 1 / 60)
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW', bubbles: true }))
+    })
+    expect(camera.position.z).toBeLessThan(36)
+
+    await act(async () => useGameStore.setState({ tourActive: true }))
+    await renderer.advanceFrames(1, 1 / 60)
+    expect(camera.position.z).toBeGreaterThan(36.9)
+    await act(async () => useGameStore.setState({ tourActive: false }))
+  })
 })

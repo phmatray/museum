@@ -40,8 +40,10 @@
  * qui prend le relais, en post-traitement, comme le veut le §9.4.
  */
 import { EffectComposer, N8AO, Bloom, ToneMapping, Vignette, SMAA } from '@react-three/postprocessing'
+import { useThree } from '@react-three/fiber'
+import { useEffect } from 'react'
 
-import { TONE_MAPPING } from './lighting'
+import { TONE_EXPOSURE, TONE_MAPPING } from './lighting'
 import { AO, BLOOM, VIGNETTE, toneMappingMode } from './postProcessingSettings'
 
 /**
@@ -50,6 +52,14 @@ import { AO, BLOOM, VIGNETTE, toneMappingMode } from './postProcessingSettings'
  * scène déjà rendue et sa profondeur.
  */
 export function PostProcessing() {
+  // L'exposition que `ToneMappingEffect` lit dans l'uniforme du renderer :
+  // personne d'autre ne la pose depuis le retrait de l'ancienne scène (#29).
+  const gl = useThree((s) => s.gl)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/immutability
+    gl.toneMappingExposure = TONE_EXPOSURE
+  }, [gl])
+
   return (
     <EffectComposer
       // Voir l'en-tête : le MSAA fausserait la profondeur lue par N8AO.
