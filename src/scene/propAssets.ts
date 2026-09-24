@@ -56,17 +56,17 @@ async function charger(base: string): Promise<PropAssets> {
   const lot = jardiniere && fusionnerEnUnLot(jardiniere)
   if (lot) pieces.set('jardiniere', [lot])
   for (const [id, noeuds] of PLANTES) {
-    // Les nœuds d'un sujet sous un porteur commun, transformation monde gardée :
-    // sinon le pot se sépare de son feuillage.
+    // Les nœuds d'un sujet sous un porteur commun, transformation monde gardée
+    // (`attach`, pas `add`) : sinon le pot se sépare de son feuillage.
     const porteur = new THREE.Group()
+    flore.scene.updateMatrixWorld(true)
     for (const nom of noeuds) {
       const noeud = flore.scene.getObjectByName(nom)
       if (noeud === undefined) {
         console.warn(`plants-lod.glb : nœud « ${nom} » introuvable`)
         continue
       }
-      noeud.updateWorldMatrix(true, false)
-      porteur.add(noeud)
+      porteur.attach(noeud)
     }
     const lots = lotsTextures(porteur)
     if (lots.length > 0) pieces.set(id, lots)
@@ -131,6 +131,28 @@ function lotsTextures(noeud: THREE.Object3D): PropPiece[] {
     }
     material.depthWrite = true
     lots.push({ geometry, material })
+  }
+  return centrer(lots)
+}
+
+/**
+ * Recentre un sujet sur l'axe de sa boîte englobante, à l'horizontale : Poly
+ * Haven livre des planches de spécimens décalés d'un mètre, et la translation
+ * du nœud ne dit pas où est le sujet. Sans ça, la plante tombait à côté de sa
+ * jardinière. La hauteur reste celle du fichier : c'est elle qui pose le pot.
+ */
+export function centrer<T extends { geometry: THREE.BufferGeometry }>(lots: T[]): T[] {
+  const boite = new THREE.Box3()
+  for (const { geometry } of lots) {
+    geometry.computeBoundingBox()
+    boite.union(geometry.boundingBox!)
+  }
+  if (boite.isEmpty()) return lots
+  const c = boite.getCenter(new THREE.Vector3())
+  for (const { geometry } of lots) {
+    geometry.translate(-c.x, 0, -c.z)
+    geometry.computeBoundingBox()
+    geometry.computeBoundingSphere()
   }
   return lots
 }

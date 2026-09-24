@@ -12,6 +12,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 import type { EspeceParc } from '../plan/park'
+import { centrer } from './propAssets'
 
 export interface ParkPiece {
   geometry: THREE.BufferGeometry
@@ -97,5 +98,7 @@ function lotsParMateriau(noeud: THREE.Object3D): ParkPiece[] {
     m.depthWrite = true
     lots.push({ geometry: fusion, material: m })
   }
-  return lots
+  // Le pivot d'un arbuste n'est pas son centre (`shrub_01_a` s'étend à 2,45 m
+  // d'un côté) : recentré, il tient dans le rayon que `plan/park.ts` lui réserve.
+  return centrer(lots)
 }
