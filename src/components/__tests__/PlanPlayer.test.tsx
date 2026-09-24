@@ -72,6 +72,24 @@ describe('PlanPlayer', () => {
     expect(camera.position.toArray()).toEqual(avant.toArray())
   })
 
+  // Le test précédent ne tient aucune touche : sans entrée, l'absence de
+  // mouvement ne prouve rien sur la garde elle-même (`step()` ne bougerait
+  // pas non plus si la garde disparaissait). Celui-ci tient la touche avant
+  // PENDANT la pause : seule la garde `if (paused) return` empêche alors le
+  // mouvement (relevé en revue de code, #21).
+  it('ignore la touche avant tenue tant que le jeu reste en pause', async () => {
+    const { renderer, camera } = await monterPlanPlayer()
+    const zInitial = camera.position.z
+
+    await act(async () => useGameStore.setState({ paused: true }))
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', bubbles: true }))
+    })
+    await renderer.advanceFrames(5, PAS_FIXE)
+
+    expect(camera.position.z).toBeCloseTo(zInitial)
+  })
+
   it('avance la caméra une fois le jeu repris et la touche avant tenue', async () => {
     const { renderer, camera } = await monterPlanPlayer()
     const zInitial = camera.position.z
