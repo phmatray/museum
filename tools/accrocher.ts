@@ -15,7 +15,7 @@ import { fileURLToPath } from 'node:url'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 
-// Même crochet que `derive-museum.ts` : le domaine importe sans extension, à la
+// Le domaine importe sans extension, à la
 // manière de Vite, et Node exige l'extension. Imports dynamiques APRÈS le crochet.
 registerHooks({
   resolve(specifier, context, nextResolve) {
@@ -29,15 +29,22 @@ registerHooks({
 
 const { MUSEE } = await import('../src/plan/musee.ts')
 const { assignRooms, hangPlan } = await import('../src/plan/hang.ts')
-const { parseCatalogue } = await import('../src/schema/index.ts')
+const { filtrerExclus } = await import('../src/plan/curation-filter.ts')
+const { parseCatalogue, parseCuration, EMPTY_CURATION } = await import('../src/schema/index.ts')
+
+const CURATION_PATH = resolve(ROOT, 'curation.json')
 
 async function main(): Promise<void> {
   const catalogue = parseCatalogue(JSON.parse(await readFile(resolve(ROOT, 'public/data/catalogue.json'), 'utf8')))
-  const accrochage = hangPlan(MUSEE, assignRooms(MUSEE, catalogue.artworks), catalogue.generatedAt)
+  // `curation.json` est facultatif — même lecture optionnelle que `tools/build-media.ts`.
+  const curation = existsSync(CURATION_PATH) ? parseCuration(JSON.parse(await readFile(CURATION_PATH, 'utf8'))) : EMPTY_CURATION
+  const artworks = filtrerExclus(catalogue.artworks, curation)
+  const accrochage = hangPlan(MUSEE, assignRooms(MUSEE, artworks), catalogue.generatedAt)
   const out = resolve(ROOT, 'public/data/accrochage.json')
   await writeFile(out, `${JSON.stringify(accrochage, null, 2)}\n`)
   const toiles = accrochage.rooms.reduce((n, r) => n + r.placements.length, 0)
-  console.log(`accrochage : ${toiles} toiles dans ${accrochage.rooms.length} salles → ${out}`)
+  const exclus = catalogue.artworks.length - artworks.length
+  console.log(`accrochage : ${toiles} toiles dans ${accrochage.rooms.length} salles (${exclus} exclus par la curation) → ${out}`)
   for (const r of accrochage.rooms) console.log(`  ${r.id.padEnd(8)} ${String(r.placements.length).padStart(3)}  ${r.name}`)
 }
 

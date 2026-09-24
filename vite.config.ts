@@ -2,7 +2,6 @@
 // connaisse la clé `test`, que vite seul rejette au typage.
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import { museumDevWrite } from './tools/vite-plugin-museum-write'
 
 /**
  * Local Clock-compatible replacement for the THREE.Clock deprecation in r183.
@@ -51,59 +50,6 @@ const CLOCK_REPLACEMENT = `(() => {
 })()`
 
 function transformSource(id: string, code: string): string | null {
-  // @dimforge/rapier3d-compat: its init() wrapper calls the wasm initializer
-  // with a positional Uint8Array, which the same file deprecates. Rewrite to
-  // pass `{ module_or_path: ... }` so the deprecation branch is not taken.
-  //
-  // The file embeds a ~2 MB base64 wasm string, so regex backtracking is not
-  // viable. Walk positionally: find the `.toByteArray("AGFzbQ` marker, scan
-  // back to the enclosing `xA(` (or whatever the minified name is) open
-  // paren, then forward to the matching close paren, and wrap with
-  // `{ module_or_path: ... }`.
-  if (id.includes('@dimforge/rapier3d-compat') && id.endsWith('rapier.mjs')) {
-    const marker = '.toByteArray("AGFzbQ'
-    const markerIdx = code.indexOf(marker)
-    if (markerIdx >= 0) {
-      // Walk back from `.toByteArray(...` to the open paren of the caller.
-      // Shape in the minified source: `xA(lg.toByteArray("...")`.
-      let openIdx = markerIdx
-      while (openIdx > 0 && code[openIdx] !== '(') openIdx--
-      // openIdx is now at the `(` after the outer identifier (e.g. `xA(`).
-      // Walk forward from that `(` to its matching `)`.
-      let depth = 0
-      let closeIdx = openIdx
-      let inString = false
-      for (; closeIdx < code.length; closeIdx++) {
-        const ch = code[closeIdx]
-        if (inString) {
-          if (ch === '\\') {
-            closeIdx++
-            continue
-          }
-          if (ch === '"') inString = false
-          continue
-        }
-        if (ch === '"') inString = true
-        else if (ch === '(') depth++
-        else if (ch === ')') {
-          depth--
-          if (depth === 0) break
-        }
-      }
-      if (closeIdx < code.length) {
-        // Wrap the inner expression with `{module_or_path: ...}`.
-        const inner = code.slice(openIdx + 1, closeIdx)
-        return (
-          code.slice(0, openIdx + 1) +
-          '{module_or_path:' +
-          inner +
-          '}' +
-          code.slice(closeIdx)
-        )
-      }
-    }
-  }
-
   // @react-three/fiber: replace `new THREE.Clock()` with a local replacement
   // that mimics Clock's API without triggering three's deprecation warning.
   if (
@@ -118,8 +64,8 @@ function transformSource(id: string, code: string): string | null {
 }
 
 /**
- * Rolldown plugin applied during Vite's dep pre-bundling step. Fixes two
- * upstream deprecation warnings without touching node_modules on disk.
+ * Rolldown plugin applied during Vite's dep pre-bundling step. Fixes an
+ * upstream deprecation warning without touching node_modules on disk.
  */
 function upstreamDeprecationFixesRolldown() {
   return {
@@ -138,10 +84,7 @@ export default defineConfig({
   // Sur GitHub Pages le site vit sous /<nom-du-depot>/, pas à la racine du
   // domaine. La CI passe BASE_PATH ; en local on reste à la racine.
   base: process.env.BASE_PATH ?? '/',
-  // `museumDevWrite` porte `apply: 'serve'` : il n'existe pas dans un build.
-  // C'est ce qui rend le site déployé structurellement incapable d'être écrit —
-  // pas une discipline, une impossibilité (spec §10).
-  plugins: [react(), museumDevWrite()],
+  plugins: [react()],
   optimizeDeps: {
     rolldownOptions: {
       plugins: [upstreamDeprecationFixesRolldown()],

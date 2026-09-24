@@ -33,11 +33,11 @@ jobs:
       - run: npm ci
 
       # Les tests portent sur le code et les données versionnées (catalogue,
-      # musée, kit de props), jamais sur le catalogue régénéré la nuit même :
+      # accrochage), jamais sur le catalogue régénéré la nuit même :
       # sinon un simple changement de topics/description d'un dépôt fait
       # bouger le clustering, casse des tests écrits contre les données
-      # versionnées, et bloque tout le déploiement (#13). Une dérivation qui
-      # échoue la nuit échoue toujours à son propre pas (`npm run derive`),
+      # versionnées, et bloque tout le déploiement (#13). Un accrochage qui
+      # échoue la nuit échoue toujours à son propre pas (`npm run accrocher`),
       # plus bas.
       - name: Vérifier
         run: |
@@ -58,11 +58,6 @@ jobs:
       # lorsque le manifeste de `fetch-assets.ts` change. La clé est le hachage
       # de l'outil lui-même : elle sur-invalide (un commentaire suffit) mais ne
       # sous-invalide jamais, ce qui est le bon sens de l'erreur pour un cache.
-      #
-      # Les LOD de végétation et le kit de props ne sont PAS ici : ils exigent
-      # Blender et sont versionnés (voir .gitignore). Sans eux, le musée publié
-      # serait un bâtiment nu — et la suite de tests échouerait avant même le
-      # build, parce que `PROP_METRICS` mesure le kit réel.
       - name: Restaurer le cache des assets CC0
         uses: actions/cache@v4
         with:
@@ -110,8 +105,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run media
 
-      - name: Dériver le musée
-        run: npm run derive
+      # Le bâtiment est fixe (`src/plan/musee.ts`) : seuls les thèmes des salles
+      # et les toiles sur leurs murs suivent le catalogue de la nuit.
+      - name: Accrocher la collection
+        run: npm run accrocher
 
       - name: Construire le site
         env:

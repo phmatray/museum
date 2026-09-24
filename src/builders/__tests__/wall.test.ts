@@ -9,16 +9,13 @@
  *    sur toute l'épaisseur, faces orientées vers la salle ;
  *  - le relief du §9.4 : embrasure à quatre faces, plinthe, chanfrein — c'est
  *    ce qui distingue un mur d'un carton découpé, et rien de tout cela ne se
- *    voit sur une aire ou sur une bounding box ;
- *  - le musée réel de `public/data/museum.json`, construit mur par mur.
+ *    voit sur une aire ou sur une bounding box.
  *
  * Aucun canvas : tout se joue sur les tampons de `BufferGeometry`.
  */
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
-import type { Museum, Opening, Wall } from '../../domain/types'
+import type { Opening, Wall } from '../../domain/types'
 import type { BuiltWall } from '../wall'
 import { buildGlazing, creerVitrage } from '../glazing'
 import {
@@ -472,7 +469,7 @@ describe('orientation', () => {
   })
 
   it('normale opposée : le mur bascule de l’autre côté, sans miroir', () => {
-    // Cas défensif : `layout.ts` produit toujours la perpendiculaire canonique,
+    // Cas défensif : le générateur produit toujours la perpendiculaire canonique,
     // mais un mur écrit à la main peut porter l'autre. Le repère doit rester
     // DIRECT, seule l'extrusion change de côté.
     const w = mur({ normal: { x: 0, z: 1 }, openings: [porte(4, 6)] })
@@ -690,106 +687,6 @@ describe('cas dégénérés', () => {
   it('ouverture d’épaisseur nulle : ignorée', () => {
     const w = mur({ openings: [porte(5, 5)] })
     expect(aireFaceInterieure(w, buildWall(w))).toBeCloseTo(40, 3)
-  })
-})
-
-// ── Le musée réel ────────────────────────────────────────────────────────
-
-describe('musée réel (public/data/museum.json)', () => {
-  // `import.meta.url` n'est pas un chemin de fichier sous jsdom : on part de la
-  // racine du projet, que vitest garantit comme répertoire courant.
-  const chemin = resolve(process.cwd(), 'public/data/museum.json')
-  const musee = JSON.parse(readFileSync(chemin, 'utf8')) as Museum
-  const murs: Wall[] = musee.floors.flatMap((f) => f.rooms.flatMap((r) => r.walls))
-
-  // Les compteurs restent des minorants : le musée est régénéré à chaque
-  // `npm run derive`, et un test qui figerait « 40 murs » deviendrait rouge au
-  // premier dépôt ajouté sans que rien ne soit cassé.
-  it('lit bien un musée à plusieurs niveaux, avec des murs percés', () => {
-    expect(musee.floors.length).toBeGreaterThanOrEqual(2)
-    expect(murs.length).toBeGreaterThanOrEqual(16)
-    expect(murs.filter((w) => w.openings.length > 0).length).toBeGreaterThanOrEqual(4)
-    expect(murs.some((w) => w.openings.length >= 3)).toBe(true)
-  })
-
-  it('construit tous les murs sans NaN ni géométrie vide', () => {
-    for (const w of murs) {
-      const built = buildWall(w)
-      const { vertices, indices } = built.collider
-
-      expect(vertices.length, w.id).toBeGreaterThan(0)
-      expect(indices.length, w.id).toBeGreaterThan(0)
-      expect(indices.length % 3, w.id).toBe(0)
-      for (const v of vertices) expect(Number.isFinite(v)).toBe(true)
-
-      const nbSommets = vertices.length / 3
-      for (const i of indices) expect(i).toBeLessThan(nbSommets)
-      expect(built.geometry.getIndex(), w.id).not.toBeNull()
-    }
-  })
-
-  it('conserve l’aire percée de chaque mur', () => {
-    for (const w of murs) {
-      const attendu = wallLength(w) * w.height - airePercee(w)
-      expect(aireFaceInterieure(w, buildWall(w)), w.id).toBeCloseTo(attendu, 2)
-    }
-  })
-
-  it('respecte les cotes du plan : longueur × hauteur × 0,32', () => {
-    for (const w of murs) {
-      const built = buildWall(w)
-      built.geometry.computeBoundingBox()
-      const taille = built.geometry.boundingBox!.getSize(new THREE.Vector3())
-      // Tous les murs du musée sont alignés sur les axes : la boîte du monde
-      // porte donc directement les trois cotes, à l'ordre près. Le chanfrein
-      // dilate le cœur de 3 mm dans le plan du mur, la plinthe saille dans
-      // l'épaisseur : les deux sont attendus, tout le reste serait un dérapage.
-      const cotes = [taille.x, taille.y, taille.z].sort((a, b) => a - b)
-      expect(cotes[0], w.id).toBeCloseTo(WALL_THICKNESS + PLINTH_PROJECTION, 3)
-      expect(cotes[1], w.id).toBeCloseTo(Math.min(w.height, wallLength(w)) + 2 * CHAMFER, 3)
-      expect(cotes[2], w.id).toBeCloseTo(Math.max(w.height, wallLength(w)) + 2 * CHAMFER, 3)
-    }
-  })
-
-  it('le vide de chaque ouverture est réellement vide', () => {
-    // Vrai des portes comme des fenêtres : dans les deux cas le mur ne doit
-    // laisser aucun triangle DANS l'ouverture. La différence est la hauteur à
-    // laquelle ce vide commence, et c'est `boiteOuverture` qui la porte.
-    let controlees = 0
-    for (const w of murs) {
-      const built = buildWall(w)
-      for (const o of w.openings) {
-        expect(trianglesDansLaBoite(w, built, boiteOuverture(o, w)), `${w.id} ${o.kind}`).toBe(0)
-        controlees++
-      }
-    }
-    expect(controlees).toBeGreaterThanOrEqual(4)
-  })
-
-  it('on FRANCHIT une porte et on ne franchit pas une fenêtre', () => {
-    // La distinction qui compte pour le visiteur : sous une allège il y a du
-    // mur, et le collider le porte. Sans ça on sortirait du musée par un jour.
-    let fenetres = 0
-    for (const w of murs) {
-      const built = buildWall(w)
-      for (const o of w.openings.filter((x) => (x.sill ?? 0) > 0.05)) {
-        fenetres++
-        const sousAllege = new THREE.Box3(
-          new THREE.Vector3(o.start + 0.1, 0.05, -1),
-          new THREE.Vector3(o.end - 0.1, (o.sill ?? 0) - 0.05, 1),
-        )
-        expect(trianglesDansLaBoite(w, built, sousAllege), `${w.id} : allège percée`).toBeGreaterThan(0)
-      }
-    }
-    expect(fenetres, 'le musée réel ne porte aucune fenêtre à contrôler').toBeGreaterThan(0)
-  })
-
-  it('n’émet aucun triangle dégénéré', () => {
-    for (const w of murs) {
-      for (const t of triangles(buildWall(w))) {
-        expect(t.getArea(), w.id).toBeGreaterThan(1e-7)
-      }
-    }
   })
 })
 

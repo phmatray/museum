@@ -17,8 +17,7 @@
  * impression, c'est l'absence d'occlusion ambiante — le terme d'éclairage qui
  * assombrit ce que la géométrie voisine empêche le ciel d'atteindre.
  *
- * Pas de baking possible ici : le bâtiment est génératif, ses UV changent à
- * chaque dérivation, et `Concrete034` d'ambientCG ne livre aucune carte d'AO
+ * Pas de baking ici : `Concrete034` d'ambientCG ne livre aucune carte d'AO
  * (§9.4). L'occlusion doit donc être calculée à l'image, en espace écran.
  */
 import * as THREE from 'three'

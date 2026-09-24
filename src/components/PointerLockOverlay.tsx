@@ -46,9 +46,7 @@ export function PointerLockCamera() {
   return null
 }
 
-// `tour` à false là où aucune visite guidée n'est montée (le bâtiment du plan) :
-// le bouton y figerait le regard sans offrir de sortie.
-export function PointerLockOverlay({ tour = true }: { tour?: boolean }) {
+export function PointerLockOverlay() {
   const paused = useGameStore((s) => s.paused)
   const setPaused = useGameStore((s) => s.setPaused)
   const setTourActive = useGameStore((s) => s.setTourActive)
@@ -56,7 +54,8 @@ export function PointerLockOverlay({ tour = true }: { tour?: boolean }) {
   const handleClick = () => {
     const canvas = document.querySelector('canvas')
     if (canvas) {
-      canvas.requestPointerLock()
+      // Absent sur iPhone, refusé ailleurs au toucher : la visite doit démarrer quand même (#31).
+      Promise.resolve(canvas.requestPointerLock?.()).catch(() => {})
       setPaused(false)
     }
   }
@@ -71,7 +70,7 @@ export function PointerLockOverlay({ tour = true }: { tour?: boolean }) {
 
   return (
     <div
-      // Repère stable pour `tools/capture.ts`, qui doit escamoter cet écran
+      // Repère stable pour un navigateur piloté, qui doit escamoter cet écran
       // avant de mesurer la luminance de la scène — il couvre tout le cadre.
       // Le retirer par un clic est impossible en headless : le clic demande le
       // verrouillage du pointeur, que Chrome refuse hors interaction réelle.
@@ -102,7 +101,7 @@ export function PointerLockOverlay({ tour = true }: { tour?: boolean }) {
       <p style={{ fontSize: '0.9rem', opacity: 0.6 }}>
         WASD to move | Mouse to look | Escape to pause
       </p>
-      {tour && <button
+      <button
         onClick={handleStartTour}
         style={{
           marginTop: '1rem',
@@ -116,7 +115,7 @@ export function PointerLockOverlay({ tour = true }: { tour?: boolean }) {
         }}
       >
         Start Guided Tour
-      </button>}
+      </button>
     </div>
   )
 }

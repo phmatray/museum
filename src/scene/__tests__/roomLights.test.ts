@@ -22,8 +22,6 @@
  *     est plus sombre que le dernier étage ;
  *  5. LE DÉTERMINISME : deux appels identiques rendent le même ordre.
  */
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import type { Floor, Museum, Rect, Room, Vec3 } from '../../domain/types'
@@ -358,49 +356,5 @@ describe('reaffectationNecessaire', () => {
     expect(
       reaffectationNecessaire(etat(point(0, 0, 0)), etat(point(0, 0, 3))),
     ).toBe(true)
-  })
-})
-
-// ── Le musée réel ────────────────────────────────────────────────────────
-
-describe('musée réel', () => {
-  const museum: Museum = JSON.parse(
-    readFileSync(resolve(__dirname, '../../../public/data/museum.json'), 'utf-8'),
-  )
-
-  it('tient le plafond de douze lumières', () => {
-    expect(creneauxDeLumieres(museum).total).toBeLessThanOrEqual(BUDGET_LUMIERES)
-  })
-
-  it('éclaire une salle par créneau, sans doublon, où que soit le visiteur', () => {
-    const creneaux = creneauxDeLumieres(museum)
-    const toutes = lumieresDeSalles(museum)
-    for (const floor of museum.floors) {
-      for (const room of floor.rooms) {
-        const oeil = point(
-          room.footprint.x + room.footprint.width / 2,
-          floor.elevation + 1.7,
-          room.footprint.z + room.footprint.depth / 2,
-        )
-        const retenues = affecterCreneaux(
-          Array.from({ length: creneaux.salles }, () => null),
-          classerLumieresDeSalles(toutes, oeil, room.id, floor.level).slice(
-            0,
-            creneaux.salles,
-          ),
-        )
-        const ids = retenues.map((r) => r?.roomId).filter((id) => id !== undefined)
-        expect(ids).toContain(room.id)
-        expect(new Set(ids).size).toBe(ids.length)
-      }
-    }
-  })
-
-  it('rend une position et une intensité finies pour chaque salle', () => {
-    for (const lumiere of lumieresDeSalles(museum)) {
-      expect(Number.isFinite(lumiere.intensity)).toBe(true)
-      expect(lumiere.intensity).toBeGreaterThan(0)
-      for (const c of lumiere.position) expect(Number.isFinite(c)).toBe(true)
-    }
   })
 })

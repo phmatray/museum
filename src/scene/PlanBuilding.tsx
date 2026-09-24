@@ -1,5 +1,5 @@
 /**
- * Le bâtiment du PLAN (`?batiment=plan`), tous ses niveaux extrudés.
+ * Le bâtiment du PLAN, tous ses niveaux extrudés.
  *
  * Tout est décidé dans `plan/mesh.ts` : ici on ne fait qu'instancier des boîtes.
  * Un `InstancedMesh` par sorte de boîte et par niveau, soit une poignée d'appels
@@ -78,6 +78,10 @@ function Boites({ boites, material }: { boites: Box[]; material: THREE.Material 
   }, [boites])
 
   // `key` : le nombre d'instances est fixé à la construction, il faut remonter
-  // le maillage s'il change.
-  return <instancedMesh key={boites.length} ref={ref} args={[CUBE, material, boites.length]} />
+  // le maillage s'il change. Le matériau passe en PROP, jamais dans `args` :
+  // `useMatiere` en rend un nouveau quand les cartes PBR arrivent, et un `args`
+  // qui change fait reconstruire l'objet par R3F — un maillage neuf aux matrices
+  // identité, que l'effet ci-dessus ne repeuple pas. Tous les murs tombaient
+  // alors en un cube à l'origine (#35).
+  return <instancedMesh key={boites.length} ref={ref} args={[CUBE, undefined, boites.length]} material={material} />
 }

@@ -8,7 +8,7 @@
  * l'ancien escalier inaccessible. Le plan SVG et la 3D les lisent ici.
  */
 import { flightEnds } from './rules.ts'
-import type { Plan, Rect } from './types.ts'
+import type { Flight, Plan, Rect } from './types.ts'
 
 export interface Segment {
   x1: number
@@ -17,10 +17,27 @@ export interface Segment {
   z2: number
 }
 
+/**
+ * Un segment de garde-corps : `guardrails()` connaît déjà, au moment de le
+ * construire, la surface qu'il borde et sa cote (#27) — il les rend avec le
+ * segment plutôt que de laisser l'appelant les redeviner par le milieu.
+ */
+export interface GuardrailSegment extends Segment {
+  /** Cote de la surface que ce segment borde (le palier, le balcon, la volée). */
+  elevation: number
+  /** `'flight'` : suit les marches d'une volée, en gradins. `'flat'` : rampe plane (palier, balcon). */
+  kind: 'flight' | 'flat'
+}
+
 export type Interval = [number, number]
 export type Edge = { axis: 'x' | 'z'; at: number; span: Interval }
 
 const EPS = 1e-6
+
+/** Une volée court-elle nord-sud (vs est-ouest) ? #28 : un seul point de vérité. */
+export function isNordSud(f: Flight): boolean {
+  return f.direction === 'north' || f.direction === 'south'
+}
 
 export function subtract(base: Interval, cuts: Interval[]): Interval[] {
   let out: Interval[] = [base]
@@ -46,25 +63,25 @@ export const sameLine = (a: Edge, b: Edge) => a.axis === b.axis && Math.abs(a.at
  * Garde-corps des surfaces en hauteur dont la cote de départ tombe dans le
  * niveau `levelId` (du plancher inclus au plancher suivant exclu).
  */
-export function guardrails(plan: Plan, levelId: number): Segment[] {
+export function guardrails(plan: Plan, levelId: number): GuardrailSegment[] {
   const level = plan.levels.find((l) => l.id === levelId)
   if (!level) return []
   const inLevel = (e: number) => e >= level.elevation - EPS && e < level.elevation + plan.storey - EPS
 
-  const hautes: { rect: Rect; elevation: number; ends: Edge[] }[] = []
+  const hautes: { rect: Rect; elevation: number; ends: Edge[]; kind: GuardrailSegment['kind'] }[] = []
   for (const l of plan.levels)
-    for (const r of l.rooms) if (r.kind === 'balcony') hautes.push({ rect: r, elevation: l.elevation, ends: [] })
-  for (const l of plan.landings) hautes.push({ rect: l, elevation: l.elevation, ends: [] })
+    for (const r of l.rooms) if (r.kind === 'balcony') hautes.push({ rect: r, elevation: l.elevation, ends: [], kind: 'flat' })
+  for (const l of plan.landings) hautes.push({ rect: l, elevation: l.elevation, ends: [], kind: 'flat' })
   for (const f of plan.flights) {
     const [n, s, w, e] = edges(f)
-    hautes.push({ rect: f, elevation: f.bottom, ends: f.direction === 'north' || f.direction === 'south' ? [n, s] : [w, e] })
+    hautes.push({ rect: f, elevation: f.bottom, ends: isNordSud(f) ? [n, s] : [w, e], kind: 'flight' })
   }
 
   // Les murs : les arêtes des salles qui ne sont pas des balcons, à tout niveau.
   // ponytail: un mur est supposé continu sur toute la hauteur, vrai pour ce bâtiment.
   const murs = plan.levels.flatMap((l) => l.rooms.filter((r) => r.kind !== 'balcony').flatMap(edges))
 
-  const out: Segment[] = []
+  const out: GuardrailSegment[] = []
   for (const h of hautes) {
     if (!inLevel(h.elevation)) continue
     for (const e of edges(h.rect)) {
@@ -87,7 +104,9 @@ export function guardrails(plan: Plan, levelId: number): Segment[] {
         if (onLine) cuts.push(e.axis === 'x' ? [f.x, f.x + f.width] : [f.z, f.z + f.depth])
       }
       for (const [s, t] of subtract(e.span, cuts))
-        out.push(e.axis === 'x' ? { x1: s, z1: e.at, x2: t, z2: e.at } : { x1: e.at, z1: s, x2: e.at, z2: t })
+        out.push(e.axis === 'x'
+          ? { x1: s, z1: e.at, x2: t, z2: e.at, elevation: h.elevation, kind: h.kind }
+          : { x1: e.at, z1: s, x2: e.at, z2: t, elevation: h.elevation, kind: h.kind })
     }
   }
   return out

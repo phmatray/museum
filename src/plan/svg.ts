@@ -9,7 +9,7 @@
  * Pur : (plan, niveau) → chaîne. Le même rendu sert au dossier `docs/plan` et
  * pourra servir à la minimap.
  */
-import { guardrails } from './geometry.ts'
+import { guardrails, isNordSud } from './geometry.ts'
 import { capacity } from './rules.ts'
 import type { Plan, Rect } from './types.ts'
 
@@ -18,7 +18,8 @@ const C = {
   stair: '#EEF0F2', closed: '#C9CDD1', ink: '#1B1E21', ink2: '#4A5057', ink3: '#7C838A', red: '#CF3326',
 }
 const FILL = { gallery: C.gallery, honneur: C.honneur, hall: C.hall, balcony: C.hall }
-const S = 14
+/** Pixels par mètre du plan dessiné : la minimap y pose le visiteur au même repère. */
+export const S = 14
 const PAD = 70
 // Demi-épaisseurs de mur, partagées avec l'extrusion 3D (mesh.ts).
 export const INT = 0.15
@@ -30,11 +31,14 @@ const rect = (r: Rect, attrs: string, grow = 0) =>
 const text = (x: number, y: number, s: string, attrs: string) => `<text x="${x}" y="${y}" ${attrs}>${s.replace(/&/g, '&amp;')}</text>`
 const cote = (v: number) => v.toFixed(2).replace('.', ',')
 
+/** Le cadre `[x, y, largeur, hauteur]` (viewBox) de tout niveau du plan. */
+export const cadre = (plan: Plan): [number, number, number, number] =>
+  [-PAD, -PAD, n(plan.width) + 2 * PAD, n(plan.depth) + 2 * PAD + 40]
+
 export function renderLevel(plan: Plan, levelId: number): string {
   const level = plan.levels.find((l) => l.id === levelId)
   if (!level) throw new Error(`niveau ${levelId} inconnu`)
-  const W = n(plan.width) + 2 * PAD
-  const H = n(plan.depth) + 2 * PAD + 40
+  const [, , W, H] = cadre(plan)
   const o: string[] = []
   const below = plan.levels.find((l) => l.elevation < level.elevation - 1e-6 && l.elevation >= level.elevation - plan.storey - 1e-6)
 
@@ -71,7 +75,7 @@ export function renderLevel(plan: Plan, levelId: number): string {
     const dessus = f.bottom > level.elevation + 1e-6 && !inLevel(f.bottom)
     const partiel = f.bottom > level.elevation + 1e-6
     o.push(rect(f, `fill="${C.stair}" stroke="${C.ink2}" stroke-width="1" ${partiel && !dessus ? 'stroke-dasharray="4 3"' : ''}`))
-    const ns = f.direction === 'north' || f.direction === 'south'
+    const ns = isNordSud(f)
     const run = ns ? f.depth : f.width
     for (let i = 1; i < f.risers - 1; i++) {
       const t = (i * run) / (f.risers - 1)

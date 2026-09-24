@@ -1,100 +1,81 @@
-import { useRef, useCallback } from 'react'
+/**
+ * Les contrôles tactiles (#31) : la moitié gauche de l'écran est un joystick
+ * de marche, la droite un glissé de regard. Rien n'est décidé ici — les deux
+ * gestes s'écrivent dans `toucher`, que `PlanPlayer` passe au même `step()`
+ * que le clavier.
+ */
+import { useEffect, useRef } from 'react'
+import { toucher } from '../stores/gameStore'
 
-export function MobileControlsOverlay({
-  onMove,
-  onLook,
-}: {
-  onMove: (dx: number, dy: number) => void
-  onLook: (dx: number, dy: number) => void
-}) {
-  const joystickOrigin = useRef({ x: 0, y: 0 })
-  const joystickTouchId = useRef<number | null>(null)
+/** Pixels de débattement pour un joystick à fond. */
+const RAYON_JOYSTICK = 50
 
-  const handleTouchStart = useCallback(
-    (e: React.TouchEvent) => {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const touch = e.changedTouches[i]
-        const isLeftHalf = touch.clientX < window.innerWidth / 2
+const cercle = (cote: 'left' | 'right'): React.CSSProperties => ({
+  position: 'absolute',
+  [cote]: '10%',
+  bottom: '15%',
+  width: 120,
+  height: 120,
+  borderRadius: '50%',
+  border: '2px solid rgba(255,255,255,0.3)',
+  pointerEvents: 'none',
+})
 
-        if (isLeftHalf && joystickTouchId.current === null) {
-          joystickTouchId.current = touch.identifier
-          joystickOrigin.current = { x: touch.clientX, y: touch.clientY }
-        }
+export function MobileControlsOverlay() {
+  const joystick = useRef<{ id: number; x: number; y: number } | null>(null)
+  const regards = useRef(new Map<number, { x: number; y: number }>())
+  // Démonté doigt posé (un clavier branché) : le joystick ne doit pas rester enfoncé.
+  useEffect(() => () => { toucher.forward = toucher.strafe = 0 }, [])
+
+  const debut = (e: React.TouchEvent) => {
+    for (const t of Array.from(e.changedTouches)) {
+      if (t.clientX < window.innerWidth / 2 && !joystick.current) {
+        joystick.current = { id: t.identifier, x: t.clientX, y: t.clientY }
+      } else {
+        regards.current.set(t.identifier, { x: t.clientX, y: t.clientY })
       }
-    },
-    []
-  )
+    }
+  }
 
-  const handleTouchMove = useCallback(
-    (e: React.TouchEvent) => {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const touch = e.changedTouches[i]
-
-        if (touch.identifier === joystickTouchId.current) {
-          const dx = (touch.clientX - joystickOrigin.current.x) / 50
-          const dy = (touch.clientY - joystickOrigin.current.y) / 50
-          const len = Math.sqrt(dx * dx + dy * dy)
-          const clamped = len > 1 ? { dx: dx / len, dy: dy / len } : { dx, dy }
-          onMove(clamped.dx, clamped.dy)
-        } else {
-          onLook(touch.clientX, touch.clientY)
-        }
+  const glisse = (e: React.TouchEvent) => {
+    for (const t of Array.from(e.changedTouches)) {
+      const j = joystick.current
+      if (j && t.identifier === j.id) {
+        const dx = (t.clientX - j.x) / RAYON_JOYSTICK
+        const dy = (t.clientY - j.y) / RAYON_JOYSTICK
+        const l = Math.max(1, Math.hypot(dx, dy))
+        toucher.strafe = dx / l
+        toucher.forward = -dy / l // doigt vers le haut = avancer
+        continue
       }
-    },
-    [onMove, onLook]
-  )
+      const avant = regards.current.get(t.identifier)
+      if (!avant) continue
+      toucher.lookX += t.clientX - avant.x
+      toucher.lookY += t.clientY - avant.y
+      regards.current.set(t.identifier, { x: t.clientX, y: t.clientY })
+    }
+  }
 
-  const handleTouchEnd = useCallback(
-    (e: React.TouchEvent) => {
-      for (let i = 0; i < e.changedTouches.length; i++) {
-        const touch = e.changedTouches[i]
-        if (touch.identifier === joystickTouchId.current) {
-          joystickTouchId.current = null
-          onMove(0, 0)
-        }
+  const fin = (e: React.TouchEvent) => {
+    for (const t of Array.from(e.changedTouches)) {
+      if (t.identifier === joystick.current?.id) {
+        joystick.current = null
+        toucher.forward = toucher.strafe = 0
       }
-    },
-    [onMove]
-  )
+      regards.current.delete(t.identifier)
+    }
+  }
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 100,
-        touchAction: 'none',
-      }}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
+      style={{ position: 'fixed', inset: 0, zIndex: 100, touchAction: 'none' }}
+      onTouchStart={debut}
+      onTouchMove={glisse}
+      onTouchEnd={fin}
+      onTouchCancel={fin}
     >
-      {/* Left joystick area indicator */}
-      <div
-        style={{
-          position: 'absolute',
-          left: '10%',
-          bottom: '15%',
-          width: 120,
-          height: 120,
-          borderRadius: '50%',
-          border: '2px solid rgba(255,255,255,0.3)',
-          pointerEvents: 'none',
-        }}
-      />
-      {/* Right look area indicator */}
-      <div
-        style={{
-          position: 'absolute',
-          right: '10%',
-          bottom: '15%',
-          width: 120,
-          height: 120,
-          borderRadius: '50%',
-          border: '2px solid rgba(255,255,255,0.3)',
-          pointerEvents: 'none',
-        }}
-      />
+      <div style={cercle('left')} />
+      <div style={cercle('right')} />
     </div>
   )
 }

@@ -15,7 +15,7 @@
  * `guardrails` comme ceux du palier et des balcons.
  */
 import { VITESSE_HATE, VITESSE_MARCHE } from '../domain/locomotion.ts'
-import { edges, guardrails, sameLine, subtract, type Edge, type Interval, type Segment } from './geometry.ts'
+import { edges, guardrails, isNordSud, sameLine, subtract, type Edge, type Interval, type Segment } from './geometry.ts'
 import { PASSABLE, flightElevation, flightEnds, surfaceAt } from './rules.ts'
 import type { Flight, Plan, Rect } from './types.ts'
 
@@ -40,7 +40,7 @@ function bout(f: Flight, cote: number): { axis: 'x' | 'z'; at: number; span: Int
   if (!bas && Math.abs(f.top - cote) > EPS) return null
   const ends = flightEnds(f)
   const [x, z] = bas ? ends.bottom : ends.top
-  return f.direction === 'north' || f.direction === 'south'
+  return isNordSud(f)
     ? { axis: 'x', at: z, span: [f.x, f.x + f.width] }
     : { axis: 'z', at: x, span: [f.z, f.z + f.depth] }
 }
