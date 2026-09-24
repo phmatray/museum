@@ -12,6 +12,7 @@ import { flightElevation } from '../rules.ts'
 import { meshLevel, type Box } from '../mesh.ts'
 import { EXT } from '../svg.ts'
 import { MUSEE } from '../musee.ts'
+import type { Plan } from '../types.ts'
 
 const boxes = meshLevel(MUSEE, 0)
 const niveau = MUSEE.levels.find((l) => l.id === 0)!
@@ -151,5 +152,44 @@ describe("meshLevel à l'étage noble", () => {
     const [verre] = etage.filter((b) => b.kind === 'glass')
     expect(verre).toMatchObject({ x: 24, w: 6 })
     expect(etage.filter((b) => b.kind === 'wall' && Math.abs(b.z - 12) < 0.5 && b.x - b.w / 2 < 27 && b.x + b.w / 2 > 21)).toEqual([])
+  })
+})
+
+// #27 : quand le rectangle d'un balcon coïncide avec celui d'une volée de même
+// sens, l'ancienne devinette par le milieu (`volees.find(contains(...))`)
+// prenait le garde-corps du balcon pour celui de la volée et le taillait en
+// gradins ; guardrails() sait désormais que ce segment est `flat`, meshLevel()
+// n'a plus à deviner et pose un seul garde-corps plat sur toute la longueur.
+describe('meshLevel() et un garde-corps de balcon dont le rectangle recouvre une volée', () => {
+  const plan: Plan = {
+    name: 'confusion balcon/volée',
+    width: 20,
+    depth: 20,
+    storey: 10,
+    slab: 0.3,
+    spawn: { level: 0, x: 0, z: 0 },
+    landings: [],
+    flights: [{ id: 'v', x: 0, z: 0, width: 4, depth: 10, direction: 'north', bottom: 0, top: 5, risers: 5 }],
+    levels: [
+      {
+        id: 0,
+        name: 'niveau',
+        elevation: 0,
+        rooms: [{ id: 'bal', kind: 'balcony', name: 'balcon', x: 0, z: 0, width: 4, depth: 10 }],
+        openings: [],
+        obstacles: [],
+      },
+    ],
+  }
+
+  it('pose un garde-corps plat, pleine longueur, sur les deux côtés du balcon', () => {
+    const rampes = meshLevel(plan, 0).filter((b) => b.kind === 'railing')
+    expect(rampes).toHaveLength(2)
+    for (const b of rampes) {
+      expect(b.y - b.h / 2).toBeCloseTo(0)
+      expect(b.h).toBeCloseTo(1)
+      expect(b.z - b.d / 2).toBeCloseTo(0)
+      expect(b.z + b.d / 2).toBeCloseTo(10)
+    }
   })
 })

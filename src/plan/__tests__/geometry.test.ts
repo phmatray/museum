@@ -6,7 +6,8 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { isNordSud } from '../geometry.ts'
+import { guardrails, isNordSud } from '../geometry.ts'
+import { MUSEE } from '../musee.ts'
 import type { Direction, Flight } from '../types.ts'
 
 const volee = (direction: Direction): Flight => ({
@@ -22,5 +23,31 @@ describe('isNordSud', () => {
   it('faux pour une volée east ou west', () => {
     expect(isNordSud(volee('east'))).toBe(false)
     expect(isNordSud(volee('west'))).toBe(false)
+  })
+})
+
+// #27 : guardrails() connaît déjà la surface et la cote de chaque segment (via
+// `hautes`) au moment de le construire ; il les rend désormais avec le segment
+// au lieu de laisser l'appelant les redeviner par le milieu.
+describe('guardrails() rend la surface et la hauteur de ses segments', () => {
+  it('porte la cote du palier sur un garde-corps de palier, en `flat`', () => {
+    const [palier] = MUSEE.landings
+    const segments = guardrails(MUSEE, 0).filter((g) => g.kind === 'flat')
+    expect(segments.length).toBeGreaterThan(0)
+    for (const g of segments) expect(g.elevation).toBeCloseTo(palier.elevation)
+  })
+
+  it('porte la cote du niveau sur un garde-corps de balcon, en `flat`', () => {
+    const etage = MUSEE.levels.find((l) => l.id === 1)!
+    const segments = guardrails(MUSEE, 1).filter((g) => g.kind === 'flat')
+    expect(segments.length).toBeGreaterThan(0)
+    for (const g of segments) expect(g.elevation).toBeCloseTo(etage.elevation)
+  })
+
+  it("porte la cote du bas de la volée sur un garde-corps de volée, en `flight`", () => {
+    const segments = guardrails(MUSEE, 0).filter((g) => g.kind === 'flight')
+    expect(segments.length).toBeGreaterThan(0)
+    const bottoms = MUSEE.flights.map((f) => f.bottom)
+    for (const g of segments) expect(bottoms.some((b) => Math.abs(b - g.elevation) < 1e-6)).toBe(true)
   })
 })
