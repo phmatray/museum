@@ -62,6 +62,7 @@ function shaderJouet() {
     vertexShader: [
       '#include <common>',
       'void main() {',
+      '#include <uv_vertex>',
       '#include <beginnormal_vertex>',
       '}',
     ].join('\n'),
@@ -260,6 +261,53 @@ describe('peindreRebond', () => {
     const b = creerMatiere('marbre', null, { rebond: 0.1 })
     expect(a.customProgramCacheKey()).toBe(b.customProgramCacheKey())
     expect(a.customProgramCacheKey()).not.toBe('')
+  })
+})
+
+describe('appliquerEchelleInstance', () => {
+  it("déclare l'attribut d'instance et corrige l'UV brut avant `#include <uv_vertex>`", () => {
+    // #38 : les Boites d'une InstancedMesh partagent un cube UNITÉ et un seul
+    // `repeat` — sans ce patch, une grande Boite étire le motif et une petite
+    // l'écrase. `aTailleBoite` (posé par `PlanBuilding.tsx`, lot 2) doit être
+    // déclaré ET utilisé pour corriger l'UV avant `repeat`/`offset`.
+    const material = creerMatiere('beton', null)
+    const shader = compiler(material)
+
+    expect(shader.vertexShader).toContain('attribute vec3 aTailleBoite')
+
+    // La correction ombre `uv` lui-même, AVANT `#include <uv_vertex>` (qui
+    // calcule vMapUv/vNormalMapUv/vRoughnessMapUv à partir de cet `uv`) : elle
+    // s'applique donc à la source commune, avant `repeat`/`offset`, plutôt
+    // qu'à chaque varying séparément après coup — correct même si une carte
+    // gagne un jour un `offset` non nul.
+    const ombrage = shader.vertexShader.indexOf('vec2 uv = uvBrut * echelle')
+    const inclusion = shader.vertexShader.indexOf('#include <uv_vertex>')
+    expect(ombrage).toBeGreaterThan(-1)
+    expect(inclusion).toBeGreaterThan(ombrage)
+
+    // Déclaré une fois, puis RÉUTILISÉ dans l'injection de `uv_vertex` : une
+    // seule occurrence signifierait un attribut mort.
+    const occurrences = shader.vertexShader.match(/aTailleBoite/g) ?? []
+    expect(occurrences.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('ne casse pas le programme unique en ajoutant son propre patch', () => {
+    // Le patch est inconditionnel et identique pour toutes les matières : il ne
+    // doit donc introduire aucune divergence de clé de cache.
+    const a = creerMatiere('beton', null)
+    const b = creerMatiere('marbre', null, { rebond: 0.1 })
+    expect(a.customProgramCacheKey()).toBe(b.customProgramCacheKey())
+  })
+
+  it("ne casse pas le partage du plâtre entre `wall` et `lintel` (critère d'acceptation #2)", () => {
+    // `platre` est construit une fois par `Niveau` (PlanBuilding.tsx) puis posé
+    // sur DEUX `<Boites>` distincts (wall, lintel) — un second appel à
+    // `creerMatiere('platre', …)` doit rester sur le même programme que le
+    // premier, exactement ce que « ne compile qu'UN programme » vérifie déjà en
+    // général ; ce test-ci le vérifie nommément pour `platre`.
+    const premier = creerMatiere('platre', null)
+    const second = creerMatiere('platre', null)
+    expect(premier.customProgramCacheKey()).toBe(second.customProgramCacheKey())
   })
 })
 

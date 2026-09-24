@@ -398,6 +398,7 @@ export function creerMatiere(
 
   appliquerCartes(material, jeu, id)
   peindreRebond(material, options.rebond ?? reglage.rebond)
+  appliquerEchelleInstance(material)
   return material
 }
 
@@ -471,6 +472,93 @@ export function peindreRebond(
   material.customProgramCacheKey = () => PROGRAM_CACHE_KEY
 
   return material
+}
+
+/**
+ * Corrige l'étirement des matières PBR sur les Boites d'une `InstancedMesh`
+ * (#38).
+ *
+ * Toutes les instances de `Boites` (garde-corps, mobilier…) partagent une seule
+ * géométrie — un `BoxGeometry` unité — et ne diffèrent que par leur matrice
+ * d'instance, qui les met à l'échelle. Mais `repeat` est un réglage du
+ * matériau, donc UNIQUE pour tout le batch : une grande Boite montre un motif
+ * étiré, une petite un motif écrasé, quelle que soit la valeur choisie.
+ *
+ * La correction lit un futur attribut D'INSTANCE, `aTailleBoite` (vec3 =
+ * largeur, hauteur, profondeur en mètres, posé côté CPU par
+ * `PlanBuilding.tsx` — pas ce fichier), et multiplie l'UV par les deux
+ * dimensions TANGENTES à la face rendue, AVANT que `repeat`/`offset`
+ * s'appliquent : la densité de texel redevient constante quelle que soit la
+ * taille de l'instance, quels que soient `repeat`/`offset` par ailleurs.
+ *
+ * Injecté dans `#include <uv_vertex>`, donc AVANT `#include
+ * <beginnormal_vertex>` : `objectNormal` n'existe pas encore à ce point. On lit
+ * `normal`, l'attribut brut — rigoureusement équivalent ici, puisque
+ * `beginnormal_vertex` n'est qu'une copie (`objectNormal = vec3(normal)`) et
+ * que ces Boites n'ont ni squelette ni morph.
+ *
+ * `uv_vertex` calcule `vMapUv`, `vNormalMapUv`, `vRoughnessMapUv` — un par
+ * carte active — chacun à partir de la MÊME variable `uv` (aucune de ces
+ * cartes n'utilise un canal UV différent ici), multipliée par sa propre
+ * matrice `xxxTransform` (repeat/offset/rotation). Plutôt que de corriger
+ * chaque varying séparément après coup — ce qui ne serait exact que tant
+ * qu'aucun `offset` n'est posé sur ces cartes, une hypothèse qu'aucun type ne
+ * garantit — on OMBRE `uv` lui-même dans un bloc, juste avant `uv_vertex` : la
+ * correction s'applique alors à la source commune, avant `repeat`/`offset`,
+ * exactement comme documenté ci-dessus, quoi que `repeterJeu` fasse un jour.
+ *
+ * Chaîne sur `onBeforeCompile` au lieu de l'écraser : `peindreRebond`, appelé
+ * juste avant par `creerMatiere`, y a déjà posé son propre patch.
+ *
+ * Le tout est gardé par `#ifdef USE_INSTANCING` — le `#define` que three pose
+ * lui-même sur tout objet `InstancedMesh`, jamais sur un `Mesh` ordinaire.
+ * `useMatiere`/`creerMatiere` n'ont aujourd'hui qu'un seul appelant (`Boites`,
+ * toujours instancié), mais rien ne l'impose : sans ce garde, une matière
+ * posée un jour sur un `Mesh` simple n'aurait pas `aTailleBoite` en mémoire,
+ * lirait la valeur par défaut de three pour un attribut non lié — `vec3(0)` —
+ * et verrait son UV écrasé à `(0, 0)` sur toute sa surface.
+ */
+export function appliquerEchelleInstance(material: THREE.MeshStandardMaterial): void {
+  const precedent = material.onBeforeCompile
+
+  material.onBeforeCompile = (shader, renderer) => {
+    precedent(shader, renderer)
+
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+         #ifdef USE_INSTANCING
+         attribute vec3 aTailleBoite;
+         #endif`,
+      )
+      .replace(
+        '#include <uv_vertex>',
+        `#ifdef USE_INSTANCING
+         {
+           // Les Boites sont des cubes parfaitement axe-alignés (pas de blend
+           // triplanaire à faire) : la face dominante se lit directement sur la
+           // composante la plus grande de la normale, sans epsilon.
+           vec2 echelle = aTailleBoite.xy;
+           if (abs(normal.x) > abs(normal.y) && abs(normal.x) > abs(normal.z)) {
+             echelle = aTailleBoite.zy; // faces ±X : tangentes = profondeur, hauteur
+           } else if (abs(normal.y) > abs(normal.z)) {
+             echelle = aTailleBoite.xz; // faces ±Y : tangentes = largeur, profondeur
+           }
+           // faces ±Z (cas par défaut ci-dessus) : tangentes = largeur, hauteur
+
+           // uv brut d'abord, dans un nom SÉPARÉ : réutiliser le nom uv tout de
+           // suite lirait sa propre valeur non initialisée sur son membre de
+           // droite, pas l'attribut — l'ombrage ne doit commencer qu'après.
+           vec2 uvBrut = uv;
+           vec2 uv = uvBrut * echelle;
+           #include <uv_vertex>
+         }
+         #else
+         #include <uv_vertex>
+         #endif`,
+      )
+  }
 }
 
 // ── Accès React ──────────────────────────────────────────────────────────
