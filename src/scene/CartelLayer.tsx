@@ -10,9 +10,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 
 import type { Artwork, Catalogue } from '../domain/types'
+import { useAccrochage } from '../hooks/useAccrochage'
 import { cartelPlacements, cartelTexte, type CartelPlacement } from '../plan/cartels'
 import { Cartel } from './Cartel'
-import { useAccrochage } from './useAccrochage'
 
 const PORTEE = 6
 /** Recalcul du voisinage quatre fois par seconde : le visiteur marche à 1,80 m/s. */
