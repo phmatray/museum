@@ -9,14 +9,29 @@
  * toiles du plan — c'est le trou que #16 avait laissé (« vérifié à l'œil »).
  */
 import { renderHook, waitFor } from '@testing-library/react'
+import ReactThreeTestRenderer from '@react-three/test-renderer'
+import { createElement } from 'react'
 import * as THREE from 'three'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { FRAME_BORDER, FRAME_DEPTH } from '../../builders/artwork'
 import { DEFAULT_ASPECT } from '../../domain/hanging'
 import { useAccrochage } from '../../hooks/useAccrochage'
+import { resetAtlasResource } from '../../io/arrayTexture'
 import type { Accrochage } from '../../plan/hang'
 import { computePoses } from '../planToilesGeometry'
+import { PlanToiles } from '../PlanToiles'
+
+// Mocké : monter le <Text> réel de troika ferait un vrai chargement de police,
+// hors du seam que ce fichier vérifie (le prop `font`, pas le rendu troika).
+// Import différé plus bas, après le mock (hoisté par vitest de toute façon).
+const { texteSalle } = vi.hoisted(() => ({ texteSalle: [] as { font?: unknown }[] }))
+vi.mock('@react-three/drei', () => ({
+  Text: (props: { font?: unknown }) => {
+    texteSalle.push(props)
+    return null
+  },
+}))
 
 type Room = Accrochage['rooms'][number]
 type Placement = Room['placements'][number]
@@ -117,5 +132,33 @@ describe('useAccrochage', () => {
     expect(String((espion.mock.calls[0][1] as Error).message)).toContain('generatedAt')
 
     espion.mockRestore()
+  })
+})
+
+// `PlanToiles` monté pour de vrai (#52) : `room()` ci-dessus retombe justement
+// sur 'r-o1', une salle réelle du rez-de-chaussée (`plan/musee.ts`), donc son
+// nom de salle est bien rendu. L'atlas échoue sans mock (pas de serveur au
+// banc) : `useAtlas` l'avale déjà (`console.error` attendu, pas une régression
+// — voir son propre commentaire) et les toiles n'en dépendent pas ici, le nom
+// de salle si.
+describe('PlanToiles', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    resetAtlasResource()
+    texteSalle.length = 0
+  })
+
+  it('passe une police vendorisée sous BASE_URL au <Text> du nom de salle', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const accrochage: Accrochage = { generatedAt: '2026-07-25T22:06:37.149Z', rooms: [room([])] }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => Promise.resolve(reponse(accrochage, String(url).includes('accrochage.json')))),
+    )
+
+    await ReactThreeTestRenderer.create(createElement(PlanToiles, { level: 0 }))
+    await waitFor(() => expect(texteSalle.length).toBeGreaterThan(0))
+
+    expect(texteSalle[0].font).toBe(`${import.meta.env.BASE_URL}assets/fonts/PTSans-Regular.ttf`)
   })
 })

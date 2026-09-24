@@ -33,3 +33,4 @@ sont donc commités.
 | shrub_01 | Poly Haven | CC0 | végétation, décimée dans les LOD |
 | shrub_03 | Poly Haven | CC0 | végétation, décimée dans les LOD |
 | bavette | Meshy, d'après une photo de l'auteur | © tous droits réservés | pièce en volume, salle d'honneur |
+| PT Sans | Google Fonts (ParaType) | SIL OFL 1.1 | cartels et noms de salle (<Text> troika/drei) |

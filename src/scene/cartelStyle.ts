@@ -19,3 +19,12 @@ export const THEME_INK: Record<ThemeId, string> = {
   immersive: '#23262e',
   vault: '#f3ecdd',
 }
+
+/**
+ * Police vendorisée sous `public/assets/fonts/` (#52) : sans elle, `<Text>`
+ * (troika, via drei) retombe sur son défaut téléchargé depuis un CDN, ce qui
+ * laisse le musée hors ligne sans aucun cartel ni nom de salle. Un seul point
+ * d'export pour les trois `<Text>` du bâtiment (`Cartel`, `PlanToiles`,
+ * `SculptureLayer`) : un chemin écrit une fois plutôt que trois.
+ */
+export const CARTEL_FONT = `${import.meta.env.BASE_URL}assets/fonts/PTSans-Regular.ttf`

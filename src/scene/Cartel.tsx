@@ -6,7 +6,7 @@ import { Suspense } from 'react'
 import { Text } from '@react-three/drei'
 
 import { CARTEL_LARGEUR, type CartelPlacement } from '../plan/cartels'
-import { THEME_INK } from './cartelStyle'
+import { CARTEL_FONT, THEME_INK } from './cartelStyle'
 
 const HAUTEUR = 0.16
 const EPAISSEUR = 0.01
@@ -21,6 +21,7 @@ export function Cartel({ placement, texte }: { placement: CartelPlacement; texte
       {/* La plaque d'abord ; le texte quand sa police est là. */}
       <Suspense fallback={null}>
         <Text
+          font={CARTEL_FONT}
           position={[-CARTEL_LARGEUR / 2 + 0.02, 0, EPAISSEUR + 0.001]}
           fontSize={0.022}
           lineHeight={1.3}
