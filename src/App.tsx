@@ -1,13 +1,14 @@
 import { Canvas } from '@react-three/fiber'
 import { KeyboardControls } from '@react-three/drei'
 import { Suspense } from 'react'
-import { PointerLockCamera, PointerLockOverlay } from './components/PointerLockOverlay'
+import { PointerLockCamera, PointerLockOverlay, TourExitButton } from './components/PointerLockOverlay'
 import { PlanBuilding } from './scene/PlanBuilding'
 import { PlanPlayer } from './components/PlanPlayer'
 import { PostProcessing } from './scene/PostProcessing'
 import { MobileControlsOverlay } from './components/MobileControls'
 import { useIsMobile } from './hooks/useIsMobile'
 import { Minimap } from './components/Minimap'
+import { GuidedTour } from './components/GuidedTour'
 
 // Objet constant plutôt qu'`enum` : `erasableSyntaxOnly` interdit les enums,
 // qui émettent du code au lieu de disparaître au strip des types.
@@ -50,7 +51,9 @@ export default function App() {
   const isMobile = useIsMobile()
   return (
     <>
-      <PointerLockOverlay tour={false} />
+      <PointerLockOverlay />
+      <TourExitButton />
+      <GuidedTour />
       {isMobile && <MobileControlsOverlay />}
       <Minimap />
       <KeyboardControls map={keyMap}>

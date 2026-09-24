@@ -21,6 +21,8 @@ interface GameState {
   museumOverride: Museum | null
   /** Le visiteur du plan, publié par `PlanPlayer` quand il bouge : la minimap le lit. */
   visiteur: Walker | null
+  /** L'arrêt de la visite guidée en cours, dans `buildTourItinerary`. */
+  tourEtape: number
   setPaused: (paused: boolean) => void
   setCurrentRoomId: (id: string) => void
   setTourActive: (active: boolean) => void
@@ -35,6 +37,7 @@ export const useGameStore = create<GameState>((set) => ({
   pointerLocked: false,
   museumOverride: null,
   visiteur: null,
+  tourEtape: 0,
   setPaused: (paused) => set({ paused }),
   setCurrentRoomId: (id) => set({ currentRoomId: id }),
   setTourActive: (active) => set({ tourActive: active }),

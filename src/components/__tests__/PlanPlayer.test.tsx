@@ -121,4 +121,19 @@ describe('PlanPlayer', () => {
     expect(camera.rotation.y).toBeLessThan(yawInitial)
     expect(toucher.lookX).toBe(0) // consommé une fois, pas rejoué à chaque image
   })
+
+  // #31 : la visite guidée conduit le visiteur sans clavier ni joystick, vers
+  // le premier arrêt, et publie l'étape en cours pour le cartouche.
+  it('marche seule vers le premier arrêt pendant la visite guidée', async () => {
+    const { renderer, camera } = await monterPlanPlayer()
+    const avant = camera.position.clone()
+    Object.assign(toucher, { forward: 0, strafe: 0, lookX: 0, lookY: 0 })
+
+    await act(async () => useGameStore.setState({ paused: false, tourActive: true, tourEtape: -1 }))
+    await renderer.advanceFrames(30, 1 / 60)
+
+    expect(camera.position.distanceTo(avant)).toBeGreaterThan(0.5)
+    expect(useGameStore.getState().tourEtape).toBe(0)
+    await act(async () => useGameStore.setState({ tourActive: false }))
+  })
 })
