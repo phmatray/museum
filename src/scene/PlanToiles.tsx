@@ -14,6 +14,7 @@ import { atlasResource, type AtlasTextures } from '../io/arrayTexture'
 import type { Accrochage } from '../plan/hang'
 import { MUSEE } from '../plan/musee'
 import { INT as DEMI_MUR } from '../plan/svg'
+import { parseAccrochage } from '../schema'
 import { CanvasInstances, FrameInstances } from './ArtworkLayer'
 import { THEME_INK } from './cartelStyle'
 import { computePoses } from './planToilesGeometry'
@@ -88,7 +89,7 @@ function useAccrochage(): Accrochage | null {
     fetch(`${import.meta.env.BASE_URL}data/accrochage.json`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json() as Promise<Accrochage>
+        return r.json().then(parseAccrochage)
       })
       .then(
         (charge) => vivant && setAccrochage(charge),
