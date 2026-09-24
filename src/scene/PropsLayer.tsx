@@ -45,7 +45,7 @@ function Instances({ piece, props }: { piece: PropPiece; props: PropPlacement[] 
     mesh.instanceMatrix.needsUpdate = true
     mesh.computeBoundingSphere()
   }, [props])
-  return <instancedMesh key={props.length} ref={ref} args={[piece.geometry, piece.material, props.length]} />
+  return <instancedMesh key={props.length} ref={ref} args={[piece.geometry, undefined, props.length]} material={piece.material} />
 }
 
 /** Sans suspendre : le bâtiment d'abord, les plantes ensuite. */

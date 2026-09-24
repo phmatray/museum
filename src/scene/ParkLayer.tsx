@@ -93,7 +93,7 @@ function Instances({ piece, sujets }: { piece: ParkPiece; sujets: PlantPlacement
     // Sinon la sphère englobante est celle d'un arbre à l'origine.
     mesh.computeBoundingSphere()
   }, [sujets])
-  return <instancedMesh key={sujets.length} ref={ref} args={[piece.geometry, piece.material, sujets.length]} />
+  return <instancedMesh key={sujets.length} ref={ref} args={[piece.geometry, undefined, sujets.length]} material={piece.material} />
 }
 
 /** Sans suspendre : le bâtiment d'abord, les arbres ensuite. */

@@ -5,7 +5,7 @@
  * Un `InstancedMesh` par sorte de boîte et par niveau, soit une poignée d'appels
  * de dessin par niveau, là où un maillage par mur en coûterait une centaine.
  */
-import { useEffect, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { MUSEE } from '../plan/musee'
 import { meshLevel, type Box } from '../plan/mesh'
@@ -18,6 +18,7 @@ import { sculpturePlacements } from '../plan/sculptures'
 import { ParkLayer } from './ParkLayer'
 import { parkPlacements } from '../plan/park'
 import { PropsLayer } from './PropsLayer'
+import { CartelLayer } from './CartelLayer'
 
 // Un cube unité partagé, étiré par instance. Les UV s'étirent avec — assumé
 // pour cette tranche : le plan cherche la volumétrie, pas encore la finition.
@@ -36,9 +37,13 @@ export function PlanBuilding() {
       <hemisphereLight args={[AMBIANCE.ciel, AMBIANCE.sol, AMBIANCE.intensite]} />
       <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
       {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} />)}
-      <SculptureLayer placements={SCULPTURES} />
-      <ParkLayer placements={PARC} />
-      <PropsLayer />
+      {/* Le décor à part : un texte qui attend sa police ne doit pas suspendre les murs. */}
+      <Suspense fallback={null}>
+        <SculptureLayer placements={SCULPTURES} />
+        <ParkLayer placements={PARC} />
+        <PropsLayer />
+        <CartelLayer />
+      </Suspense>
     </>
   )
 }
