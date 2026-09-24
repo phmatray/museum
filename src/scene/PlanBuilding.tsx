@@ -14,9 +14,6 @@ import { matiereDeDalle, useMatiere } from './materials'
 import { AMBIANCE, SOLEIL } from './lighting'
 import { PlanToiles } from './PlanToiles'
 
-// Un cube unité partagé, étiré par instance. Les UV s'étirent avec — assumé
-// pour cette tranche : le plan cherche la volumétrie, pas encore la finition.
-const CUBE = new THREE.BoxGeometry(1, 1, 1)
 const AUCUNE: Box[] = []
 
 export function PlanBuilding() {
@@ -63,8 +60,16 @@ function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
   )
 }
 
-function Boites({ boites, material }: { boites: Box[]; material: THREE.Material }) {
+export function Boites({ boites, material }: { boites: Box[]; material: THREE.Material }) {
   const ref = useRef<THREE.InstancedMesh>(null)
+
+  // Une géométrie privée à ce montage, plus le cube unité partagé d'avant : le
+  // partage empêchait de poser une taille par instance (ci-dessous), puisque
+  // c'est la géométrie qui porte l'attribut. Créée une fois — jamais recréée
+  // quand `boites` change, seul son ATTRIBUT l'est, dans l'effet ci-dessous —
+  // pour ne pas rejouer le cas #35 sur la géométrie cette fois.
+  const geometry = useMemo(() => new THREE.BoxGeometry(1, 1, 1), [])
+  useEffect(() => () => geometry.dispose(), [geometry])
 
   useEffect(() => {
     const mesh = ref.current
@@ -75,6 +80,13 @@ function Boites({ boites, material }: { boites: Box[]; material: THREE.Material 
     // Sans recalcul, la sphère englobante est celle d'un cube unité à l'origine :
     // le niveau entier disparaîtrait dès que l'origine sort du champ.
     mesh.computeBoundingSphere()
+
+    // La taille par instance, pour que `appliquerEchelleInstance` (materials.ts,
+    // #38) corrige l'étirement des UV PBR. Dans le MÊME effet que les matrices
+    // ci-dessus, jamais un second : tailles et matrices doivent rester en phase.
+    const tailles = new Float32Array(boites.flatMap((b) => [b.w, b.h, b.d]))
+    mesh.geometry.setAttribute('aTailleBoite', new THREE.InstancedBufferAttribute(tailles, 3))
+    mesh.geometry.getAttribute('aTailleBoite').needsUpdate = true
   }, [boites])
 
   // `key` : le nombre d'instances est fixé à la construction, il faut remonter
@@ -83,5 +95,5 @@ function Boites({ boites, material }: { boites: Box[]; material: THREE.Material 
   // qui change fait reconstruire l'objet par R3F — un maillage neuf aux matrices
   // identité, que l'effet ci-dessus ne repeuple pas. Tous les murs tombaient
   // alors en un cube à l'origine (#35).
-  return <instancedMesh key={boites.length} ref={ref} args={[CUBE, undefined, boites.length]} material={material} />
+  return <instancedMesh key={boites.length} ref={ref} args={[geometry, undefined, boites.length]} material={material} />
 }
