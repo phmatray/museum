@@ -37,3 +37,14 @@ export const useGameStore = create<GameState>((set) => ({
   setPointerLocked: (locked) => set({ pointerLocked: locked }),
   setMuseumOverride: (museumOverride) => set({ museumOverride }),
 }))
+
+/**
+ * L'entrée tactile du visiteur (#31), écrite par `MobileControlsOverlay` et lue
+ * par `PlanPlayer` à chaque image. Un objet mutable plutôt qu'un état zustand :
+ * un glissé de doigt émet un événement par image, et le passer par `set`
+ * re-rendrait les abonnés à chaque pixel pour une valeur que seul `useFrame` lit.
+ *
+ * `forward`/`strafe` dans [−1, 1], comme le clavier ; `lookX`/`lookY` sont des
+ * pixels de glissé accumulés, que `PlanPlayer` consomme et remet à zéro.
+ */
+export const toucher = { forward: 0, strafe: 0, lookX: 0, lookY: 0 }

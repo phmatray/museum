@@ -5,6 +5,8 @@ import { PointerLockCamera, PointerLockOverlay } from './components/PointerLockO
 import { PlanBuilding } from './scene/PlanBuilding'
 import { PlanPlayer } from './components/PlanPlayer'
 import { PostProcessing } from './scene/PostProcessing'
+import { MobileControlsOverlay } from './components/MobileControls'
+import { useIsMobile } from './hooks/useIsMobile'
 
 // Objet constant plutôt qu'`enum` : `erasableSyntaxOnly` interdit les enums,
 // qui émettent du code au lieu de disparaître au strip des types.
@@ -44,9 +46,11 @@ const keyMap = [
  * le relit, et le tampon peut être recyclé.
  */
 export default function App() {
+  const isMobile = useIsMobile()
   return (
     <>
       <PointerLockOverlay tour={false} />
+      {isMobile && <MobileControlsOverlay />}
       <KeyboardControls map={keyMap}>
         <Canvas camera={{ fov: 75, near: 0.1, far: 1000 }} gl={{ preserveDrawingBuffer: import.meta.env.DEV }}>
           <Suspense fallback={null}>
