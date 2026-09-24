@@ -14,8 +14,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { FRAME_BORDER, FRAME_DEPTH } from '../../builders/artwork'
 import { DEFAULT_ASPECT } from '../../domain/hanging'
+import { useAccrochage } from '../../hooks/useAccrochage'
 import type { Accrochage } from '../../plan/hang'
-import { useAccrochage } from '../PlanToiles'
 import { computePoses } from '../planToilesGeometry'
 
 type Room = Accrochage['rooms'][number]
