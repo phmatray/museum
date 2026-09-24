@@ -93,17 +93,17 @@ export function meshLevel(plan: Plan, levelId: number): Box[] {
   const volees = plan.flights.filter((f) => bande(f.bottom))
 
   // Un garde-corps de 1,00 m au-dessus de la surface qu'il borde ; le long d'une
-  // volée, il suit ses marches, par gradins.
-  // ponytail: la surface d'un garde-corps est retrouvée par son milieu ; que
-  // guardrails() la rende avec le segment le jour où cette devinette se trompe.
+  // volée, il suit ses marches, par gradins. guardrails() rend déjà la cote et
+  // le type de la surface portée (#27) : plus de devinette par le milieu.
   const rails: Box[] = []
   const auSol: Segment[] = []
   const e = EP_GARDE_CORPS / 2
   for (const g of guardrails(plan, levelId)) {
     const long = g.z1 === g.z2
-    const [mx, mz] = [(g.x1 + g.x2) / 2, (g.z1 + g.z2) / 2]
-    const f = volees.find((f) => contains(f, mx, mz) && (long ? !isNordSud(f) : isNordSud(f)))
-    if (f) {
+    if (g.kind === 'flight') {
+      const [mx, mz] = [(g.x1 + g.x2) / 2, (g.z1 + g.z2) / 2]
+      const f = volees.find((f) => contains(f, mx, mz) && (long ? !isNordSud(f) : isNordSud(f)))
+      if (!f) throw new Error(`garde-corps de volée sans volée : ${JSON.stringify(g)}`)
       const [s, t] = long ? [g.x1, g.x2] : [g.z1, g.z2]
       for (const { de, a, dessus } of marches(f)) {
         const [u, v] = [Math.max(s, de), Math.min(t, a)]
@@ -112,14 +112,10 @@ export function meshLevel(plan: Plan, levelId: number): Box[] {
       }
       continue
     }
-    const cote =
-      plan.landings.find((l) => bande(l.elevation) && contains(l, mx, mz))?.elevation ??
-      plan.levels.find((l) => bande(l.elevation) && l.rooms.some((r) => r.kind === 'balcony' && contains(r, mx, mz)))?.elevation
-    if (cote === undefined) throw new Error(`garde-corps sans surface : ${JSON.stringify(g)}`)
-    if (Math.abs(cote - level.elevation) < EPS) auSol.push(g)
+    if (Math.abs(g.elevation - level.elevation) < EPS) auSol.push(g)
     rails.push(long
-      ? pave(g.x1, g.x2, cote, cote + GARDE_CORPS, g.z1 - e, g.z1 + e, 'railing')
-      : pave(g.x1 - e, g.x1 + e, cote, cote + GARDE_CORPS, g.z1, g.z2, 'railing'))
+      ? pave(g.x1, g.x2, g.elevation, g.elevation + GARDE_CORPS, g.z1 - e, g.z1 + e, 'railing')
+      : pave(g.x1 - e, g.x1 + e, g.elevation, g.elevation + GARDE_CORPS, g.z1, g.z2, 'railing'))
   }
 
   // Un garde-corps posé au plancher remplace le mur sur le vide (le bord d'un
