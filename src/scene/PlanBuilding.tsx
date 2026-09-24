@@ -13,11 +13,14 @@ import { creerVitrageGardeCorps } from '../builders/glazing'
 import { matiereDeDalle, useMatiere } from './materials'
 import { AMBIANCE, SOLEIL } from './lighting'
 import { PlanToiles } from './PlanToiles'
+import { SculptureLayer } from './SculptureLayer'
+import { sculpturePlacements } from '../plan/sculptures'
 
 // Un cube unité partagé, étiré par instance. Les UV s'étirent avec — assumé
 // pour cette tranche : le plan cherche la volumétrie, pas encore la finition.
 const CUBE = new THREE.BoxGeometry(1, 1, 1)
 const AUCUNE: Box[] = []
+const SCULPTURES = sculpturePlacements(MUSEE)
 
 export function PlanBuilding() {
   // La baie et les garde-corps sont vitrés, comme les garde-corps de l'ancien atrium.
@@ -29,6 +32,7 @@ export function PlanBuilding() {
       <hemisphereLight args={[AMBIANCE.ciel, AMBIANCE.sol, AMBIANCE.intensite]} />
       <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
       {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} />)}
+      <SculptureLayer placements={SCULPTURES} />
     </>
   )
 }
