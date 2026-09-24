@@ -83,7 +83,6 @@
 - `src/plan/` and `src/domain/` stay free of three and React imports, testable without WebGL; any
   decision lives there, `src/scene/` only renders.
 - Every plan change passes `checkPlan` (`src/plan/rules.ts`) and regenerates `docs/plan/`.
-- The editor never ships: it stays behind `import.meta.env.DEV` via a dynamic import (`src/editor/EditorMount.tsx`).
 - The old generated building is gone (#17): the published app is `PlanBuilding` + `PlanPlayer`, no physics engine.
 
 ## Worktree home

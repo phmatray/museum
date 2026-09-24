@@ -1,5 +1,5 @@
 /**
- * Le bâtiment du PLAN (`?batiment=plan`), tous ses niveaux extrudés.
+ * Le bâtiment du PLAN, tous ses niveaux extrudés.
  *
  * Tout est décidé dans `plan/mesh.ts` : ici on ne fait qu'instancier des boîtes.
  * Un `InstancedMesh` par sorte de boîte et par niveau, soit une poignée d'appels
