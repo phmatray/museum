@@ -154,8 +154,8 @@ function lire(plan: Plan, surface: string) {
  * Un pas de marche de durée `dt`. `yaw` est le cap absolu (0 = −z, comme
  * `directionMarche`), `forward`/`strafe` dans [−1, 1].
  *
- * On découpe le déplacement en sous-pas d'au plus un demi-rayon : à 3,8 m/s et
- * dt = 0,1 s, on avancerait de 0,38 m d'un coup, plus que le rayon — le centre
+ * On découpe le déplacement en sous-pas d'au plus un demi-rayon : à 6 m/s et
+ * dt = 0,1 s, on avancerait de 0,6 m d'un coup, deux fois le rayon — le centre
  * sauterait de l'autre côté d'un mur et serait repoussé du mauvais côté.
  */
 export function step(
