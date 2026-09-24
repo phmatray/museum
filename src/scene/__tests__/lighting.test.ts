@@ -21,6 +21,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Placement, ThemeId, Wall } from '../../domain/types'
 import {
+  CIEL,
   MAX_HALOS,
   THEME_PALETTE,
   TONE_MAPPING,
@@ -116,6 +117,16 @@ describe('palette des thèmes', () => {
 
   it("n'utilise pas le rendu des tons qui écrasait les basses lumières", () => {
     expect(TONE_MAPPING).not.toBe(THREE.ACESFilmicToneMapping)
+  })
+})
+
+// ── Fond de scène ────────────────────────────────────────────────────────
+
+describe('CIEL', () => {
+  it('est une couleur claire, pas un fond noir (#46)', () => {
+    // La scène du plan ne montait ni fond ni environnement : le vide se
+    // rendait noir. Le seuil de 0,5 exclut tout gris moyen ou sombre.
+    expect(luminance(CIEL)).toBeGreaterThan(0.5)
   })
 })
 
