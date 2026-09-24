@@ -4,7 +4,7 @@
  * `plan/sculptures.ts` a décidé où — dans une niche que la marche contourne
  * déjà. Ici on ne fait que dessiner.
  */
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import { Text } from '@react-three/drei'
 
 import type { SculpturePlacement } from '../plan/sculptures'
@@ -27,18 +27,21 @@ export function SculptureLayer({ placements }: { placements: SculpturePlacement[
               <boxGeometry args={[p.plinth.width, p.plinth.height, p.plinth.depth]} />
             </mesh>
             {objet !== undefined && <primitive object={objet} position={[0, p.plinth.height, 0]} />}
-            {/* Le cartel du socle, sur sa face avant. */}
-            <Text
-              position={[0, p.plinth.height / 2, p.plinth.depth / 2 + 0.005]}
-              fontSize={0.05}
-              color={THEME_INK.classic}
-              anchorX="center"
-              anchorY="middle"
-              maxWidth={p.plinth.width - 0.1}
-              textAlign="center"
-            >
-              {`${p.cartel.title}\n${p.cartel.author}, ${p.cartel.year}`}
-            </Text>
+            {/* Le cartel du socle, sur sa face avant. Sa propre attente : la police
+                ne retient ni le socle ni la pièce. */}
+            <Suspense fallback={null}>
+              <Text
+                position={[0, p.plinth.height / 2, p.plinth.depth / 2 + 0.005]}
+                fontSize={0.05}
+                color={THEME_INK.classic}
+                anchorX="center"
+                anchorY="middle"
+                maxWidth={p.plinth.width - 0.1}
+                textAlign="center"
+              >
+                {`${p.cartel.title}\n${p.cartel.author}, ${p.cartel.year}`}
+              </Text>
+            </Suspense>
           </group>
         )
       })}
