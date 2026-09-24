@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { PointerLockCamera, PointerLockOverlay } from './components/PointerLockOverlay'
 import { PlanBuilding } from './scene/PlanBuilding'
 import { PlanPlayer } from './components/PlanPlayer'
+import { PostProcessing } from './scene/PostProcessing'
 
 // Objet constant plutôt qu'`enum` : `erasableSyntaxOnly` interdit les enums,
 // qui émettent du code au lieu de disparaître au strip des types.
@@ -52,6 +53,7 @@ export default function App() {
             <PointerLockCamera />
             <PlanBuilding />
             <PlanPlayer />
+            <PostProcessing />
           </Suspense>
         </Canvas>
       </KeyboardControls>
