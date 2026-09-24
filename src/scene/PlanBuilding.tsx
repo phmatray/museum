@@ -17,6 +17,7 @@ import { SculptureLayer } from './SculptureLayer'
 import { sculpturePlacements } from '../plan/sculptures'
 import { ParkLayer } from './ParkLayer'
 import { parkPlacements } from '../plan/park'
+import { PropsLayer } from './PropsLayer'
 
 // Un cube unité partagé, étiré par instance. Les UV s'étirent avec — assumé
 // pour cette tranche : le plan cherche la volumétrie, pas encore la finition.
@@ -37,6 +38,7 @@ export function PlanBuilding() {
       {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} />)}
       <SculptureLayer placements={SCULPTURES} />
       <ParkLayer placements={PARC} />
+      <PropsLayer />
     </>
   )
 }
