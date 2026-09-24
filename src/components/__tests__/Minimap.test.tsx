@@ -22,6 +22,9 @@ import { MUSEE } from '../../plan/musee'
 import type { Accrochage } from '../../plan/hang'
 import type { Walker } from '../../plan/walk'
 
+// Vitest hoiste `vi.mock` au-dessus des imports : la fabrique reste inline
+// (et non dans un util partagé) pour éviter la ReferenceError de TDZ qu'un
+// import référencé depuis elle déclencherait sinon.
 vi.mock('../../hooks/useAccrochage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../hooks/useAccrochage')>()
   return { ...actual, useAccrochage: vi.fn() }

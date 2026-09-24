@@ -19,6 +19,9 @@ import { useGameStore } from '../../stores/gameStore'
 import { VISITE } from '../../plan/tour'
 import type { Accrochage } from '../../plan/hang'
 
+// Même double que `Minimap.test.tsx` — inline, pas dans un util partagé :
+// Vitest hoiste `vi.mock` au-dessus des imports, et une fabrique important
+// un helper externe lève une ReferenceError de TDZ à l'exécution.
 vi.mock('../../hooks/useAccrochage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../hooks/useAccrochage')>()
   return { ...actual, useAccrochage: vi.fn() }
