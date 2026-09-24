@@ -15,12 +15,15 @@ import { AMBIANCE, SOLEIL } from './lighting'
 import { PlanToiles } from './PlanToiles'
 import { SculptureLayer } from './SculptureLayer'
 import { sculpturePlacements } from '../plan/sculptures'
+import { ParkLayer } from './ParkLayer'
+import { parkPlacements } from '../plan/park'
 
 // Un cube unité partagé, étiré par instance. Les UV s'étirent avec — assumé
 // pour cette tranche : le plan cherche la volumétrie, pas encore la finition.
 const CUBE = new THREE.BoxGeometry(1, 1, 1)
 const AUCUNE: Box[] = []
 const SCULPTURES = sculpturePlacements(MUSEE)
+const PARC = parkPlacements(MUSEE)
 
 export function PlanBuilding() {
   // La baie et les garde-corps sont vitrés, comme les garde-corps de l'ancien atrium.
@@ -33,6 +36,7 @@ export function PlanBuilding() {
       <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
       {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} />)}
       <SculptureLayer placements={SCULPTURES} />
+      <ParkLayer placements={PARC} />
     </>
   )
 }
