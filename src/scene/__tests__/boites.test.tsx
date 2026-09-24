@@ -22,11 +22,15 @@ import * as THREE from 'three'
 import { Boites } from '../PlanBuilding'
 import type { Box } from '../../plan/mesh'
 
-function instancedMesh(renderer: Awaited<ReturnType<typeof ReactThreeTestRenderer.create>>): THREE.InstancedMesh {
-  const noeud = renderer.scene.findAll(
-    (n) => (n.instance as { isInstancedMesh?: boolean }).isInstancedMesh === true,
-  )[0]
-  return noeud.instance as THREE.InstancedMesh
+type Renderer = Awaited<ReturnType<typeof ReactThreeTestRenderer.create>>
+
+const instancedMeshes = (renderer: Renderer): THREE.InstancedMesh[] =>
+  renderer.scene
+    .findAll((n) => (n.instance as { isInstancedMesh?: boolean }).isInstancedMesh === true)
+    .map((n) => n.instance as THREE.InstancedMesh)
+
+function instancedMesh(renderer: Renderer): THREE.InstancedMesh {
+  return instancedMeshes(renderer)[0]
 }
 
 const boite = (w: number, h: number, d: number): Box => ({ x: 0, y: 0, z: 0, w, h, d, kind: 'wall' })
@@ -56,6 +60,27 @@ describe('Boites', () => {
   // PlanBuilding.tsx) : un seul objet `material`, donc un seul
   // `onBeforeCompile`, monté dans deux `<Boites>`. Que ce partage ne fasse
   // toujours compiler qu'UN programme est déjà couvert par
-  // `materials.test.ts` (« ne compile qu'UN programme… ») ; rien de plus à
-  // vérifier ici, ce test-ci ne touche pas au matériau.
+  // `materials.test.ts` (« ne compile qu'UN programme… »). Ce qui ne l'était
+  // PAS encore (trouvaille de revue) : que les DEUX `<Boites>` obtiennent
+  // chacun sa PROPRE géométrie/attribut malgré ce matériau partagé — un cube
+  // module-niveau réintroduit par erreur passerait le test ci-dessus tout en
+  // faisant lire à `lintel` les tailles de `wall`.
+  it("donne à deux <Boites> qui partagent un matériau des géométries et des aTailleBoite distincts", async () => {
+    const material = new THREE.MeshStandardMaterial()
+    const mur = [boite(1, 1, 1)]
+    const linteau = [boite(2, 0.5, 0.25)]
+    const renderer = await ReactThreeTestRenderer.create(
+      <>
+        <Boites boites={mur} material={material} />
+        <Boites boites={linteau} material={material} />
+      </>,
+    )
+    const [meshMur, meshLinteau] = instancedMeshes(renderer)
+
+    expect(meshMur.material).toBe(material)
+    expect(meshLinteau.material).toBe(material)
+    expect(meshMur.geometry).not.toBe(meshLinteau.geometry)
+    expect(Array.from(meshMur.geometry.getAttribute('aTailleBoite').array)).toEqual([1, 1, 1])
+    expect(Array.from(meshLinteau.geometry.getAttribute('aTailleBoite').array)).toEqual([2, 0.5, 0.25])
+  })
 })
