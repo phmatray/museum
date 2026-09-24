@@ -120,6 +120,21 @@ const SCULPTURES = [
   },
 ] as const
 
+/**
+ * Police des cartels et noms de salle (#52). Comme les sculptures ci-dessus,
+ * cet outil ne la RÉCUPÈRE pas : elle est commitée directement sous
+ * `public/assets/fonts/`, pas dans le pipeline CC0 de récupération. Déclarée
+ * ici uniquement pour que `CREDITS.md` la crédite malgré ça.
+ */
+const POLICES = [
+  {
+    id: 'PT Sans',
+    source: 'Google Fonts (ParaType)',
+    licence: 'SIL OFL 1.1',
+    usage: 'cartels et noms de salle (<Text> troika/drei)',
+  },
+] as const
+
 interface Telechargement {
   url: string
   dest: string
@@ -252,6 +267,12 @@ async function main() {
   for (const s of SCULPTURES) {
     console.log(`  ${'ok'.padEnd(6)} ${s.id.padEnd(20)} ${s.usage}`)
     journal.push(`| ${s.id} | ${s.source} | ${s.licence} | ${s.usage} |`)
+  }
+
+  console.log(`\nPolices (${POLICES.length}) — commitées, hors pipeline CC0`)
+  for (const p of POLICES) {
+    console.log(`  ${'ok'.padEnd(6)} ${p.id.padEnd(20)} ${p.usage}`)
+    journal.push(`| ${p.id} | ${p.source} | ${p.licence} | ${p.usage} |`)
   }
 
   if (SOURCES_VEGETATION) {

@@ -8,7 +8,7 @@ import { Suspense, useEffect, useMemo, useState } from 'react'
 import { Text } from '@react-three/drei'
 
 import type { SculpturePlacement } from '../plan/sculptures'
-import { THEME_INK } from './cartelStyle'
+import { CARTEL_FONT, THEME_INK } from './cartelStyle'
 import { useMatiere } from './materials'
 import { sculptureAssetsResource, type SculptureAssets } from './sculptureAssets'
 
@@ -31,6 +31,7 @@ export function SculptureLayer({ placements }: { placements: SculpturePlacement[
                 ne retient ni le socle ni la pièce. */}
             <Suspense fallback={null}>
               <Text
+                font={CARTEL_FONT}
                 position={[0, p.plinth.height / 2, p.plinth.depth / 2 + 0.005]}
                 fontSize={0.05}
                 color={THEME_INK.classic}

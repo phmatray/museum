@@ -53,6 +53,15 @@ public/assets/sculptures/*
 !public/assets/sculptures/bavette.glb
 !public/assets/sculptures/SOURCES.md
 
+# CINQUIÈME exception, raison différente cette fois : la police des cartels
+# (#52) n'est pas un asset CC0 retéléchargeable par `fetch-assets.ts` — c'est un
+# fichier tiers (OFL) qu'on embarque une fois pour toutes, comme troika/drei
+# l'auraient sinon fait depuis un CDN à chaque visite hors ligne.
+!public/assets/fonts/
+public/assets/fonts/*
+!public/assets/fonts/PTSans-Regular.ttf
+!public/assets/fonts/OFL.txt
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
