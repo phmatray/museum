@@ -7,10 +7,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 
+import { useAccrochage } from '../hooks/useAccrochage'
 import { MUSEE } from '../plan/musee'
 import { propPlacements, type PropId, type PropPlacement } from '../plan/props'
 import { propAssetsResource, type PropAssets, type PropPiece } from './propAssets'
-import { useAccrochage } from './useAccrochage'
 
 const SANS_THEME: { id: string; name: string }[] = []
 
