@@ -33,11 +33,11 @@ jobs:
       - run: npm ci
 
       # Les tests portent sur le code et les données versionnées (catalogue,
-      # musée, kit de props), jamais sur le catalogue régénéré la nuit même :
+      # accrochage, kit de props), jamais sur le catalogue régénéré la nuit même :
       # sinon un simple changement de topics/description d'un dépôt fait
       # bouger le clustering, casse des tests écrits contre les données
-      # versionnées, et bloque tout le déploiement (#13). Une dérivation qui
-      # échoue la nuit échoue toujours à son propre pas (`npm run derive`),
+      # versionnées, et bloque tout le déploiement (#13). Un accrochage qui
+      # échoue la nuit échoue toujours à son propre pas (`npm run accrocher`),
       # plus bas.
       - name: Vérifier
         run: |
@@ -110,8 +110,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run media
 
-      - name: Dériver le musée
-        run: npm run derive
+      # Le bâtiment est fixe (`src/plan/musee.ts`) : seuls les thèmes des salles
+      # et les toiles sur leurs murs suivent le catalogue de la nuit.
+      - name: Accrocher la collection
+        run: npm run accrocher
 
       - name: Construire le site
         env:

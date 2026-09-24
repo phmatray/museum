@@ -20,14 +20,14 @@
 - **Format/lint verify (the gate):** `npm run lint`
 - **Prerequisites / caveats:** Node 22 (CI), `npm ci`. `npm test` does not typecheck: run `tsc -b` too.
   The deploy pipeline also runs `npm run fetch` (needs `GITHUB_TOKEN` or `gh auth token`),
-  `node tools/fetch-assets.ts`, `npm run media` and `npm run derive` — not needed for a code change.
+  `node tools/fetch-assets.ts`, `npm run media` and `npm run accrocher` — not needed for a code change.
   `tools/capture.ts` and `tools/walk.ts` drive the local Chrome against `npm run dev` (dev-only hooks).
 
 ## CI gates (the exact commands CI fails on — satisfy these locally before ready/merge)
 - `npm run lint`
 - `npx vitest run`
 - `npm run build`
-- (deploy workflow only: `npm run fetch`, `npm run media`, `npm run derive` — a failed fetch degrades to the cached catalogue)
+- (deploy workflow only: `npm run fetch`, `npm run media`, `npm run accrocher` — a failed fetch degrades to the cached catalogue)
 
 ## Integration style
 - **Merge mode:** squash (squash-only since `setup-repo`, 2026-09-24; `delete_branch_on_merge` on). Older history shows merge commits.
