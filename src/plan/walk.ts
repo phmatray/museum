@@ -157,11 +157,15 @@ function lire(plan: Plan, surface: string) {
  * On découpe le déplacement en sous-pas d'au plus un demi-rayon : à 6 m/s et
  * dt = 0,1 s, on avancerait de 0,6 m d'un coup, deux fois le rayon — le centre
  * sauterait de l'autre côté d'un mur et serait repoussé du mauvais côté.
+ *
+ * `vitesse` (m/s), si présent, remplace le choix entre marche et hâte : la
+ * visite guidée y passe son allure propre. Les sous-pas la bornent comme les
+ * autres, donc aucune valeur ne fait traverser un mur.
  */
 export function step(
   plan: Plan,
   walker: Walker,
-  input: { forward: number; strafe: number; yaw: number; hate?: boolean },
+  input: { forward: number; strafe: number; yaw: number; hate?: boolean; vitesse?: number },
   dt: number,
 ): Walker {
   let surface = walker.surface
@@ -169,7 +173,7 @@ export function step(
 
   const { forward: a, strafe: c, yaw } = input
   const norme = Math.max(1, Math.hypot(a, c))
-  const v = (input.hate ? VITESSE_HATE : VITESSE_MARCHE) * dt / norme
+  const v = (input.vitesse ?? (input.hate ? VITESSE_HATE : VITESSE_MARCHE)) * dt / norme
   const cos = Math.cos(yaw)
   const sin = Math.sin(yaw)
   const dx = (-a * sin + c * cos) * v

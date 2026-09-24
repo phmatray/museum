@@ -105,6 +105,16 @@ export const VITESSE_MARCHE = 3.5
 export const VITESSE_HATE = 6
 
 /**
+ * Vitesse de la visite guidée, en m/s.
+ *
+ * 1,80 : l'ancienne vitesse de marche, et sa raison avec elle. C'est un pas
+ * soutenu (6,5 km/h) : on avance franchement, et une œuvre reste lisible en
+ * passant devant. Plus vite, les virages aux portes arriveraient avant que le
+ * regard (`TAUX_REGARD`) ait tourné, et les cartels défileraient sans se lire.
+ */
+export const VITESSE_VISITE = 1.8
+
+/**
  * Taux d'approche de la vitesse cible, en 1/s.
  *
  * Le mouvement n'est plus instantané. Un visiteur qui atteint sa vitesse de

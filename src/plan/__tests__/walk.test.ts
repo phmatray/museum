@@ -80,6 +80,12 @@ describe('la marche au rez-de-chaussée', () => {
     expect(marcher(w0, 0, 3.5, DT, true).z).toBeLessThan(18.1)
   })
 
+  it('avance à la vitesse imposée, hâte ou non', () => {
+    const w0 = depart()
+    const w = step(MUSEE, w0, { forward: 1, strafe: 0, yaw: 0, hate: true, vitesse: 1.8 }, DT)
+    expect((w0.z - w.z) / DT).toBeCloseTo(1.8, 6)
+  })
+
   it('ne sort pas par l’entrée : dehors, il n’y a pas encore de sol', () => {
     let w = depart()
     for (let t = 0; t < 10; t += DT) w = step(MUSEE, w, { forward: -1, strafe: 0, yaw: 0 }, DT)
