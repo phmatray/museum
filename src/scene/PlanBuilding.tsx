@@ -5,7 +5,7 @@
  * Un `InstancedMesh` par sorte de boîte et par niveau, soit une poignée d'appels
  * de dessin par niveau, là où un maillage par mur en coûterait une centaine.
  */
-import { useEffect, useMemo, useRef } from 'react'
+import { Suspense, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { MUSEE } from '../plan/musee'
 import { meshLevel, type Box } from '../plan/mesh'
@@ -13,8 +13,16 @@ import { creerVitrageGardeCorps } from '../builders/glazing'
 import { matiereDeDalle, useMatiere } from './materials'
 import { AMBIANCE, SOLEIL } from './lighting'
 import { PlanToiles } from './PlanToiles'
+import { SculptureLayer } from './SculptureLayer'
+import { sculpturePlacements } from '../plan/sculptures'
+import { ParkLayer } from './ParkLayer'
+import { parkPlacements } from '../plan/park'
+import { PropsLayer } from './PropsLayer'
+import { CartelLayer } from './CartelLayer'
 
 const AUCUNE: Box[] = []
+const SCULPTURES = sculpturePlacements(MUSEE)
+const PARC = parkPlacements(MUSEE)
 
 export function PlanBuilding() {
   // La baie et les garde-corps sont vitrés, comme les garde-corps de l'ancien atrium.
@@ -26,6 +34,13 @@ export function PlanBuilding() {
       <hemisphereLight args={[AMBIANCE.ciel, AMBIANCE.sol, AMBIANCE.intensite]} />
       <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
       {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} />)}
+      {/* Le décor à part : un texte qui attend sa police ne doit pas suspendre les murs. */}
+      <Suspense fallback={null}>
+        <SculptureLayer placements={SCULPTURES} />
+        <ParkLayer placements={PARC} />
+        <PropsLayer />
+        <CartelLayer />
+      </Suspense>
     </>
   )
 }
