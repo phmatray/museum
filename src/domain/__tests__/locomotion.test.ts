@@ -57,17 +57,19 @@ describe('cadencer — le pas fixe', () => {
    */
   it('parcourt la même distance à 30, 60, 144 et 240 images par seconde', () => {
     const reference = simuler(3, 60)
-    // La tolérance est UN pas fixe de marche — 1,8 m/s × 1/120 s = 1,5 cm — et
+    // La tolérance est UN pas fixe de marche — 3,5 m/s × 1/120 s = 2,9 cm — et
     // pas un chiffre rond : au moment où l'on arrête la simulation, le reste
     // reporté peut valoir jusqu'à un pas non encore exécuté. C'est la seule
     // divergence que le pas fixe autorise, et elle ne s'accumule pas.
     const UN_PAS = VITESSE_MARCHE * PAS_FIXE
     for (const ips of [30, 72, 144, 240]) {
-      expect(Math.abs(simuler(3, ips) - reference), `${ips} im/s`).toBeLessThanOrEqual(UN_PAS)
+      // + 1e-9 : à 144 im/s l'écart vaut exactement un pas, à l'arrondi flottant près.
+      expect(Math.abs(simuler(3, ips) - reference), `${ips} im/s`).toBeLessThanOrEqual(UN_PAS + 1e-9)
     }
-    // Et le tout reste à portée de la distance théorique : 3 s à 1,8 m/s, moins
-    // le retard de la mise en vitesse.
-    expect(reference).toBeGreaterThan(3 * VITESSE_MARCHE - 0.2)
+    // Et le tout reste à portée de la distance théorique : 3 s à la vitesse de
+    // marche, moins le retard de la mise en vitesse — `v / taux` pour une approche
+    // exponentielle — et au plus un pas non exécuté.
+    expect(reference).toBeGreaterThan(3 * VITESSE_MARCHE - VITESSE_MARCHE / TAUX_ACCELERATION - UN_PAS)
     expect(reference).toBeLessThan(3 * VITESSE_MARCHE)
   })
 

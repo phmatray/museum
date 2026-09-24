@@ -133,6 +133,8 @@ describe('PlanPlayer', () => {
     await renderer.advanceFrames(30, 1 / 60)
 
     expect(camera.position.distanceTo(avant)).toBeGreaterThan(0.5)
+    // 0,5 s à 1,8 m/s : la visite garde son allure de lecture, pas celle de la marche.
+    expect(camera.position.distanceTo(avant)).toBeLessThan(0.9 + 1e-3)
     expect(useGameStore.getState().tourEtape).toBe(0)
     await act(async () => useGameStore.setState({ tourActive: false }))
   })

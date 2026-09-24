@@ -28,17 +28,17 @@ const marcher = (w: Walker, yaw: number, secondes: number, dt = DT, hate = false
 }
 
 /** Marche droit vers (x, z), en recalant le cap à chaque pas, jusqu'à y être ou être bloqué. */
-const vers = (w: Walker, x: number, z: number, apres?: (w: Walker) => void) => {
+const vers = (w: Walker, x: number, z: number, apres?: (w: Walker) => void, hate = false) => {
   for (let i = 0; i < 20 / DT && Math.hypot(x - w.x, z - w.z) > 0.02; i++) {
-    w = step(MUSEE, w, { forward: 1, strafe: 0, yaw: capVers(w, x, z) }, DT)
+    w = step(MUSEE, w, { forward: 1, strafe: 0, yaw: capVers(w, x, z), hate }, DT)
     apres?.(w)
   }
   return w
 }
 
 /** Une suite de points de passage, depuis le point d'apparition. */
-const parcours = (points: [number, number][], apres?: (w: Walker) => void) =>
-  points.reduce((w, [x, z]) => vers(w, x, z, apres), depart())
+const parcours = (points: [number, number][], apres?: (w: Walker) => void, hate = false) =>
+  points.reduce((w, [x, z]) => vers(w, x, z, apres, hate), depart())
 
 /** Du hall au palier par la volée centrale, puis au balcon ouest par la volée ouest. */
 const AU_PALIER: [number, number][] = [[24, 14]]
@@ -55,7 +55,9 @@ describe('la marche au rez-de-chaussée', () => {
 
   it('entre dans « Librairies .NET » par la porte du hall', () => {
     const w0 = depart()
-    const w = marcher(w0, capVers(w0, 16, 24), 10)
+    // 18 m de marche : 15,3 m jusqu'à la porte, puis moins de trois dans la salle.
+    // Une durée fixe mesurerait la vitesse, et au-delà la salle se traverse.
+    const w = marcher(w0, capVers(w0, 16, 24), 18 / VITESSE_MARCHE)
     expect(w.x).toBeLessThan(16)
     expect(w.z).toBeGreaterThan(13)
     expect(w.z).toBeLessThan(27)
@@ -63,12 +65,25 @@ describe('la marche au rez-de-chaussée', () => {
 
   it('ne traverse pas le mur plein entre deux portes, même en hâte au delta maximal', () => {
     // On remonte le hall jusqu'en face du mur plein, puis on fonce droit dessus.
-    let w = marcher(depart(), 0, 8 / 1.8)
+    let w = marcher(depart(), 0, 8 / VITESSE_MARCHE)
     expect(w.z).toBeCloseTo(29, 1)
     let minX = Infinity
     w = marcher(w, Math.PI / 2, 20, DELTA_MAX, true, (w) => { minX = Math.min(minX, w.x) })
     expect(minX).toBeGreaterThanOrEqual(16 + RAYON - 1e-6)
     expect(w.x).toBeCloseTo(16 + RAYON, 3)
+  })
+
+  it('traverse le hall en 6 s au pas et en 3,5 s en hâte', () => {
+    // 21 m, de z = 39 à z = 18, écrits à la main : c'est la promesse faite au visiteur.
+    const w0 = vers(depart(), 20, 39)
+    expect(marcher(w0, 0, 6).z).toBeLessThan(18.1)
+    expect(marcher(w0, 0, 3.5, DT, true).z).toBeLessThan(18.1)
+  })
+
+  it('avance à la vitesse imposée, hâte ou non', () => {
+    const w0 = depart()
+    const w = step(MUSEE, w0, { forward: 1, strafe: 0, yaw: 0, hate: true, vitesse: 1.8 }, DT)
+    expect((w0.z - w.z) / DT).toBeCloseTo(1.8, 6)
   })
 
   it('ne sort pas par l’entrée : dehors, il n’y a pas encore de sol', () => {
@@ -103,6 +118,18 @@ describe("l'escalier impérial", () => {
     expect(w.level).toBe(1)
     expect(w.y).toBeCloseTo(4.8, 6)
     expect(cotes.some((y) => Math.abs(y - 2.4) < 1e-6)).toBe(true)
+    const sauts = cotes.slice(1).map((y, i) => Math.abs(y - cotes[i]))
+    expect(Math.max(...sauts)).toBeLessThanOrEqual(0.05)
+  })
+
+  it("monte à la salle d'honneur en hâte, sans saut de cote", () => {
+    const cotes: number[] = []
+    const w = parcours(
+      [...AU_BALCON_OUEST, [14, 24], [8, 24], [8, 11], [8, 6], [20, 6]],
+      (w) => cotes.push(w.y),
+      true,
+    )
+    expect(w.surface).toBe('1:honneur')
     const sauts = cotes.slice(1).map((y, i) => Math.abs(y - cotes[i]))
     expect(Math.max(...sauts)).toBeLessThanOrEqual(0.05)
   })

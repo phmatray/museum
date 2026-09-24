@@ -9,7 +9,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
-import { PAS_FIXE, cadencer } from '../domain/locomotion'
+import { PAS_FIXE, VITESSE_VISITE, cadencer } from '../domain/locomotion'
 import { MUSEE } from '../plan/musee'
 import { surfaceAt } from '../plan/rules'
 import { VISITE as ITINERAIRE, avancer, capVers, type Curseur } from '../plan/tour'
@@ -58,7 +58,7 @@ export function PlanPlayer() {
     curseur.current = c
     if (useGameStore.getState().tourEtape !== c.stop) useGameStore.setState({ tourEtape: c.stop })
     const pts = ITINERAIRE[c.stop].points
-    if (c.point < pts.length) return { forward: 1, strafe: 0, yaw: capVers(w, ...pts[c.point]) }
+    if (c.point < pts.length) return { forward: 1, strafe: 0, yaw: capVers(w, ...pts[c.point]), vitesse: VITESSE_VISITE }
     attente.current += dt
     if (attente.current >= PAUSE_VISITE) {
       attente.current = 0

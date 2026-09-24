@@ -87,19 +87,32 @@ export function cadencer(accumulateur: number, delta: number): {
 /**
  * Vitesse de marche, en m/s.
  *
- * 1,80 et non 4,00. Quatre mètres par seconde sont 14,4 km/h : la vitesse d'un
- * coureur, pas celle d'un visiteur — et à cette allure une salle de sept mètres
- * se traverse en moins de deux secondes, ce qui interdit de regarder quoi que
- * ce soit. 1,80 m/s est un pas soutenu (6,5 km/h) : on avance franchement, et
- * une œuvre reste lisible en passant devant.
+ * 3,5 : le rythme d'un jeu à la première personne tranquille, sur décision du
+ * propriétaire (#60). À 1,80 m/s, le pas soutenu qui laissait lire une œuvre en
+ * passant, traverser le hall de 28 m prenait 15 s — le musée se parcourait plus
+ * qu'il ne se visitait. À 3,5 m/s, 8 s. Le rythme de lecture n'a pas disparu :
+ * il revient à la visite guidée, qui garde son allure propre.
  *
  * Le défaut mesuré rendait de toute façon la valeur réglée fictive — à 120 im/s
  * on marchait déjà à 1,5 m/s sans que personne l'ait décidé.
  */
-export const VITESSE_MARCHE = 1.8
+export const VITESSE_MARCHE = 3.5
 
-/** Vitesse en hâte (Maj). Pour traverser un plateau déjà vu, pas pour visiter. */
-export const VITESSE_HATE = 3.8
+/**
+ * Vitesse en hâte (Maj), en m/s. Pour traverser un plateau déjà vu, pas pour
+ * visiter : le hall en 4,7 s.
+ */
+export const VITESSE_HATE = 6
+
+/**
+ * Vitesse de la visite guidée, en m/s.
+ *
+ * 1,80 : l'ancienne vitesse de marche, et sa raison avec elle. C'est un pas
+ * soutenu (6,5 km/h) : on avance franchement, et une œuvre reste lisible en
+ * passant devant. Plus vite, les virages aux portes arriveraient avant que le
+ * regard (`TAUX_REGARD`) ait tourné, et les cartels défileraient sans se lire.
+ */
+export const VITESSE_VISITE = 1.8
 
 /**
  * Taux d'approche de la vitesse cible, en 1/s.
@@ -202,9 +215,11 @@ export function directionMarche(touches: Touches, yaw: number): Vec2XZ {
  *
  * Le second mécanisme énonce directement la propriété qu'on veut : l'œil ne
  * monte ni ne descend plus vite que 1,40 m/s tant qu'on a les pieds au sol.
- * L'ascension de l'escalier n'en demande que 0,55 à la vitesse de marche —
- * l'œil suit donc exactement la rampe — et 1,16 en hâte, ce qui reste sous la
- * limite. Seuls les à-coups de franchissement sont écrêtés.
+ * L'ascension de l'escalier n'en demande que 1,07 à la vitesse de marche —
+ * l'œil suit donc exactement la rampe — mais 1,83 en hâte, au-dessus de la
+ * limite : si `suivreOeil` était branché, la hâte dans l'escalier serait
+ * écrêtée. Elle ne l'est pas, `step()` pose l'œil sans lissage. Seuls les
+ * à-coups de franchissement sont écrêtés.
  *
  * En chute libre l'écart plafonne (voir `ECART_OEIL_MAX`) et l'œil retrouve la
  * vitesse du corps : tomber doit se sentir.
