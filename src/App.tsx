@@ -27,14 +27,12 @@ const keyMap = [
   { name: Controls.left, keys: ['ArrowLeft', 'KeyA'] },
   { name: Controls.right, keys: ['ArrowRight', 'KeyD'] },
   /*
-    La HÂTE, et pourquoi elle est apparue en même temps que la vitesse de
-    marche a baissé.
+    La HÂTE, et pourquoi elle existe à côté de la marche normale.
 
-    La vitesse était réglée à 4 m/s, soit 14,4 km/h : celle d'un coureur. À
-    cette allure une salle de sept mètres se traverse en moins de deux
-    secondes et rien ne se regarde. Elle est passée à 1,80 m/s — un pas
-    soutenu — mais traverser un plateau déjà vu deviendrait long : Maj rend
-    les 3,80 m/s à qui sait où il va.
+    La marche est réglée à 3,5 m/s (`VITESSE_MARCHE`) — un pas soutenu, qui
+    laisse le temps de regarder. Mais traverser un plateau déjà vu deviendrait
+    long à cette allure : Maj rend les 6 m/s (`VITESSE_HATE`) à qui sait où il
+    va.
   */
   { name: Controls.hate, keys: ['ShiftLeft', 'ShiftRight'] },
 ]
