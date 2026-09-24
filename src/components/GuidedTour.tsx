@@ -3,10 +3,12 @@
  * La marche elle-même est conduite par `PlanPlayer` le long de
  * `buildTourItinerary`, par le même `step()` que le clavier.
  */
+import { useAccrochage, themeName } from '../hooks/useAccrochage'
 import { VISITE as STOPS } from '../plan/tour'
 import { useGameStore } from '../stores/gameStore'
 
 export function GuidedTour() {
+  const accrochage = useAccrochage()
   const tourActive = useGameStore((s) => s.tourActive)
   const etape = useGameStore((s) => s.tourEtape)
   if (!tourActive) return null
@@ -19,7 +21,7 @@ export function GuidedTour() {
         background: 'rgba(0,0,0,0.6)', color: 'white', borderRadius: 4, font: '14px system-ui, sans-serif',
       }}
     >
-      Visite guidée · {stop?.name} ({etape + 1}/{STOPS.length})
+      Visite guidée · {stop && themeName(accrochage, stop.roomId, stop.level, stop.name)} ({etape + 1}/{STOPS.length})
     </div>
   )
 }

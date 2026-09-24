@@ -626,6 +626,27 @@ export const AMBIANCE = {
 } as const
 
 /**
+ * Ciel du bâtiment du plan (#46).
+ *
+ * La scène du plan (`PlanBuilding`) ne montait ni fond ni environnement : le
+ * vide au-delà des ouvertures se rendait noir — visible dès le hall, en
+ * double hauteur, et à l'étage noble qui n'a pas de plafond. Un
+ * `<color attach="background">` suffit : zéro coût de rendu, et c'était déjà
+ * le choix de l'ancien bâtiment (`git show 6181064:src/scene/MuseumScene.tsx`)
+ * avant sa suppression par #29.
+ *
+ * ── Pourquoi pas le bleu-gris `#9aabc0` de l'ancien bâtiment ──
+ *
+ * C'est la valeur que l'issue propose de reprendre, mais sa luminance relative
+ * (espace linéaire) ne vaut que 0,40 : sous le seuil de 0,5 que ce module
+ * teste précisément pour empêcher un ciel de redevenir trop sombre. On reprend
+ * donc `AMBIANCE.ciel`, déjà un ciel diurne clair et déjà la couleur que
+ * l'hémisphérique verse dans les salles — le fond et la lumière ambiante
+ * racontent alors le même ciel, sans littéral dupliqué dans `PlanBuilding`.
+ */
+export const CIEL: string = AMBIANCE.ciel
+
+/**
  * Le soleil de la verrière. Seule source du bâtiment à porter une ombre depuis
  * le lot 2, et la seule qui entre par la trémie de la toiture.
  *

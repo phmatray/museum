@@ -7,6 +7,7 @@
  * se décide (niveau, salle, repère) vient de `plan/minimap.ts`.
  */
 import { useMemo } from 'react'
+import { useAccrochage, themeName } from '../hooks/useAccrochage'
 import { MUSEE } from '../plan/musee'
 import { projectForMinimap } from '../plan/minimap'
 import { S, renderLevel } from '../plan/svg'
@@ -18,6 +19,7 @@ const PORTEE = 3
 const OUVERTURE = 0.5
 
 export function Minimap() {
+  const accrochage = useAccrochage()
   const visiteur = useGameStore((s) => s.visiteur)
   const vue = visiteur && projectForMinimap(MUSEE, visiteur)
   const level = vue?.level ?? MUSEE.spawn.level
@@ -30,7 +32,8 @@ export function Minimap() {
     const a = p.yaw + d
     return `${p.x - Math.sin(a) * PORTEE * S},${p.y - Math.cos(a) * PORTEE * S}`
   }).join(' ')
-  const nom = room?.name ?? MUSEE.levels.find((l) => l.id === level)?.name
+  const repliNom = MUSEE.levels.find((l) => l.id === level)?.name ?? ''
+  const nom = room ? themeName(accrochage, room.id, level, room.name) : repliNom
 
   return (
     <figure
