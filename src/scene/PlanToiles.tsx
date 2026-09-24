@@ -81,8 +81,12 @@ const AUCUNE: ReadonlySet<string> = new Set()
 /**
  * Chargé en effet, pas par `use()` : un accrochage absent ou en retard ne doit
  * ni masquer les murs derrière le Suspense, ni faire tomber la visite.
+ *
+ * Exporté pour le test : c'est le seul point où `accrochage.json` traverse le
+ * schéma zod, et `computePoses` (testé à part) ne voit plus cette étape.
  */
-function useAccrochage(): Accrochage | null {
+// eslint-disable-next-line react-refresh/only-export-components -- exporté pour le test, pas pour être réutilisé ailleurs
+export function useAccrochage(): Accrochage | null {
   const [accrochage, setAccrochage] = useState<Accrochage | null>(null)
   useEffect(() => {
     let vivant = true

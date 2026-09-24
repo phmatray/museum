@@ -51,6 +51,10 @@ describe('accrochageSchema', () => {
     expect(accrochageSchema.safeParse(accrochageValide([roomValide({ placements: [] })])).success).toBe(true)
   })
 
+  it('accepte un accrochage sans aucune salle — 0 salle reste valide', () => {
+    expect(accrochageSchema.safeParse(accrochageValide([])).success).toBe(true)
+  })
+
   it('refuse une salle dont les placements n’ont pas la forme attendue', () => {
     expect(accrochageSchema.safeParse({ rooms: [{ id: 'x' }] }).success).toBe(false)
   })
