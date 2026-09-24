@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 import type { Museum } from '../domain/types'
+import type { Walker } from '../plan/walk'
 
 interface GameState {
   paused: boolean
@@ -18,6 +19,8 @@ interface GameState {
    * bundle ; y poser une référence ne coûte rien.
    */
   museumOverride: Museum | null
+  /** Le visiteur du plan, publié par `PlanPlayer` quand il bouge : la minimap le lit. */
+  visiteur: Walker | null
   setPaused: (paused: boolean) => void
   setCurrentRoomId: (id: string) => void
   setTourActive: (active: boolean) => void
@@ -31,6 +34,7 @@ export const useGameStore = create<GameState>((set) => ({
   tourActive: false,
   pointerLocked: false,
   museumOverride: null,
+  visiteur: null,
   setPaused: (paused) => set({ paused }),
   setCurrentRoomId: (id) => set({ currentRoomId: id }),
   setTourActive: (active) => set({ tourActive: active }),

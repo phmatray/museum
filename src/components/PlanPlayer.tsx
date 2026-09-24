@@ -84,6 +84,9 @@ export function PlanPlayer() {
     let w = walker.current
     for (let i = 0; i < pas; i++) w = step(MUSEE, w, input, PAS_FIXE)
     walker.current = w
+    // Publié seulement s'il a bougé ou tourné : à l'arrêt, la minimap ne se redessine pas.
+    const v = useGameStore.getState().visiteur
+    if (!v || v.x !== w.x || v.z !== w.z || v.yaw !== w.yaw || v.surface !== w.surface) useGameStore.setState({ visiteur: w })
     camera.position.set(w.x, w.y + HAUTEUR_OEIL, w.z)
   })
 
