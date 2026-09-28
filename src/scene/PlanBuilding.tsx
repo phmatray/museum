@@ -21,6 +21,7 @@ import { parkPlacements } from '../plan/park'
 import { PropsLayer } from './PropsLayer'
 import { CartelLayer } from './CartelLayer'
 import { NefLayer } from './NefLayer'
+import { TableauDeparts } from './TableauDeparts'
 import { FacadeLayer } from './FacadeLayer'
 import { bandesDuSol, parementDuHall } from '../plan/parement'
 import { plafonds } from '../plan/plafonds'
@@ -44,6 +45,7 @@ export function PlanBuilding() {
       <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
       {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} />)}
       <NefLayer />
+      <TableauDeparts />
       {/* Le décor à part : un texte qui attend sa police ne doit pas suspendre les murs. */}
       <FacadeLayer />
       <Suspense fallback={null}>
