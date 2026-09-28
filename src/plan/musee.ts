@@ -19,6 +19,7 @@
  * l'ancien bâtiment. 15 contremarches de 16 cm par volée, giron de 32 cm :
  * 2h + g = 0,64 m, au milieu de la fourchette de Blondel.
  */
+import { OBSTACLES_PORTIQUE } from './facade.ts'
 import type { Plan } from './types.ts'
 
 const STOREY = 4.8
@@ -71,6 +72,8 @@ export const MUSEE: Plan = {
         // Sous les volées latérales, qui démarrent à +2,40.
         { x: 16, z: 15.5, width: 3, depth: 4.5 },
         { x: 29, z: 15.5, width: 3, depth: 4.5 },
+        // Dehors, les piliers et jambages du portique d'entrée (facade.ts).
+        ...OBSTACLES_PORTIQUE,
       ],
     },
     {

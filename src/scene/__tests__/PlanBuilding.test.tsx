@@ -10,8 +10,12 @@
  * sortes de boîtes (mur, linteau, dalle, palier, marche, garde-corps, baie) —
  * voir l'ordre exact des `<Boites>` dans `PlanBuilding.tsx`.
  */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import ReactThreeTestRenderer from '@react-three/test-renderer'
+
+// Le texte troika (enseigne, cartels) ne tourne pas sous jsdom et y bloquait le
+// test : on le neutralise, comme SculptureLayer.test et Cartel.test.
+vi.mock('@react-three/drei', () => ({ Text: () => null }))
 import { Color } from 'three'
 import type * as THREE from 'three'
 
@@ -19,6 +23,7 @@ import { PlanBuilding } from '../PlanBuilding'
 import { MUSEE } from '../../plan/musee'
 import { bandesDuSol, parementDuHall } from '../../plan/parement'
 import { plafonds } from '../../plan/plafonds'
+import { facade } from '../../plan/facade'
 import { meshLevel, type Box } from '../../plan/mesh'
 import { CIEL } from '../lighting'
 
@@ -59,6 +64,9 @@ describe('PlanBuilding', () => {
       comptes.splice(2, 1, comptes[2] - balcons, balcons)
       return [...comptes, ...pierre]
     })
+    // Puis la façade, après les niveaux : brique, pierre, piliers, vitres, menuiseries.
+    const f = facade(MUSEE)
+    attendus.push(f.brique.length, f.pierre.length, f.piliers.length, f.vitres.length, f.menuiseries.length)
 
     expect(meshes).toHaveLength(attendus.length)
     expect(meshes.map((m) => m.count)).toEqual(attendus)
