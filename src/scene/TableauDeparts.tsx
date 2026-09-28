@@ -12,6 +12,7 @@ import * as THREE from 'three'
 import { COLONNES, dureeVolets, ligneEnPalettes, lignesDeDeparts, palettes, voletsA } from '../domain/departs'
 import { useAccrochage } from '../hooks/useAccrochage'
 import { useCatalogue } from '../hooks/useCatalogue'
+import { useGameStore } from '../stores/gameStore'
 
 /** Sous l'horloge du pignon nord (`build-nef.py` : cadran à +14,80, z = 12,6). */
 const CENTRE: [number, number, number] = [24, 11.2, 12.95]
@@ -97,6 +98,8 @@ export function TableauDeparts() {
       e.debut = maintenant
       e.page = page
       e.fini = false
+      // Pour l'ambiance sonore : le cliquetis des palettes, le temps qu'elles tournent.
+      useGameStore.setState({ volets: { at: maintenant, ms: dureeVolets(LARGEUR_LIGNE) } })
     }
     if (e.fini) return
     const ms = maintenant - e.debut

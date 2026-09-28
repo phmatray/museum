@@ -28,6 +28,7 @@ import { VitrinesLayer } from './VitrinesLayer'
 import { sansBaieBatllo } from './batllo'
 import { EscalierLayer } from './EscalierLayer'
 import { TableauDeparts } from './TableauDeparts'
+import { AmbianceSonore } from '../audio/AmbianceSonore'
 import { EveilLayer } from './EveilLayer'
 import { ProjecteursLayer } from './ProjecteursLayer'
 import { PortesLayer } from './PortesLayer'
@@ -64,6 +65,7 @@ export function PlanBuilding() {
       <VitrinesLayer />
       <EscalierLayer onPret={escalierPret} />
       <TableauDeparts />
+      <AmbianceSonore />
       <EveilLayer />
       <ProjecteursLayer />
       <PortesLayer />

@@ -12,6 +12,7 @@ import { CarteOeuvre } from './components/CarteOeuvre'
 import { BorneOeuvre } from './components/BorneOeuvre'
 import { CarteBavette } from './components/CarteBavette'
 import { GuidedTour } from './components/GuidedTour'
+import { BoutonSon } from './components/BoutonSon'
 
 // Objet constant plutôt qu'`enum` : `erasableSyntaxOnly` interdit les enums,
 // qui émettent du code au lieu de disparaître au strip des types.
@@ -60,6 +61,7 @@ export default function App() {
       <CarteOeuvre />
       <BorneOeuvre />
       <CarteBavette />
+      <BoutonSon />
       <KeyboardControls map={keyMap}>
         <Canvas camera={{ fov: 75, near: 0.1, far: 1000 }} gl={{ preserveDrawingBuffer: import.meta.env.DEV }}>
           <Suspense fallback={null}>
