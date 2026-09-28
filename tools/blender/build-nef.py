@@ -109,9 +109,10 @@ class Maillage:
         anneaux = [[(x, y0, z0), (x, y1, z0), (x, y1, z1), (x, y0, z1)] for x in (x0, x1)]
         self.prisme(anneaux, mat)
 
-    def objet(self, nom, mats, lisse=math.radians(35)):
+    def objet(self, nom, mats, lisse=math.radians(35), pivot=(0.0, 0.0, 0.0)):
+        """`pivot` devient l'origine de l'objet : ce qui tourne, comme une aiguille, tourne autour."""
         me = bpy.data.meshes.new(nom)
-        me.from_pydata(self.v, [], self.f)
+        me.from_pydata([(x - pivot[0], y - pivot[1], z - pivot[2]) for x, y, z in self.v], [], self.f)
         for m in mats:
             me.materials.append(m)
         idx = {m.name: i for i, m in enumerate(mats)}
@@ -125,6 +126,7 @@ class Maillage:
         me.shade_smooth()
         me.set_sharp_from_angle(angle=lisse)
         o = bpy.data.objects.new(nom, me)
+        o.location = pivot
         bpy.context.collection.objects.link(o)
         return o
 
@@ -357,13 +359,14 @@ def horloge(or_, cadran, fonte):
             g.prisme([[(cx + ox + r * c - w * s, yy, cz + oz + r * s + w * c), (cx + ox + r * c + w * s, yy, cz + oz + r * s - w * c),
                        (cx + ox + r * c + w * s, yy - 0.02, cz + oz + r * s - w * c), (cx + ox + r * c - w * s, yy - 0.02, cz + oz + r * s + w * c)]
                       for r, yy in ((r0, y - 0.03), (r1, y - 0.03))], or_)
-    # Les aiguilles, à dix heures dix.
-    for a, long_, w in ((math.pi / 2 - 2 * math.pi * 10 / 12 - math.radians(5), 0.62, 0.035), (math.pi / 2 - 2 * math.pi * 2 / 12, 0.98, 0.022)):
-        c, s = math.cos(a), math.sin(a)
-        g.prisme([[(cx + r * c - w * s, yy, cz + r * s + w * c), (cx + r * c + w * s, yy, cz + r * s - w * c),
-                   (cx + r * c + w * s, yy - 0.02, cz + r * s - w * c), (cx + r * c - w * s, yy - 0.02, cz + r * s + w * c)]
-                  for r, yy in ((-0.15, y - 0.07), (long_, y - 0.07))], fonte)
-    tore(g, cx, y - 0.1, cz, 0.04, 0.03, or_, n=12, m=6)
+    # Les aiguilles : deux objets à part, pointés sur midi, l'origine au centre
+    # du cadran. `NefLayer` les tourne à l'heure du visiteur autour de leur axe.
+    for nom, long_, w, yy in (("Nef_Aiguille_Heures", 0.62, 0.035, y - 0.07), ("Nef_Aiguille_Minutes", 0.98, 0.022, y - 0.095)):
+        a = Maillage()
+        a.prisme([[(cx - w, yy, cz + r), (cx + w, yy, cz + r), (cx + w, yy - 0.02, cz + r), (cx - w, yy - 0.02, cz + r)]
+                  for r in (-0.15, long_)], fonte)
+        a.objet(nom, [fonte], pivot=(cx, yy, cz))
+    tore(g, cx, y - 0.125, cz, 0.04, 0.03, or_, n=12, m=6)
     # La console qui la porte, accrochée à l'arc nord.
     g.boite(cx - 0.12, cx + 0.12, y + 0.02, y + 0.35, cz + 1.95, S + R - ARC_E - 0.05, or_)
     return g.objet("Nef_Horloge", [or_, cadran, fonte], lisse=math.radians(40))

@@ -4,14 +4,28 @@
  *
  * Le fichier est modélisé dans le repère du plan : il se pose tel quel, sans
  * transformation. Chargé sans suspendre : le bâtiment d'abord, la voûte ensuite.
+ *
+ * L'horloge donne l'heure du visiteur : ses deux aiguilles sont des nœuds à
+ * part, pointés sur midi, qu'on tourne à chaque image autour de leur axe.
  */
 import { useEffect, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
+import { anglesHorloge } from './horloge'
+
 export function NefLayer() {
   const [nef, setNef] = useState<THREE.Object3D | null>(null)
+  useFrame(() => {
+    if (nef === null) return
+    const { heures, minutes } = anglesHorloge(new Date())
+    // Le cadran regarde +z : vu du hall, le sens horaire est une rotation négative autour de z.
+    const [h, m] = [nef.getObjectByName('Nef_Aiguille_Heures'), nef.getObjectByName('Nef_Aiguille_Minutes')]
+    if (h) h.rotation.z = -heures
+    if (m) m.rotation.z = -minutes
+  })
   useEffect(() => {
     let vivant = true
     const base = import.meta.env.BASE_URL
