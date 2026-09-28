@@ -18,7 +18,7 @@ même robe tabby et blanche, tête dans l'axe, queue détachée des pattes.
 
 ── Ce que le script GARANTIT, et dont `BavetteLayer.tsx` dépend ──
 
-  1. l'échelle est RÉELLE (HAUTEUR au sommet des oreilles) ;
+  1. l'échelle est RÉELLE (GARROT, mesuré sur Bavette) ;
   2. l'origine est AU SOL, centrée entre les pattes avant et arrière, et le
      chat regarde +Z après l'export (−Y de Blender) ;
   3. `Marche` fait avancer les pattes à VITESSE m/s sans glisser : c'est la
@@ -30,7 +30,10 @@ même robe tabby et blanche, tête dans l'axe, queue détachée des pattes.
 Les pattes sont animées par IK (cibles au poignet et au jarret), puis CUITES en
 rotations simples (`nla.bake`, clés visuelles) : glTF ne connaît pas les
 contraintes. Le poser des coussinets est ainsi exact — pendant l'appui, la
-cible recule à VITESSE, donc la patte ne patine pas.
+cible recule à VITESSE, donc la patte ne patine pas ; `BAVETTE_IK` mesure, à
+chaque construction, de combien une patte manque sa cible (trop courte).
+La queue, elle, est pointée os par os dans des directions du monde (`queue`),
+et `au_sol` l'empêche de passer sous le plancher.
 
 Sans aléa ni horloge. Pas au bit près pour autant : le remaillage voxel et la
 chaleur des poids automatiques sont multithreadés, deux passes diffèrent de
@@ -49,13 +52,26 @@ SORTIE = ROOT / "public" / "assets" / "sculptures" / "bavette-anime.glb"
 
 TRIANGLES = 18_000
 TEXTURES = 1024
-HAUTEUR = 0.36          # m, sommet des oreilles — un grand chat de gouttière
 FPS = 30
 
-# La source Meshy est normalisée : z ∈ [−0,5 ; 0,5], museau vers −Y.
+# Les mesures de Bavette, prises par Philippe : 30 cm au garrot, 45 à 50 cm
+# du museau à la base de la queue, une queue de 20 à 30 cm, 4 kg — un chat
+# trapu. La source Meshy est normalisée : z ∈ [−0,5 ; 0,5], museau vers −Y ;
+# son garrot culmine à z = 0,332 (coupe y ∈ [−0,47 ; −0,39]), son museau est à
+# y = −0,936, la base de la queue à y = +0,36. L'échelle se prend au GARROT —
+# la tête, portée bas, ne dépasse le dos que de 6 cm : les oreilles montent à
+# 0,36 m, le corps fait 0,47 m, la queue 0,25 m (mesurés à chaque
+# construction, voir `BAVETTE_MESURES`).
+GARROT = 0.30           # m
+Z_GARROT = 0.332        # sur la source
 # Y0 : milieu entre coussinets avant (−0,475) et arrière (+0,21).
 Y0 = -0.13
-K = HAUTEUR / 1.0
+K = GARROT / (Z_GARROT + 0.5)
+# Trapu : la source est un chat de gouttière élancé. Le tronc s'élargit et le
+# ventre descend un peu entre les pattes (voir `etoffer`), sans toucher aux
+# pattes, à la tête ni à la queue.
+LARGEUR = 1.10
+VENTRE = 0.05           # unités source (≈ 1,8 cm) au milieu du ventre
 
 
 def P(x, y, z):
@@ -90,17 +106,32 @@ def os_du_chat():
     return os_
 
 
-PATTES = [  # (côté, avant ?, déphasage) — pas latéral : AG, … l'ordre du chat qui marche
-    ("G", False, 0.0), ("G", True, 0.25), ("D", False, 0.5), ("D", True, 0.75),
+# ── La marche, relevée sur une vidéo de Bavette (profil, sur l'herbe) ──
+# 60 images/s, suivie image par image sur ~15 s de marche droite :
+#   cycle : un antérieur tend la patte loin devant toutes les 27 images en
+#     moyenne (0,45 s), en alternance gauche/droite → PERIODE ≈ 0,9 à 1,0 s ;
+#   vitesse : 0,41 à 0,45 m/s (déplacement sur l'herbe, caméra compensée,
+#     échelle prise sur la longueur museau–base de la queue = 0,47 m) ;
+#   foulée : ≈ 0,40 m, presque une longueur de corps — des pas longs et lents ;
+#   ordre : pas latéral, PG · AG · PD · AD ; l'antérieur décolle ~0,15 cycle
+#     après le postérieur du même côté ;
+#   vol : ~0,20 cycle au postérieur, ~0,27 à l'antérieur (qui se replie haut,
+#     poignet cassé, puis se tend loin devant et se pose presque tendu).
+# D'où, pour chaque patte : (côté, avant ?, décollage dans le cycle, durée du vol).
+PATTES = [
+    ("G", False, 0.00, 0.21), ("G", True, 0.15, 0.27),
+    ("D", False, 0.50, 0.21), ("D", True, 0.65, 0.27),
 ]
-
-# ── La marche ──
-PERIODE = 0.8           # s, un cycle complet des quatre pattes
-APPUI = 0.62            # part du cycle où la patte est posée
-COURSE = 0.15           # m parcourus par une patte posée
-VITESSE = COURSE / (APPUI * PERIODE)   # ≈ 0,30 m/s à timeScale 1
-FLEXION = 0.018         # m, le corps s'abaisse un peu pour marcher
-LEVER = {True: 0.032, False: 0.028}
+PERIODE = 28 / FPS      # s ≈ 0,93
+FOULEE = 0.40           # m, un cycle
+VITESSE = FOULEE / PERIODE   # ≈ 0,43 m/s à timeScale 1
+FLEXION = 0.035         # m : il marche bas, le ventre près de l'herbe
+LEVER = {True: 0.065, False: 0.045}
+OMOPLATE = 0.07         # m : course avant–arrière de l'épaule avec la patte
+# La queue, en angle absolu sous l'horizontale, de la base à la pointe : basse,
+# en courbe douce, la pointe à hauteur de jarret (vidéo : −38° à la base).
+QUEUE_MARCHE = (-34, -42, -44, -42, -36, -28)
+QUEUE_REPOS = (-24, -38, -46, -46, -36, -18)
 
 
 def triangles(obj):
@@ -134,12 +165,41 @@ def importer(source: Path):
     m = Matrix.Diagonal((K, K, K, 1)) @ Matrix.Translation((0, -Y0, 0.5)) @ corps.matrix_world
     corps.data.transform(m)
     corps.matrix_world = Matrix.Identity(4)
+    etoffer(corps)
     print(f"BAVETTE_TRI {depart} -> {triangles(corps)}")
     for img in bpy.data.images:
         if max(img.size) > TEXTURES:
             f = TEXTURES / max(img.size)
             img.scale(int(img.size[0] * f), int(img.size[1] * f))
     return corps
+
+
+def cloche(u, a, b):
+    """1 au milieu de [a, b], 0 aux bords, en cosinus."""
+    if not a < u < b:
+        return 0.0
+    return 0.5 - 0.5 * math.cos(2 * math.pi * (u - a) / (b - a))
+
+
+def etoffer(corps):
+    """
+    Un chat de 4 kg : le tronc s'élargit de LARGEUR et le ventre descend de
+    VENTRE entre les pattes. En coordonnées de la source, pour garder les
+    coupes relevées ; les pattes (sous z = −0,2) et la tête ne bougent pas.
+    Mesure ensuite ce que le script promet : garrot, longueur, oreilles.
+    """
+    for v in corps.data.vertices:
+        y, z = v.co.y / K + Y0, v.co.z / K - 0.5
+        tronc = cloche(y, -0.70, 0.42) ** 0.5 * max(0.0, min(1.0, (z + 0.22) / 0.12))
+        v.co.x *= 1 + (LARGEUR - 1) * tronc
+        ventre = cloche(y, -0.36, 0.14) * max(0.0, min(1.0, (0.20 - z) / 0.30)) * (z > -0.22)
+        v.co.z -= VENTRE * K * ventre
+    vs = [v.co for v in corps.data.vertices]
+    garrot = max(c.z for c in vs if -0.47 <= c.y / K + Y0 <= -0.39)
+    museau = min(c.y for c in vs)
+    queue = (0.36 - Y0) * K
+    print(f"BAVETTE_MESURES garrot {garrot:.3f} m · oreilles {max(c.z for c in vs):.3f} m · "
+          f"museau–queue {queue - museau:.3f} m · largeur {2 * max(c.x for c in vs):.3f} m")
 
 
 def roll_lateral(eb):
@@ -267,6 +327,13 @@ def nettoyer_poids(corps, arm):
     touchent presque au sol — et ignore les îlots isolés (les moustaches). On
     retire à chaque patte ce qui est de l'autre côté du plan médian, et on
     confie tout sommet orphelin à l'os le plus proche.
+
+    Le tronc n'appartient qu'à l'échine. La chaleur laissait au ventre, devant
+    le genou, des bouts de cuisse et même de jambe, et au poitrail des bouts
+    des DEUX bras : la peau s'y étirait en pointes dès que la patte avançait,
+    et pire assis. On lisse d'abord, puis les poids des pattes s'éteignent en
+    douceur dans ces zones (le lissage ne peut plus les y ramener) ; l'échine
+    la plus proche reprend ce qui manque.
     """
     groupes = {g.index: g.name for g in corps.vertex_groups}
     segments = {b.name: (b.head_local, b.tail_local) for b in arm.data.bones if b.use_deform}
@@ -278,15 +345,59 @@ def nettoyer_poids(corps, arm):
             cote = nom[-2:]
             if (cote == "_G" and x < -0.002) or (cote == "_D" and x > 0.002):
                 corps.vertex_groups[nom].remove([v.index])
-        poids = [(groupes[g.group], g.weight) for g in v.groups if g.weight > 1e-4]
-        if not poids:
+        if not any(g.weight > 1e-4 for g in v.groups):
             orphelins += 1
             proche = min(segments, key=lambda n: distance_segment(v.co, *segments[n]))
             corps.vertex_groups[proche].add([v.index], 1.0, "REPLACE")
+    bpy.ops.object.select_all(action="DESELECT")
+    corps.select_set(True)
     bpy.context.view_layer.objects.active = corps
+    bpy.ops.object.mode_set(mode="WEIGHT_PAINT")
+    bpy.ops.object.vertex_group_smooth(group_select_mode="ALL", factor=0.5, repeat=6)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    groupes = {g.index: g.name for g in corps.vertex_groups}
+    for v in corps.data.vertices:
+        x, y, z = v.co.x / K, v.co.y / K + Y0, v.co.z / K - 0.5
+        if z < -0.24:
+            continue
+        # Au-dessus du coude et du genou : 1 près des pattes, 0 au milieu du ventre
+        # (y ∈ [−0,28 ; 0]) et sur la couture médiane (|x| < 0,01), au poitrail
+        # comme entre les cuisses, là où les deux pattes tiraient à la fois. La
+        # couture est étroite : la face interne des pattes doit les suivre.
+        haut = lisse((z + 0.24) / 0.08)
+        ventre = min(lisse((y + 0.38) / 0.10), lisse((0.0 - y) / 0.08))
+        couture = 1 - lisse((abs(x) - 0.008) / 0.025)
+        garde = 1 - haut * max(ventre, couture * max(lisse((-0.38 - y) / 0.06), lisse((y - 0.08) / 0.06)))
+        if garde >= 1:
+            continue
+        poids = {groupes[g.group]: g.weight for g in v.groups}
+        total = sum(poids.values())
+        if total <= 0:
+            continue
+        pris = 0.0
+        for nom, w in poids.items():
+            w /= total
+            if nom[-2:] in ("_G", "_D"):
+                pris += w * (1 - garde)
+                w *= garde
+            corps.vertex_groups[nom].add([v.index], w, "REPLACE")
+        for nom, w in echine(y):
+            corps.vertex_groups[nom].add([v.index], pris * w, "ADD")
     bpy.ops.object.vertex_group_limit_total(group_select_mode="ALL", limit=4)
     bpy.ops.object.vertex_group_normalize_all(group_select_mode="ALL", lock_active=False)
     print(f"BAVETTE_POIDS {orphelins} sommets orphelins rattachés")
+
+
+def echine(y):
+    """L'échine sous la coupe `y` (source) : deux os voisins, en proportion — sans saut d'un os à l'autre."""
+    centres = (("Cou", -0.62), ("Poitrine", -0.36), ("Dos", -0.05), ("Bassin", 0.21))
+    if y <= centres[0][1]:
+        return [(centres[0][0], 1.0)]
+    for (a, ya), (b, yb) in zip(centres, centres[1:]):
+        if y <= yb:
+            u = (y - ya) / (yb - ya)
+            return [(a, 1 - u), (b, u)]
+    return [(centres[-1][0], 1.0)]
 
 
 def distance_segment(p, a, b):
@@ -336,31 +447,57 @@ def lisse(u):
     return 0.5 - 0.5 * math.cos(math.pi * max(0.0, min(1.0, u)))
 
 
-def patte_en_marche(phase):
-    """(recul le long de la course ∈ [−½, ½], hauteur ∈ [0, 1], bascule en degrés)."""
-    if phase < APPUI:
-        u = phase / APPUI
-        recul = -0.5 + u
-        # La main se décolle du talon au dernier quart de l'appui.
-        bascule = 30 * lisse((u - 0.75) / 0.25)
-        return recul, 0.0, bascule
-    u = (phase - APPUI) / (1 - APPUI)
-    recul = 0.5 - lisse(u)
-    hauteur = math.sin(math.pi * u) ** 0.8
-    # Repliée pendant le vol, dépliée pour se poser, un rien tendue en avant.
-    bascule = 30 + 25 * math.sin(math.pi * min(1, u * 1.4)) - 36 * lisse((u - 0.55) / 0.45)
-    return recul, hauteur, bascule
+def patte_en_marche(u, vol, avant):
+    """
+    `u` : temps depuis le décollage, en part du cycle. Rend (recul le long de la
+    course ∈ [−½, ½], hauteur ∈ [0, 1], bascule en degrés).
+
+    Pendant l'appui la patte recule À VITESSE (linéaire : pas de glisse) ; au
+    dernier cinquième le talon se lève, la patte roule sur ses doigts. En vol,
+    comme dans la vidéo : l'antérieur se replie haut, poignet cassé, puis se
+    tend loin devant et se pose presque tendu ; le postérieur, plus bref, se
+    replie moins.
+    """
+    if u >= vol:
+        s = (u - vol) / (1 - vol)
+        return -0.5 + s, 0.0, (34 if avant else 26) * lisse((s - 0.8) / 0.2)
+    s = u / vol
+    recul = 0.5 - lisse(min(1.0, s / 0.92))
+    hauteur = math.sin(math.pi * min(1.0, s ** (0.7 if avant else 0.85) / 0.97))
+    if avant:
+        bascule = 34 + 50 * math.sin(math.pi * min(1.0, s / 0.6)) * (s < 0.6) - 34 * lisse((s - 0.45) / 0.5)
+    else:
+        bascule = 26 + 22 * math.sin(math.pi * min(1.0, s / 0.6)) * (s < 0.6) - 26 * lisse((s - 0.45) / 0.5)
+    return recul, max(0.0, hauteur), bascule
 
 
-def queue(arm, levee, ondulation, t, amplitude, frequence=1):
-    """La queue : `levee` degrés à la base, et une ondulation qui court vers la pointe."""
-    for i in range(6):
-        pb = arm.pose.bones[f"Queue{i + 1}"]
-        if i == 0:
-            tourner(pb, (1, 0, 0), levee)
-        else:
-            tourner(pb, (1, 0, 0), ondulation[i])
-        tourner(pb, (0, 0, 1), amplitude * (0.5 + 0.12 * i) * math.sin(2 * math.pi * (frequence * t - 0.09 * i)))
+def orienter(arm, nom, direction):
+    """Pointe l'os `nom` dans une direction du MONDE (sa tête reste où son parent la met)."""
+    pb = arm.pose.bones[nom]
+    bpy.context.view_layer.update()
+    repos = pb.bone.matrix_local
+    axe = (repos.to_3x3() @ Vector((0, 1, 0))).normalized()
+    r = axe.rotation_difference(Vector(direction).normalized()).to_matrix().to_4x4()
+    pb.matrix = Matrix.Translation(pb.head) @ r @ repos.to_3x3().to_4x4()
+
+
+def direction(tangage, lacet):
+    """Tangage sous l'horizontale (degrés, négatif = vers le sol), lacet vers +X ; 0 = droit derrière (+Y)."""
+    t, l = math.radians(tangage), math.radians(lacet)
+    return Vector((math.sin(l) * math.cos(t), math.cos(l) * math.cos(t), math.sin(t)))
+
+
+def queue(arm, dirs):
+    """La queue, os par os, le long de directions du monde (base → pointe)."""
+    for i, d in enumerate(dirs):
+        orienter(arm, f"Queue{i + 1}", d)
+
+
+def queue_basse(angles, t, balance, frequence=1):
+    """Basse et en courbe, avec un balancement qui court vers la pointe."""
+    return [direction(a + 1.5 * math.sin(2 * math.pi * (2 * frequence * t - 0.1 * i)) * (i + 1) / 6,
+                      balance * (0.3 + 0.14 * i) * math.sin(2 * math.pi * (frequence * t - 0.07 * i)))
+            for i, a in enumerate(angles)]
 
 
 def action(arm, nom, images, poser, boucle=True):
@@ -371,11 +508,17 @@ def action(arm, nom, images, poser, boucle=True):
     for piste in arm.animation_data.nla_tracks:
         piste.mute = True
     arm.animation_data.action = act
+    manque = (0.0, 0, "")
     for f in range(images + 1):
         remettre(arm)
         poser(arm, (f % images) / images if boucle else f / images)
         bpy.context.view_layer.update()
         cle(arm, f)
+        # Une patte trop courte pour sa cible glisserait : on le mesure.
+        for c in ("G", "D"):
+            for fin, ctrl in ((f"AvantBras_{c}", f"CtrlMain_{c}"), (f"Jambe_{c}", f"CtrlPied_{c}")):
+                manque = max(manque, ((arm.pose.bones[fin].tail - arm.pose.bones[ctrl].head).length, f, fin))
+    print(f"BAVETTE_IK {nom} écart max {manque[0] * 1000:.1f} mm ({manque[2]}, image {manque[1]})")
     bpy.context.scene.frame_start, bpy.context.scene.frame_end = 0, images
     bpy.ops.object.select_all(action="DESELECT")
     arm.select_set(True)
@@ -394,27 +537,44 @@ def action(arm, nom, images, poser, boucle=True):
 
 
 def marche(arm, t):
+    """
+    Un cycle, t ∈ [0, 1[ ; t = 0 : le postérieur gauche décolle. Le corps bas,
+    le dos long et plat, la tête portée au niveau du dos, la queue basse.
+    """
     pose = arm.pose.bones
-    # Le corps : s'abaisse, balance (deux rebonds par cycle), roule et ondule.
-    rebond = 0.003 * math.cos(4 * math.pi * t)
-    deplacer(pose["Bassin"], (0, 0, -FLEXION + rebond))
-    tourner(pose["Bassin"], (0, 1, 0), 2.5 * math.sin(2 * math.pi * t))
-    tourner(pose["Bassin"], (0, 0, 1), 2.0 * math.sin(2 * math.pi * t))
-    tourner(pose["Dos"], (0, 0, 1), -2.0 * math.sin(2 * math.pi * t))
-    tourner(pose["Poitrine"], (0, 1, 0), -2.5 * math.sin(2 * math.pi * (t - 0.25)))
-    tourner(pose["Poitrine"], (0, 0, 1), -1.5 * math.sin(2 * math.pi * (t - 0.25)))
-    # La tête reste posée : elle compense le roulis et s'incline un peu.
-    tourner(pose["Cou"], (1, 0, 0), 6)
-    tourner(pose["Cou"], (0, 0, 1), 2.0 * math.sin(2 * math.pi * (t - 0.25)))
-    tourner(pose["Tete"], (1, 0, 0), -6 + 1.5 * math.cos(4 * math.pi * t))
-    queue(arm, 38, [0, 8, 10, 6, -4, -8], t, 5)
-    for c, avant, dephasage in PATTES:
-        recul, hauteur, bascule = patte_en_marche((t + dephasage) % 1.0)
+    # Deux petits creux par cycle, juste après la pose de chaque antérieur.
+    deplacer(pose["Bassin"], (0, 0, -FLEXION - 0.004 * math.cos(4 * math.pi * (t - 0.47))))
+    # La hanche du postérieur en vol s'abaisse (gauche vers t = 0,1), et pivote un peu.
+    tourner(pose["Bassin"], (0, 1, 0), 3.0 * math.cos(2 * math.pi * (t - 0.10)))
+    tourner(pose["Bassin"], (0, 0, 1), 2.0 * math.sin(2 * math.pi * (t - 0.10)))
+    tourner(pose["Dos"], (0, 1, 0), -3.0 * math.cos(2 * math.pi * (t - 0.10)))
+    tourner(pose["Dos"], (0, 0, 1), -2.0 * math.sin(2 * math.pi * (t - 0.10)))
+    # Les épaules, à leur tour, avec l'antérieur (gauche en vol vers t = 0,28) ;
+    # le garrot un rien plus bas que les hanches.
+    tourner(pose["Poitrine"], (1, 0, 0), 2)
+    tourner(pose["Poitrine"], (0, 1, 0), 2.5 * math.cos(2 * math.pi * (t - 0.28)))
+    tourner(pose["Poitrine"], (0, 0, 1), -1.5 * math.sin(2 * math.pi * (t - 0.28)))
+    # La tête basse, dans l'axe, qui compense le roulis et hoche à peine.
+    tourner(pose["Cou"], (1, 0, 0), 18)
+    tourner(pose["Cou"], (0, 1, 0), -2.5 * math.cos(2 * math.pi * (t - 0.28)))
+    tourner(pose["Cou"], (0, 0, 1), 1.5 * math.sin(2 * math.pi * (t - 0.28)))
+    tourner(pose["Tete"], (1, 0, 0), -10 + 1.5 * math.cos(4 * math.pi * (t - 0.47)))
+    for c, avant, decolle, vol in PATTES:
+        u = (t - decolle) % 1.0
+        recul, hauteur, bascule = patte_en_marche(u, vol, avant)
+        course = VITESSE * (1 - vol) * PERIODE
         bout = arm.data.bones[f"{'Main' if avant else 'Pied'}_{c}"].tail_local.copy()
-        pointe = bout + Vector((0, recul * COURSE, hauteur * LEVER[avant]))
+        pointe = bout + Vector((0, recul * course, hauteur * LEVER[avant]))
         placer_ctrl(arm, f"Ctrl{'Main' if avant else 'Pied'}_{c}", pointe, bascule)
-        if not avant:
+        if avant:
+            # L'omoplate roule : elle suit la patte d'avant en arrière — c'est
+            # elle qui donne au chat sa longue foulée, le bras seul n'y suffit
+            # pas — et saille quand la patte porte, sous l'épaule.
+            porte = 0.5 + 0.5 * math.cos(2 * math.pi * (u - vol - (1 - vol) / 2))
+            deplacer(pose[f"Bras_{c}"], (0, OMOPLATE * recul, 0.006 * (porte - 0.5)))
+        else:
             tourner(pose[f"Orteils_{c}"], (1, 0, 0), -bascule * 0.4)
+    queue(arm, queue_basse(QUEUE_MARCHE, t, 5))
 
 
 def assise(arm, s, t=0.0):
@@ -431,14 +591,7 @@ def assise(arm, s, t=0.0):
     tourner(pose["Poitrine"], (1, 0, 0), -6 * e)
     tourner(pose["Cou"], (1, 0, 0), 36 * e)
     tourner(pose["Tete"], (1, 0, 0), 16 * e)
-    # La queue ne plonge pas dans le sol avec le bassin : elle se couche et
-    # s'enroule sur le flanc droit.
-    tourner(pose["Queue1"], (1, 0, 0), 36 * e)
-    for i, (tangage, lacet) in enumerate([(0, 0), (6, 18), (4, 26), (-6, 28), (-10, 28), (-4, 20)]):
-        pb = pose[f"Queue{i + 1}"]
-        tourner(pb, (1, 0, 0), tangage * e)
-        tourner(pb, (0, 0, 1), -lacet * e)
-    for c, avant, _ in PATTES:
+    for c, avant, _, _ in PATTES:
         bout = arm.data.bones[f"{'Main' if avant else 'Pied'}_{c}"].tail_local.copy()
         if avant:
             # Un pas en arrière, pied levé au milieu du geste — la main gauche d'abord.
@@ -462,27 +615,58 @@ def souffle_et_regard(arm, t, regard_deg):
     tourner(pose["Tete"], (1, 0, 0), 3 * math.sin(4 * math.pi * t))
 
 
+Z_SOL = 0.02            # m : l'axe de la queue couchée, un rayon au-dessus du sol
+# Assis, la queue fait le tour des pattes par la gauche : cap de chaque os
+# (0 = droit derrière, 90 = flanc gauche, 180 = devant).
+QUEUE_AUTOUR = (60, 100, 130, 155, 175, 190)
+
+
+def au_sol(arm, dirs):
+    """La queue suit `dirs`, sans jamais passer sous Z_SOL : elle se couche sur le sol."""
+    bpy.context.view_layer.update()
+    p = arm.pose.bones["Queue1"].head.copy()
+    out = []
+    for i, d in enumerate(dirs):
+        n = arm.data.bones[f"Queue{i + 1}"].length
+        d = d.normalized()
+        if p.z + d.z * n < Z_SOL:
+            plat = Vector((d.x, d.y, 0)).normalized()
+            dz = max(-1.0, min(1.0, (Z_SOL - p.z) / n))
+            d = plat * math.sqrt(1 - dz * dz) + Vector((0, 0, dz))
+        out.append(d)
+        p = p + d * n
+    return out
+
+
+def queue_autour(t=0.0, fremit=0.0):
+    """Couchée au sol autour des pattes ; le bout frémit."""
+    return [direction(-70 if i == 0 else -30 if i == 1 else 0,
+                      cap + fremit * (i / 5) ** 2 * math.sin(2 * math.pi * 3 * t - 0.6 * i))
+            for i, cap in enumerate(QUEUE_AUTOUR)]
+
+
 def repos(arm, t):
-    """Debout, 4 s : respire, regarde de côté, balance lentement la queue."""
+    """Debout, 4 s : respire, regarde de côté, balance lentement sa queue basse."""
     souffle_et_regard(arm, t, 10)
-    tourner(arm.pose.bones["Cou"], (1, 0, 0), -4)
-    queue(arm, 12, [0, 4, 6, 4, 2, 4], t, 9)
+    tourner(arm.pose.bones["Cou"], (1, 0, 0), 4)
     assise(arm, 0.0)
+    queue(arm, au_sol(arm, queue_basse(QUEUE_REPOS, t, 7)))
 
 
 def sasseoir(arm, t):
     """1,2 s, sans boucle : de `Repos` (t = 0) à `Assis` (t = 1). Jouée à l'envers, il se lève."""
     assise(arm, t)
-    tourner(arm.pose.bones["Cou"], (1, 0, 0), -4 * (1 - lisse(t)))
-    queue(arm, 12 * (1 - lisse(t)), [0, 4, 6, 4, 2, 4], 0.0, 0)
+    e = lisse(t)
+    tourner(arm.pose.bones["Cou"], (1, 0, 0), 4 * (1 - e))
+    debout, assise_ = queue_basse(QUEUE_REPOS, 0.0, 7), queue_autour()
+    queue(arm, au_sol(arm, [a.lerp(b, e) for a, b in zip(debout, assise_)]))
 
 
 def assis(arm, t):
     """Assis, 6 s : respire, regarde lentement autour, bout de queue qui frémit."""
     assise(arm, 1.0)
     souffle_et_regard(arm, t, 14)
-    for i in (4, 5):
-        tourner(arm.pose.bones[f"Queue{i + 1}"], (0, 0, 1), 7 * i / 5 * math.sin(2 * math.pi * 3 * t - 0.6 * i))
+    queue(arm, au_sol(arm, queue_autour(t, 12)))
 
 
 def exporter(corps, arm):

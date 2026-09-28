@@ -16,13 +16,11 @@ import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MUSEE } from '../plan/musee'
 import { parkPlacements } from '../plan/park'
 import {
-  avancerPromenade, lieuxCalmes, poser, posture, promenadeInitiale, regardeBavette, type Lieu, type Promenade,
+  avancerPromenade, lieuxCalmes, poser, posture, promenadeInitiale, regardeBavette, VITESSE_CHAT, type Lieu, type Promenade,
 } from '../plan/promenade'
 import { surfaceAt } from '../plan/rules'
 import { useGameStore } from '../stores/gameStore'
 
-/** La vitesse à laquelle `Marche` est cuite (COURSE / (APPUI × PERIODE) du script Blender). */
-const VITESSE_CUITE = 0.15 / (0.62 * 0.8)
 const LIEUX = lieuxCalmes(MUSEE, parkPlacements(MUSEE))
 const ANIMATION = { marche: 'Marche', debout: 'Repos', assis: 'Assis' } as const
 /** La tête suit le visiteur à moins de 3 m, jamais au-delà de ces butées. */
@@ -131,7 +129,8 @@ export function BavetteLayer() {
         else if (a.courant === 'Assis') asseoir(a, -1, voulue)
         else jouer(a, voulue, 0.35)
       }
-      a.actions.Marche.timeScale = THREE.MathUtils.clamp(p.vitesse / VITESSE_CUITE, 0.4, 2)
+      // `Marche` est cuite au pas de promenade : ses coussinets suivent le sol.
+      a.actions.Marche.timeScale = THREE.MathUtils.clamp(p.vitesse / VITESSE_CHAT, 0.4, 2)
     }
     a.mixer.update(gel ? 0 : dt)
 

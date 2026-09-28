@@ -24,8 +24,13 @@ import { capVers, chemin, passages } from './tour.ts'
 import type { Plan } from './types.ts'
 import { step, type Walker } from './walk.ts'
 
-/** Le pas d'un chat qui flâne, m/s. `Marche` est cuite à 0,30 m/s : jouée ×1,4. */
-export const VITESSE_CHAT = 0.42
+/**
+ * Le pas de Bavette, m/s, relevé sur une vidéo de lui marchant dans l'herbe
+ * (0,41 à 0,45 m/s). C'est aussi la vitesse à laquelle `Marche` est cuite
+ * (FOULEE / PERIODE du script Blender : 0,40 m en 28/30 s) : à ce pas, elle
+ * joue à `timeScale = 1`.
+ */
+export const VITESSE_CHAT = 0.4 / (28 / 30)
 /** Radians par seconde : il tourne en arc, jamais sur place. */
 const VIRAGE = 2.2
 /** Un point de passage est atteint à 25 cm. */
