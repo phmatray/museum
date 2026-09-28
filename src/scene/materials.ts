@@ -234,7 +234,11 @@ export const REGLAGE_MATIERE: Record<MatiereId, ReglageMatiere> = {
   // Le parc. Motifs LARGES : une pelouse dont on voit la tuile se répéter tous
   // les deux mètres se lit comme une moquette. À 6 m, la récurrence tombe sous
   // l'horizon de perception depuis la hauteur d'œil.
-  herbe: { gain: 1.15, roughness: 1, metalness: 0, rebond: 0, motif: 6 },
+  //
+  // `roughness` à 3 : la carte de Grass004 descend vers 0,4, et face au soleil
+  // la pelouse entière brillait comme un gazon mouillé. Un tapis de mousse de
+  // jardin japonais est mat. La teinte le tire vers ce vert sourd.
+  herbe: { gain: 1.1, roughness: 3, metalness: 0, rebond: 0, motif: 6, teinte: '#c8d6a4' },
   gravier: { gain: 1.35, roughness: 1, metalness: 0, rebond: 0, motif: 3.5 },
 }
 

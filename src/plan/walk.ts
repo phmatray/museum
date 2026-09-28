@@ -17,7 +17,8 @@
 import { VITESSE_HATE, VITESSE_MARCHE } from '../domain/locomotion.ts'
 import { edges, guardrails, isNordSud, sameLine, subtract, type Edge, type Interval, type Segment } from './geometry.ts'
 import { terrainDuParc } from './park.ts'
-import { PASSABLE, flightElevation, flightEnds, surfaceAt } from './rules.ts'
+import { hauteurDuParc } from './relief.ts'
+import { PARC, PASSABLE, flightElevation, flightEnds, surfaceAt } from './rules.ts'
 import type { Flight, Plan, Rect } from './types.ts'
 
 const RAYON = 0.3
@@ -133,9 +134,10 @@ function lire(plan: Plan, surface: string) {
     niveau = niveauDe(plan, f.bottom)
     cote = (x, z) => flightElevation(f, x, z)
   } else if (genre === 'parc') {
-    // Dehors, au sol : les murs du rez-de-chaussée sont ceux de la façade, percée de l'entrée.
+    // Dehors, sur la pelouse et ses buttes : les murs du rez-de-chaussée sont
+    // ceux de la façade, percée de l'entrée. Le parvis reste à 0 (`relief.ts`).
     niveau = niveauDe(plan, 0)
-    cote = () => 0
+    cote = hauteurDuParc
   } else if (genre === 'palier') {
     const l = plan.landings.find((l) => l.id === id)
     if (!l) throw new Error(`palier inconnu : ${surface}`)
@@ -150,9 +152,23 @@ function lire(plan: Plan, surface: string) {
   // Les obstacles ne ferment que le plancher : le palier passe au-dessus du sien.
   // ponytail: les garde-corps d'un niveau arrêtent aussi son plancher — vrai ici, où
   // tout ce qu'ils bordent au-dessus du sol est déclaré en obstacle.
-  // ponytail: murs recalculés à chaque pas et à chaque changement de surface, à mettre en cache si le profil le montre.
-  const murs = [...wallSegments(plan, niveau, !volee && genre !== 'palier'), ...guardrails(plan, niveau)]
-  return { niveau, volee, cote, murs }
+  return { niveau, volee, cote, murs: mursDe(plan, niveau, !volee && genre !== 'palier') }
+}
+
+/**
+ * Les murs d'un niveau, calculés une fois par plan. Le profil l'a montré : depuis
+ * que l'étang et le ruisseau du jardin ajoutent leurs rectangles aux obstacles,
+ * les recalculer à chaque pas doublait la durée des marches de test.
+ * ponytail: suppose le plan figé une fois qu'on y marche — vrai partout ici.
+ */
+const MURS = new WeakMap<Plan, Map<string, Segment[]>>()
+function mursDe(plan: Plan, niveau: number, obstacles: boolean): Segment[] {
+  const parPlan = MURS.get(plan) ?? new Map<string, Segment[]>()
+  MURS.set(plan, parPlan)
+  const cle = `${niveau}:${obstacles}`
+  let murs = parPlan.get(cle)
+  if (!murs) parPlan.set(cle, (murs = [...wallSegments(plan, niveau, obstacles), ...guardrails(plan, niveau)]))
+  return murs
 }
 
 /**
@@ -205,7 +221,8 @@ export function step(
       suivante = dedans(s.volee, p.x, p.z) ? surface : surfaceAt(plan, p.x, p.z, s.cote(p.x, p.z))
     } else {
       // Les côtés d'une volée sont des garde-corps : y entrer, c'est passer par un bout à notre cote.
-      const e = s.cote(p.x, p.z)
+      // Au parc, la surface se cherche au plancher du rez-de-chaussée : une butte n'est pas un étage.
+      const e = surface === PARC ? 0 : s.cote(p.x, p.z)
       const f = plan.flights.find((f) => dedans(f, p.x, p.z) && (Math.abs(f.bottom - e) < EPS || Math.abs(f.top - e) < EPS))
       suivante = f ? `volee:${f.id}` : surfaceAt(plan, p.x, p.z, e)
     }
