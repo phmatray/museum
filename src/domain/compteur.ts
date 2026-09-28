@@ -19,7 +19,7 @@ export const TIRET = 10
 /** Le temps d'un tambour pour passer d'un chiffre au suivant, en secondes. */
 const CRAN_S = 0.12
 
-export const URL_COMPTEUR = 'https://abacus.jasoncameron.dev/hit/phmatray-museum/visites'
+export const URL_COMPTEUR = 'https://abacus.jasoncameron.dev/hit/phmatray-museum/visiteurs'
 const CLE_SESSION = 'musee:visites'
 
 /** Les chiffres de `n`, de gauche à droite, sur `TAILLE` tambours ; `null` : des tirets. */

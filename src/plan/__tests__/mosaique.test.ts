@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { COTE, PAS, dateDuJour, indexDuJour, moisDeLaMosaique, panneau, tesselles, texteDePlaque, type Contributions } from '../mosaique'
+import { COTE, PAS, dateDuJour, indexDuJour, moisDeLaMosaique, panneau, tesselles, texteDePlaque, type Contributions, niveauLog } from '../mosaique'
 import { bandesDuSol } from '../parement'
 import { MUSEE } from '../musee'
 
@@ -69,5 +69,15 @@ describe('mosaïque des contributions', () => {
   it('grave le total sur la plaque, en chiffres groupés', () => {
     expect(texteDePlaque(24013)).toBe('24 013 contributions cette année')
     expect(texteDePlaque(1)).toBe('1 contribution cette année')
+  })
+})
+
+describe('niveauLog', () => {
+  it('étale les jours sur les quatre niveaux, même quand un jour en compte des centaines', () => {
+    expect(niveauLog(0, 1500)).toBe(0)
+    expect(niveauLog(1, 1500)).toBe(1)
+    expect(niveauLog(30, 1500)).toBe(2)
+    expect(niveauLog(300, 1500)).toBe(4)
+    expect(niveauLog(1500, 1500)).toBe(4)
   })
 })

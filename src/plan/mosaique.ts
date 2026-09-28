@@ -42,10 +42,22 @@ function jourDeSemaine(date: string): number {
   return new Date(`${date}T00:00:00Z`).getUTCDay()
 }
 
+/**
+ * Le niveau d'une tesselle, sur une échelle LOGARITHMIQUE du nombre de
+ * contributions, bornée par le plus gros jour de l'année. Les quartiles de
+ * GitHub mettaient 285 jours sur 367 au niveau 1 : quelques jours à plusieurs
+ * centaines écrasaient l'échelle, et la mosaïque était d'un or uniforme.
+ */
+export function niveauLog(count: number, max: number): number {
+  if (count <= 0 || max <= 0) return 0
+  return Math.min(4, Math.max(1, Math.ceil((4 * Math.log1p(count)) / Math.log1p(max))))
+}
+
 /** Une tesselle par jour du calendrier, semaine après semaine en remontant l'allée. */
 export function tesselles(weeks: JourDeContribution[][]): Tesselle[] {
+  const max = Math.max(0, ...weeks.flat().map((j) => j.count))
   return weeks.flatMap((semaine, w) =>
-    semaine.map((j) => ({ ...j, x: AXE + (jourDeSemaine(j.date) - 3) * PAS, z: SUD - (w + 0.5) * PAS })),
+    semaine.map((j) => ({ ...j, level: niveauLog(j.count, max), x: AXE + (jourDeSemaine(j.date) - 3) * PAS, z: SUD - (w + 0.5) * PAS })),
   )
 }
 
