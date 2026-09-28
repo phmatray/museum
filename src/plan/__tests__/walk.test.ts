@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest'
 
 import { DELTA_MAX, VITESSE_MARCHE, directionMarche } from '../../domain/locomotion.ts'
 import { MUSEE } from '../musee.ts'
+import { terrainDuParc } from '../park.ts'
 import { step, type Walker } from '../walk.ts'
 
 const RAYON = 0.3
@@ -86,10 +87,27 @@ describe('la marche au rez-de-chaussée', () => {
     expect((w0.z - w.z) / DT).toBeCloseTo(1.8, 6)
   })
 
-  it('ne sort pas par l’entrée : dehors, il n’y a pas encore de sol', () => {
+  it('sort par l’entrée dans le parc, au sol, et s’arrête au bord du terrain', () => {
     let w = depart()
-    for (let t = 0; t < 10; t += DT) w = step(MUSEE, w, { forward: -1, strafe: 0, yaw: 0 }, DT)
-    expect(w.z).toBeCloseTo(MUSEE.depth - RAYON, 3)
+    w = marcher(w, Math.PI, 5)
+    expect(w.surface).toBe('parc:terrain')
+    expect(w.z).toBeGreaterThan(MUSEE.depth)
+    expect(w.y).toBe(0)
+    w = marcher(w, Math.PI, 60)
+    const terrain = terrainDuParc(MUSEE)
+    expect(w.z).toBeCloseTo(terrain.z + terrain.depth - RAYON, 3)
+  })
+
+  it('fait le tour du bâtiment par le parc sans traverser la façade, et rentre par l’entrée', () => {
+    // Dehors, devant la façade sud à côté de l'entrée : on fonce vers le nord, le mur arrête.
+    let w = vers(vers(depart(), 24, 43), 10, 43)
+    w = marcher(w, 0, 5)
+    expect(w.surface).toBe('parc:terrain')
+    expect(w.z).toBeCloseTo(MUSEE.depth + RAYON, 3)
+    // Le long de la façade ouest jusqu'au nord et retour, puis on rentre dans le hall.
+    w = [[-3, 43], [-3, -3], [-3, 43], [24, 43], [24, 37]].reduce((v: Walker, [x, z]) => vers(v, x, z), w)
+    expect(w.surface).toBe('0:hall')
+    expect(Math.hypot(w.x - 24, w.z - 37)).toBeLessThan(0.05)
   })
 
   it('va de côté et en diagonale dans la direction et à la vitesse de directionMarche', () => {
