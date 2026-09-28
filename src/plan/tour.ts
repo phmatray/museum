@@ -11,6 +11,7 @@
  * Pur : ni three ni React.
  */
 import { exposedRooms } from './hang.ts'
+import { contourner } from './mobilier.ts'
 import { MUSEE } from './musee.ts'
 import { PASSABLE, flightEnds, surfaceAt } from './rules.ts'
 import type { Plan, Rect } from './types.ts'
@@ -69,9 +70,12 @@ export function passages(plan: Plan): Map<string, { vers: string; points: [numbe
   return g
 }
 
-/** Le plus court chemin en nombre de passages, comme une liste de points. */
-export function chemin(g: ReturnType<typeof passages>, de: string, a: string): [number, number][] | null {
-  const venu = new Map<string, { de: string; points: [number, number][] } | null>([[de, null]])
+type Point = [number, number]
+type Graphe = ReturnType<typeof passages>
+
+/** Le plus court chemin en nombre de passages : la suite des passages, chacun avec la surface d'où il part. */
+export function etapes(g: Graphe, de: string, a: string): { de: string; points: Point[] }[] | null {
+  const venu = new Map<string, { de: string; points: Point[] } | null>([[de, null]])
   const file = [de]
   while (file.length) {
     const n = file.shift()!
@@ -79,8 +83,26 @@ export function chemin(g: ReturnType<typeof passages>, de: string, a: string): [
     for (const e of g.get(n) ?? []) if (!venu.has(e.vers)) { venu.set(e.vers, { de: n, points: e.points }); file.push(e.vers) }
   }
   if (!venu.has(a)) return null
-  const out: [number, number][] = []
-  for (let n = a, v = venu.get(n); v; n = v.de, v = venu.get(n)) out.unshift(...v.points)
+  const out: { de: string; points: Point[] }[] = []
+  for (let n = a, v = venu.get(n); v; n = v.de, v = venu.get(n)) out.unshift(v)
+  return out
+}
+
+/**
+ * Le chemin comme une liste de points : ceux des passages, et entre deux
+ * passages — dans une même surface — de quoi contourner son mobilier. Depuis
+ * `depuis` s'il est donné (dans la surface `de`), jusqu'à `jusqua` (dans `a`).
+ */
+export function chemin(g: Graphe, de: string, a: string, depuis?: Point, jusqua?: Point): Point[] | null {
+  const suite = etapes(g, de, a)
+  if (!suite) return null
+  const out: Point[] = []
+  let ici = depuis
+  for (const e of suite) {
+    out.push(...(ici ? contourner(e.de, ici, e.points[0]) : [e.points[0]]), ...e.points.slice(1))
+    ici = e.points[e.points.length - 1]
+  }
+  if (jusqua) out.push(...(ici ? contourner(a, ici, jusqua) : [jusqua]))
   return out
 }
 
@@ -97,17 +119,20 @@ export function buildTourItinerary(plan: Plan): TourStop[] {
   const reste = exposedRooms(plan)
   const out: TourStop[] = []
   let ici = start
+  let la: Point = [plan.spawn.x, plan.spawn.z]
   while (reste.length) {
-    let meilleur: { i: number; points: [number, number][] } | null = null
+    let meilleur: { i: number; passages: number } | null = null
     reste.forEach(({ room, level }, i) => {
-      const p = chemin(g, ici, `${level.id}:${room.id}`)
-      if (p && (!meilleur || p.length < meilleur.points.length)) meilleur = { i, points: p }
+      const e = etapes(g, ici, `${level.id}:${room.id}`)
+      if (e && (!meilleur || e.length < meilleur.passages)) meilleur = { i, passages: e.length }
     })
     if (!meilleur) throw new Error(`salles inatteignables : ${reste.map((r) => r.room.id).join(', ')}`)
-    const { i, points } = meilleur as { i: number; points: [number, number][] }
-    const [{ room, level }] = reste.splice(i, 1)
-    out.push({ roomId: room.id, level: level.id, name: room.name, points: [...points, centre(room)] })
-    ici = `${level.id}:${room.id}`
+    const [{ room, level }] = reste.splice((meilleur as { i: number }).i, 1)
+    const vers = `${level.id}:${room.id}`
+    const points = chemin(g, ici, vers, la, centre(room))!
+    out.push({ roomId: room.id, level: level.id, name: room.name, points })
+    ici = vers
+    la = centre(room)
   }
   return out
 }

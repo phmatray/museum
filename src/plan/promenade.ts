@@ -17,10 +17,11 @@
  */
 import { presDeLEau } from './jardin.ts'
 import { OBSTACLES_PORTIQUE } from './facade.ts'
+import { DIMENSIONS, MOBILIER, blocsDuMobilier, contournement, contourner as eviter } from './mobilier.ts'
 import type { Parc } from './park.ts'
 import { PARC, PASSABLE, surfaceAt } from './rules.ts'
 import { capVers, chemin, passages } from './tour.ts'
-import type { Plan, Rect } from './types.ts'
+import type { Plan } from './types.ts'
 import { step, type Walker } from './walk.ts'
 
 /** Le pas d'un chat qui flâne, m/s. `Marche` est cuite à 0,30 m/s : jouée ×1,4. */
@@ -50,7 +51,7 @@ export interface Lieu {
   z: number
   /** Le cap où regarder une fois arrivé (0 = −z, comme `Walker.yaw`). */
   cap: number
-  genre: 'toile' | 'hall' | 'palier' | 'balcon' | 'arbre'
+  genre: 'toile' | 'hall' | 'palier' | 'balcon' | 'arbre' | 'banc'
 }
 
 export interface Promenade {
@@ -86,11 +87,16 @@ const loinDesPortes = (plan: Plan, niveau: number, x: number, z: number) =>
  *
  * Devant chaque mur des salles exposées, à 1,3 m, face à la toile ; aux quatre
  * coins calmes du hall ; sur le palier, entre les départs des volées ; au bout
- * des balcons ; et au pied des arbres proches du musée, sous leur houppier.
+ * des balcons ; au pied des arbres proches du musée, sous leur houppier ; et
+ * au bout des bancs.
  */
 /** Au jardin : ses coins tranquilles, et leur distance minimale à l'étang et au ruisseau. */
 const LIEUX_DEHORS = 24
 const LOIN_DE_L_EAU = 2
+/** Du bout d’un banc au chat : au-delà de la marge de contournement (`mobilier.ts`), pour en repartir. */
+const AU_BOUT_DU_BANC = 0.6
+/** Un banc « au bord de l’eau » : à moins de 8 m de l’étang. */
+const BORD_DE_L_EAU = 8
 
 export function lieuxCalmes(plan: Plan, parc: Parc): Lieu[] {
   const out: Lieu[] = []
@@ -138,8 +144,22 @@ export function lieuxCalmes(plan: Plan, parc: Parc): Lieu[] {
     if (presDeLEau(x, z, LOIN_DE_L_EAU) || surfaceAt(plan, x, z, 0) !== PARC) continue
     dehors.push({ surface: PARC, x, z, cap: capVers({ x, z }, p.x, p.z) + Math.PI, genre: 'arbre', d })
   }
+  // Au bout d'un banc — un chat aime faire la sieste au pied d'un banc —, tourné vers ce qu'il regarde :
+  // ceux de la salle d'honneur et ceux du bord de l'étang. Pas ceux de la nef, qui bordent un
+  // passage, ni ceux de la pelouse, si près de l'entrée qu'ils l'attireraient dehors à chaque fois.
+  const bancs: Lieu[] = []
+  for (const m of MOBILIER) {
+    const bout = DIMENSIONS[m.piece].largeur / 2 + AU_BOUT_DU_BANC
+    const [x, z] = [m.x + Math.cos(m.lacet) * bout, m.z - Math.sin(m.lacet) * bout]
+    const auBordDeLEau = m.surface === PARC && presDeLEau(x, z, BORD_DE_L_EAU) && !presDeLEau(x, z, LOIN_DE_L_EAU)
+    if ((m.piece === 'BancBatllo' || auBordDeLEau) && loinDesPortes(plan, m.niveau, x, z))
+      bancs.push({ surface: m.surface, x, z, cap: m.lacet + Math.PI, genre: 'banc' })
+  }
+  // Les bancs du jardin prennent la place d'autant d'arbres : le jardin garde son compte de coins.
   dehors.sort((a, b) => a.d - b.d || a.x - b.x)
-  for (const l of dehors.slice(0, LIEUX_DEHORS)) out.push({ surface: l.surface, x: l.x, z: l.z, cap: l.cap, genre: l.genre })
+  const arbres = LIEUX_DEHORS - bancs.filter((l) => l.surface === PARC).length
+  for (const l of dehors.slice(0, arbres)) out.push({ surface: l.surface, x: l.x, z: l.z, cap: l.cap, genre: l.genre })
+  out.push(...bancs)
   return out
 }
 
@@ -157,73 +177,37 @@ function graphe(plan: Plan) {
   return g
 }
 
-/** Le segment [a, b] coupe-t-il le rectangle ? (Liang–Barsky) */
-function coupe(a: [number, number], b: [number, number], r: Rect): boolean {
-  let [t0, t1] = [0, 1]
-  const d = [b[0] - a[0], b[1] - a[1]]
-  const bornes: [number, number, number][] = [[-d[0], a[0] - r.x, 0], [d[0], r.x + r.width - a[0], 0], [-d[1], a[1] - r.z, 0], [d[1], r.z + r.depth - a[1], 0]]
-  for (const [p, q] of bornes) {
-    if (Math.abs(p) < 1e-12) {
-      if (q < 0) return false
-      continue
-    }
-    const t = q / p
-    if (p < 0) t0 = Math.max(t0, t)
-    else t1 = Math.min(t1, t)
-    if (t0 > t1) return false
-  }
-  return true
-}
-
 /**
  * Dehors, de a à b sans traverser le musée : par les angles de son emprise
- * (portique compris), plus court chemin sur ce petit graphe de visibilité.
+ * (portique compris), plus court chemin sur ce petit graphe de visibilité —
+ * où les bancs du jardin sont des blocs de plus, avec leurs coins.
  */
 function contourner(plan: Plan, a: [number, number], b: [number, number]): [number, number][] {
   const m = 0.6
-  const bloc: Rect[] = [{ x: 0, z: 0, width: plan.width, depth: plan.depth }, ...OBSTACLES_PORTIQUE].map((r) => ({ x: r.x - m, z: r.z - m, width: r.width + 2 * m, depth: r.depth + 2 * m }))
-  const libre = (p: [number, number], q: [number, number]) => bloc.every((r) => !coupe(p, q, r))
-  if (libre(a, b)) return [b]
+  const bati = [{ x: 0, z: 0, width: plan.width, depth: plan.depth }, ...OBSTACLES_PORTIQUE].map((r) => ({ x: r.x - m, z: r.z - m, width: r.width + 2 * m, depth: r.depth + 2 * m }))
   const e = 2.5
   const sud = Math.max(plan.depth, ...OBSTACLES_PORTIQUE.map((o) => o.z + o.depth)) + e
-  const noeuds: [number, number][] = [a, b, [-e, -e], [plan.width + e, -e], [plan.width + e, sud], [-e, sud]]
-  // Dijkstra sur six nœuds.
-  const dist = noeuds.map(() => Infinity)
-  const venu = noeuds.map(() => -1)
-  const fait = noeuds.map(() => false)
-  dist[0] = 0
-  for (;;) {
-    let i = -1
-    for (let k = 0; k < noeuds.length; k++) if (!fait[k] && dist[k] < Infinity && (i < 0 || dist[k] < dist[i])) i = k
-    if (i < 0 || i === 1) break
-    fait[i] = true
-    for (let k = 0; k < noeuds.length; k++) {
-      if (fait[k] || !libre(noeuds[i], noeuds[k])) continue
-      const d = dist[i] + Math.hypot(noeuds[k][0] - noeuds[i][0], noeuds[k][1] - noeuds[i][1])
-      if (d < dist[k]) [dist[k], venu[k]] = [d, i]
-    }
-  }
-  if (venu[1] < 0) return [b]
-  const out: [number, number][] = []
-  for (let k = 1; k > 0; k = venu[k]) out.unshift(noeuds[k])
-  return out
+  const bancs = blocsDuMobilier(PARC)
+  const angles: [number, number][] = [[-e, -e], [plan.width + e, -e], [plan.width + e, sud], [-e, sud]]
+  return contournement(a, b, [...bati, ...bancs.blocs], [...angles, ...bancs.noeuds])
 }
 
 /** Les points de passage de la surface `de` jusqu'au lieu, `null` s'il est inatteignable. */
 export function itineraire(plan: Plan, de: Pick<Walker, 'surface' | 'x' | 'z'>, lieu: Lieu): [number, number][] | null {
   // ponytail: graphe recalculé à chaque destination — une par arrêt, soit toutes les dix secondes.
-  const pts = chemin(graphe(plan), de.surface, lieu.surface)
+  // Dedans, le chemin contourne le mobilier de chaque salle ; dehors, c'est `contourner` qui s'en charge.
+  const pts = chemin(graphe(plan), de.surface, lieu.surface, de.surface === PARC ? undefined : [de.x, de.z])
   if (!pts) return null
   const approche: [number, number] = [lieu.x + Math.sin(lieu.cap) * APPROCHE, lieu.z + Math.cos(lieu.cap) * APPROCHE]
   const bruts: [number, number][] = [...pts, approche, [lieu.x, lieu.z]]
-  // Dehors, chaque tronçon contourne le bâtiment.
+  // Dehors, chaque tronçon contourne le bâtiment et les bancs ; dedans, le dernier, vers le lieu, le mobilier.
   const out: [number, number][] = []
   let ici: [number, number] = [de.x, de.z]
   const dehors = (p: [number, number]) => surfaceAt(plan, p[0], p[1], 0) === PARC
-  for (const p of bruts) {
-    out.push(...(dehors(ici) && dehors(p) ? contourner(plan, ici, p) : [p]))
+  bruts.forEach((p, k) => {
+    out.push(...(dehors(ici) && dehors(p) ? contourner(plan, ici, p) : k === pts.length ? eviter(lieu.surface, ici, p) : [p]))
     ici = p
-  }
+  })
   return out
 }
 
