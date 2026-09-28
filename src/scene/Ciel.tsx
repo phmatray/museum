@@ -71,7 +71,14 @@ export function Ciel() {
     Promise.all([chargeur.loadAsync(`${base}${JOUR}`), chargeur.loadAsync(`${base}${NUIT}`)])
       .then((textures) => {
         if (!vivant) return textures.forEach((t) => t.dispose())
-        for (const t of textures) t.colorSpace = THREE.SRGBColorSpace
+        for (const t of textures) {
+          t.colorSpace = THREE.SRGBColorSpace
+          // Sans mipmaps : au raccord de la projection (atan saute de −π à π), le
+          // GPU prenait le plus petit niveau de mipmap sur une colonne de pixels,
+          // d'où une ligne pointillée verticale dans le ciel.
+          t.generateMipmaps = false
+          t.minFilter = THREE.LinearFilter
+        }
         materiau.uniforms.jourTex.value = textures[0]
         materiau.uniforms.nuitTex.value = textures[1]
         materiau.uniforms.charge.value = 1
