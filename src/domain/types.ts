@@ -169,6 +169,8 @@ export interface Sculpture {
 export interface MuseumConfig {
   schemaVersion: 1
   name: string
+  /** Où se trouve le musée, en degrés : le cycle jour/nuit suit son soleil (Bruxelles par défaut). */
+  location: { latitude: number; longitude: number }
   owners: string[]
   filters: {
     excludeForks: boolean

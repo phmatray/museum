@@ -2,6 +2,7 @@
   "schemaVersion": 1,
   "name": "Atypical Museum",
   "owners": ["phmatray", "Atypical-Consulting"],
+  "location": { "latitude": 50.85, "longitude": 4.35 },
   "filters": {
     "excludeForks": true,
     "excludeArchived": false,

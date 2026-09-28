@@ -24,6 +24,7 @@ sont donc commités.
 | Gravel023 | ambientCG | CC0 | allées et parvis du parc |
 | brown_photostudio_02 | Poly Haven | CC0 | carte d'environnement, spéculaire |
 | kloofendal_48d_partly_cloudy_puresky | Poly Haven | CC0 | ciel du fond de scène, réduit en JPG |
+| rogland_clear_night | Poly Haven | CC0 | ciel de nuit, réduit en JPG |
 | potted_plant_02 | Poly Haven | CC0 | végétation, décimée dans les LOD |
 | potted_plant_04 | Poly Haven | CC0 | végétation, décimée dans les LOD |
 | calathea_orbifolia_01 | Poly Haven | CC0 | végétation, décimée dans les LOD |

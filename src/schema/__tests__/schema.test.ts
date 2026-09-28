@@ -125,6 +125,8 @@ describe('parseMuseumConfig — valeurs par défaut', () => {
       // Défaut introduit par les sculptures : vide sur toute instance qui n'en
       // déclare pas — c'est le cas de tout fork tant qu'il n'écrit rien.
       sculptures: [],
+      // Défaut introduit par le cycle jour/nuit : le soleil de Bruxelles.
+      location: { latitude: 50.85, longitude: 4.35 },
     })
   })
 

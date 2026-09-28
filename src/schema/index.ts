@@ -455,6 +455,13 @@ export const museumConfigSchema = z
     building: buildingSchema,
     clustering: clusteringSchema,
     sculptures: z.array(sculptureSchema).default([]),
+    /** Où se trouve le musée : c'est son soleil qui se lève et se couche sur la nef. */
+    location: z
+      .strictObject({
+        latitude: z.number().min(-90).max(90),
+        longitude: z.number().min(-180).max(180),
+      })
+      .default({ latitude: 50.85, longitude: 4.35 }),
   })
   .superRefine((config, ctx) => {
     // L'identifiant sert de clé de chargement ET de graine : un doublon ferait

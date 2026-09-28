@@ -26,6 +26,7 @@ import { plafonds } from '../../plan/plafonds'
 import { facade } from '../../plan/facade'
 import { meshLevel, type Box } from '../../plan/mesh'
 import { CIEL } from '../lighting'
+import { useGameStore } from '../../stores/gameStore'
 
 // Ordre exact des <Boites> par niveau dans PlanBuilding.tsx : un InstancedMesh
 // par sorte, toujours dans cet ordre, même vide.
@@ -83,17 +84,20 @@ describe('PlanBuilding', () => {
     expect(comptesAZero.length).toBeGreaterThan(0)
   })
 
-  it('monte CIEL comme fond de scène (#46)', async () => {
+  it('monte CIEL comme fond de scène en plein jour, et jamais le noir la nuit (#46)', async () => {
     // `lighting.test.ts` prouve que CIEL est une couleur claire ; ce test-ci
-    // protège l'autre moitié du contrat, que rien ne couvrait avant #46 : que
-    // ce fond est bien MONTÉ dans la scène rendue, pas seulement exporté.
-    // Sans lui, retirer le <color attach="background"> de PlanBuilding.tsx
-    // repasserait le ciel au noir sans qu'aucun test ne le remarque.
+    // protège l'autre moitié du contrat : que ce fond est bien MONTÉ dans la
+    // scène rendue. Depuis le cycle jour/nuit, il suit le soleil : on fixe
+    // l'heure, sinon le test dépendrait de l'heure à laquelle il tourne.
+    const midi = { elevation: 45, azimut: 180, jour: 1, crepuscule: 0 }
+    useGameStore.setState({ ciel: midi })
     const renderer = await ReactThreeTestRenderer.create(<PlanBuilding />)
     const scene = renderer.scene.instance as THREE.Scene
-    expect(scene.background).toBeDefined()
-    expect((scene.background as THREE.Color).getHexString()).toBe(
-      new Color(CIEL).getHexString(),
-    )
+    expect((scene.background as THREE.Color).getHexString()).toBe(new Color(CIEL).getHexString())
+
+    await ReactThreeTestRenderer.act(async () => useGameStore.setState({ ciel: { ...midi, elevation: -30, jour: 0 } }))
+    const nuit = scene.background as THREE.Color
+    expect(nuit.getHexString()).not.toBe(new Color(CIEL).getHexString())
+    expect(nuit.r + nuit.g + nuit.b).toBeGreaterThan(0.02)
   })
 })
