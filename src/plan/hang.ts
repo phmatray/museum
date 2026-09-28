@@ -51,9 +51,10 @@ const MUR_NORD = 0
 function capaciteAccrochable(room: Room, level: Level, avecVitrines: boolean): number {
   const cap = capacity(room, level)
   if (!avecVitrines || room.id !== SALLE_VITRINES) return cap
-  // Arrondi par excès : mieux vaut une toile de moins en salle d'honneur qu'une
-  // toile que `hangRoom` ne saurait poser (la baie et les portes mangent les autres murs).
-  return Math.max(0, cap - Math.ceil((room.width - 2 * NORMES.angle) / NORMES.pasAccrochage))
+  // Arrondi par défaut : le mur nord n'accroche que ⌊14 / 3⌋ = 4 toiles, et la
+  // baie pleine largeur, que `capacity` compte avec ses dégagements, mange déjà
+  // plus que le mur sud — il reste les deux toiles de chaque mur latéral.
+  return Math.max(0, cap - Math.floor((room.width - 2 * NORMES.angle) / NORMES.pasAccrochage))
 }
 
 /** L'aile d'une salle sur son niveau, lue dans son id : `r-o2` → `r-o`, `e-e1` → `e-e`. */

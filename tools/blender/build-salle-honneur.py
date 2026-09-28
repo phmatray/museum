@@ -15,8 +15,10 @@ dont il reprend le chêne, la pierre des colonnes et les cives :
 - `Soleil` : la lampe du centre, un cœur d'opale, une couronne de gouttes
   d'ambre et dix-huit rayons de laiton qui suivent les bras du tourbillon ;
 - `Peau` : l'enduit crème des murs, aux angles arrondis, percé des deux portes
-  et de la baie ; `Lambris` : un lambris de chêne à la lisse ondulée ;
-- `Os` : quatre pilastres de pierre en os, dont la nervure file dans la gorge ;
+  et de la baie, qui prend tout le mur sud entre les angles ; `Lambris` : un
+  lambris de chêne à la lisse ondulée ;
+- `Os` : deux pilastres de pierre en os au mur des vitrines, dont la nervure
+  file dans la gorge — au sud, ce sont les colonnes de la baie qui portent ;
 - `Portes` : l'encadrement de chêne sculpté des deux portes, côté salle, à la
   crête semée de cives de couleur, comme les portes intérieures de Gaudí ;
 - `Parquet` : un point de Hongrie de chêne miel, lame par lame (three y pose
@@ -60,10 +62,10 @@ CX, CZ = 24.0, 6.0
 RC = 0.5                                      # les angles arrondis de la salle
 PEAU = 0.002                                  # l'enduit, sur la face du mur
 PORTE = (5.0, 7.0, SOL + 2.4)                 # les deux portes, en z ; le linteau
-BAIE = (21.0, 27.0)
+BAIE = (batllo.X0, batllo.X1)                 # tout le mur sud, entre les angles arrondis
 ENCADREMENT = 1.28                            # demi-largeur de l'encadrement de chêne
-CHAMBRANLE_BAIE = (20.84, 27.16)              # celui de la baie (build-batllo.py)
-PILASTRES = [(21.75, "N"), (26.25, "N"), (20.45, "S"), (27.55, "S")]
+CHAMBRANLE_BAIE = (round(batllo.X0 - batllo.CH, 6), round(batllo.X1 + batllo.CH, 6))  # il finit où l'angle s'arrondit
+PILASTRES = [(21.75, "N"), (26.25, "N")]
 BRAS, TORSION = 9, 5.0                        # le tourbillon : n·θ + k·ln r
 
 
@@ -489,7 +491,7 @@ def construire():
         bpy.data.curves.remove(c)
     stuc = nef.matiere("Honneur_Stuc", (0.74, 0.62, 0.43), 0.9)
     platre = nef.matiere("Honneur_Platre", (0.86, 0.76, 0.58), 0.85)
-    chene = nef.matiere("Honneur_Chene", (0.68, 0.41, 0.15), 0.5)
+    chene = nef.matiere("Honneur_Chene", (0.58, 0.34, 0.13), 0.5)
     pierre = nef.matiere("Honneur_Os", (0.62, 0.55, 0.43), 0.7)
     laiton = nef.matiere("Honneur_Laiton", (0.85, 0.62, 0.26), 0.35, metallique=0.6, emission=(0.9, 0.6, 0.25), force=0.25)
     opale = nef.matiere("Honneur_Soleil", (1.0, 0.92, 0.78), 0.4, emission=(1.0, 0.78, 0.45), force=1.0)

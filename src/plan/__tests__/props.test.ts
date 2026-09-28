@@ -46,6 +46,7 @@ describe('propPlacements', () => {
 
   it('une salle sans thème assigné garde ses props, tirés de son nom de plan', () => {
     const sans = propPlacements(MUSEE, [])
-    expect(new Set(sans.map((p) => p.roomId)).size).toBe(14)
+    // La salle d'honneur n'en a aucune : vitrines au nord, baie pleine largeur au sud.
+    expect(new Set(sans.map((p) => p.roomId)).size).toBe(13)
   })
 })

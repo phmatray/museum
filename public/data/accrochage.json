@@ -88,10 +88,10 @@
     {
       "id": "r-o2",
       "level": 0,
-      "name": "Mcp / Claude",
+      "name": "Claude / Mcp",
       "placements": [
         {
-          "key": "Atypical-Consulting/claude-legends-review",
+          "key": "Atypical-Consulting/RoselineMCP",
           "x": 3.775,
           "y": 1.55,
           "z": 13.15,
@@ -102,51 +102,29 @@
           "width": 1.939
         },
         {
-          "key": "Atypical-Consulting/x402-dotnet",
-          "x": 11.05,
+          "key": "Atypical-Consulting/claude-legends-review",
+          "x": 12.225,
           "y": 1.55,
           "z": 13.15,
           "normal": [
             0,
             1
           ],
-          "width": 1.53
+          "width": 1.939
         },
         {
           "key": "Atypical-Consulting/ASTral",
-          "x": 13.332,
-          "y": 1.55,
-          "z": 13.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.665
-        },
-        {
-          "key": "phmatray/AIPromptMaster",
-          "x": 2.6,
+          "x": 3.775,
           "y": 1.55,
           "z": 26.85,
           "normal": [
             0,
             -1
           ],
-          "width": 1.53
+          "width": 1.851
         },
         {
           "key": "phmatray/AutonomousAgent",
-          "x": 4.882,
-          "y": 1.55,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.665
-        },
-        {
-          "key": "phmatray/BuildSphere",
           "x": 12.225,
           "y": 1.55,
           "z": 26.85,
@@ -157,21 +135,10 @@
           "width": 1.851
         },
         {
-          "key": "Atypical-Consulting/StaticWGen",
-          "x": 0.15,
-          "y": 1.55,
-          "z": 15.902,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
           "key": "phmatray/ClaudeCodeSdkNet",
           "x": 0.15,
           "y": 1.55,
-          "z": 18.58,
+          "z": 16.568,
           "normal": [
             1,
             0
@@ -179,21 +146,21 @@
           "width": 1.851
         },
         {
-          "key": "Atypical-Consulting/GitHubSkills",
+          "key": "Atypical-Consulting/SalesPitch",
           "x": 0.15,
           "y": 1.55,
-          "z": 21.376,
+          "z": 20.075,
           "normal": [
             1,
             0
           ],
-          "width": 1.939
+          "width": 2.177
         },
         {
-          "key": "Atypical-Consulting/MarkdownInk",
+          "key": "Atypical-Consulting/x402-dotnet",
           "x": 0.15,
           "y": 1.55,
-          "z": 24.098,
+          "z": 23.507,
           "normal": [
             1,
             0
@@ -212,7 +179,7 @@
           "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/RoselineMCP",
+          "key": "Atypical-Consulting/GitHubSkills",
           "x": 15.85,
           "y": 1.55,
           "z": 18.175,
@@ -223,7 +190,7 @@
           "width": 1.939
         },
         {
-          "key": "Atypical-Consulting/nuke",
+          "key": "phmatray/AIPromptMaster",
           "x": 15.85,
           "y": 1.55,
           "z": 20.672,
@@ -238,10 +205,10 @@
     {
       "id": "r-o3",
       "level": 0,
-      "name": "Htmx / Clean Architecture",
+      "name": "Htmx / Mvc",
       "placements": [
         {
-          "key": "phmatray/AspireStrapi",
+          "key": "phmatray/MinimalHtmx",
           "x": 3.775,
           "y": 1.55,
           "z": 27.15,
@@ -252,7 +219,7 @@
           "width": 1.939
         },
         {
-          "key": "phmatray/MinimalHtmx",
+          "key": "Atypical-Consulting/aspnet-htmx-mvc",
           "x": 12.225,
           "y": 1.55,
           "z": 27.15,
@@ -260,68 +227,24 @@
             0,
             1
           ],
-          "width": 1.939
-        },
-        {
-          "key": "phmatray/hexagonal-architecture-acerola",
-          "x": 3.29,
-          "y": 1.55,
-          "z": 39.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "Atypical-Consulting/hexagonal-dotnet",
-          "x": 6.355,
-          "y": 1.55,
-          "z": 39.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.851
-        },
-        {
-          "key": "phmatray/SudokuSolver",
-          "x": 9.57,
-          "y": 1.55,
-          "z": 39.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 2.001
-        },
-        {
-          "key": "Atypical-Consulting/htmx-samples",
-          "x": 12.71,
-          "y": 1.55,
-          "z": 39.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/TheRightCollection",
-          "x": 0.15,
-          "y": 1.55,
-          "z": 30.378,
-          "normal": [
-            1,
-            0
-          ],
           "width": 1.851
         },
         {
           "key": "Atypical-Consulting/FastComponents",
+          "x": 8,
+          "y": 1.55,
+          "z": 39.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.939
+        },
+        {
+          "key": "phmatray/AspireStrapi",
           "x": 0.15,
           "y": 1.55,
-          "z": 33.575,
+          "z": 33.5,
           "normal": [
             1,
             0
@@ -329,18 +252,7 @@
           "width": 1.939
         },
         {
-          "key": "phmatray/aspire-samples",
-          "x": 0.15,
-          "y": 1.55,
-          "z": 36.697,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "Atypical-Consulting/aspnet-htmx-mvc",
+          "key": "Atypical-Consulting/htmx-samples",
           "x": 15.85,
           "y": 1.55,
           "z": 30.175,
@@ -348,10 +260,10 @@
             -1,
             0
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/dotnet-clean-architecture",
+          "key": "phmatray/aspire-samples",
           "x": 15.85,
           "y": 1.55,
           "z": 37.325,
@@ -366,11 +278,11 @@
     {
       "id": "r-n",
       "level": 0,
-      "name": "Parser / Vat",
+      "name": "Game / Webassembly",
       "placements": [
         {
-          "key": "phmatray/VatBe",
-          "x": 21.825,
+          "key": "phmatray/java-teaching-materials",
+          "x": 19.29,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -380,19 +292,41 @@
           "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/Ninjadog",
-          "x": 26.1,
+          "key": "phmatray/G3.TreasuresMonsters.Java",
+          "x": 22.279,
           "y": 1.55,
           "z": 0.15,
           "normal": [
             0,
             1
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "phmatray/WispLang",
-          "x": 21.825,
+          "key": "phmatray/webassembly-demo",
+          "x": 25.495,
+          "y": 1.55,
+          "z": 0.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 2.152
+        },
+        {
+          "key": "phmatray/Platformer2D_Brackeys",
+          "x": 28.71,
+          "y": 1.55,
+          "z": 0.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/Raga",
+          "x": 19.32,
           "y": 1.55,
           "z": 11.85,
           "normal": [
@@ -402,21 +336,54 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/Antlr4Library",
-          "x": 26.1,
+          "key": "phmatray/G3.TreasuresMonsters",
+          "x": 22.34,
           "y": 1.55,
           "z": 11.85,
           "normal": [
             0,
             -1
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "phmatray/coda-parser",
+          "key": "phmatray/lenia",
+          "x": 25.51,
+          "y": 1.55,
+          "z": 11.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 2.001
+        },
+        {
+          "key": "phmatray/MineSweeper",
+          "x": 28.68,
+          "y": 1.55,
+          "z": 11.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/lenia-godot",
           "x": 16.15,
           "y": 1.55,
           "z": 2.775,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 2.001
+        },
+        {
+          "key": "phmatray/godot-games",
+          "x": 16.15,
+          "y": 1.55,
+          "z": 9.225,
           "normal": [
             1,
             0
@@ -425,17 +392,6 @@
         },
         {
           "key": "Atypical-Consulting/Filament",
-          "x": 16.15,
-          "y": 1.55,
-          "z": 9.225,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/Antlr4Roslyn",
           "x": 31.85,
           "y": 1.55,
           "z": 2.775,
@@ -446,7 +402,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/BelgiumVatChecker",
+          "key": "Atypical-Consulting/YendorSupport",
           "x": 31.85,
           "y": 1.55,
           "z": 9.225,
@@ -464,7 +420,7 @@
       "name": "Music / Nuget",
       "placements": [
         {
-          "key": "phmatray/PipeException",
+          "key": "Atypical-Consulting/nuke",
           "x": 34.777,
           "y": 1.55,
           "z": 0.15,
@@ -475,7 +431,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/music-dotnet",
+          "key": "phmatray/dotnet-toolbelt",
           "x": 37.329,
           "y": 1.55,
           "z": 0.15,
@@ -497,7 +453,7 @@
           "width": 2.089
         },
         {
-          "key": "phmatray/Metatrader5-Docker",
+          "key": "Atypical-Consulting/MarkdownInk",
           "x": 42.747,
           "y": 1.55,
           "z": 0.15,
@@ -508,7 +464,7 @@
           "width": 1.7
         },
         {
-          "key": "stephaneweg/MusicTracker",
+          "key": "phmatray/Monads",
           "x": 45.223,
           "y": 1.55,
           "z": 0.15,
@@ -530,18 +486,29 @@
           "width": 2.001
         },
         {
-          "key": "Atypical-Consulting/NFT",
-          "x": 44.225,
+          "key": "phmatray/PipeException",
+          "x": 43.023,
           "y": 1.55,
           "z": 12.85,
           "normal": [
             0,
             -1
           ],
-          "width": 1.939
+          "width": 1.53
         },
         {
-          "key": "phmatray/dotnet-toolbelt",
+          "key": "Atypical-Consulting/NFT",
+          "x": 45.319,
+          "y": 1.55,
+          "z": 12.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.745
+        },
+        {
+          "key": "phmatray/CCrossHelper",
           "x": 32.15,
           "y": 1.55,
           "z": 2.775,
@@ -552,7 +519,7 @@
           "width": 1.851
         },
         {
-          "key": "phmatray/CCrossHelper",
+          "key": "phmatray/BuildSphere",
           "x": 32.15,
           "y": 1.55,
           "z": 9.725,
@@ -563,10 +530,10 @@
           "width": 1.851
         },
         {
-          "key": "phmatray/trading-lab",
+          "key": "phmatray/CentralisedPackageConverter",
           "x": 47.85,
           "y": 1.55,
-          "z": 2.71,
+          "z": 2.68,
           "normal": [
             -1,
             0
@@ -574,21 +541,21 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/CentralisedPackageConverter",
+          "key": "phmatray/music-dotnet",
           "x": 47.85,
           "y": 1.55,
-          "z": 5.12,
+          "z": 5.135,
           "normal": [
             -1,
             0
           ],
-          "width": 1.7
+          "width": 1.851
         },
         {
           "key": "phmatray/MusicTheory",
           "x": 47.85,
           "y": 1.55,
-          "z": 7.705,
+          "z": 7.765,
           "normal": [
             -1,
             0
@@ -596,10 +563,10 @@
           "width": 2.049
         },
         {
-          "key": "phmatray/Monads",
+          "key": "Atypical-Consulting/StaticWGen",
           "x": 47.85,
           "y": 1.55,
-          "z": 10.29,
+          "z": 10.32,
           "normal": [
             -1,
             0
@@ -611,13 +578,97 @@
     {
       "id": "r-e2",
       "level": 0,
+      "name": "Clean Architecture / Ddd",
+      "placements": [
+        {
+          "key": "Atypical-Consulting/hexagonal-dotnet",
+          "x": 35.775,
+          "y": 1.55,
+          "z": 13.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "phmatray/TheRightCollection",
+          "x": 44.225,
+          "y": 1.55,
+          "z": 13.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "Atypical-Consulting/dotnet-clean-architecture",
+          "x": 35.775,
+          "y": 1.55,
+          "z": 26.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/hexagonal-architecture-acerola",
+          "x": 44.225,
+          "y": 1.55,
+          "z": 26.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "Atypical-Consulting/Ninjadog",
+          "x": 32.15,
+          "y": 1.55,
+          "z": 18.175,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "stephaneweg/MusicTracker",
+          "x": 47.85,
+          "y": 1.55,
+          "z": 17.749,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/SudokuSolver",
+          "x": 47.85,
+          "y": 1.55,
+          "z": 22.1,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 2.001
+        }
+      ]
+    },
+    {
+      "id": "r-e3",
+      "level": 0,
       "name": "Html / Dashboard",
       "placements": [
         {
           "key": "phmatray/dotnet-standards",
           "x": 35.775,
           "y": 1.55,
-          "z": 13.15,
+          "z": 27.15,
           "normal": [
             0,
             1
@@ -628,100 +679,16 @@
           "key": "phmatray/key3s",
           "x": 44.225,
           "y": 1.55,
-          "z": 13.15,
+          "z": 27.15,
           "normal": [
             0,
             1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/matray-tech",
-          "x": 35.775,
-          "y": 1.55,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/soft-ui-dashboard",
-          "x": 44.225,
-          "y": 1.55,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/ai-migration-kit",
-          "x": 32.15,
-          "y": 1.55,
-          "z": 18.175,
-          "normal": [
-            1,
-            0
           ],
           "width": 1.7
         },
         {
           "key": "phmatray/tsh.ai",
-          "x": 47.85,
-          "y": 1.55,
-          "z": 17.9,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "Atypical-Consulting/TenantKit",
-          "x": 47.85,
-          "y": 1.55,
-          "z": 22.1,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.7
-        }
-      ]
-    },
-    {
-      "id": "r-e3",
-      "level": 0,
-      "name": "Design Patterns / Record",
-      "placements": [
-        {
-          "key": "phmatray/BlazorPluginArch",
-          "x": 35.775,
-          "y": 1.55,
-          "z": 27.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.939
-        },
-        {
-          "key": "phmatray/BlazorMvvmApp",
-          "x": 44.225,
-          "y": 1.55,
-          "z": 27.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.851
-        },
-        {
-          "key": "phmatray/RecordEquality",
-          "x": 37.725,
+          "x": 37.9,
           "y": 1.55,
           "z": 39.85,
           "normal": [
@@ -731,7 +698,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/Mutty",
+          "key": "Atypical-Consulting/TenantKit",
           "x": 42.1,
           "y": 1.55,
           "z": 39.85,
@@ -739,10 +706,10 @@
             0,
             -1
           ],
-          "width": 2.049
+          "width": 1.7
         },
         {
-          "key": "phmatray/Mediateur",
+          "key": "phmatray/matray-tech",
           "x": 32.15,
           "y": 1.55,
           "z": 30.175,
@@ -753,7 +720,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/Phosphor",
+          "key": "phmatray/soft-ui-dashboard",
           "x": 32.15,
           "y": 1.55,
           "z": 37.325,
@@ -764,37 +731,26 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/ValueOf",
+          "key": "phmatray/ai-migration-kit",
           "x": 47.85,
           "y": 1.55,
-          "z": 31.354,
+          "z": 33.5,
           "normal": [
             -1,
             0
           ],
           "width": 1.7
-        },
-        {
-          "key": "Atypical-Consulting/TheAppManager",
-          "x": 47.85,
-          "y": 1.55,
-          "z": 35.527,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.939
         }
       ]
     },
     {
       "id": "e-o1",
       "level": 1,
-      "name": "Game / Godot",
+      "name": "Design Patterns / Record",
       "placements": [
         {
-          "key": "phmatray/MineSweeper",
-          "x": 4.075,
+          "key": "phmatray/RecordEquality",
+          "x": 5.725,
           "y": 6.35,
           "z": 0.15,
           "normal": [
@@ -804,30 +760,30 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/lenia",
-          "x": 8,
+          "key": "phmatray/Mutty",
+          "x": 10.1,
           "y": 6.35,
           "z": 0.15,
           "normal": [
             0,
             1
           ],
-          "width": 2.001
+          "width": 2.049
         },
         {
-          "key": "phmatray/Raga",
-          "x": 11.925,
-          "y": 6.35,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/godot-games",
+          "key": "phmatray/BlazorPluginArch",
           "x": 3.775,
+          "y": 6.35,
+          "z": 12.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.939
+        },
+        {
+          "key": "phmatray/BlazorMvvmApp",
+          "x": 12.225,
           "y": 6.35,
           "z": 12.85,
           "normal": [
@@ -837,21 +793,10 @@
           "width": 1.851
         },
         {
-          "key": "Atypical-Consulting/YendorSupport",
-          "x": 12.225,
-          "y": 6.35,
-          "z": 12.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/Platformer2D_Brackeys",
+          "key": "phmatray/ValueOf",
           "x": 0.15,
           "y": 6.35,
-          "z": 3.325,
+          "z": 4.354,
           "normal": [
             1,
             0
@@ -859,29 +804,18 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/lenia-godot",
+          "key": "Atypical-Consulting/TheAppManager",
           "x": 0.15,
           "y": 6.35,
-          "z": 6.5,
+          "z": 8.527,
           "normal": [
             1,
             0
           ],
-          "width": 2.001
+          "width": 1.939
         },
         {
-          "key": "phmatray/java-teaching-materials",
-          "x": 0.15,
-          "y": 6.35,
-          "z": 9.675,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/G3.TreasuresMonsters.Java",
+          "key": "phmatray/Phosphor",
           "x": 15.85,
           "y": 6.35,
           "z": 2.775,
@@ -892,7 +826,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/G3.TreasuresMonsters",
+          "key": "phmatray/Mediateur",
           "x": 15.85,
           "y": 6.35,
           "z": 9.725,
@@ -1060,8 +994,8 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/spec-kit-dotnet",
-          "x": 5.825,
+          "key": "phmatray/Metatrader5-Docker",
+          "x": 4.112,
           "y": 6.35,
           "z": 39.85,
           "normal": [
@@ -1072,7 +1006,7 @@
         },
         {
           "key": "phmatray/AutoTests",
-          "x": 10.1,
+          "x": 8,
           "y": 6.35,
           "z": 39.85,
           "normal": [
@@ -1082,10 +1016,32 @@
           "width": 1.851
         },
         {
+          "key": "phmatray/trading-lab",
+          "x": 11.888,
+          "y": 6.35,
+          "z": 39.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/spec-kit-dotnet",
+          "x": 0.15,
+          "y": 6.35,
+          "z": 31.383,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
           "key": "phmatray/jcodemunch-mcp",
           "x": 0.15,
           "y": 6.35,
-          "z": 33.5,
+          "z": 35.542,
           "normal": [
             1,
             0
@@ -1123,101 +1079,68 @@
       "placements": [
         {
           "key": "ivanpaulovich/clean-architecture-manga",
-          "x": 18.775,
-          "y": 6.35,
-          "z": 11.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.89
-        },
-        {
-          "key": "phmatray/aspire-app-with-n8n",
-          "x": 29.225,
-          "y": 6.35,
-          "z": 11.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.885
-        },
-        {
-          "key": "Atypical-Consulting/BlazorMVU",
           "x": 16.15,
           "y": 6.35,
           "z": 2.775,
           "normal": [
             1,
+            0
+          ],
+          "width": 1.89
+        },
+        {
+          "key": "phmatray/aspire-app-with-n8n",
+          "x": 16.15,
+          "y": 6.35,
+          "z": 9.225,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.885
+        },
+        {
+          "key": "Atypical-Consulting/BlazorMVU",
+          "x": 31.85,
+          "y": 6.35,
+          "z": 2.775,
+          "normal": [
+            -1,
             0
           ],
           "width": 1.853
         },
         {
           "key": "Atypical-Consulting/Koine",
-          "x": 16.15,
+          "x": 31.85,
           "y": 6.35,
           "z": 9.225,
           "normal": [
-            1,
+            -1,
             0
           ],
           "width": 1.853
-        },
-        {
-          "key": "Atypical-Consulting/SalesPitch",
-          "x": 31.85,
-          "y": 6.35,
-          "z": 2.775,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.959
-        },
-        {
-          "key": "phmatray/webassembly-demo",
-          "x": 31.85,
-          "y": 6.35,
-          "z": 9.225,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.936
         }
       ]
     },
     {
       "id": "e-e1",
       "level": 1,
-      "name": "Rest Api / Aspnet",
+      "name": "Parser / Vat",
       "placements": [
         {
-          "key": "phmatray/pokedex",
-          "x": 37.781,
+          "key": "phmatray/Antlr4Library",
+          "x": 40,
           "y": 6.35,
           "z": 0.15,
           "normal": [
             0,
             1
           ],
-          "width": 1.7
+          "width": 1.851
         },
         {
-          "key": "phmatray/Geometrix",
-          "x": 42.1,
-          "y": 6.35,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.939
-        },
-        {
-          "key": "phmatray/PokemonAPI",
+          "key": "phmatray/Antlr4Roslyn",
           "x": 35.775,
           "y": 6.35,
           "z": 12.85,
@@ -1225,10 +1148,10 @@
             0,
             -1
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "phmatray/CrabGraphQL",
+          "key": "phmatray/BelgiumVatChecker",
           "x": 44.225,
           "y": 6.35,
           "z": 12.85,
@@ -1239,7 +1162,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/RedBlack",
+          "key": "phmatray/WispLang",
           "x": 32.15,
           "y": 6.35,
           "z": 2.775,
@@ -1250,7 +1173,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/InvoiceGenerator",
+          "key": "phmatray/VatBe",
           "x": 32.15,
           "y": 6.35,
           "z": 9.725,
@@ -1261,21 +1184,10 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/powerplant-coding-challenge",
+          "key": "phmatray/coda-parser",
           "x": 47.85,
           "y": 6.35,
-          "z": 4.383,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/Crab",
-          "x": 47.85,
-          "y": 6.35,
-          "z": 8.542,
+          "z": 6.5,
           "normal": [
             -1,
             0
@@ -1287,11 +1199,22 @@
     {
       "id": "e-e2",
       "level": 1,
-      "name": "Doji / Hackathon",
+      "name": "Rest Api / Aspnet",
       "placements": [
         {
-          "key": "phmatray/hackathon-backend",
+          "key": "phmatray/PokemonAPI",
           "x": 35.775,
+          "y": 6.35,
+          "z": 13.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "phmatray/CrabGraphQL",
+          "x": 44.225,
           "y": 6.35,
           "z": 13.15,
           "normal": [
@@ -1301,10 +1224,32 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/IFAPME-OMD",
+          "key": "phmatray/InvoiceGenerator",
+          "x": 35.775,
+          "y": 6.35,
+          "z": 26.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/RedBlack",
+          "x": 44.225,
+          "y": 6.35,
+          "z": 26.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/powerplant-coding-challenge",
           "x": 32.15,
           "y": 6.35,
-          "z": 18.175,
+          "z": 16.5,
           "normal": [
             1,
             0
@@ -1312,31 +1257,86 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/doji",
+          "key": "phmatray/Crab",
+          "x": 32.15,
+          "y": 6.35,
+          "z": 19.775,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "phmatray/pokedex",
           "x": 47.85,
           "y": 6.35,
-          "z": 20,
+          "z": 17.781,
           "normal": [
             -1,
             0
           ],
-          "width": 1.851
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/Geometrix",
+          "x": 47.85,
+          "y": 6.35,
+          "z": 22.1,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.939
         }
       ]
     },
     {
       "id": "e-e3",
       "level": 1,
-      "name": "Shell / Dots",
+      "name": "Doji / Hackathon",
       "placements": [
         {
-          "key": "phmatray/dots-2.0",
+          "key": "phmatray/IFAPME-OMD",
+          "x": 35.775,
+          "y": 6.35,
+          "z": 27.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/hackathon-backend",
+          "x": 44.225,
+          "y": 6.35,
+          "z": 27.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/doji",
           "x": 40,
           "y": 6.35,
           "z": 39.85,
           "normal": [
             0,
             -1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "phmatray/dots-2.0",
+          "x": 47.85,
+          "y": 6.35,
+          "z": 33.5,
+          "normal": [
+            -1,
+            0
           ],
           "width": 1.851
         }
