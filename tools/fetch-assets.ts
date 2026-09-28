@@ -76,6 +76,13 @@ const MATIERES = [
   { id: 'Gravel023', role: 'gravier', usage: 'allées et parvis du parc' },
 ] as const
 
+/**
+ * Le ciel du fond de scène : un « pure sky » (sans sol) de Poly Haven. On prend
+ * sa version tonemappée en JPG, pas l'HDR : c'est un fond, pas une lumière, et
+ * réduite à 4096 × 2048 elle pèse un mégaoctet quand l'HDR 2k en pèse cinq.
+ */
+export const CIEL = { id: 'kloofendal_48d_partly_cloudy_puresky', largeur: 4096 }
+
 /** HDRI d'intérieur neutre : il sert au spéculaire, pas à l'éclairage direct. */
 const HDRI = { id: 'brown_photostudio_02', resolution: '2k' }
 
@@ -215,6 +222,18 @@ async function recupererHdri(): Promise<string> {
   return telecharger({ url, dest })
 }
 
+async function recupererCiel(): Promise<string> {
+  const dest = join(OUT, 'ciel', `${CIEL.id}.jpg`)
+  if (await existe(dest)) return 'cache'
+  const brut = `${dest}.source`
+  const r = await telecharger({ url: `https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/${CIEL.id}.jpg`, dest: brut })
+  if (r === 'echec') return r
+  const { default: sharp } = await import('sharp')
+  await sharp(brut, { limitInputPixels: false }).resize(CIEL.largeur, CIEL.largeur / 2).jpeg({ quality: 82, mozjpeg: true }).toFile(dest)
+  await rm(brut, { force: true })
+  return 'ok'
+}
+
 async function recupererPlante(id: string): Promise<string> {
   const dest = join(OUT, 'plants', `${id}.gltf`)
   if (await existe(dest)) return 'cache'
@@ -270,6 +289,8 @@ async function main() {
   console.log(`\nHDRI — Poly Haven, CC0`)
   console.log(`  ${(await recupererHdri()).padEnd(6)} ${HDRI.id} ${HDRI.resolution}`)
   journal.push(`| ${HDRI.id} | Poly Haven | CC0 | carte d'environnement, spéculaire |`)
+  console.log(`  ${(await recupererCiel()).padEnd(6)} ${CIEL.id} ${CIEL.largeur} px`)
+  journal.push(`| ${CIEL.id} | Poly Haven | CC0 | ciel du fond de scène, réduit en JPG |`)
 
   const vegetation = [...PLANTES, ...ARBRES, ...ARBUSTES]
   for (const p of vegetation) {

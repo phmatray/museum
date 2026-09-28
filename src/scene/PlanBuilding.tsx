@@ -11,7 +11,8 @@ import { MUSEE } from '../plan/musee'
 import { meshLevel, type Box } from '../plan/mesh'
 import { creerVitrageGardeCorps } from '../builders/glazing'
 import { matiereDeDalle, useMatiere } from './materials'
-import { AMBIANCE, CIEL, SOLEIL } from './lighting'
+import { AMBIANCE, SOLEIL } from './lighting'
+import { Ciel } from './Ciel'
 import { PlanToiles } from './PlanToiles'
 import { SculptureLayer } from './SculptureLayer'
 import { sculpturePlacements } from '../plan/sculptures'
@@ -35,7 +36,7 @@ export function PlanBuilding() {
   return (
     <>
       {/* Sans ce fond, le vide au-delà des ouvertures se rendait noir (#46). */}
-      <color attach="background" args={[CIEL]} />
+      <Ciel />
       {/* Pas de plafond à l'étage : le soleil tombe droit dans les salles. */}
       <hemisphereLight args={[AMBIANCE.ciel, AMBIANCE.sol, AMBIANCE.intensite]} />
       <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
