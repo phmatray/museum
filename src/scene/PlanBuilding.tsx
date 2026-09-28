@@ -19,6 +19,7 @@ import { ParkLayer } from './ParkLayer'
 import { parkPlacements } from '../plan/park'
 import { PropsLayer } from './PropsLayer'
 import { CartelLayer } from './CartelLayer'
+import { NefLayer } from './NefLayer'
 
 const AUCUNE: Box[] = []
 const SCULPTURES = sculpturePlacements(MUSEE)
@@ -36,6 +37,7 @@ export function PlanBuilding() {
       <hemisphereLight args={[AMBIANCE.ciel, AMBIANCE.sol, AMBIANCE.intensite]} />
       <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
       {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} />)}
+      <NefLayer />
       {/* Le décor à part : un texte qui attend sa police ne doit pas suspendre les murs. */}
       <Suspense fallback={null}>
         <SculptureLayer placements={SCULPTURES} />
