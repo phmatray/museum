@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { depuis, dureeVolets, lignesDeDeparts, ligneEnPalettes, palettes, voletsA } from '../departs'
+import { depuis, dureeVolets, ligneAnnonce, lignesDeDeparts, ligneEnPalettes, palettes, versionsRecentes, voletsA } from '../departs'
 import type { Artwork } from '../types'
 
 const maintenant = new Date('2026-09-28T18:00:00Z')
@@ -48,5 +48,24 @@ describe('voletsA', () => {
     expect(voletsA('AAA', 'ACB', 55)).toBe('AAA')
     expect(voletsA('A  ', 'B  ', 55)).toBe('B  ')
     expect(voletsA('AAA', 'ACB', dureeVolets(3))).toBe('ACB')
+  })
+})
+
+describe('versionsRecentes', () => {
+  const oeuvre = (name: string, publishedAt?: string): Artwork =>
+    ({ key: `a/${name}`, name, pushedAt: '2026-09-20T00:00:00Z', url: `https://github.com/a/${name}`, ...(publishedAt && { release: { tag: 'v2.0.0', name: '', publishedAt, url: '' } }) }) as Artwork
+  const oeuvres = [oeuvre('vieille', '2026-09-10T00:00:00Z'), oeuvre('sans'), oeuvre('hier', '2026-09-27T18:00:00Z'), oeuvre('matin', '2026-09-28T08:00:00Z')]
+
+  it('annonce les versions de la semaine, la plus récente d’abord', () => {
+    expect(versionsRecentes(oeuvres, maintenant).map((a) => a.name)).toEqual(['matin', 'hier'])
+    expect(ligneAnnonce(oeuvres[3], 40)).toBe('NOUVELLE VERSION   MATIN V2.0.0'.padEnd(40))
+  })
+
+  it('en invente une avec ?annonce=1 quand il n’y en a pas', () => {
+    const calme = [oeuvre('vieille', '2026-09-10T00:00:00Z'), oeuvre('sans')]
+    expect(versionsRecentes(calme, maintenant)).toEqual([])
+    const [fausse] = versionsRecentes(calme, maintenant, '?annonce=1')
+    expect(fausse.release?.publishedAt).toBe(maintenant.toISOString())
+    expect(versionsRecentes(oeuvres, maintenant, '?annonce=1')).toHaveLength(2)
   })
 })

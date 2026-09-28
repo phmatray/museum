@@ -65,6 +65,15 @@ export interface Artwork {
   pushedAt: string
   license: string | null
   readmeExcerpt: string
+  /** La dernière version publiée, si le dépôt en a une : la cloche de la nef l'annonce. */
+  release?: Release
+}
+
+export interface Release {
+  tag: string
+  name: string
+  publishedAt: string
+  url: string
 }
 
 export interface Catalogue {

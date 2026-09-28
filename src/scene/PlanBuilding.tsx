@@ -29,6 +29,7 @@ import { sansBaieBatllo } from './batllo'
 import { EscalierLayer } from './EscalierLayer'
 import { TableauDeparts } from './TableauDeparts'
 import { AmbianceSonore } from '../audio/AmbianceSonore'
+import { HallVivantLayer } from './HallVivantLayer'
 import { EveilLayer } from './EveilLayer'
 import { ProjecteursLayer } from './ProjecteursLayer'
 import { PortesLayer } from './PortesLayer'
@@ -66,6 +67,7 @@ export function PlanBuilding() {
       <EscalierLayer onPret={escalierPret} />
       <TableauDeparts />
       <AmbianceSonore />
+      <HallVivantLayer />
       <EveilLayer />
       <ProjecteursLayer />
       <PortesLayer />

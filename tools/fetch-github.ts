@@ -46,6 +46,7 @@ export interface Artwork {
   pushedAt: string
   license: string | null
   readmeExcerpt: string
+  release?: { tag: string; name: string; publishedAt: string; url: string }
 }
 
 export interface Catalogue {
@@ -110,6 +111,7 @@ query($login: String!, $cursor: String, $size: Int!) {
         }
         readme: object(expression: "HEAD:README.md") { ... on Blob { text } }
         readmeLower: object(expression: "HEAD:readme.md") { ... on Blob { text } }
+        releases(first: 1, orderBy: {field: CREATED_AT, direction: DESC}) { nodes { tagName name publishedAt url } }
       }
     }
   }
@@ -134,6 +136,7 @@ interface GqlRepo {
   languages: { edges: { size: number; node: { name: string } }[] }
   readme: { text: string } | null
   readmeLower: { text: string } | null
+  releases?: { nodes: { tagName: string; name: string | null; publishedAt: string | null; url: string }[] }
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
@@ -271,6 +274,7 @@ function toArtwork(r: GqlRepo): Artwork {
     pushedAt: r.pushedAt,
     license: r.licenseInfo?.spdxId ?? null,
     readmeExcerpt: readmeExcerpt(r.readme?.text ?? r.readmeLower?.text),
+    ...release(r),
   }
 }
 
@@ -306,6 +310,56 @@ export async function pagesDesProprietaires(owners: string[], token: string | nu
     }
   }
   return pages
+}
+
+/** La dernière version, seulement si elle est publiée (un brouillon n'a pas de date). */
+function release(r: GqlRepo): Pick<Artwork, 'release'> {
+  const v = r.releases?.nodes[0]
+  return v?.publishedAt ? { release: { tag: v.tagName, name: v.name ?? '', publishedAt: v.publishedAt, url: v.url } } : {}
+}
+
+// ── Calendrier des contributions ─────────────────────────────────────────
+
+export interface Contributions {
+  login: string
+  generatedAt: string
+  total: number
+  /** Les semaines du graphe de profil, du dimanche au samedi ; `level` 0–4 suit les quartiles de GitHub. */
+  weeks: { date: string; count: number; level: number }[][]
+}
+
+const NIVEAUX = ['NONE', 'FIRST_QUARTILE', 'SECOND_QUARTILE', 'THIRD_QUARTILE', 'FOURTH_QUARTILE']
+
+/**
+ * Le calendrier du premier propriétaire qui est une personne : une organisation
+ * n'en a pas (`user` y répond `null`, avec une erreur qu'on ignore).
+ */
+export async function fetchContributions(owners: string[], token: string | null): Promise<Contributions | null> {
+  const headers: Record<string, string> = { 'content-type': 'application/json', 'user-agent': 'virtual-museum-fetch' }
+  if (token) headers.authorization = `bearer ${token}`
+  const query = `query($login: String!) { user(login: $login) { contributionsCollection { contributionCalendar {
+    totalContributions weeks { contributionDays { date contributionCount contributionLevel } } } } } }`
+  for (const login of owners) {
+    const res = await fetch(GRAPHQL, { method: 'POST', headers, body: JSON.stringify({ query, variables: { login } }) })
+    if (!res.ok) throw new Error(`GitHub ${res.status} : ${(await res.text()).slice(0, 300)}`)
+    const json = (await res.json()) as {
+      data?: { user: { contributionsCollection: { contributionCalendar: {
+        totalContributions: number
+        weeks: { contributionDays: { date: string; contributionCount: number; contributionLevel: string }[] }[]
+      } } } | null }
+    }
+    const cal = json.data?.user?.contributionsCollection.contributionCalendar
+    if (!cal) continue
+    return {
+      login,
+      generatedAt: new Date().toISOString(),
+      total: cal.totalContributions,
+      weeks: cal.weeks.map((w) =>
+        w.contributionDays.map((d) => ({ date: d.date, count: d.contributionCount, level: Math.max(0, NIVEAUX.indexOf(d.contributionLevel)) }))
+      ),
+    }
+  }
+  return null
 }
 
 // ── Point d'entrée ───────────────────────────────────────────────────────
@@ -395,6 +449,17 @@ async function main() {
     .slice(0, 10)
   for (const a of meilleurs) await writeFile(resolve(dossier, `${a.key.replace('/', '__')}.md`), readmes.get(a.key)!)
   console.log(`${meilleurs.length} README complets écrits dans public/data/readmes/`)
+
+  // Le calendrier n'est qu'un décor : son échec ne doit pas coûter le catalogue.
+  try {
+    const contributions = await fetchContributions(config.owners, token)
+    if (contributions) {
+      await writeFile(resolve(ROOT, 'public/data/contributions.json'), JSON.stringify(contributions) + '\n')
+      console.log(`${contributions.total} contributions de ${contributions.login} écrites dans public/data/contributions.json`)
+    } else console.warn('  ! aucun propriétaire n’est une personne : pas de calendrier de contributions')
+  } catch (e) {
+    console.warn(`  ! calendrier des contributions indisponible : ${(e as Error).message}`)
+  }
 
   const kept = catalogue.artworks
   console.log(

@@ -89,3 +89,29 @@ export function voletsA(avant: string, apres: string, ms: number): string {
 export function dureeVolets(longueur: number): number {
   return (longueur - 1) * DECALAGE_MS + TAMBOUR.length * PAS_MS
 }
+
+// ── Les nouvelles versions ──
+
+/** Une version est « nouvelle » pendant une semaine après sa publication. */
+const SEMAINE_MS = 7 * 24 * 3600 * 1000
+
+/**
+ * Les dépôts dont la dernière version a moins d'une semaine, de la plus récente
+ * à la plus ancienne. `?annonce=1` en invente une sur le dernier dépôt poussé,
+ * pour voir la cloche sonner sans attendre une vraie publication.
+ */
+export function versionsRecentes(oeuvres: Iterable<Artwork>, maintenant: Date, recherche = ''): Artwork[] {
+  const toutes = [...oeuvres]
+  const recentes = toutes
+    .filter((a) => a.release && maintenant.getTime() - new Date(a.release.publishedAt).getTime() < SEMAINE_MS)
+    .sort((a, b) => b.release!.publishedAt.localeCompare(a.release!.publishedAt) || a.key.localeCompare(b.key))
+  if (recentes.length > 0 || new URLSearchParams(recherche).get('annonce') !== '1') return recentes
+  const dernier = toutes.sort((a, b) => b.pushedAt.localeCompare(a.pushedAt))[0]
+  if (dernier === undefined) return []
+  return [{ ...dernier, release: { tag: 'v1.0.0', name: 'v1.0.0', publishedAt: maintenant.toISOString(), url: dernier.url } }]
+}
+
+/** « NOUVELLE VERSION · CARTOUCHE V1.9.0 » sur toute la largeur du tableau. */
+export function ligneAnnonce(a: Artwork, largeur: number): string {
+  return palettes(`NOUVELLE VERSION · ${a.name} ${a.release?.tag ?? ''}`, largeur)
+}
