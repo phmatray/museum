@@ -33,7 +33,7 @@ import { ProjecteursLayer } from './ProjecteursLayer'
 import { PortesLayer } from './PortesLayer'
 import { ConstellationLayer } from './ConstellationLayer'
 import { FacadeLayer } from './FacadeLayer'
-import { bandesDuSol, parementDuHall } from '../plan/parement'
+import { bandesDuSol, parementDuHall, peintureDesSalles } from '../plan/parement'
 import { plafonds } from '../plan/plafonds'
 import { creerGranit, creerPierre } from './pierre'
 
@@ -97,6 +97,8 @@ function Niveau({ level, verre, sansMarches }: { level: number; verre: THREE.Mat
   const pierre = useMatiere('marbre')
   const acier = useMatiere('metal')
   const parement = useMemo(() => parementDuHall(MUSEE, level), [level])
+  const peintures = useMemo(() => peintureDesSalles(MUSEE, level), [level])
+  const parquet = useMatiere('parquet')
   const plafond = useMemo(() => plafonds(MUSEE, level), [level])
   const platrePlafond = useMatiere('platre')
   const lanterneau = useMemo(() => new THREE.MeshStandardMaterial({ color: '#f4f1ea', emissive: '#fff6e6', emissiveIntensity: 0.55, roughness: 0.9 }), [])
@@ -109,7 +111,14 @@ function Niveau({ level, verre, sansMarches }: { level: number; verre: THREE.Mat
     // Une dalle qui dépasse le plancher est la paillasse d'une marche : l'escalier de marbre la remplace.
     const sousMarche = (b: Box) => b.y + b.h / 2 > (niveau?.elevation ?? 0) + 1e-6
     const toutes = (de.get('slab') ?? AUCUNE).filter((b) => !(sansMarches && sousMarche(b)))
-    return { balcons: toutes.filter(estBalcon), courantes: toutes.filter((b) => !estBalcon(b)) }
+    // Au rez-de-chaussée, le terrazzo est pour le hall ; les galeries sont parquetées, comme à l'étage.
+    const galeries = (niveau?.rooms ?? []).filter((r) => r.kind === 'gallery')
+    const estGalerie = (b: Box) => level === 0 && galeries.some((r) => Math.abs(r.x + r.width / 2 - b.x) < 1e-6 && Math.abs(r.z + r.depth / 2 - b.z) < 1e-6)
+    return {
+      balcons: toutes.filter(estBalcon),
+      galeries: toutes.filter(estGalerie),
+      courantes: toutes.filter((b) => !estBalcon(b) && !estGalerie(b)),
+    }
   }, [de, level, sansMarches])
   // La baie de la salle d'honneur est vitrée par la fenêtre Batlló, pas par une boîte.
   const baies = useMemo(() => sansBaieBatllo(de.get('glass') ?? AUCUNE, level), [de, level])
@@ -137,6 +146,8 @@ function Niveau({ level, verre, sansMarches }: { level: number; verre: THREE.Mat
       <Boites boites={plafond.verre} material={lanterneau} />
       <Boites boites={plafond.resille} material={granit} />
       {level === 0 && <Boites boites={BANDES} material={granit} />}
+      <Boites boites={dalles.galeries} material={parquet} />
+      {peintures.map((p) => <Peinture key={p.couleur} couleur={p.couleur} boites={p.boites} />)}
       <PlanToiles level={level} />
     </>
   )
@@ -186,4 +197,10 @@ export function Boites({ boites, material }: { boites: Box[]; material: THREE.Ma
   // identité, que l'effet ci-dessus ne repeuple pas. Tous les murs tombaient
   // alors en un cube à l'origine (#35).
   return <instancedMesh key={boites.length} ref={ref} args={[geometry, undefined, boites.length]} material={material} />
+}
+
+/** Les murs peints d'une galerie : le plâtre du musée, teinté de sa couleur. */
+function Peinture({ couleur, boites }: { couleur: string; boites: Box[] }) {
+  const matiere = useMatiere('platre', undefined, { teinte: couleur })
+  return <Boites boites={boites} material={matiere} />
 }

@@ -45,3 +45,17 @@ describe('rails', () => {
     }
   })
 })
+
+describe('rails dans les angles', () => {
+  it('ne croisent jamais le rail du mur voisin, dans aucune salle', () => {
+    const r = rails(MUSEE, accrochage)
+    for (const a of r) for (const b of r) {
+      if (a === b || Math.abs(a.y - b.y) > 1e-6) continue
+      const [la, lb] = [a.w > a.d, b.w > b.d]
+      if (la === lb) continue
+      const [h, v] = la ? [a, b] : [b, a]
+      const croise = Math.abs(v.x - h.x) < h.w / 2 && Math.abs(h.z - v.z) < v.d / 2
+      expect(croise, `${JSON.stringify(h)} × ${JSON.stringify(v)}`).toBe(false)
+    }
+  })
+})

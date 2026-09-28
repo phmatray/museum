@@ -18,6 +18,8 @@ export const RECUL = 1.6
 /** L'axe de l'étrier, sous le plafond (`tools/blender/build-projecteur.py`). */
 const AXE = 0.17
 const EP_PLAFOND = 0.02
+/** L'écart laissé, dans un angle, entre le bout d'un rail et le rail du mur voisin. */
+const GARDE_ANGLE = 0.25
 const RAIL = { largeur: 0.035, hauteur: 0.03, debord: 0.5 }
 
 export interface Projecteur {
@@ -74,7 +76,14 @@ export function rails(plan: Plan, accrochage: Accrochage): Box[] {
       const [nx, nz] = ps[0].normal
       const long = Math.abs(nz) > 0.5 // mur nord ou sud : le rail court selon x
       const us = ps.map((p) => (long ? p.x : p.z))
-      const [a, b] = [Math.min(...us) - ps[0].width / 2 - RAIL.debord, Math.max(...us) + ps[0].width / 2 + RAIL.debord]
+      // Borné par les rails des murs voisins (à RECUL du mur, eux aussi) : sans ça,
+      // les rails se croisaient dans les angles (signalé par Philippe).
+      const salle = plan.levels.find((l) => l.id === r.level)?.rooms.find((s) => s.id === r.id)
+      const [lo, hi] = salle ? (long ? [salle.x, salle.x + salle.width] : [salle.z, salle.z + salle.depth]) : [-Infinity, Infinity]
+      const [a, b] = [
+        Math.max(Math.min(...us) - ps[0].width / 2 - RAIL.debord, lo + RECUL + GARDE_ANGLE),
+        Math.min(Math.max(...us) + ps[0].width / 2 + RAIL.debord, hi - RECUL - GARDE_ANGLE),
+      ]
       const at = (long ? ps[0].z + nz * RECUL : ps[0].x + nx * RECUL)
       const y = plafond - RAIL.hauteur / 2
       return long
