@@ -31,6 +31,14 @@
 <rect x="284.2" y="25.9" width="8.4" height="7" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
 <rect x="347.2" y="25.9" width="8.4" height="7" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
 <rect x="410.2" y="25.9" width="8.4" height="7" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="96.6" y="60.9" width="30.8" height="9.8" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="65.8" y="275.1" width="30.8" height="9.8" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="96.6" y="489.3" width="30.8" height="9.8" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="544.6" y="60.9" width="30.8" height="9.8" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="575.4" y="275.1" width="30.8" height="9.8" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="544.6" y="489.3" width="30.8" height="9.8" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="284.2" y="111.7" width="19.6" height="9" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="368.2" y="111.7" width="19.6" height="9" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
 <rect x="224" y="168" width="224" height="49" fill="#EEF0F2" stroke="#4A5057" stroke-width="1" />
 <text x="336" y="196.5" text-anchor="middle" font-size="11" class="cap">palier +2,40</text>
 <rect x="224" y="217" width="42" height="63" fill="#EEF0F2" stroke="#4A5057" stroke-width="1" />

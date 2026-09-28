@@ -21,6 +21,7 @@
  */
 import { OBSTACLES_PORTIQUE } from './facade.ts'
 import { OBSTACLES_JARDIN } from './jardin.ts'
+import { obstaclesDuMobilier } from './mobilier.ts'
 import { OBSTACLES_BORNES } from './vitrines.ts'
 import type { Plan } from './types.ts'
 
@@ -78,6 +79,8 @@ export const MUSEE: Plan = {
         ...OBSTACLES_PORTIQUE,
         // Dehors encore, l'étang et le ruisseau du jardin, sauf le tablier du pont (jardin.ts).
         ...OBSTACLES_JARDIN,
+        // Les bancs, la banque d'accueil, et dehors les bancs du jardin (mobilier.ts).
+        ...obstaclesDuMobilier(0),
       ],
     },
     {
@@ -112,8 +115,8 @@ export const MUSEE: Plan = {
         // La salle d'honneur regarde le hall et l'escalier.
         { kind: 'bay', a: 'honneur', b: null, x: 24, z: 12, width: 14.4 },
       ],
-      // Les bornes des vitrines, devant le mur nord de la salle d'honneur (vitrines.ts).
-      obstacles: [...OBSTACLES_BORNES],
+      // Les bornes des vitrines, devant le mur nord de la salle d'honneur (vitrines.ts), et les bancs (mobilier.ts).
+      obstacles: [...OBSTACLES_BORNES, ...obstaclesDuMobilier(1)],
     },
   ],
 }

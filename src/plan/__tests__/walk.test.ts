@@ -48,7 +48,8 @@ const AU_BALCON_OUEST: [number, number][] = [...AU_PALIER, [17.5, 14], [17.5, 24
 describe('la marche au rez-de-chaussée', () => {
   it('s’arrête contre le dessous du palier en marchant vers le nord, à côté de la volée', () => {
     let franchi = false
-    const w = marcher(vers(depart(), 20, 30), 0, 20, DT, false, (w) => { if (w.z < 15.5 + RAYON - 1e-6) franchi = true })
+    // Par l'ouest de la nef, à hauteur de l'entrée : ses bancs bordent l'allée plus au nord.
+    const w = marcher(vers(depart(), 20, 37), 0, 20, DT, false, (w) => { if (w.z < 15.5 + RAYON - 1e-6) franchi = true })
     expect(franchi).toBe(false)
     expect(w.z).toBeCloseTo(15.5 + RAYON, 3)
     expect(w.y).toBe(0)
@@ -65,9 +66,10 @@ describe('la marche au rez-de-chaussée', () => {
   })
 
   it('ne traverse pas le mur plein entre deux portes, même en hâte au delta maximal', () => {
-    // On remonte le hall jusqu'en face du mur plein, puis on fonce droit dessus.
-    let w = marcher(depart(), 0, 8 / VITESSE_MARCHE)
-    expect(w.z).toBeCloseTo(29, 1)
+    // On remonte le hall jusqu'en face du mur plein, puis on fonce droit dessus —
+    // sur la bande de granit qui sépare les bancs de la nef (mobilier.ts).
+    let w = marcher(depart(), 0, 7.5 / VITESSE_MARCHE)
+    expect(w.z).toBeCloseTo(29.5, 1)
     let minX = Infinity
     w = marcher(w, Math.PI / 2, 20, DELTA_MAX, true, (w) => { minX = Math.min(minX, w.x) })
     expect(minX).toBeGreaterThanOrEqual(16 + RAYON - 1e-6)

@@ -205,6 +205,12 @@ const ARCHITECTURE = [
     licence: 'œuvre originale du dépôt',
     usage: "vitrines de la salle d'honneur : panneau bordeaux, cadre doré sculpté, borne interactive",
   },
+  {
+    id: 'mobilier',
+    source: "`tools/blender/build-mobilier.py`, d'après les banquettes du Louvre, la nef d'Orsay et le banc double de la Casa Batlló de Gaudí",
+    licence: 'œuvre originale du dépôt',
+    usage: "banquettes capitonnées des galeries, bancs de la nef, banque d'accueil, bancs Batlló de la salle d'honneur, bancs de granit et de cèdre du jardin",
+  },
 ] as const
 
 interface Telechargement {
