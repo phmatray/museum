@@ -7,8 +7,8 @@
  * entoure le musée, une allée en fait le tour, quatre accès rejoignent le bord
  * du terrain ; les arbres remplissent ce que les allées laissent.
  *
- * Le parc ne se visite pas : la marche reste bornée à l'emprise (`walk.ts`).
- * Il se regarde par l'entrée et par-dessus les murs de l'étage.
+ * Le parc se visite : on y sort par l'entrée, et la marche y reste bornée au
+ * terrain (`terrainDuParc`, lu par `surfaceAt` et `walk.ts`).
  *
  * Aucun aléa réel : le tirage est semé par un texte, deux appels donnent le
  * même parc, arbre pour arbre.
@@ -121,6 +121,11 @@ function tracerAllees(parvis: Rect, terrain: Rect): Allee[] {
   ]
 }
 
+/** Le terrain du parc : l'emprise du bâtiment élargie de `DEBORD_TERRAIN`. */
+export function terrainDuParc(plan: Plan): Rect {
+  return elargi({ x: 0, z: 0, width: plan.width, depth: plan.depth }, DEBORD_TERRAIN)
+}
+
 /**
  * Sème le parc autour de l'emprise du plan. Grille perturbée plutôt que tirage
  * uniforme : pas de grappes ni de clairières que l'œil lirait comme une erreur.
@@ -128,7 +133,7 @@ function tracerAllees(parvis: Rect, terrain: Rect): Allee[] {
 export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
   const emprise: Rect = { x: 0, z: 0, width: plan.width, depth: plan.depth }
   const parvis = elargi(emprise, DEBORD_PARVIS)
-  const terrain = elargi(emprise, DEBORD_TERRAIN)
+  const terrain = terrainDuParc(plan)
   const allees = tracerAllees(parvis, terrain)
   const alea = generateur(graine)
   const plantations: PlantPlacement[] = []
