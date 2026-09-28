@@ -70,14 +70,17 @@ export function PlanPlayer() {
 
   // Cadrage initial, face au nord (yaw 0 = −z) : l'accueil s'affiche en pause,
   // et sans ça la première image serait celle de la caméra par défaut de R3F.
+  // La caméra est un objet three, pas un état React : on la règle en place.
+  // Depuis eslint-plugin-react-hooks 7.1, l'erreur tombe sur l'appel du hook,
+  // d'où une exemption qui l'englobe plutôt que le seul corps.
+  /* eslint-disable react-hooks/immutability */
   useEffect(() => {
     const w = walker.current
-    /* eslint-disable react-hooks/immutability */
     camera.rotation.order = 'YXZ'
     camera.rotation.set(0, 0, 0)
     camera.position.set(w.x, w.y + HAUTEUR_OEIL, w.z)
-    /* eslint-enable react-hooks/immutability */
   }, [camera])
+  /* eslint-enable react-hooks/immutability */
 
   // Chaque visite repart du point d'apparition, où commence son itinéraire :
   // lancée depuis l'étage, sa première ligne droite buterait contre un mur.
@@ -99,17 +102,16 @@ export function PlanPlayer() {
     return () => { delete w.__PLAN__ }
   }, [camera])
 
+  /* eslint-disable react-hooks/immutability -- la caméra, réglée en place à chaque image */
   useFrame((_, delta) => {
     if (paused) return
     const t = getKeys() as { forward: boolean; backward: boolean; left: boolean; right: boolean; hate?: boolean }
     const { pas, reste: r } = cadencer(reste.current, delta)
     reste.current = r
     if (toucher.lookX || toucher.lookY) {
-      /* eslint-disable react-hooks/immutability */
       camera.rotation.order = 'YXZ'
       camera.rotation.y -= toucher.lookX * SENSIBILITE_TOUCHER
       camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x - toucher.lookY * SENSIBILITE_TOUCHER))
-      /* eslint-enable react-hooks/immutability */
       toucher.lookX = toucher.lookY = 0
     }
     // Clavier et joystick s'additionnent, bornés à [−1, 1] comme l'attend `step`.
@@ -145,6 +147,7 @@ export function PlanPlayer() {
     if (!v || v.x !== w.x || v.z !== w.z || v.yaw !== w.yaw || v.surface !== w.surface) useGameStore.setState({ visiteur: w })
     camera.position.set(w.x, w.y + HAUTEUR_OEIL, w.z)
   })
+  /* eslint-enable react-hooks/immutability */
 
   return null
 }

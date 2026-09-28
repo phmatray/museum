@@ -69,6 +69,7 @@ function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
   const platre = useMatiere('platre')
   const dalle = useMatiere(matiereDeDalle(level))
   const pierre = useMatiere('marbre')
+  const acier = useMatiere('metal')
   const parement = useMemo(() => parementDuHall(MUSEE, level), [level])
   const plafond = useMemo(() => plafonds(MUSEE, level), [level])
   const platrePlafond = useMatiere('platre')
@@ -98,6 +99,7 @@ function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
       <Boites boites={de.get('landing') ?? AUCUNE} material={pierre} />
       <Boites boites={de.get('step') ?? AUCUNE} material={pierre} />
       <Boites boites={de.get('railing') ?? AUCUNE} material={verre} />
+      <Boites boites={de.get('handrail') ?? AUCUNE} material={acier} />
       <Boites boites={de.get('glass') ?? AUCUNE} material={verre} />
       <Boites boites={parement} material={taille} />
       <Boites boites={plafond.platre} material={platrePlafond} />
@@ -124,7 +126,13 @@ export function Boites({ boites, material }: { boites: Box[]; material: THREE.Ma
     const mesh = ref.current
     if (mesh === null) return
     const m = new THREE.Matrix4()
-    boites.forEach((b, i) => mesh.setMatrixAt(i, m.makeScale(b.w, b.h, b.d).setPosition(b.x, b.y, b.z)))
+    const cisaille = new THREE.Matrix4()
+    boites.forEach((b, i) => {
+      m.makeScale(b.w, b.h, b.d)
+      // Un garde-corps rampant : y glisse avec x (ou z), les abouts restent d'aplomb.
+      if (b.pente) m.premultiply(b.w > b.d ? cisaille.makeShear(b.pente, 0, 0, 0, 0, 0) : cisaille.makeShear(0, 0, 0, 0, 0, b.pente))
+      mesh.setMatrixAt(i, m.setPosition(b.x, b.y, b.z))
+    })
     mesh.instanceMatrix.needsUpdate = true
     // Sans recalcul, la sphère englobante est celle d'un cube unité à l'origine :
     // le niveau entier disparaîtrait dès que l'origine sort du champ.
