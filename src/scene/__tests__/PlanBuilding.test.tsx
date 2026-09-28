@@ -18,6 +18,7 @@ import type * as THREE from 'three'
 import { PlanBuilding } from '../PlanBuilding'
 import { MUSEE } from '../../plan/musee'
 import { bandesDuSol, parementDuHall } from '../../plan/parement'
+import { plafonds } from '../../plan/plafonds'
 import { meshLevel, type Box } from '../../plan/mesh'
 import { CIEL } from '../lighting'
 
@@ -50,7 +51,8 @@ describe('PlanBuilding', () => {
     const attendus = MUSEE.levels.flatMap((niveau) => {
       const boites = meshLevel(MUSEE, niveau.id)
       // Puis la pierre du hall : son parement, et au rez-de-chaussée les bandes du sol.
-      const pierre = [parementDuHall(MUSEE, niveau.id).length, ...(niveau.id === 0 ? [bandesDuSol(MUSEE).length] : [])]
+      const { platre, verre, resille } = plafonds(MUSEE, niveau.id)
+      const pierre = [parementDuHall(MUSEE, niveau.id).length, platre.length, verre.length, resille.length, ...(niveau.id === 0 ? [bandesDuSol(MUSEE).length] : [])]
       const comptes = ORDRE_SORTES.map((kind) => boites.filter((b) => b.kind === kind).length)
       // Les dalles des balcons sont à part, en pierre, juste après les dalles courantes.
       const balcons = niveau.rooms.filter((r) => r.kind === 'balcony').length

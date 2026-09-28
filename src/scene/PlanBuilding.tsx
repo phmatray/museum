@@ -22,6 +22,7 @@ import { PropsLayer } from './PropsLayer'
 import { CartelLayer } from './CartelLayer'
 import { NefLayer } from './NefLayer'
 import { bandesDuSol, parementDuHall } from '../plan/parement'
+import { plafonds } from '../plan/plafonds'
 import { creerGranit, creerPierre } from './pierre'
 
 const AUCUNE: Box[] = []
@@ -37,7 +38,7 @@ export function PlanBuilding() {
     <>
       {/* Sans ce fond, le vide au-delà des ouvertures se rendait noir (#46). */}
       <Ciel />
-      {/* Pas de plafond à l'étage : le soleil tombe droit dans les salles. */}
+      {/* Les salles ont un plafond (plan/plafonds.ts) ; le soleil sans ombre éclaire encore tout. */}
       <hemisphereLight args={[AMBIANCE.ciel, AMBIANCE.sol, AMBIANCE.intensite]} />
       <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
       {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} />)}
@@ -69,6 +70,10 @@ function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
   const dalle = useMatiere(matiereDeDalle(level))
   const pierre = useMatiere('marbre')
   const parement = useMemo(() => parementDuHall(MUSEE, level), [level])
+  const plafond = useMemo(() => plafonds(MUSEE, level), [level])
+  const platrePlafond = useMatiere('platre')
+  const lanterneau = useMemo(() => new THREE.MeshStandardMaterial({ color: '#f4f1ea', emissive: '#fff6e6', emissiveIntensity: 0.55, roughness: 0.9 }), [])
+  useEffect(() => () => lanterneau.dispose(), [lanterneau])
   // Les balcons sont de pierre, comme la nef qu'ils bordent : pas de parquet vu d'en bas.
   const dalles = useMemo(() => {
     const balcons = (MUSEE.levels.find((l) => l.id === level)?.rooms ?? []).filter((r) => r.kind === 'balcony')
@@ -95,6 +100,9 @@ function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
       <Boites boites={de.get('railing') ?? AUCUNE} material={verre} />
       <Boites boites={de.get('glass') ?? AUCUNE} material={verre} />
       <Boites boites={parement} material={taille} />
+      <Boites boites={plafond.platre} material={platrePlafond} />
+      <Boites boites={plafond.verre} material={lanterneau} />
+      <Boites boites={plafond.resille} material={granit} />
       {level === 0 && <Boites boites={BANDES} material={granit} />}
       <PlanToiles level={level} />
     </>
