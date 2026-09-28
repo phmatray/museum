@@ -15,6 +15,7 @@
  * Pur et semé : une graine donne toujours la même promenade, et les tests la
  * rejouent. Ni three ni React.
  */
+import { presDeLEau } from './jardin.ts'
 import { OBSTACLES_PORTIQUE } from './facade.ts'
 import type { Parc } from './park.ts'
 import { PARC, PASSABLE, surfaceAt } from './rules.ts'
@@ -87,6 +88,10 @@ const loinDesPortes = (plan: Plan, niveau: number, x: number, z: number) =>
  * coins calmes du hall ; sur le palier, entre les départs des volées ; au bout
  * des balcons ; et au pied des arbres proches du musée, sous leur houppier.
  */
+/** Au jardin : ses coins tranquilles, et leur distance minimale à l'étang et au ruisseau. */
+const LIEUX_DEHORS = 24
+const LOIN_DE_L_EAU = 2
+
 export function lieuxCalmes(plan: Plan, parc: Parc): Lieu[] {
   const out: Lieu[] = []
   const ajouter = (niveau: number, elevation: number, x: number, z: number, cap: number, genre: Lieu['genre']) => {
@@ -119,15 +124,22 @@ export function lieuxCalmes(plan: Plan, parc: Parc): Lieu[] {
       if (plan.flights.every((f) => Math.abs(f.x + f.width / 2 - x) > 1.2)) out.push({ surface: `palier:${l.id}`, x, z, cap: Math.PI, genre: 'palier' })
     }
   }
-  // Sous les arbres et au pied des massifs proches : un chat ne va pas au bout du terrain.
+  // Sous les arbres et au pied des massifs proches : un chat ne va pas au bout du
+  // terrain, ni au bord de l'eau (le jardin a des berges que la marche ne borne
+  // qu'à peu près). Les plus proches du musée seulement : le jardin compte
+  // autant de coins que les salles, pas huit fois plus, sinon il n'en sort plus.
   const [bx, bz] = [plan.width / 2, plan.depth / 2]
+  const dehors: (Lieu & { d: number })[] = []
   for (const p of parc.plantations) {
-    if (Math.hypot(p.x - bx, p.z - bz) > Math.max(plan.width, plan.depth) / 2 + 30) continue
+    const d = Math.hypot(p.x - bx, p.z - bz)
+    if (d > Math.max(plan.width, plan.depth) / 2 + 30) continue
     const [dx, dz] = [bx - p.x, bz - p.z]
-    const n = Math.hypot(dx, dz)
-    const [x, z] = [p.x + (dx / n) * p.rayon * 0.6, p.z + (dz / n) * p.rayon * 0.6]
-    if (surfaceAt(plan, x, z, 0) === PARC) out.push({ surface: PARC, x, z, cap: capVers({ x, z }, p.x, p.z) + Math.PI, genre: 'arbre' })
+    const [x, z] = [p.x + (dx / d) * p.rayon * 0.6, p.z + (dz / d) * p.rayon * 0.6]
+    if (presDeLEau(x, z, LOIN_DE_L_EAU) || surfaceAt(plan, x, z, 0) !== PARC) continue
+    dehors.push({ surface: PARC, x, z, cap: capVers({ x, z }, p.x, p.z) + Math.PI, genre: 'arbre', d })
   }
+  dehors.sort((a, b) => a.d - b.d || a.x - b.x)
+  for (const l of dehors.slice(0, LIEUX_DEHORS)) out.push({ surface: l.surface, x: l.x, z: l.z, cap: l.cap, genre: l.genre })
   return out
 }
 

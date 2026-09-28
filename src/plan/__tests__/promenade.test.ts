@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { MUSEE } from '../musee.ts'
+import { presDeLEau } from '../jardin.ts'
 import { parkPlacements } from '../park.ts'
 import { avancerPromenade, itineraire, lieuxCalmes, posture, promenadeInitiale, regardeBavette, type Promenade } from '../promenade.ts'
 import { PARC, PASSABLE, surfaceAt } from '../rules.ts'
@@ -91,5 +92,26 @@ describe('regardeBavette', () => {
   it('faux s’il est hors du regard, ou trop loin', () => {
     expect(regardeBavette(oeil, { x: 0, y: 0, z: -1 }, chat)).toBe(false)
     expect(regardeBavette(oeil, { x: 0, y: -0.2, z: -1 }, { x: 0, y: 0.2, z: -6 })).toBe(false)
+  })
+})
+
+describe('promenade au jardin', () => {
+  it('ne met jamais les pattes dans l’eau et ne reste pas coincé, en deux heures de promenade', () => {
+    const lieux = lieuxCalmes(MUSEE, parkPlacements(MUSEE))
+    let p = promenadeInitiale(MUSEE, lieux, 42)
+    let [coinces, dehors] = [0, 0]
+    for (let t = 0; t < 7200; t += 0.1) {
+      const avant = p.bloque
+      p = avancerPromenade(MUSEE, lieux, p, 0.1)
+      if (avant > 0 && p.bloque === 0 && p.pause === 2) coinces++
+      if (p.walker.surface === 'parc:terrain') {
+        dehors++
+        expect(presDeLEau(p.walker.x, p.walker.z), `${p.walker.x}, ${p.walker.z}`).toBe(false)
+      }
+    }
+    expect(coinces).toBeLessThanOrEqual(2)
+    // Ni cloîtré dans les salles, ni perdu au jardin.
+    expect(dehors / 72000).toBeGreaterThan(0.2)
+    expect(dehors / 72000).toBeLessThan(0.8)
   })
 })
