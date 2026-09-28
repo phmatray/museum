@@ -10,6 +10,7 @@ import * as THREE from 'three'
 
 import config from '../../museum.config.json'
 import { useAccrochage } from '../hooks/useAccrochage'
+import { useGameStore } from '../stores/gameStore'
 import { facade } from '../plan/facade'
 import { MUSEE } from '../plan/musee'
 import { CARTEL_FONT } from './cartelStyle'
@@ -36,6 +37,8 @@ export function FacadeLayer() {
   )
   useEffect(() => () => Object.values(mats).forEach((m) => { m.map?.dispose(); m.dispose() }), [mats])
   const acier = useMatiere('metal')
+  // La nuit, les lettres s'allument, comme une enseigne rétroéclairée.
+  const nuit = 1 - useGameStore((s) => s.ciel.jour)
 
   return (
     <group name="facade">
@@ -48,11 +51,11 @@ export function FacadeLayer() {
         <Text
           font={CARTEL_FONT}
           position={[FACADE.enseigne.x, FACADE.enseigne.y, FACADE.enseigne.z]}
-          fontSize={1.05}
-          letterSpacing={0.1}
-          color="#1c1a18"
+          fontSize={0.72}
+          letterSpacing={0.14}
+          color={nuit > 0.5 ? '#ffd98a' : '#3a2c1c'}
           anchorX="center"
-          anchorY="bottom"
+          anchorY="middle"
         >
           {config.name.toUpperCase()}
         </Text>

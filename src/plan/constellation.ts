@@ -1,24 +1,26 @@
 /**
- * La constellation de la verrière : chaque dépôt accroché est une étoile dorée
- * sous le verre, chaque salle une constellation qui porte son nom, ses étoiles
- * reliées par un filet d'or — le ciel doré de Grand Central, sous la nef d'Orsay.
+ * La constellation de la nef : chaque dépôt accroché est une étoile suspendue
+ * dans le vide du hall, chaque salle un amas qui porte son nom, ses étoiles
+ * reliées par un filet d'or. Elle flotte entre les deux balcons, à hauteur des
+ * yeux de qui s'y tient (le plancher des balcons est à +4,80) : on la traverse
+ * du regard depuis l'étage, on la voit d'en bas comme un lustre de lumières.
  *
- * On travaille sur la verrière DÉROULÉE : `u` court le long de la nef (en z),
- * `v` le long de l'arc (en mètres de voûte). Les salles s'y rangent en grille,
- * les étoiles s'y placent par hachage de leur clé, puis tout est enroulé sur le
- * cylindre, un peu sous le verre.
+ * Elle était d'abord plaquée sous la verrière, à vingt mètres : coincée dans le
+ * plafond et illisible. Chaque étoile pend maintenant à un fil, jusqu'à la voûte.
  *
  * Pur : ni three ni React. Déterministe : même accrochage, même ciel.
  */
 import type { Accrochage } from './hang.ts'
 
-/** La nef de `tools/blender/build-nef.py` : axe, naissance, rayon, pignons, verrière. */
-const NEF = { cx: 24, naissance: 12.6, rayon: 8, z0: 12, z1: 40, travee: 3.5, arc: 0.7 }
-const VERRIERE = { t0: (52 * Math.PI) / 180, t1: (128 * Math.PI) / 180 }
-/** Sous la résille (rayon 7,92) et en retrait des arcs doubleaux. */
-const RAYON = 7.7
+/** Le volume libre de la nef : entre les garde-corps des balcons, au-dessus de l'escalier. */
+export const VOLUME = { x0: 19.9, x1: 28.1, z0: 16.5, z1: 39.2, y0: 6.1, y1: 8.6 }
+/** Les lanternes de `build-nef.py` : deux files, trois par file ; les étoiles s'en écartent. */
+const LANTERNES = [20.5, 27.5].flatMap((x) => [20.75, 27.75, 34.75].map((z) => ({ x, z })))
+const GARDE_LANTERNE = 0.9
+/** La nef, pour les fils : axe, naissance et intrados de la voûte. */
+const NEF = { cx: 24, naissance: 12.6, intrados: 7.55 }
 const COLONNES = 7
-const MARGE = 0.5
+const MARGE = 0.35
 
 export interface Etoile {
   key: string
@@ -28,6 +30,8 @@ export interface Etoile {
   z: number
   /** Le rayon de l'étoile, en mètres : elle grandit avec le logarithme de ses étoiles GitHub. */
   taille: number
+  /** La hauteur où son fil s'accroche à la voûte. */
+  accroche: number
 }
 
 export interface Constellation {
@@ -36,7 +40,7 @@ export interface Constellation {
   etoiles: Etoile[]
   /** Les filets d'or : un arbre couvrant minimal, indices dans `etoiles`. */
   filets: [number, number][]
-  /** Où poser le nom : sous la constellation. */
+  /** Où poser le nom : au-dessus de l'amas. */
   etiquette: { x: number; y: number; z: number }
 }
 
@@ -47,22 +51,22 @@ function hache(texte: string, sel: string): number {
   return (h >>> 0) / 4294967296
 }
 
-/** Enroule (u, v) sur le cylindre de rayon `r`, `v` en mètres d'arc depuis le début de la verrière. */
-export function enrouler(u: number, v: number, r = RAYON): { x: number; y: number; z: number } {
-  const t = VERRIERE.t0 + v / NEF.rayon
-  return { x: NEF.cx - r * Math.cos(t), y: NEF.naissance + r * Math.sin(t), z: u }
+/** Écarte une étoile des lanternes, vers l'axe de la nef. */
+function horsDesLanternes(x: number, z: number): number {
+  for (const l of LANTERNES) {
+    const d = Math.hypot(x - l.x, z - l.z)
+    if (d >= GARDE_LANTERNE) continue
+    const dz = Math.min(GARDE_LANTERNE, Math.abs(z - l.z))
+    const dx = Math.sqrt(GARDE_LANTERNE * GARDE_LANTERNE - dz * dz)
+    return l.x < NEF.cx ? l.x + dx : l.x - dx
+  }
+  return x
 }
 
-/** Écarte `u` des arcs doubleaux : une étoile derrière un arc serait perdue. */
-function horsDesArcs(u: number): number {
-  const k = Math.round((u - NEF.z0) / NEF.travee)
-  const arc = NEF.z0 + k * NEF.travee
-  const garde = NEF.arc / 2 + 0.15
-  if (Math.abs(u - arc) >= garde) return u
-  return u < arc ? arc - garde : arc + garde
-}
+/** La voûte au-dessus d'un point : l'intrados des arcs, où les fils s'accrochent. */
+const voute = (x: number) => NEF.naissance + Math.sqrt(Math.max(0, NEF.intrados ** 2 - (x - NEF.cx) ** 2))
 
-function arbreCouvrant(pts: { u: number; v: number }[]): [number, number][] {
+function arbreCouvrant(pts: { x: number; y: number; z: number }[]): [number, number][] {
   if (pts.length < 2) return []
   const dans = new Set([0])
   const out: [number, number][] = []
@@ -72,7 +76,7 @@ function arbreCouvrant(pts: { u: number; v: number }[]): [number, number][] {
     for (const i of dans)
       for (let j = 0; j < pts.length; j++) {
         if (dans.has(j)) continue
-        const d = Math.hypot(pts[i].u - pts[j].u, pts[i].v - pts[j].v)
+        const d = Math.hypot(pts[i].x - pts[j].x, pts[i].y - pts[j].y, pts[i].z - pts[j].z)
         if (d < dmin) [dmin, meilleur] = [d, [i, j]]
       }
     out.push(meilleur!)
@@ -84,30 +88,28 @@ function arbreCouvrant(pts: { u: number; v: number }[]): [number, number][] {
 export function constellations(accrochage: Accrochage, etoilesGithub: ReadonlyMap<string, number>): Constellation[] {
   const salles = accrochage.rooms.filter((r) => r.placements.length > 0)
   const rangs = Math.ceil(salles.length / COLONNES)
-  const [longueur, hauteur] = [NEF.z1 - NEF.z0, NEF.rayon * (VERRIERE.t1 - VERRIERE.t0)]
-  const [du, dv] = [longueur / COLONNES, hauteur / rangs]
+  const [dz, dx] = [(VOLUME.z1 - VOLUME.z0) / COLONNES, (VOLUME.x1 - VOLUME.x0) / rangs]
   return salles.map((salle, i) => {
-    const [cu, cv] = [NEF.z0 + (i % COLONNES) * du, Math.floor(i / COLONNES) * dv]
-    const pts = salle.placements.map((p) => ({
-      key: p.key,
-      u: horsDesArcs(cu + MARGE + hache(p.key, 'u') * (du - 2 * MARGE)),
-      v: cv + MARGE + hache(p.key, 'v') * (dv - 2 * MARGE - 0.6),
-    }))
-    const etoiles = pts.map(({ key, u, v }) => ({
-      key,
-      salle: salle.id,
-      ...enrouler(u, v),
-      taille: Math.min(0.34, 0.09 + 0.04 * Math.log2(1 + (etoilesGithub.get(key) ?? 0))),
-    }))
+    const [cz, cx] = [VOLUME.z0 + (i % COLONNES) * dz, VOLUME.x0 + Math.floor(i / COLONNES) * dx]
+    const etoiles = salle.placements.map((p) => {
+      const z = cz + MARGE + hache(p.key, 'z') * (dz - 2 * MARGE)
+      const x = horsDesLanternes(cx + MARGE + hache(p.key, 'x') * (dx - 2 * MARGE), z)
+      return {
+        key: p.key,
+        salle: salle.id,
+        x,
+        y: VOLUME.y0 + hache(p.key, 'y') * (VOLUME.y1 - VOLUME.y0 - 0.5),
+        z,
+        taille: Math.min(0.2, 0.05 + 0.03 * Math.log2(1 + (etoilesGithub.get(p.key) ?? 0))),
+        accroche: voute(x),
+      }
+    })
     return {
       salle: salle.id,
       nom: salle.name,
       etoiles,
-      filets: arbreCouvrant(pts),
-      etiquette: enrouler(cu + du / 2, cv + dv - 0.35, RAYON - 0.02),
+      filets: arbreCouvrant(etoiles),
+      etiquette: { x: cx + dx / 2, y: VOLUME.y1 + 0.1, z: cz + dz / 2 },
     }
   })
 }
-
-/** Le point de l'axe de la nef en face d'une position : ce vers quoi regarde une étiquette. */
-export const versLAxe = (z: number): [number, number, number] => [NEF.cx, NEF.naissance, z]

@@ -18,6 +18,10 @@ it('habille de brique les quatre façades et pose l’enseigne au-dessus du port
   const f = facade(MUSEE)
   expect(f.brique.length).toBeGreaterThan(8)
   expect(f.piliers).toHaveLength(4)
-  expect(f.enseigne.y).toBeGreaterThan(8)
+  // L'enseigne est sur la face avant du linteau : rien ne peut la masquer vue d'en bas.
+  const avant = Math.max(...OBSTACLES_PORTIQUE.map((r) => r.z + r.depth))
+  expect(f.enseigne.z).toBeGreaterThan(avant)
+  expect(f.enseigne.y).toBeGreaterThan(7.4)
+  expect(f.enseigne.y).toBeLessThan(8.6)
   expect(f.bannieres).toHaveLength(2)
 })

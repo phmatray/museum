@@ -1,18 +1,18 @@
 /**
- * La constellation de la verrière (`plan/constellation.ts`), qui s'allume la
- * nuit (`gameStore.ciel`) : les étoiles en un lot d'instances qui scintillent,
- * un halo additif autour de chacune, les filets d'or en un seul trait, et le nom
- * de chaque salle sous sa constellation. Le jour, rien : le verre laiteux les
- * noyait, et c'est la nuit qu'un ciel s'illumine.
+ * La constellation de la nef (`plan/constellation.ts`), suspendue entre les
+ * balcons, qui s'allume la nuit (`gameStore.ciel`) : les étoiles en un lot
+ * d'instances qui scintillent, un halo additif autour de chacune, les filets
+ * d'or, les fils qui les pendent à la voûte, et le nom de chaque salle
+ * au-dessus de son amas. Le jour, rien : c'est la nuit qu'un ciel s'illumine.
  */
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef } from 'react'
-import { Text } from '@react-three/drei'
+import { Billboard, Text } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
 import { useAccrochage } from '../hooks/useAccrochage'
 import { useCatalogue } from '../hooks/useCatalogue'
-import { constellations, versLAxe, type Constellation } from '../plan/constellation'
+import { constellations, type Constellation } from '../plan/constellation'
 import { useGameStore } from '../stores/gameStore'
 import { CARTEL_FONT } from './cartelStyle'
 
@@ -34,6 +34,7 @@ export function ConstellationLayer() {
       <Etoiles ciel={ciel} />
       <Halos ciel={ciel} nuit={nuit} />
       <Filets ciel={ciel} nuit={nuit} />
+      <Fils ciel={ciel} nuit={nuit} />
       <Suspense fallback={null}>
         {ciel.map((c) => <Etiquette key={c.salle} c={c} nuit={nuit} />)}
       </Suspense>
@@ -89,7 +90,7 @@ function Halos({ ciel, nuit }: { ciel: Constellation[]; nuit: number }) {
   if (texture === null) return null
   return (
     <points geometry={geometrie}>
-      <pointsMaterial map={texture} size={1.4} color="#ffd98a" transparent opacity={nuit} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+      <pointsMaterial map={texture} size={0.9} color="#ffd98a" transparent opacity={nuit} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
     </points>
   )
 }
@@ -107,24 +108,27 @@ function Filets({ ciel, nuit }: { ciel: Constellation[]; nuit: number }) {
   )
 }
 
-/**
- * Le nom de la salle, plaqué sous le verre et tourné vers l'axe. Le haut des
- * lettres vers le SUD : c'est ce qui les rend lisibles au visiteur qui lève la
- * tête en regardant vers l'horloge (vers le nord, elles se lisaient en miroir).
- */
+/** Le nom de la salle, au-dessus de son amas, toujours tourné vers qui le regarde. */
 function Etiquette({ c, nuit }: { c: Constellation; nuit: number }) {
-  const ref = useRef<THREE.Group>(null)
-  useLayoutEffect(() => {
-    const g = ref.current
-    if (g === null) return
-    g.up.set(0, 0, 1)
-    g.lookAt(...versLAxe(c.etiquette.z))
-  }, [c])
   return (
-    <group ref={ref} position={[c.etiquette.x, c.etiquette.y, c.etiquette.z]}>
-      <Text font={CARTEL_FONT} fontSize={0.36} letterSpacing={0.08} lineHeight={1.1} maxWidth={3.4} textAlign="center" color={OR} fillOpacity={nuit} anchorX="center" anchorY="middle">
+    <Billboard position={[c.etiquette.x, c.etiquette.y, c.etiquette.z]}>
+      <Text font={CARTEL_FONT} fontSize={0.2} letterSpacing={0.08} lineHeight={1.1} maxWidth={2.6} textAlign="center" color={OR} fillOpacity={nuit} anchorX="center" anchorY="bottom">
         {c.nom.toUpperCase()}
       </Text>
-    </group>
+    </Billboard>
+  )
+}
+
+/** Les fils : chaque étoile pend à la voûte, un trait à peine visible. */
+function Fils({ ciel, nuit }: { ciel: Constellation[]; nuit: number }) {
+  const geometrie = useMemo(() => {
+    const pts = ciel.flatMap((c) => c.etoiles.flatMap((e) => [new THREE.Vector3(e.x, e.y, e.z), new THREE.Vector3(e.x, e.accroche, e.z)]))
+    return new THREE.BufferGeometry().setFromPoints(pts)
+  }, [ciel])
+  useEffect(() => () => geometrie.dispose(), [geometrie])
+  return (
+    <lineSegments geometry={geometrie}>
+      <lineBasicMaterial color="#c9b48a" transparent opacity={0.18 * nuit} toneMapped={false} />
+    </lineSegments>
   )
 }
