@@ -88,10 +88,15 @@ const LOD_STEP = 0.5
  * toile depuis le plafond, jamais de face.
  */
 const PEINDRE_LE_SPOT = /* glsl */ `
+  // Les couches de l'atlas sont en sRGB et le composeur travaille en linéaire :
+  // renvoyer le texel tel quel le faisait corriger deux fois, et les toiles
+  // sortaient délavées, sans noirs. On le linéarise d'abord (approximation
+  // gamma 2,2, invisible à cette échelle), puis on peint le spot.
   vec3 peindreLeSpot(vec3 base, vec2 coord) {
+    vec3 lineaire = pow(base, vec3(2.2));
     vec2 ecart = coord - vec2(0.5, 0.62);
     float halo = exp(-3.0 * dot(ecart, ecart));
-    return base * (0.80 + 0.38 * halo);
+    return lineaire * (0.72 + 0.34 * halo);
   }
 `
 

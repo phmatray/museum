@@ -16,7 +16,7 @@ import { MUSEE } from '../plan/musee'
 import { INT as DEMI_MUR } from '../plan/svg'
 import { SALLE_VITRINES } from '../plan/vitrines'
 import { CanvasInstances, FrameInstances } from './ArtworkLayer'
-import { CARTEL_FONT, THEME_INK } from './cartelStyle'
+import { CARTEL_FONT } from './cartelStyle'
 import { computePoses } from './planToilesGeometry'
 
 /** Hauteur du nom de salle, au-dessus des toiles les plus hautes. */
@@ -65,7 +65,8 @@ export function PlanToiles({ level }: { level: number }) {
               font={CARTEL_FONT}
               position={[room.x + room.width / 2, niveau.elevation + HAUTEUR_NOM, room.z + DEMI_MUR + 0.01]}
               fontSize={0.32}
-              color={THEME_INK.classic}
+              // Crème sur les murs de couleur des galeries (parement.ts).
+              color="#efe4cc"
               anchorX="center"
               anchorY="middle"
               maxWidth={room.width - 2}

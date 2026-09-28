@@ -41,3 +41,17 @@ describe('parkPlacements', () => {
     expect(parkPlacements(MUSEE)).toEqual(parc)
   })
 })
+
+describe('accès au musée', () => {
+  it('relie le parvis au chemin de ceinture sur chaque côté : jamais de gazon à traverser pour entrer', () => {
+    const { parvis, allees } = parkPlacements(MUSEE)
+    const cx = parvis.x + parvis.width / 2
+    const cz = parvis.z + parvis.depth / 2
+    // De l'entrée (sud) vers le sud, puis des trois autres côtés, pas à pas de 25 cm jusqu'à 8 m.
+    const departs: [number, number, number, number][] = [
+      [cx, parvis.z + parvis.depth, 0, 1], [cx, parvis.z, 0, -1], [parvis.x, cz, -1, 0], [parvis.x + parvis.width, cz, 1, 0],
+    ]
+    for (const [x, z, dx, dz] of departs)
+      for (let t = 0.1; t < 8; t += 0.25) expect(surUneAllee(allees, x + dx * t, z + dz * t), `${x + dx * t}, ${z + dz * t}`).toBe(true)
+  })
+})

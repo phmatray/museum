@@ -14,6 +14,7 @@ import type { Allee, Parc, PlantPlacement, EspeceParc } from '../plan/park'
 import { hauteurDuParc, masqueDuRelief } from '../plan/relief'
 import type { Rect } from '../plan/types'
 import { REGLAGE_MATIERE, repetitionMetrique, useCartes, useMatiere } from './materials'
+import { creerPierre } from './pierre'
 import { parkAssetsResource, type ParkAssets, type ParkPiece } from './parkAssets'
 import { creerMatieresJardin, preparerSol, uvBoite } from './jardinMatieres'
 import { brinsDeGazon, carteDuSol, matiereGazon, type ReglageGazon } from './gazon'
@@ -48,8 +49,16 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   const gravier = useMatiere('gravier', repetitionMetrique(REGLAGE_MATIERE.gravier.motif))
 
   const sol = useMemo(() => pelouse(placements), [placements])
+  // Le parvis est dallé de la pierre du hall, comme le seuil d'un vrai musée ; le
+  // gravier est pour les allées du jardin.
+  const parvis = useMemo(() => dalles(placements.dalles.map((r) => pave(r, 0, RELIEF_ALLEE))), [placements])
+  const dallage = useMemo(() => creerPierre(), [])
+  useEffect(() => () => {
+    parvis.dispose()
+    dallage.map?.dispose()
+    dallage.dispose()
+  }, [parvis, dallage])
   const allees = useMemo(() => dalles([
-    ...placements.dalles.map((r) => pave(r, 0, RELIEF_ALLEE)),
     ...placements.allees.map(allee),
   ]), [placements])
   useEffect(() => () => {
@@ -67,6 +76,7 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   return (
     <group name="parc">
       <mesh geometry={sol} material={herbe} />
+      <mesh geometry={parvis} material={dallage} />
       <mesh geometry={allees} material={gravier} />
       <Gazon parc={placements} />
       {assets !== null && <Jardin objets={assets.jardin} herbe={herbe} />}

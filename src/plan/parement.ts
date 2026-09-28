@@ -10,6 +10,8 @@ import { meshLevel, type Box } from './mesh.ts'
 import type { Plan, Rect } from './types.ts'
 
 const PEAU = 0.03
+/** Une couche de peinture : assez mince pour passer sous les cadres et les cartels. */
+const PEINTURE = 0.002
 /** Les bandes du sol suivent les arcs doubleaux de la nef (`tools/blender/build-nef.py`). */
 const TRAVEE = 3.5
 const BANDE = 0.18
@@ -24,8 +26,33 @@ function hallDe(plan: Plan): Rect {
 
 /** Le parement des murs et linteaux qui bordent le hall, sur un niveau. */
 export function parementDuHall(plan: Plan, levelId: number): Box[] {
-  const h = hallDe(plan)
-  const [x0, x1, z0, z1] = [h.x, h.x + h.width, h.z, h.z + h.depth]
+  return peauInterieure(plan, levelId, hallDe(plan), PEAU)
+}
+
+/**
+ * Les murs de couleur des galeries, comme à Orsay : bordeaux, vert, bleu de
+ * Prusse… Une toile blanche sur un mur gris se perd ; sur un mur profond, elle
+ * sort. Une couche de peinture de 2 mm sur la face intérieure de chaque galerie,
+ * chacune sa couleur (`COULEURS_SALLES`, par rang), la salle d'honneur a son décor.
+ */
+export const COULEURS_SALLES = ['#5e2a2c', '#2f4a3c', '#2b3b55', '#7a4128', '#46504a', '#4a2f47', '#6b5a2e'] as const
+
+export function peintureDesSalles(plan: Plan, levelId: number): { couleur: string; boites: Box[] }[] {
+  const level = plan.levels.find((l) => l.id === levelId)
+  if (!level) return []
+  const galeries = plan.levels.flatMap((l) => l.rooms.filter((r) => r.kind === 'gallery').map((r) => ({ r, l: l.id })))
+  const parCouleur = new Map<string, Box[]>()
+  galeries.forEach(({ r, l }, i) => {
+    if (l !== levelId) return
+    const couleur = COULEURS_SALLES[i % COULEURS_SALLES.length]
+    parCouleur.set(couleur, [...(parCouleur.get(couleur) ?? []), ...peauInterieure(plan, levelId, r, PEINTURE)])
+  })
+  return [...parCouleur].map(([couleur, boites]) => ({ couleur, boites }))
+}
+
+/** Une peau d'épaisseur `ep` sur la face des murs et linteaux qui regarde l'intérieur de `r`. */
+function peauInterieure(plan: Plan, levelId: number, r: Rect, ep: number): Box[] {
+  const [x0, x1, z0, z1] = [r.x, r.x + r.width, r.z, r.z + r.depth]
   const out: Box[] = []
   for (const b of meshLevel(plan, levelId)) {
     if (b.kind !== 'wall' && b.kind !== 'lintel') continue
@@ -36,15 +63,15 @@ export function parementDuHall(plan: Plan, levelId: number): Box[] {
       const [s, t] = [Math.max(bx0, x0), Math.min(bx1, x1)]
       if (bord === undefined || t - s < EPS) continue
       const face = bord === z0 ? bz1 : bz0
-      const z = face + (bord === z0 ? PEAU / 2 : -PEAU / 2)
-      out.push({ ...b, x: (s + t) / 2, w: t - s, z, d: PEAU })
+      const z = face + (bord === z0 ? ep / 2 : -ep / 2)
+      out.push({ ...b, x: (s + t) / 2, w: t - s, z, d: ep })
     } else {
       const bord = [x0, x1].find((x) => bx0 - EPS <= x && x <= bx1 + EPS)
       const [s, t] = [Math.max(bz0, z0), Math.min(bz1, z1)]
       if (bord === undefined || t - s < EPS) continue
       const face = bord === x0 ? bx1 : bx0
-      const x = face + (bord === x0 ? PEAU / 2 : -PEAU / 2)
-      out.push({ ...b, z: (s + t) / 2, d: t - s, x, w: PEAU })
+      const x = face + (bord === x0 ? ep / 2 : -ep / 2)
+      out.push({ ...b, z: (s + t) / 2, d: t - s, x, w: ep })
     }
   }
   return out

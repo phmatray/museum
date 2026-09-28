@@ -109,8 +109,13 @@ export function Ciel() {
 
 const LUNE = { couleur: new THREE.Color('#a9bcff'), intensite: 0.35 }
 const OR_BAS = new THREE.Color('#ffb070')
-/** La nuit, le musée reste éclairé de l'intérieur : l'ambiance baisse, sans s'éteindre. */
-const AMBIANCE_NUIT = { ciel: new THREE.Color('#3a4a78'), intensite: 0.75 }
+/**
+ * La nuit, le musée reste éclairé de l'intérieur par ses propres lumières,
+ * chaudes : une ambiance bleu lune baignait les salles comme si elles étaient
+ * fermées et éteintes. Le bleu de la nuit vient de la lune (directionnelle) et
+ * du ciel, pas de l'ambiance.
+ */
+const AMBIANCE_NUIT = { ciel: new THREE.Color('#8a7358'), intensite: 0.8 }
 
 /**
  * Le soleil de la scène, là où il est vraiment au-dessus du musée, doré quand

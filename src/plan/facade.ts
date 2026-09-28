@@ -31,6 +31,8 @@ const BANDEAU = 0.7
 const PARAPET = 1.2
 const COUVERTINE = 0.12
 const PEAU = 0.03
+/** La hauteur des portes vitrées de l'entrée, sous le linteau de 2,40 m. */
+const PORTE_H = 2.38
 
 /**
  * La baie du milieu est celle de l'entrée : plus large que l'ouverture du mur
@@ -138,6 +140,30 @@ export function facade(plan: Plan): Facade {
   // Sur la face avant du linteau de pierre, pas sur la brique au-dessus : le
   // linteau avance de 1,35 m et cachait les lettres dès qu'on approchait, et du
   // bronze sur la brique sombre ne se lisait pas.
+  // Les portes de l'entrée : deux battants vitrés à cadre de bronze, grands ouverts
+  // vers le hall, rabattus à 90° contre l'intérieur des tableaux de la baie. Un
+  // musée sans porte n'existe pas (remarque de Philippe). Ouverts, ils ne gênent
+  // pas le passage : la marche ne connaît que les murs du plan.
+  const entree = plan.levels[0].openings.find((o) => o.kind === 'entrance')
+  if (entree) {
+    const battant = entree.width / 2 - 0.05
+    const [zf, zo] = [entree.z - EXT + 0.02, entree.z - EXT + 0.02 - battant]
+    for (const xg of [entree.x - entree.width / 2 + 0.06, entree.x + entree.width / 2 - 0.06]) {
+      const [a0, a1] = [xg - 0.025, xg + 0.025]
+      out.vitres.push(pave(a0 + 0.01, a1 - 0.01, 0.1, PORTE_H - 0.1, zo + 0.06, zf - 0.06, 'glass'))
+      // Montants, traverses haute et basse, et la barre de tirage.
+      out.menuiseries.push(
+        pave(a0, a1, 0, PORTE_H, zf - 0.06, zf),
+        pave(a0, a1, 0, PORTE_H, zo, zo + 0.06),
+        pave(a0, a1, PORTE_H - 0.1, PORTE_H, zo, zf),
+        pave(a0, a1, 0, 0.18, zo, zf),
+        pave(a0 - 0.05, a1 + 0.05, 0.9, 1.9, zo + 0.12, zo + 0.15),
+      )
+    }
+    // Le seuil de pierre, dans l'épaisseur du mur.
+    out.pierre.push(pave(entree.x - entree.width / 2, entree.x + entree.width / 2, 0, 0.02, entree.z - EXT, entree.z + EXT))
+  }
+
   out.enseigne = { x: (P.x0 + P.x1) / 2, y: P.haut - LINTEAU / 2, z: P.facade + P.saillie + 0.01 }
   out.bannieres = [P.x0 - 4.5, P.x1 + 4.5].map((x) => ({ x, y: 5.2, z: D + EXT + PEAU + 0.12, w: 3, h: 7 }))
   out.mats = [6, 12, 36, 42].map((x) => ({ x, y: haut, z: D - 1.5 }))

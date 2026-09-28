@@ -34,7 +34,7 @@ import type * as THREE from 'three'
 
 import { PlanBuilding } from '../PlanBuilding'
 import { MUSEE } from '../../plan/musee'
-import { bandesDuSol, parementDuHall } from '../../plan/parement'
+import { bandesDuSol, parementDuHall, peintureDesSalles } from '../../plan/parement'
 import { plafonds } from '../../plan/plafonds'
 import { facade } from '../../plan/facade'
 import { portes } from '../../plan/portes'
@@ -79,8 +79,10 @@ describe('PlanBuilding', () => {
       comptes[ORDRE_SORTES.indexOf('glass')] = sansBaieBatllo(boites.filter((b) => b.kind === 'glass'), niveau.id).length
       // Les dalles des balcons sont à part, en pierre, juste après les dalles courantes.
       const balcons = niveau.rooms.filter((r) => r.kind === 'balcony').length
-      comptes.splice(2, 1, comptes[2] - balcons, balcons)
-      return [...comptes, ...pierre]
+      const galeriesRdc = niveau.id === 0 ? niveau.rooms.filter((r) => r.kind === 'gallery').length : 0
+      comptes.splice(2, 1, comptes[2] - balcons - galeriesRdc, balcons)
+      // Puis le parquet des galeries du rez-de-chaussée et leurs murs peints, un lot par couleur.
+      return [...comptes, ...pierre, galeriesRdc, ...peintureDesSalles(MUSEE, niveau.id).map((p) => p.boites.length)]
     })
     // Puis les embrasures de pierre des portes (PortesLayer ; ses chambranles attendent leur GLB).
     attendus.push(portes(MUSEE).embrasures.length)
@@ -115,7 +117,8 @@ describe('PlanBuilding', () => {
       // Les dalles qui restent : les planchers, pas les paillasses sous les marches.
       const planchers = boites.filter((b) => b.kind === 'slab' && b.y + b.h / 2 <= 1e-6).length
       const balcons = MUSEE.levels[0].rooms.filter((r) => r.kind === 'balcony').length
-      expect(rdc).toEqual([compte('wall'), compte('lintel'), planchers - balcons, balcons, 0, 0, compte('railing'), compte('handrail'), compte('glass')])
+      const galeries = MUSEE.levels[0].rooms.filter((r) => r.kind === 'gallery').length
+      expect(rdc).toEqual([compte('wall'), compte('lintel'), planchers - balcons - galeries, balcons, 0, 0, compte('railing'), compte('handrail'), compte('glass')])
     } finally {
       escalier.charge = false
     }

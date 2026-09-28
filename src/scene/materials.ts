@@ -239,7 +239,8 @@ export const REGLAGE_MATIERE: Record<MatiereId, ReglageMatiere> = {
   // la pelouse entière brillait comme un gazon mouillé. Un tapis de mousse de
   // jardin japonais est mat. La teinte le tire vers ce vert sourd.
   herbe: { gain: 1.1, roughness: 3, metalness: 0, rebond: 0, motif: 6, teinte: '#c8d6a4' },
-  gravier: { gain: 1.35, roughness: 1, metalness: 0, rebond: 0, motif: 3.5 },
+  // Un gravier de jardin japonais, beige-gris : blanc pur, il éblouissait au soleil.
+  gravier: { gain: 0.95, roughness: 1, metalness: 0, rebond: 0, motif: 3.5, teinte: '#d8cfbd' },
 }
 
 /**

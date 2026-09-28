@@ -107,7 +107,7 @@ function Halos({ placements, pushes }: { placements: Placement[]; pushes: Readon
       q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.atan2(nx, nz))
       m.compose(new THREE.Vector3(p.x + nx * 0.004, p.y, p.z + nz * 0.004), q, new THREE.Vector3(p.width + DEBORD, p.width / DEFAULT_ASPECT + DEBORD, 1))
       mesh.setMatrixAt(i, m)
-      mesh.setColorAt(i, c.copy(OR).multiplyScalar(0.9 * e))
+      mesh.setColorAt(i, c.copy(OR).multiplyScalar(0.45 * e))
     })
     mesh.instanceMatrix.needsUpdate = true
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
