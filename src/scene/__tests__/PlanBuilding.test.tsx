@@ -37,6 +37,7 @@ import { MUSEE } from '../../plan/musee'
 import { bandesDuSol, parementDuHall } from '../../plan/parement'
 import { plafonds } from '../../plan/plafonds'
 import { facade } from '../../plan/facade'
+import { portes } from '../../plan/portes'
 import { meshLevel, type Box } from '../../plan/mesh'
 import { CIEL } from '../lighting'
 import { useGameStore } from '../../stores/gameStore'
@@ -81,6 +82,8 @@ describe('PlanBuilding', () => {
       comptes.splice(2, 1, comptes[2] - balcons, balcons)
       return [...comptes, ...pierre]
     })
+    // Puis les embrasures de pierre des portes (PortesLayer ; ses chambranles attendent leur GLB).
+    attendus.push(portes(MUSEE).embrasures.length)
     // Puis la façade, après les niveaux : brique, pierre, piliers, vitres, menuiseries.
     const f = facade(MUSEE)
     attendus.push(f.brique.length, f.pierre.length, f.piliers.length, f.vitres.length, f.menuiseries.length)

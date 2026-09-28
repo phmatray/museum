@@ -39,3 +39,4 @@ sont donc commités.
 | nef | `tools/blender/build-nef.py`, d'après le musée d'Orsay | œuvre originale du dépôt | voûte, verrière, horloge et lanternes du hall |
 | batllo | `tools/blender/build-batllo.py`, d'après la Casa Batlló de Gaudí | œuvre originale du dépôt | baie de la salle d'honneur : colonnes en os, chêne ondulé, vitrail de cives |
 | escalier | `tools/blender/build-escalier.py`, d'après le Grand Escalier de l'Opéra Garnier | œuvre originale du dépôt | l'escalier impérial de marbre : volées, bulbes du départ, limons et palier |
+| chambranle | `tools/blender/build-chambranle.py`, d'après les portes des salles d'Orsay et du Louvre | œuvre originale du dépôt | chambranles moulurés, plinthes et entablements de pierre des portes |

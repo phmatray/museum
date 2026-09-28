@@ -167,6 +167,12 @@ const ARCHITECTURE = [
     licence: 'œuvre originale du dépôt',
     usage: "l'escalier impérial de marbre : volées, bulbes du départ, limons et palier",
   },
+  {
+    id: 'chambranle',
+    source: "`tools/blender/build-chambranle.py`, d'après les portes des salles d'Orsay et du Louvre",
+    licence: 'œuvre originale du dépôt',
+    usage: 'chambranles moulurés, plinthes et entablements de pierre des portes',
+  },
 ] as const
 
 interface Telechargement {
