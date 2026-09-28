@@ -8,6 +8,7 @@ import { PostProcessing } from './scene/PostProcessing'
 import { MobileControlsOverlay } from './components/MobileControls'
 import { useIsMobile } from './hooks/useIsMobile'
 import { Minimap } from './components/Minimap'
+import { CarteOeuvre } from './components/CarteOeuvre'
 import { GuidedTour } from './components/GuidedTour'
 
 // Objet constant plutôt qu'`enum` : `erasableSyntaxOnly` interdit les enums,
@@ -54,6 +55,7 @@ export default function App() {
       <GuidedTour />
       {isMobile && <MobileControlsOverlay />}
       <Minimap />
+      <CarteOeuvre />
       <KeyboardControls map={keyMap}>
         <Canvas camera={{ fov: 75, near: 0.1, far: 1000 }} gl={{ preserveDrawingBuffer: import.meta.env.DEV }}>
           <Suspense fallback={null}>

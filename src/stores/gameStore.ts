@@ -23,6 +23,8 @@ interface GameState {
   visiteur: Walker | null
   /** L'arrêt de la visite guidée en cours, dans `buildTourItinerary`. */
   tourEtape: number
+  /** La toile que le visiteur regarde (clé du dépôt), publiée par `EveilLayer`. */
+  toile: string | null
   setPaused: (paused: boolean) => void
   setCurrentRoomId: (id: string) => void
   setTourActive: (active: boolean) => void
@@ -38,6 +40,7 @@ export const useGameStore = create<GameState>((set) => ({
   museumOverride: null,
   visiteur: null,
   tourEtape: 0,
+  toile: null,
   setPaused: (paused) => set({ paused }),
   setCurrentRoomId: (id) => set({ currentRoomId: id }),
   setTourActive: (active) => set({ tourActive: active }),
