@@ -13,6 +13,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { useAccrochage } from '../hooks/useAccrochage'
 import { MUSEE } from '../plan/musee'
 import { projecteurs, rails, type Projecteur } from '../plan/projecteurs'
+import { avecVitrines } from '../plan/vitrines'
 import { useGameStore } from '../stores/gameStore'
 import { Boites } from './PlanBuilding'
 
@@ -59,8 +60,10 @@ export function ProjecteursLayer() {
       vivant = false
     }
   }, [])
-  const tous = useMemo(() => (accrochage ? projecteurs(MUSEE, accrochage) : []), [accrochage])
-  const lesRails = useMemo(() => (accrochage ? rails(MUSEE, accrochage) : []), [accrochage])
+  // Les toiles des vitrines de la salle d'honneur ont aussi leur projecteur.
+  const avec = useMemo(() => (accrochage ? avecVitrines(accrochage) : null), [accrochage])
+  const tous = useMemo(() => (avec ? projecteurs(MUSEE, avec) : []), [avec])
+  const lesRails = useMemo(() => (avec ? rails(MUSEE, avec) : []), [avec])
   if (pieces === null || tous.length === 0) return null
   return (
     <group name="projecteurs">

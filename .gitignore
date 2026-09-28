@@ -60,6 +60,7 @@ public/assets/sculptures/*
 !public/assets/fonts/
 public/assets/fonts/*
 !public/assets/fonts/PTSans-Regular.ttf
+!public/assets/fonts/PTSerif-Regular.ttf
 !public/assets/fonts/OFL.txt
 
 # Editor directories and files

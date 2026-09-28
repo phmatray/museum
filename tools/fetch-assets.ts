@@ -150,6 +150,12 @@ const POLICES = [
     licence: 'SIL OFL 1.1',
     usage: 'cartels et noms de salle (<Text> troika/drei)',
   },
+  {
+    id: 'PT Serif',
+    source: 'Google Fonts (ParaType), sous-ensemble latin',
+    licence: 'SIL OFL 1.1',
+    usage: "titres des vitrines de la salle d'honneur et de leur borne",
+  },
 ] as const
 
 /**
@@ -186,6 +192,18 @@ const ARCHITECTURE = [
     source: "`tools/blender/build-jardin.py`, d'après le jardin japonais de Hasselt",
     licence: 'œuvre originale du dépôt',
     usage: 'étang, ruisseau, pont, lanterne, érables du Japon et boules taillées du parc',
+  },
+  {
+    id: 'salle-honneur',
+    source: "`tools/blender/build-salle-honneur.py`, d'après l'étage noble de la Casa Batlló de Gaudí",
+    licence: 'œuvre originale du dépôt',
+    usage: "salle d'honneur : voûte en tourbillon, lampe-soleil, pilastres en os, lambris et portes de chêne, parquet",
+  },
+  {
+    id: 'vitrines',
+    source: "`tools/blender/build-vitrines.py`, d'après les panneaux du musée Cernuschi",
+    licence: 'œuvre originale du dépôt',
+    usage: "vitrines de la salle d'honneur : panneau bordeaux, cadre doré sculpté, borne interactive",
   },
 ] as const
 

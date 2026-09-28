@@ -9,6 +9,7 @@ import { MobileControlsOverlay } from './components/MobileControls'
 import { useIsMobile } from './hooks/useIsMobile'
 import { Minimap } from './components/Minimap'
 import { CarteOeuvre } from './components/CarteOeuvre'
+import { BorneOeuvre } from './components/BorneOeuvre'
 import { GuidedTour } from './components/GuidedTour'
 
 // Objet constant plutôt qu'`enum` : `erasableSyntaxOnly` interdit les enums,
@@ -56,6 +57,7 @@ export default function App() {
       {isMobile && <MobileControlsOverlay />}
       <Minimap />
       <CarteOeuvre />
+      <BorneOeuvre />
       <KeyboardControls map={keyMap}>
         <Canvas camera={{ fov: 75, near: 0.1, far: 1000 }} gl={{ preserveDrawingBuffer: import.meta.env.DEV }}>
           <Suspense fallback={null}>

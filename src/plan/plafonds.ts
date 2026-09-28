@@ -19,6 +19,15 @@ const CADRE = 2
 const MAILLE = 1.5
 const BOIS = 0.05
 
+/**
+ * La salle d'honneur n'a ni plâtre plat ni lanterneau : une voûte de plâtre en
+ * tourbillon, à la manière de la Casa Batlló, la couvre (`tools/blender/
+ * build-salle-honneur.py`). Du haut des murs, une gorge d'un quart de cercle
+ * (`gorge`) monte à une corniche plate, d'où pendent les rails ; la voûte
+ * s'élève au-delà, jusqu'à la lampe-soleil.
+ */
+export const VOUTE = { salle: 'honneur', gorge: 0.55 }
+
 export interface Plafonds {
   platre: Box[]
   verre: Box[]
@@ -32,7 +41,7 @@ export function plafonds(plan: Plan, levelId: number): Plafonds {
   // Sous la dalle de l'étage au-dessus, ou au sommet des murs pour le dernier.
   const sous = level.elevation + plan.storey - plan.slab
   for (const r of level.rooms) {
-    if (r.kind !== 'gallery' && r.kind !== 'honneur') continue
+    if ((r.kind !== 'gallery' && r.kind !== 'honneur') || r.id === VOUTE.salle) continue
     const [cx, cz] = [r.x + r.width / 2, r.z + r.depth / 2]
     out.platre.push({ x: cx, y: sous - EP_PLAFOND / 2, z: cz, w: r.width, h: EP_PLAFOND, d: r.depth, kind: 'slab' })
     const [w, d] = [r.width - 2 * CADRE, r.depth - 2 * CADRE]

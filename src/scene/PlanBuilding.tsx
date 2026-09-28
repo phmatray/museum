@@ -22,6 +22,8 @@ import { PropsLayer } from './PropsLayer'
 import { CartelLayer } from './CartelLayer'
 import { NefLayer } from './NefLayer'
 import { BatlloLayer } from './BatlloLayer'
+import { SalleHonneurLayer } from './SalleHonneurLayer'
+import { VitrinesLayer } from './VitrinesLayer'
 import { sansBaieBatllo } from './batllo'
 import { EscalierLayer } from './EscalierLayer'
 import { TableauDeparts } from './TableauDeparts'
@@ -56,6 +58,8 @@ export function PlanBuilding() {
       {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} sansMarches={marbre} />)}
       <NefLayer />
       <BatlloLayer />
+      <SalleHonneurLayer />
+      <VitrinesLayer />
       <EscalierLayer onPret={escalierPret} />
       <TableauDeparts />
       <EveilLayer />

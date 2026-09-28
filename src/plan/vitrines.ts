@@ -11,6 +11,10 @@
  * Pur : ni three ni React.
  */
 import type { Artwork } from '../domain/types.ts'
+import type { Accrochage } from './hang.ts'
+import { INT } from './svg.ts'
+import type { Rect } from './types.ts'
+import type { Walker } from './walk.ts'
 
 export const SALLE_VITRINES = 'honneur'
 export const NOMBRE_VITRINES = 3
@@ -64,6 +68,8 @@ export function readmeEnBlocs(md: string, limite = 6000): Bloc[] {
     para = []
   }
   let dansSommaire = false
+  /** La puce en cours : une ligne indentée qui la suit la continue. */
+  let puceOuverte: Bloc | null = null
   for (const brute of sansCode.split('\n')) {
     const ligne = brute.trim()
     const titre = /^(#{1,6})\s+(.*)$/.exec(ligne)
@@ -77,23 +83,37 @@ export function readmeEnBlocs(md: string, limite = 6000): Bloc[] {
     if (dansSommaire) continue
     if (ligne === '' || /^(\||[-=*_]{3,}$)/.test(ligne) || /^\[!\[/.test(ligne) || /^!\[/.test(ligne)) {
       finirPara()
+      puceOuverte = null
       continue
     }
     const puce = /^([-*+]|\d+\.)\s+(.*)$/.exec(ligne)
     if (puce) {
       finirPara()
-      pousser({ type: 'puce', texte: epurer(puce[2]) })
+      const b: Bloc = { type: 'puce', texte: epurer(puce[2]) }
+      pousser(b)
+      puceOuverte = blocs[blocs.length - 1] === b ? b : null
       continue
     }
+    if (puceOuverte && /^\s/.test(brute)) {
+      puceOuverte.texte = `${puceOuverte.texte} ${epurer(ligne)}`
+      continue
+    }
+    puceOuverte = null
     para.push(ligne.replace(/^>\s?/, ''))
   }
   finirPara()
   return blocs
 }
 
+/**
+ * Un paragraphe qui se lit seul : une vraie phrase, finie. Pas « Expected
+ * output: » (le code qu'il annonçait est parti), ni une rangée de liens.
+ */
+const phrase = (p: string) => p.length >= 40 && /[.!?…]$/.test(p)
+
 /** Les premiers paragraphes, pour le panneau mural : la présentation, pas la notice. */
 export function chapeau(blocs: readonly Bloc[], signes = 700): string {
-  const paras = blocs.filter((b) => b.type === 'para').map((b) => b.texte)
+  const paras = blocs.filter((b) => b.type === 'para').map((b) => b.texte).filter(phrase)
   const out: string[] = []
   let n = 0
   for (const p of paras) {
@@ -102,4 +122,120 @@ export function chapeau(blocs: readonly Bloc[], signes = 700): string {
     n += p.length
   }
   return out.join('\n\n')
+}
+
+// ── Le mur des vitrines ────────────────────────────────────────────────────
+
+/**
+ * La salle d'honneur, en nombres : `musee.ts` importe les obstacles des bornes,
+ * ce module ne peut donc pas importer le plan (un test vérifie la concordance).
+ */
+export const SALLE = { x0: 16, x1: 32, z0: 0, z1: 12, sol: 4.8 }
+/** Le panneau de MDF peint, comme au musée Cernuschi (`tools/blender/build-vitrines.py`). */
+export const PANNEAU = { largeur: 4.2, hauteur: 3.6, epaisseur: 0.04, recul: 0.047 }
+/** D'un panneau à l'autre : 30 cm de mur entre deux, où monte une colonne en os. */
+const PAS = 4.5
+/** La toile dans son cadre doré, à droite du texte : l'image OpenGraph (2 : 1), et le profil du cadre. */
+export const TOILE = { u: 1.1, v: 2.0, largeur: 1.36, hauteur: 0.68, profil: 0.16 }
+/** La borne, devant la toile : son pied au sol, son écran incliné vers le visiteur. */
+export const BORNE = { u: 1.1, recul: 1.95, largeur: 0.6, profondeur: 0.5 }
+
+export interface Vitrine {
+  rang: number
+  /** Le pied du panneau, au milieu, sur la face du mur ; il regarde le sud (+z), décollé de `PANNEAU.recul` (le lambris). */
+  x: number
+  y: number
+  z: number
+  borne: { x: number; z: number }
+  /** Le centre de la toile encadrée. */
+  toile: { x: number; y: number; z: number }
+}
+
+/** Les vitrines, de gauche à droite pour qui regarde le mur : la mieux classée à gauche. */
+export const VITRINES: Vitrine[] = Array.from({ length: NOMBRE_VITRINES }, (_, rang) => {
+  const x = (SALLE.x0 + SALLE.x1) / 2 + (rang - (NOMBRE_VITRINES - 1) / 2) * PAS
+  const z = SALLE.z0 + INT
+  return {
+    rang, x, y: SALLE.sol, z,
+    borne: { x: x + BORNE.u, z: z + BORNE.recul },
+    toile: { x: x + TOILE.u, y: SALLE.sol + TOILE.v, z: z + PANNEAU.recul + PANNEAU.epaisseur + 0.012 },
+  }
+})
+
+/** Les bornes au sol : la marche les contourne. */
+export const OBSTACLES_BORNES: Rect[] = VITRINES.map(({ borne }) => ({
+  x: borne.x - BORNE.largeur / 2, z: borne.z - BORNE.profondeur / 2, width: BORNE.largeur, depth: BORNE.profondeur,
+}))
+
+/** On consulte une borne à moins de 2,50 m, devant son écran, en la regardant (40° de part et d'autre). */
+const PORTEE_BORNE = 2.5
+const CONE_BORNE = Math.cos((40 * Math.PI) / 180)
+
+/** Le rang de la borne que le visiteur consulte, ou `null`. La plus proche l'emporte. */
+export function borneRegardee(w: Pick<Walker, 'x' | 'y' | 'z' | 'yaw'>): number | null {
+  if (Math.abs(w.y - SALLE.sol) > 1) return null
+  const [vx, vz] = [-Math.sin(w.yaw), -Math.cos(w.yaw)]
+  let meilleure: number | null = null
+  let d2min = PORTEE_BORNE * PORTEE_BORNE
+  for (const v of VITRINES) {
+    const [dx, dz] = [v.borne.x - w.x, v.borne.z - w.z]
+    const d2 = dx * dx + dz * dz
+    // Devant l'écran, qui regarde le sud : le visiteur est au sud de la borne.
+    if (d2 > d2min || dz > -0.1) continue
+    if ((dx * vx + dz * vz) / Math.sqrt(d2) < CONE_BORNE) continue
+    meilleure = v.rang
+    d2min = d2
+  }
+  return meilleure
+}
+
+/**
+ * Le texte du panneau en deux colonnes : des mots rangés en lignes d'au plus
+ * `parLigne` signes, `lignes` lignes par colonne, un blanc entre deux
+ * paragraphes. Ce qui ne tient pas est coupé au dernier mot, suivi de « … ».
+ * Une estimation — troika fait sa propre césure — d'où une marge chez l'appelant.
+ */
+export function enColonnes(texte: string, parLigne: number, lignes: number): [string, string] {
+  const rangees: string[] = []
+  for (const para of texte.split(/\n\n+/)) {
+    if (rangees.length) rangees.push('')
+    let ligne = ''
+    for (const mot of para.split(/\s+/).filter(Boolean)) {
+      if (ligne && ligne.length + 1 + mot.length > parLigne) {
+        rangees.push(ligne)
+        ligne = mot
+      } else ligne = ligne ? `${ligne} ${mot}` : mot
+    }
+    if (ligne) rangees.push(ligne)
+  }
+  const deborde = rangees.length > 2 * lignes
+  const gardees = rangees.slice(0, 2 * lignes)
+  if (deborde) {
+    // Couper au dernier mot : la dernière ligne perd de quoi porter « … ».
+    const der = gardees.length - 1
+    const mots = gardees[der].split(' ')
+    while (mots.length > 1 && mots.join(' ').length + 1 > parLigne) mots.pop()
+    gardees[der] = `${mots.join(' ').replace(/[,;:.—–-]+$/, '')}…`
+  }
+  // Une colonne ne commence pas par un blanc.
+  let coupe = Math.min(lignes, gardees.length)
+  while (coupe < gardees.length && gardees[coupe] === '') coupe++
+  // Les lignes d'un même paragraphe se rejoignent : troika recoupe à sa largeur.
+  const recoller = (rs: string[]) => rs.join('\n').trim().split(/\n\n+/).map((p) => p.replace(/\n/g, ' ')).join('\n\n')
+  return [recoller(gardees.slice(0, coupe)), recoller(gardees.slice(coupe))]
+}
+
+/**
+ * L'accrochage, plus les trois toiles des vitrines en salle d'honneur : pour
+ * que `projecteurs.ts` leur pende aussi un rail et un projecteur chacune.
+ */
+export function avecVitrines(accrochage: Accrochage): Accrochage {
+  const toiles = VITRINES.map((v) => ({
+    key: `vitrine-${v.rang}`, x: v.toile.x, y: v.toile.y, z: v.toile.z, normal: [0, 1] as [number, number],
+    width: TOILE.largeur + 2 * TOILE.profil,
+  }))
+  return {
+    ...accrochage,
+    rooms: accrochage.rooms.map((r) => (r.id === SALLE_VITRINES ? { ...r, placements: [...r.placements, ...toiles] } : r)),
+  }
 }

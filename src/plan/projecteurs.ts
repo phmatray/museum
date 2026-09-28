@@ -10,6 +10,7 @@
  */
 import type { Box } from './mesh.ts'
 import type { Accrochage } from './hang.ts'
+import { VOUTE } from './plafonds.ts'
 import type { Plan } from './types.ts'
 
 /** Du mur au rail. */
@@ -34,12 +35,14 @@ export interface Projecteur {
   cible: [number, number, number]
 }
 
-const plafondDe = (plan: Plan, level: number): number =>
-  (plan.levels.find((l) => l.id === level)?.elevation ?? 0) + plan.storey - plan.slab - EP_PLAFOND
+/** Sous le plafond de plâtre ; sous la corniche de la voûte en salle d'honneur. */
+const plafondDe = (plan: Plan, level: number, salle: string): number =>
+  (plan.levels.find((l) => l.id === level)?.elevation ?? 0) + plan.storey - plan.slab +
+  (salle === VOUTE.salle ? VOUTE.gorge : -EP_PLAFOND)
 
 export function projecteurs(plan: Plan, accrochage: Accrochage): Projecteur[] {
   return accrochage.rooms.flatMap((r) => {
-    const plafond = plafondDe(plan, r.level)
+    const plafond = plafondDe(plan, r.level, r.id)
     return r.placements.map((p) => {
       const [nx, nz] = p.normal
       const [x, z] = [p.x + nx * RECUL, p.z + nz * RECUL]
@@ -61,7 +64,7 @@ export function projecteurs(plan: Plan, accrochage: Accrochage): Projecteur[] {
 /** Un rail par mur accroché, de la première à la dernière toile, 50 cm au-delà. */
 export function rails(plan: Plan, accrochage: Accrochage): Box[] {
   return accrochage.rooms.flatMap((r) => {
-    const plafond = plafondDe(plan, r.level)
+    const plafond = plafondDe(plan, r.level, r.id)
     const parMur = new Map<string, Accrochage['rooms'][number]['placements']>()
     for (const p of r.placements) {
       const cle = `${p.normal[0]},${p.normal[1]}`

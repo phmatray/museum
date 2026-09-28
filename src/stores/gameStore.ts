@@ -27,6 +27,8 @@ interface GameState {
   tourEtape: number
   /** La toile que le visiteur regarde (clé du dépôt), publiée par `EveilLayer`. */
   toile: string | null
+  /** Le dépôt de la borne que le visiteur consulte, en salle d'honneur, publié par `VitrinesLayer`. */
+  borne: string | null
   /** Le soleil du musée maintenant (ou à l'heure de `?heure=`), tenu à jour par `CycleSolaire`. */
   ciel: Ciel
   setPaused: (paused: boolean) => void
@@ -45,6 +47,7 @@ export const useGameStore = create<GameState>((set) => ({
   visiteur: null,
   tourEtape: 0,
   toile: null,
+  borne: null,
   ciel: cielDuMoment(),
   setPaused: (paused) => set({ paused }),
   setCurrentRoomId: (id) => set({ currentRoomId: id }),
