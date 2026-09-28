@@ -47,8 +47,8 @@ export function FacadeLayer() {
         <Text
           font={CARTEL_FONT}
           position={[FACADE.enseigne.x, FACADE.enseigne.y, FACADE.enseigne.z]}
-          fontSize={0.72}
-          letterSpacing={0.12}
+          fontSize={1.05}
+          letterSpacing={0.1}
           color="#1c1a18"
           anchorX="center"
           anchorY="bottom"
@@ -87,7 +87,8 @@ function Bannieres() {
             <Text font={CARTEL_FONT} position={[0, b.h / 2 - 0.35, 0.01]} fontSize={0.16} letterSpacing={0.1} color="#6a6158" anchorX="center" anchorY="top">
               SALLE D’HONNEUR
             </Text>
-            <Text font={CARTEL_FONT} position={[0, 0.4, 0.01]} fontSize={0.42} maxWidth={b.w - 0.3} lineHeight={1} textAlign="center" color="#1c1a18" anchorX="center" anchorY="middle" overflowWrap="break-word">
+            {/* Le nom tient sur une ligne : la taille suit sa longueur (0,55 em par signe). */}
+            <Text font={CARTEL_FONT} position={[0, 0.4, 0.01]} fontSize={Math.min(0.42, (b.w - 0.3) / (nom.length * 0.55))} color="#1c1a18" anchorX="center" anchorY="middle">
               {nom}
             </Text>
             <Text font={CARTEL_FONT} position={[0, -b.h / 2 + 0.45, 0.01]} fontSize={0.15} maxWidth={b.w - 0.3} textAlign="center" color="#946a22" anchorX="center" anchorY="bottom">

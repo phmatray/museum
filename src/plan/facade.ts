@@ -85,6 +85,12 @@ export function facade(plan: Plan): Facade {
       if (Math.abs(x0 + EXT) < 1e-6) out.brique.push(pave(-EXT - PEAU, -EXT, y0, y1, z0, z1))
       if (Math.abs(x1 - W - EXT) < 1e-6) out.brique.push(pave(W + EXT, W + EXT + PEAU, y0, y1, z0, z1))
     }
+  // La brique passe aussi devant la tranche des dalles d'étage, entre deux murs.
+  for (const level of plan.levels.filter((l) => l.elevation > 0)) {
+    const [y0, y1] = [level.elevation - plan.slab, level.elevation]
+    const [xa, xb, za, zb] = [-EXT - PEAU, W + EXT + PEAU, -EXT - PEAU, D + EXT + PEAU]
+    out.brique.push(pave(xa, xb, y0, y1, za, za + PEAU), pave(xa, xb, y0, y1, zb - PEAU, zb), pave(xa, xa + PEAU, y0, y1, za, zb), pave(xb - PEAU, xb, y0, y1, za, zb))
+  }
   // Le parapet sur tout le pourtour, couvert de pierre.
   const [a, b] = [-EXT - PEAU, W + EXT + PEAU]
   const [c, d] = [-EXT - PEAU, D + EXT + PEAU]
@@ -116,8 +122,8 @@ export function facade(plan: Plan): Facade {
     for (const u of [x0 + 0.04, (x0 + x1) / 2, x1 - 0.04]) out.menuiseries.push(pave(u - 0.04, u + 0.04, 0, PORTES - 0.08, zv + 0.02, zv + 0.08))
   })
 
-  out.enseigne = { x: (P.x0 + P.x1) / 2, y: P.haut + 0.35, z: P.facade + PEAU + 0.01 }
-  out.bannieres = [P.x0 - 4.5, P.x1 + 4.5].map((x) => ({ x, y: 5.2, z: D + EXT + PEAU + 0.12, w: 2.2, h: 6 }))
+  out.enseigne = { x: (P.x0 + P.x1) / 2, y: P.haut + 0.2, z: P.facade + PEAU + 0.01 }
+  out.bannieres = [P.x0 - 4.5, P.x1 + 4.5].map((x) => ({ x, y: 5.2, z: D + EXT + PEAU + 0.12, w: 3, h: 7 }))
   out.mats = [6, 12, 36, 42, 24].map((x) => ({ x, y: haut, z: D - 1.5 }))
   return out
 }
