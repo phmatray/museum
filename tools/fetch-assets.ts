@@ -161,6 +161,12 @@ const ARCHITECTURE = [
     licence: 'œuvre originale du dépôt',
     usage: "baie de la salle d'honneur : colonnes en os, chêne ondulé, vitrail de cives",
   },
+  {
+    id: 'escalier',
+    source: "`tools/blender/build-escalier.py`, d'après le Grand Escalier de l'Opéra Garnier",
+    licence: 'œuvre originale du dépôt',
+    usage: "l'escalier impérial de marbre : volées, bulbes du départ, limons et palier",
+  },
 ] as const
 
 interface Telechargement {
