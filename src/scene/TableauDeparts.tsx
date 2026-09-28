@@ -33,7 +33,7 @@ function dessiner(ctx: CanvasRenderingContext2D, lignes: string[]) {
   ctx.font = '600 58px Helvetica, Arial, sans-serif'
   ctx.textBaseline = 'middle'
   ctx.textAlign = 'left'
-  ctx.fillText('DÉPARTS', MARGE, 48)
+  ctx.fillText('MES DERNIERS PROJETS', MARGE, 48)
   ctx.font = '400 28px Helvetica, Arial, sans-serif'
   ctx.fillStyle = '#9aa0a6'
   ctx.textAlign = 'right'
@@ -41,7 +41,7 @@ function dessiner(ctx: CanvasRenderingContext2D, lignes: string[]) {
   ctx.textAlign = 'left'
   ctx.fillStyle = '#f2b705'
   let x = MARGE
-  for (const [titre, n] of [['DÉPART', COLONNES.depuis], ['DESTINATION', COLONNES.destination], ['LANGAGE', COLONNES.langage], ['SALLE', COLONNES.salle]] as const) {
+  for (const [titre, n] of [['PUSH', COLONNES.depuis], ['DESTINATION', COLONNES.destination], ['LANGAGE', COLONNES.langage], ['SALLE', COLONNES.salle]] as const) {
     ctx.fillText(titre, x + 4, 118)
     x += (n + 1) * CELLULE.w
   }
