@@ -1,7 +1,8 @@
 /**
  * La façade à l'écran (`plan/facade.ts`) : brique, portique de pierre, le nom
  * du musée, deux bannières qui annoncent les pièces maîtresses de la salle
- * d'honneur, et des drapeaux aux couleurs des langages de la collection.
+ * d'honneur, et quatre drapeaux aux couleurs de Microsoft : la collection est
+ * d'abord du C#.
  */
 import { Suspense, useEffect, useMemo } from 'react'
 import { Text } from '@react-three/drei'
@@ -17,8 +18,8 @@ import { Boites } from './PlanBuilding'
 import { creerBrique, creerCannelure, creerGranit, creerPierre } from './pierre'
 
 const FACADE = facade(MUSEE)
-/** Les couleurs GitHub des langages les plus présents de la collection. */
-const DRAPEAUX = ['#178600', '#3178c6', '#f1e05a', '#3572a5', '#e34c26']
+/** Les quatre carrés du logo Microsoft, dans l'ordre du logo. */
+const DRAPEAUX = ['#f25022', '#7fba00', '#00a4ef', '#ffb900']
 const MAT = 4
 const DRAPEAU: [number, number] = [1.5, 1]
 
