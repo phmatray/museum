@@ -27,6 +27,7 @@ import { EscalierLayer } from './EscalierLayer'
 import { TableauDeparts } from './TableauDeparts'
 import { EveilLayer } from './EveilLayer'
 import { ProjecteursLayer } from './ProjecteursLayer'
+import { PortesLayer } from './PortesLayer'
 import { ConstellationLayer } from './ConstellationLayer'
 import { FacadeLayer } from './FacadeLayer'
 import { bandesDuSol, parementDuHall } from '../plan/parement'
@@ -59,6 +60,7 @@ export function PlanBuilding() {
       <TableauDeparts />
       <EveilLayer />
       <ProjecteursLayer />
+      <PortesLayer />
       <ConstellationLayer />
       {/* Le décor à part : un texte qui attend sa police ne doit pas suspendre les murs. */}
       <FacadeLayer />
