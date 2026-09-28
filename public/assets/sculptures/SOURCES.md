@@ -20,8 +20,16 @@ blender --background --python tools/blender/build-bavette-anime.py -- \
   "/chemin/vers/Bavette Meshy profil.glb"
 ```
 
-Le budget de triangles, la hauteur, les os et les réglages de la marche vivent
-en tête du script, avec les mesures qui les justifient.
+Le budget de triangles, l'échelle, les os et les réglages de la marche vivent
+en tête du script, avec les mesures qui les justifient :
+
+- l'échelle, sur les mesures de Bavette prises par Philippe (30 cm au garrot,
+  45–50 cm du museau à la base de la queue, queue de 20–30 cm) ; le script
+  les vérifie à chaque construction (`BAVETTE_MESURES`) ;
+- la marche (cycle, foulée, vitesse, ordre des pattes, durée des vols, port
+  de la tête et de la queue), relevée image par image sur une vidéo de
+  Bavette marchant de profil dans l'herbe (septembre 2026, non versionnée,
+  © Philippe Matray). `BAVETTE_IK` dit de combien une patte manque sa cible.
 
 `tools/blender/build-sculptures.py` reste l'outil des pièces STATIQUES qu'une
 config déclare dans `sculptures` (aucune dans le musée publié).
