@@ -5,7 +5,7 @@
  * Un `InstancedMesh` par sorte de boîte et par niveau, soit une poignée d'appels
  * de dessin par niveau, là où un maillage par mur en coûterait une centaine.
  */
-import { Suspense, useEffect, useMemo, useRef } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { MUSEE } from '../plan/musee'
 import { meshLevel, type Box } from '../plan/mesh'
@@ -23,6 +23,7 @@ import { CartelLayer } from './CartelLayer'
 import { NefLayer } from './NefLayer'
 import { BatlloLayer } from './BatlloLayer'
 import { sansBaieBatllo } from './batllo'
+import { EscalierLayer } from './EscalierLayer'
 import { TableauDeparts } from './TableauDeparts'
 import { EveilLayer } from './EveilLayer'
 import { ProjecteursLayer } from './ProjecteursLayer'
@@ -41,6 +42,9 @@ export function PlanBuilding() {
   // La baie et les garde-corps sont vitrés, comme les garde-corps de l'ancien atrium.
   const verre = useMemo(() => creerVitrageGardeCorps(), [])
   useEffect(() => () => verre.dispose(), [verre])
+  // L'escalier de marbre (Blender) remplace les marches en boîtes, mais seulement une fois chargé.
+  const [marbre, setMarbre] = useState(false)
+  const escalierPret = useCallback(() => setMarbre(true), [])
   return (
     <>
       {/* Sans ce fond, le vide au-delà des ouvertures se rendait noir (#46). */}
@@ -48,9 +52,10 @@ export function PlanBuilding() {
       {/* Le soleil réel au-dessus du musée, la lune la nuit (domain/soleil.ts). Sans ombre : les plafonds n'assombrissent rien. */}
       <CycleSolaire />
       <LumiereDuJour />
-      {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} />)}
+      {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} sansMarches={marbre} />)}
       <NefLayer />
       <BatlloLayer />
+      <EscalierLayer onPret={escalierPret} />
       <TableauDeparts />
       <EveilLayer />
       <ProjecteursLayer />
@@ -67,7 +72,7 @@ export function PlanBuilding() {
   )
 }
 
-function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
+function Niveau({ level, verre, sansMarches }: { level: number; verre: THREE.Material; sansMarches: boolean }) {
   // Une liste par sorte, calculée une fois : une nouvelle liste à chaque rendu
   // referait l'envoi de toutes les matrices d'instance.
   const de = useMemo(() => {
@@ -90,11 +95,14 @@ function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
   useEffect(() => () => lanterneau.dispose(), [lanterneau])
   // Les balcons sont de pierre, comme la nef qu'ils bordent : pas de parquet vu d'en bas.
   const dalles = useMemo(() => {
-    const balcons = (MUSEE.levels.find((l) => l.id === level)?.rooms ?? []).filter((r) => r.kind === 'balcony')
+    const niveau = MUSEE.levels.find((l) => l.id === level)
+    const balcons = (niveau?.rooms ?? []).filter((r) => r.kind === 'balcony')
     const estBalcon = (b: Box) => balcons.some((r) => Math.abs(r.x + r.width / 2 - b.x) < 1e-6 && Math.abs(r.z + r.depth / 2 - b.z) < 1e-6)
-    const toutes = de.get('slab') ?? AUCUNE
+    // Une dalle qui dépasse le plancher est la paillasse d'une marche : l'escalier de marbre la remplace.
+    const sousMarche = (b: Box) => b.y + b.h / 2 > (niveau?.elevation ?? 0) + 1e-6
+    const toutes = (de.get('slab') ?? AUCUNE).filter((b) => !(sansMarches && sousMarche(b)))
     return { balcons: toutes.filter(estBalcon), courantes: toutes.filter((b) => !estBalcon(b)) }
-  }, [de, level])
+  }, [de, level, sansMarches])
   // La baie de la salle d'honneur est vitrée par la fenêtre Batlló, pas par une boîte.
   const baies = useMemo(() => sansBaieBatllo(de.get('glass') ?? AUCUNE, level), [de, level])
   const taille = useMemo(() => creerPierre(), [])
@@ -111,8 +119,8 @@ function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
       <Boites boites={de.get('lintel') ?? AUCUNE} material={platre} />
       <Boites boites={dalles.courantes} material={dalle} />
       <Boites boites={dalles.balcons} material={taille} />
-      <Boites boites={de.get('landing') ?? AUCUNE} material={pierre} />
-      <Boites boites={de.get('step') ?? AUCUNE} material={pierre} />
+      <Boites boites={(!sansMarches && de.get('landing')) || AUCUNE} material={pierre} />
+      <Boites boites={(!sansMarches && de.get('step')) || AUCUNE} material={pierre} />
       <Boites boites={de.get('railing') ?? AUCUNE} material={verre} />
       <Boites boites={de.get('handrail') ?? AUCUNE} material={acier} />
       <Boites boites={baies} material={verre} />

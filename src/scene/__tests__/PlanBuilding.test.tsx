@@ -16,6 +16,19 @@ import ReactThreeTestRenderer from '@react-three/test-renderer'
 // Le texte troika (enseigne, cartels) ne tourne pas sous jsdom et y bloquait le
 // test : on le neutralise, comme SculptureLayer.test et Cartel.test.
 vi.mock('@react-three/drei', () => ({ Text: () => null }))
+// L'escalier de marbre ne se charge pas sous jsdom : on décide ici s'il arrive.
+const escalier = vi.hoisted(() => ({ charge: false }))
+vi.mock('../EscalierLayer', async () => {
+  const { useEffect } = await import('react')
+  return {
+    EscalierLayer: ({ onPret }: { onPret: () => void }) => {
+      useEffect(() => {
+        if (escalier.charge) onPret()
+      }, [onPret])
+      return null
+    },
+  }
+})
 import { Color } from 'three'
 import type * as THREE from 'three'
 
@@ -85,6 +98,24 @@ describe('PlanBuilding', () => {
     // planter, seulement produire un InstancedMesh à zéro instance.
     const comptesAZero = meshes.filter((m) => m.count === 0)
     expect(comptesAZero.length).toBeGreaterThan(0)
+  })
+
+  it('ne rend plus marches, palier ni paillasses une fois l’escalier de marbre chargé', async () => {
+    escalier.charge = true
+    try {
+      const renderer = await ReactThreeTestRenderer.create(<PlanBuilding />)
+      const meshes = instancedMeshes(renderer)
+      const n = ORDRE_SORTES.length + 1 // la dalle des balcons est à part
+      const rdc = meshes.slice(0, n).map((m) => m.count)
+      const boites = meshLevel(MUSEE, 0)
+      const compte = (kind: Box['kind']) => boites.filter((b) => b.kind === kind).length
+      // Les dalles qui restent : les planchers, pas les paillasses sous les marches.
+      const planchers = boites.filter((b) => b.kind === 'slab' && b.y + b.h / 2 <= 1e-6).length
+      const balcons = MUSEE.levels[0].rooms.filter((r) => r.kind === 'balcony').length
+      expect(rdc).toEqual([compte('wall'), compte('lintel'), planchers - balcons, balcons, 0, 0, compte('railing'), compte('handrail'), compte('glass')])
+    } finally {
+      escalier.charge = false
+    }
   })
 
   it('monte CIEL comme fond de scène en plein jour, et jamais le noir la nuit (#46)', async () => {
