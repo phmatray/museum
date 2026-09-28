@@ -74,7 +74,7 @@ export interface Facade {
   vitres: Box[]
   /** Montants et traverses de métal. */
   menuiseries: Box[]
-  /** Où poser le nom du musée : le milieu de la ligne de base, sur la brique. */
+  /** Où poser le nom du musée : le centre de la face avant du linteau du portique. */
   enseigne: { x: number; y: number; z: number }
   /** Les deux bannières, de part et d'autre du portique. */
   bannieres: { x: number; y: number; z: number; w: number; h: number }[]
@@ -135,7 +135,10 @@ export function facade(plan: Plan): Facade {
     for (const u of [x0 + 0.04, (x0 + x1) / 2, x1 - 0.04]) out.menuiseries.push(pave(u - 0.04, u + 0.04, 0, PORTES - 0.08, zv + 0.02, zv + 0.08))
   })
 
-  out.enseigne = { x: (P.x0 + P.x1) / 2, y: P.haut + 0.2, z: P.facade + PEAU + 0.01 }
+  // Sur la face avant du linteau de pierre, pas sur la brique au-dessus : le
+  // linteau avance de 1,35 m et cachait les lettres dès qu'on approchait, et du
+  // bronze sur la brique sombre ne se lisait pas.
+  out.enseigne = { x: (P.x0 + P.x1) / 2, y: P.haut - LINTEAU / 2, z: P.facade + P.saillie + 0.01 }
   out.bannieres = [P.x0 - 4.5, P.x1 + 4.5].map((x) => ({ x, y: 5.2, z: D + EXT + PEAU + 0.12, w: 3, h: 7 }))
   out.mats = [6, 12, 36, 42].map((x) => ({ x, y: haut, z: D - 1.5 }))
   return out
