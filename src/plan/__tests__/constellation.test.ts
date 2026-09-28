@@ -24,12 +24,17 @@ describe('constellations', () => {
       expect(e.x).toBeLessThanOrEqual(28.1 + 1e-6)
       expect(e.z).toBeGreaterThanOrEqual(VOLUME.z0)
       expect(e.z).toBeLessThanOrEqual(VOLUME.z1)
-      // Les yeux d'un visiteur au balcon sont à 4,80 + 1,62 = 6,42 m.
-      expect(e.y).toBeGreaterThanOrEqual(6.1)
-      expect(e.y).toBeLessThanOrEqual(8.6)
+      // Au-dessus des têtes des balcons (plancher à 4,80), sous la naissance de la voûte (12,60).
+      expect(e.y).toBeGreaterThan(4.8 + 0.1)
+      expect(e.y).toBeLessThan(12.6)
       // Le fil monte jusqu'à la voûte.
       expect(e.accroche).toBeGreaterThan(e.y + 3)
     }
+  })
+
+  it('étage les amas : chaque salle à sa hauteur, sur plusieurs mètres', () => {
+    const hauteurs = ciel.map((c) => c.etoiles.reduce((s, e) => s + e.y, 0) / c.etoiles.length)
+    expect(Math.max(...hauteurs) - Math.min(...hauteurs)).toBeGreaterThan(2.5)
   })
 
   it('tient les étoiles à l’écart des lanternes', () => {
