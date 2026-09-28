@@ -1,14 +1,14 @@
 {
-  "generatedAt": "2026-09-28T21:19:37.240Z",
+  "generatedAt": "2026-07-25T22:06:37.149Z",
   "rooms": [
     {
       "id": "r-o1",
       "level": 0,
-      "name": "Claude / Claude Code",
+      "name": "Typescript / Blockchain",
       "placements": [
         {
-          "key": "Atypical-Consulting/github-toolkit",
-          "x": 2.777,
+          "key": "phmatray/museum",
+          "x": 5.705,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -18,19 +18,8 @@
           "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/FlowForge",
-          "x": 5.329,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.851
-        },
-        {
-          "key": "Atypical-Consulting/RoselineMCP",
-          "x": 8.075,
+          "key": "Atypical-Consulting/ts-blockchain",
+          "x": 10.1,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -41,28 +30,6 @@
         },
         {
           "key": "Atypical-Consulting/.github",
-          "x": 10.747,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/AIPromptMaster",
-          "x": 13.223,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "Atypical-Consulting/ASTral",
           "x": 3.775,
           "y": 1.55,
           "z": 12.85,
@@ -70,46 +37,24 @@
             0,
             -1
           ],
-          "width": 2.001
+          "width": 1.7
         },
         {
-          "key": "phmatray/AutonomousAgent",
-          "x": 11.023,
+          "key": "Atypical-Consulting/github-toolkit",
+          "x": 12.225,
           "y": 1.55,
           "z": 12.85,
           "normal": [
             0,
             -1
-          ],
-          "width": 1.53
-        },
-        {
-          "key": "Atypical-Consulting/GitHubSkills",
-          "x": 13.319,
-          "y": 1.55,
-          "z": 12.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.745
-        },
-        {
-          "key": "phmatray/.github",
-          "x": 0.15,
-          "y": 1.55,
-          "z": 2.68,
-          "normal": [
-            1,
-            0
           ],
           "width": 1.7
         },
         {
-          "key": "phmatray/claude-deck",
+          "key": "Atypical-Consulting/FlowForge",
           "x": 0.15,
           "y": 1.55,
-          "z": 5.135,
+          "z": 6.5,
           "normal": [
             1,
             0
@@ -117,21 +62,138 @@
           "width": 1.851
         },
         {
-          "key": "phmatray/tagout",
+          "key": "phmatray/.github",
+          "x": 15.85,
+          "y": 1.55,
+          "z": 2.775,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "Atypical-Consulting/og-engine",
+          "x": 15.85,
+          "y": 1.55,
+          "z": 9.725,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.7
+        }
+      ]
+    },
+    {
+      "id": "r-o2",
+      "level": 0,
+      "name": "Mcp / Claude",
+      "placements": [
+        {
+          "key": "Atypical-Consulting/claude-legends-review",
+          "x": 3.775,
+          "y": 1.55,
+          "z": 13.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.939
+        },
+        {
+          "key": "Atypical-Consulting/x402-dotnet",
+          "x": 11.05,
+          "y": 1.55,
+          "z": 13.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.53
+        },
+        {
+          "key": "Atypical-Consulting/ASTral",
+          "x": 13.332,
+          "y": 1.55,
+          "z": 13.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.665
+        },
+        {
+          "key": "phmatray/AIPromptMaster",
+          "x": 2.6,
+          "y": 1.55,
+          "z": 26.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.53
+        },
+        {
+          "key": "phmatray/AutonomousAgent",
+          "x": 4.882,
+          "y": 1.55,
+          "z": 26.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.665
+        },
+        {
+          "key": "phmatray/BuildSphere",
+          "x": 12.225,
+          "y": 1.55,
+          "z": 26.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "Atypical-Consulting/StaticWGen",
           "x": 0.15,
           "y": 1.55,
-          "z": 7.765,
+          "z": 15.902,
           "normal": [
             1,
             0
           ],
-          "width": 2.049
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/ClaudeCodeSdkNet",
+          "x": 0.15,
+          "y": 1.55,
+          "z": 18.58,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "Atypical-Consulting/GitHubSkills",
+          "x": 0.15,
+          "y": 1.55,
+          "z": 21.376,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.939
         },
         {
           "key": "Atypical-Consulting/MarkdownInk",
           "x": 0.15,
           "y": 1.55,
-          "z": 10.32,
+          "z": 24.098,
           "normal": [
             1,
             0
@@ -142,135 +204,29 @@
           "key": "Atypical-Consulting/AdrMcp",
           "x": 15.85,
           "y": 1.55,
-          "z": 2.775,
+          "z": 15.678,
           "normal": [
             -1,
             0
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/claude-legends-review",
+          "key": "Atypical-Consulting/RoselineMCP",
           "x": 15.85,
           "y": 1.55,
-          "z": 9.725,
+          "z": 18.175,
           "normal": [
             -1,
             0
           ],
           "width": 1.939
-        }
-      ]
-    },
-    {
-      "id": "r-o2",
-      "level": 0,
-      "name": "Nuke / Build",
-      "placements": [
-        {
-          "key": "phmatray/museum",
-          "x": 2.617,
-          "y": 1.55,
-          "z": 13.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "Atypical-Consulting/StaticWGen",
-          "x": 4.933,
-          "y": 1.55,
-          "z": 13.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
         },
         {
           "key": "Atypical-Consulting/nuke",
-          "x": 12.225,
-          "y": 1.55,
-          "z": 13.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/Baraki",
-          "x": 3.775,
-          "y": 1.55,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/ClaudeCodeSdkNet",
-          "x": 12.225,
-          "y": 1.55,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/Elliot",
-          "x": 0.15,
-          "y": 1.55,
-          "z": 16.612,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/BuildSphere",
-          "x": 0.15,
-          "y": 1.55,
-          "z": 20,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.851
-        },
-        {
-          "key": "phmatray/dotnet-standards",
-          "x": 0.15,
-          "y": 1.55,
-          "z": 23.388,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/Fallout",
           "x": 15.85,
           "y": 1.55,
-          "z": 16.55,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "Atypical-Consulting/Fallout",
-          "x": 15.85,
-          "y": 1.55,
-          "z": 19.8,
+          "z": 20.672,
           "normal": [
             -1,
             0
@@ -282,10 +238,10 @@
     {
       "id": "r-o3",
       "level": 0,
-      "name": "Htmx / Aspnet Core",
+      "name": "Htmx / Clean Architecture",
       "placements": [
         {
-          "key": "Atypical-Consulting/aspnet-htmx-mvc",
+          "key": "phmatray/AspireStrapi",
           "x": 3.775,
           "y": 1.55,
           "z": 27.15,
@@ -293,10 +249,10 @@
             0,
             1
           ],
-          "width": 1.851
+          "width": 1.939
         },
         {
-          "key": "Atypical-Consulting/TenantKit",
+          "key": "phmatray/MinimalHtmx",
           "x": 12.225,
           "y": 1.55,
           "z": 27.15,
@@ -304,24 +260,68 @@
             0,
             1
           ],
-          "width": 1.7
+          "width": 1.939
         },
         {
-          "key": "Atypical-Consulting/FastComponents",
-          "x": 8,
+          "key": "phmatray/hexagonal-architecture-acerola",
+          "x": 3.29,
           "y": 1.55,
           "z": 39.85,
           "normal": [
             0,
             -1
           ],
-          "width": 1.939
+          "width": 1.7
         },
         {
-          "key": "phmatray/MinimalHtmx",
+          "key": "Atypical-Consulting/hexagonal-dotnet",
+          "x": 6.355,
+          "y": 1.55,
+          "z": 39.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "phmatray/SudokuSolver",
+          "x": 9.57,
+          "y": 1.55,
+          "z": 39.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 2.001
+        },
+        {
+          "key": "Atypical-Consulting/htmx-samples",
+          "x": 12.71,
+          "y": 1.55,
+          "z": 39.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/TheRightCollection",
           "x": 0.15,
           "y": 1.55,
-          "z": 33.5,
+          "z": 30.378,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "Atypical-Consulting/FastComponents",
+          "x": 0.15,
+          "y": 1.55,
+          "z": 33.575,
           "normal": [
             1,
             0
@@ -329,7 +329,18 @@
           "width": 1.939
         },
         {
-          "key": "Atypical-Consulting/htmx-samples",
+          "key": "phmatray/aspire-samples",
+          "x": 0.15,
+          "y": 1.55,
+          "z": 36.697,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "Atypical-Consulting/aspnet-htmx-mvc",
           "x": 15.85,
           "y": 1.55,
           "z": 30.175,
@@ -337,10 +348,10 @@
             -1,
             0
           ],
-          "width": 1.7
+          "width": 1.851
         },
         {
-          "key": "phmatray/MeshKit",
+          "key": "Atypical-Consulting/dotnet-clean-architecture",
           "x": 15.85,
           "y": 1.55,
           "z": 37.325,
@@ -355,11 +366,11 @@
     {
       "id": "r-n",
       "level": 0,
-      "name": "Blazor / Blazor Components",
+      "name": "Parser / Vat",
       "placements": [
         {
-          "key": "phmatray/IdxDb",
-          "x": 18.816,
+          "key": "phmatray/VatBe",
+          "x": 21.825,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -369,52 +380,19 @@
           "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/PlayBlazor",
-          "x": 21.333,
+          "key": "Atypical-Consulting/Ninjadog",
+          "x": 26.1,
           "y": 1.55,
           "z": 0.15,
           "normal": [
             0,
             1
           ],
-          "width": 1.7
+          "width": 1.851
         },
         {
-          "key": "phmatray/BlazorKawaii",
-          "x": 24,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 2.001
-        },
-        {
-          "key": "phmatray/BlazorTSInterop",
-          "x": 26.667,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/Phosphor",
-          "x": 29.184,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/MudBlazor",
-          "x": 19.302,
+          "key": "phmatray/WispLang",
+          "x": 21.825,
           "y": 1.55,
           "z": 11.85,
           "normal": [
@@ -424,8 +402,8 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/BlazorPluginComponents",
-          "x": 22.38,
+          "key": "phmatray/Antlr4Library",
+          "x": 26.1,
           "y": 1.55,
           "z": 11.85,
           "normal": [
@@ -435,29 +413,7 @@
           "width": 1.851
         },
         {
-          "key": "phmatray/BlazorPluginArch",
-          "x": 25.576,
-          "y": 1.55,
-          "z": 11.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.939
-        },
-        {
-          "key": "phmatray/ComputerInfo",
-          "x": 28.698,
-          "y": 1.55,
-          "z": 11.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/daisyblazor",
+          "key": "phmatray/coda-parser",
           "x": 16.15,
           "y": 1.55,
           "z": 2.775,
@@ -465,7 +421,7 @@
             1,
             0
           ],
-          "width": 1.939
+          "width": 1.851
         },
         {
           "key": "Atypical-Consulting/Filament",
@@ -476,10 +432,10 @@
             1,
             0
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "phmatray/BlazorLeaflet",
+          "key": "phmatray/Antlr4Roslyn",
           "x": 31.85,
           "y": 1.55,
           "z": 2.775,
@@ -487,10 +443,10 @@
             -1,
             0
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "phmatray/BlazorMvvmApp",
+          "key": "phmatray/BelgiumVatChecker",
           "x": 31.85,
           "y": 1.55,
           "z": 9.225,
@@ -498,18 +454,18 @@
             -1,
             0
           ],
-          "width": 1.851
+          "width": 1.7
         }
       ]
     },
     {
       "id": "r-e1",
       "level": 0,
-      "name": "Clean Architecture / Ddd",
+      "name": "Music / Nuget",
       "placements": [
         {
-          "key": "phmatray/hexagonal-architecture-acerola",
-          "x": 35.29,
+          "key": "phmatray/PipeException",
+          "x": 34.777,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -519,8 +475,8 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/TheRightCollection",
-          "x": 38.355,
+          "key": "phmatray/music-dotnet",
+          "x": 37.329,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -530,19 +486,19 @@
           "width": 1.851
         },
         {
-          "key": "phmatray/SudokuSolver",
-          "x": 41.57,
+          "key": "phmatray/MasterCommander",
+          "x": 40.075,
           "y": 1.55,
           "z": 0.15,
           "normal": [
             0,
             1
           ],
-          "width": 2.001
+          "width": 2.089
         },
         {
-          "key": "Atypical-Consulting/dotnet-clean-architecture",
-          "x": 44.71,
+          "key": "phmatray/Metatrader5-Docker",
+          "x": 42.747,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -552,8 +508,30 @@
           "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/TheAppManager",
+          "key": "stephaneweg/MusicTracker",
+          "x": 45.223,
+          "y": 1.55,
+          "z": 0.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/CCross.ThrowIf",
           "x": 35.775,
+          "y": 1.55,
+          "z": 12.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 2.001
+        },
+        {
+          "key": "Atypical-Consulting/NFT",
+          "x": 44.225,
           "y": 1.55,
           "z": 12.85,
           "normal": [
@@ -563,18 +541,7 @@
           "width": 1.939
         },
         {
-          "key": "Atypical-Consulting/Ninjadog",
-          "x": 44.225,
-          "y": 1.55,
-          "z": 12.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.851
-        },
-        {
-          "key": "phmatray/CCrossHelper",
+          "key": "phmatray/dotnet-toolbelt",
           "x": 32.15,
           "y": 1.55,
           "z": 2.775,
@@ -585,7 +552,7 @@
           "width": 1.851
         },
         {
-          "key": "Atypical-Consulting/hexagonal-dotnet",
+          "key": "phmatray/CCrossHelper",
           "x": 32.15,
           "y": 1.55,
           "z": 9.725,
@@ -596,32 +563,43 @@
           "width": 1.851
         },
         {
-          "key": "phmatray/doji",
+          "key": "phmatray/trading-lab",
           "x": 47.85,
           "y": 1.55,
-          "z": 3.378,
+          "z": 2.71,
           "normal": [
             -1,
             0
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/NFT",
+          "key": "phmatray/CentralisedPackageConverter",
           "x": 47.85,
           "y": 1.55,
-          "z": 6.575,
+          "z": 5.12,
           "normal": [
             -1,
             0
           ],
-          "width": 1.939
+          "width": 1.7
         },
         {
-          "key": "phmatray/ValueOf",
+          "key": "phmatray/MusicTheory",
           "x": 47.85,
           "y": 1.55,
-          "z": 9.697,
+          "z": 7.705,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 2.049
+        },
+        {
+          "key": "phmatray/Monads",
+          "x": 47.85,
+          "y": 1.55,
+          "z": 10.29,
           "normal": [
             -1,
             0
@@ -633,10 +611,10 @@
     {
       "id": "r-e2",
       "level": 0,
-      "name": "Game / Godot",
+      "name": "Html / Dashboard",
       "placements": [
         {
-          "key": "phmatray/cartouche",
+          "key": "phmatray/dotnet-standards",
           "x": 35.775,
           "y": 1.55,
           "z": 13.15,
@@ -644,10 +622,10 @@
             0,
             1
           ],
-          "width": 1.939
+          "width": 1.7
         },
         {
-          "key": "phmatray/G3.TreasuresMonsters.Java",
+          "key": "phmatray/key3s",
           "x": 44.225,
           "y": 1.55,
           "z": 13.15,
@@ -655,11 +633,11 @@
             0,
             1
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "phmatray/RedBlack",
-          "x": 34.617,
+          "key": "phmatray/matray-tech",
+          "x": 35.775,
           "y": 1.55,
           "z": 26.85,
           "normal": [
@@ -669,8 +647,8 @@
           "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/YendorSupport",
-          "x": 36.933,
+          "key": "phmatray/soft-ui-dashboard",
+          "x": 44.225,
           "y": 1.55,
           "z": 26.85,
           "normal": [
@@ -680,40 +658,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/cocktails",
-          "x": 43.067,
-          "y": 1.55,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/G3.TreasuresMonsters",
-          "x": 45.383,
-          "y": 1.55,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/Platformer2D_Brackeys",
-          "x": 32.15,
-          "y": 1.55,
-          "z": 15.662,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/lenia-godot",
+          "key": "phmatray/ai-migration-kit",
           "x": 32.15,
           "y": 1.55,
           "z": 18.175,
@@ -721,24 +666,13 @@
             1,
             0
           ],
-          "width": 2.001
-        },
-        {
-          "key": "phmatray/tiny-dfr",
-          "x": 32.15,
-          "y": 1.55,
-          "z": 20.688,
-          "normal": [
-            1,
-            0
-          ],
           "width": 1.7
         },
         {
-          "key": "phmatray/java-teaching-materials",
+          "key": "phmatray/tsh.ai",
           "x": 47.85,
           "y": 1.55,
-          "z": 15.902,
+          "z": 17.9,
           "normal": [
             -1,
             0
@@ -746,32 +680,10 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/MineSweeper",
+          "key": "Atypical-Consulting/TenantKit",
           "x": 47.85,
           "y": 1.55,
-          "z": 18.504,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/lenia",
-          "x": 47.85,
-          "y": 1.55,
-          "z": 21.301,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 2.089
-        },
-        {
-          "key": "phmatray/Raga",
-          "x": 47.85,
-          "y": 1.55,
-          "z": 24.098,
+          "z": 22.1,
           "normal": [
             -1,
             0
@@ -783,10 +695,10 @@
     {
       "id": "r-e3",
       "level": 0,
-      "name": "State / Redux",
+      "name": "Design Patterns / Record",
       "placements": [
         {
-          "key": "Atypical-Consulting/nugetkeep-releases",
+          "key": "phmatray/BlazorPluginArch",
           "x": 35.775,
           "y": 1.55,
           "z": 27.15,
@@ -794,10 +706,10 @@
             0,
             1
           ],
-          "width": 1.7
+          "width": 1.939
         },
         {
-          "key": "phmatray/Metatrader5-Docker",
+          "key": "phmatray/BlazorMvvmApp",
           "x": 44.225,
           "y": 1.55,
           "z": 27.15,
@@ -805,21 +717,32 @@
             0,
             1
           ],
-          "width": 1.7
+          "width": 1.851
         },
         {
-          "key": "phmatray/Ducky",
-          "x": 40,
+          "key": "phmatray/RecordEquality",
+          "x": 37.725,
           "y": 1.55,
           "z": 39.85,
           "normal": [
             0,
             -1
           ],
-          "width": 1.939
+          "width": 1.7
         },
         {
-          "key": "phmatray/blazor-state-experiments",
+          "key": "phmatray/Mutty",
+          "x": 42.1,
+          "y": 1.55,
+          "z": 39.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 2.049
+        },
+        {
+          "key": "phmatray/Mediateur",
           "x": 32.15,
           "y": 1.55,
           "z": 30.175,
@@ -830,26 +753,48 @@
           "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/blazor-state",
+          "key": "phmatray/Phosphor",
+          "x": 32.15,
+          "y": 1.55,
+          "z": 37.325,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/ValueOf",
           "x": 47.85,
           "y": 1.55,
-          "z": 33.5,
+          "z": 31.354,
           "normal": [
             -1,
             0
           ],
           "width": 1.7
+        },
+        {
+          "key": "Atypical-Consulting/TheAppManager",
+          "x": 47.85,
+          "y": 1.55,
+          "z": 35.527,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.939
         }
       ]
     },
     {
       "id": "e-o1",
       "level": 1,
-      "name": "Rest Api / Nodejs",
+      "name": "Game / Godot",
       "placements": [
         {
-          "key": "phmatray/CrabGraphQL",
-          "x": 4.053,
+          "key": "phmatray/MineSweeper",
+          "x": 4.075,
           "y": 6.35,
           "z": 0.15,
           "normal": [
@@ -859,7 +804,7 @@
           "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/ts-blockchain",
+          "key": "phmatray/lenia",
           "x": 8,
           "y": 6.35,
           "z": 0.15,
@@ -867,11 +812,11 @@
             0,
             1
           ],
-          "width": 2.089
+          "width": 2.001
         },
         {
-          "key": "phmatray/pokedex",
-          "x": 11.947,
+          "key": "phmatray/Raga",
+          "x": 11.925,
           "y": 6.35,
           "z": 0.15,
           "normal": [
@@ -881,19 +826,8 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/Geometrix",
+          "key": "phmatray/godot-games",
           "x": 3.775,
-          "y": 6.35,
-          "z": 12.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.939
-        },
-        {
-          "key": "phmatray/Crab",
-          "x": 12.225,
           "y": 6.35,
           "z": 12.85,
           "normal": [
@@ -903,10 +837,21 @@
           "width": 1.851
         },
         {
-          "key": "phmatray/hackathon-backend",
+          "key": "Atypical-Consulting/YendorSupport",
+          "x": 12.225,
+          "y": 6.35,
+          "z": 12.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/Platformer2D_Brackeys",
           "x": 0.15,
           "y": 6.35,
-          "z": 3.34,
+          "z": 3.325,
           "normal": [
             1,
             0
@@ -914,7 +859,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/AspireStrapi",
+          "key": "phmatray/lenia-godot",
           "x": 0.15,
           "y": 6.35,
           "z": 6.5,
@@ -922,13 +867,13 @@
             1,
             0
           ],
-          "width": 1.939
+          "width": 2.001
         },
         {
-          "key": "phmatray/powerplant-coding-challenge",
+          "key": "phmatray/java-teaching-materials",
           "x": 0.15,
           "y": 6.35,
-          "z": 9.66,
+          "z": 9.675,
           "normal": [
             1,
             0
@@ -936,7 +881,7 @@
           "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/og-engine",
+          "key": "phmatray/G3.TreasuresMonsters.Java",
           "x": 15.85,
           "y": 6.35,
           "z": 2.775,
@@ -947,7 +892,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/PokemonAPI",
+          "key": "phmatray/G3.TreasuresMonsters",
           "x": 15.85,
           "y": 6.35,
           "z": 9.725,
@@ -955,90 +900,145 @@
             -1,
             0
           ],
-          "width": 1.851
+          "width": 1.7
         }
       ]
     },
     {
       "id": "e-o2",
       "level": 1,
-      "name": "Python / Readme",
+      "name": "Blazor / Blazor Components",
       "placements": [
         {
-          "key": "Atypical-Consulting/readme-forge",
+          "key": "phmatray/daisyblazor",
           "x": 3.775,
           "y": 6.35,
           "z": 13.15,
           "normal": [
             0,
             1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "Atypical-Consulting/vibe-to-pro",
-          "x": 12.225,
-          "y": 6.35,
-          "z": 13.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/FreeToken",
-          "x": 3.775,
-          "y": 6.35,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/spec-kit-dotnet",
-          "x": 12.225,
-          "y": 6.35,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/phmatray",
-          "x": 0.15,
-          "y": 6.35,
-          "z": 20,
-          "normal": [
-            1,
-            0
           ],
           "width": 1.939
         },
         {
-          "key": "phmatray/jcodemunch-mcp",
+          "key": "phmatray/BlazorLeaflet",
+          "x": 12.225,
+          "y": 6.35,
+          "z": 13.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "phmatray/BlazorPluginComponents",
+          "x": 3.775,
+          "y": 6.35,
+          "z": 26.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "phmatray/blazor-state-experiments",
+          "x": 11.067,
+          "y": 6.35,
+          "z": 26.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "Atypical-Consulting/blazor-state",
+          "x": 13.383,
+          "y": 6.35,
+          "z": 26.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/blazor-tailwind-ui",
+          "x": 0.15,
+          "y": 6.35,
+          "z": 15.92,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/BlazorTSInterop",
+          "x": 0.15,
+          "y": 6.35,
+          "z": 18.54,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/BlazorKawaii",
+          "x": 0.15,
+          "y": 6.35,
+          "z": 21.31,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 2.001
+        },
+        {
+          "key": "phmatray/IdxDb",
+          "x": 0.15,
+          "y": 6.35,
+          "z": 24.08,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/ComputerInfo",
           "x": 15.85,
           "y": 6.35,
-          "z": 18.175,
+          "z": 16.47,
           "normal": [
             -1,
             0
           ],
-          "width": 1.851
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/Ducky",
+          "x": 15.85,
+          "y": 6.35,
+          "z": 19.76,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.939
         }
       ]
     },
     {
       "id": "e-o3",
       "level": 1,
-      "name": "Parser / Antlr4",
+      "name": "Testing / Python",
       "placements": [
         {
-          "key": "phmatray/coda-parser",
+          "key": "phmatray/phmatray",
           "x": 3.775,
           "y": 6.35,
           "z": 27.15,
@@ -1049,7 +1049,7 @@
           "width": 1.851
         },
         {
-          "key": "Atypical-Consulting/x402-dotnet",
+          "key": "Atypical-Consulting/nugetkeep-releases",
           "x": 12.225,
           "y": 6.35,
           "z": 27.15,
@@ -1060,7 +1060,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/WispLang",
+          "key": "phmatray/spec-kit-dotnet",
           "x": 5.825,
           "y": 6.35,
           "z": 39.85,
@@ -1071,7 +1071,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/Antlr4Library",
+          "key": "phmatray/AutoTests",
           "x": 10.1,
           "y": 6.35,
           "z": 39.85,
@@ -1082,7 +1082,7 @@
           "width": 1.851
         },
         {
-          "key": "phmatray/AutoTests",
+          "key": "phmatray/jcodemunch-mcp",
           "x": 0.15,
           "y": 6.35,
           "z": 33.5,
@@ -1093,7 +1093,7 @@
           "width": 1.851
         },
         {
-          "key": "phmatray/Antlr4Roslyn",
+          "key": "Atypical-Consulting/readme-forge",
           "x": 15.85,
           "y": 6.35,
           "z": 30.175,
@@ -1144,7 +1144,7 @@
           "width": 1.885
         },
         {
-          "key": "Atypical-Consulting/Koine",
+          "key": "Atypical-Consulting/BlazorMVU",
           "x": 16.15,
           "y": 6.35,
           "z": 2.775,
@@ -1152,10 +1152,10 @@
             1,
             0
           ],
-          "width": 1.875
+          "width": 1.853
         },
         {
-          "key": "Atypical-Consulting/BlazorMVU",
+          "key": "Atypical-Consulting/Koine",
           "x": 16.15,
           "y": 6.35,
           "z": 9.225,
@@ -1192,11 +1192,11 @@
     {
       "id": "e-e1",
       "level": 1,
-      "name": "Vat / Dotnet Library",
+      "name": "Rest Api / Aspnet",
       "placements": [
         {
-          "key": "phmatray/RecordEquality",
-          "x": 37.725,
+          "key": "phmatray/pokedex",
+          "x": 37.781,
           "y": 6.35,
           "z": 0.15,
           "normal": [
@@ -1206,7 +1206,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/Mutty",
+          "key": "phmatray/Geometrix",
           "x": 42.1,
           "y": 6.35,
           "z": 0.15,
@@ -1214,10 +1214,10 @@
             0,
             1
           ],
-          "width": 2.049
+          "width": 1.939
         },
         {
-          "key": "phmatray/BelgiumVatChecker",
+          "key": "phmatray/PokemonAPI",
           "x": 35.775,
           "y": 6.35,
           "z": 12.85,
@@ -1225,10 +1225,10 @@
             0,
             -1
           ],
-          "width": 1.7
+          "width": 1.851
         },
         {
-          "key": "phmatray/CentralisedPackageConverter",
+          "key": "phmatray/CrabGraphQL",
           "x": 44.225,
           "y": 6.35,
           "z": 12.85,
@@ -1239,7 +1239,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/PipeException",
+          "key": "phmatray/RedBlack",
           "x": 32.15,
           "y": 6.35,
           "z": 2.775,
@@ -1250,7 +1250,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/Mediateur",
+          "key": "phmatray/InvoiceGenerator",
           "x": 32.15,
           "y": 6.35,
           "z": 9.725,
@@ -1261,10 +1261,10 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/VatBe",
+          "key": "phmatray/powerplant-coding-challenge",
           "x": 47.85,
           "y": 6.35,
-          "z": 4.333,
+          "z": 4.383,
           "normal": [
             -1,
             0
@@ -1272,25 +1272,25 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/CCross.ThrowIf",
+          "key": "phmatray/Crab",
           "x": 47.85,
           "y": 6.35,
-          "z": 8.516,
+          "z": 8.542,
           "normal": [
             -1,
             0
           ],
-          "width": 2.001
+          "width": 1.851
         }
       ]
     },
     {
       "id": "e-e2",
       "level": 1,
-      "name": "Music / Chords",
+      "name": "Doji / Hackathon",
       "placements": [
         {
-          "key": "stephaneweg/MusicTracker",
+          "key": "phmatray/hackathon-backend",
           "x": 35.775,
           "y": 6.35,
           "z": 13.15,
@@ -1298,43 +1298,10 @@
             0,
             1
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
           "key": "phmatray/IFAPME-OMD",
-          "x": 44.225,
-          "y": 6.35,
-          "z": 13.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/Monads",
-          "x": 35.775,
-          "y": 6.35,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/glisse",
-          "x": 44.225,
-          "y": 6.35,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/InvoiceGenerator",
           "x": 32.15,
           "y": 6.35,
           "z": 18.175,
@@ -1342,10 +1309,10 @@
             1,
             0
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "phmatray/MusicTheory",
+          "key": "phmatray/doji",
           "x": 47.85,
           "y": 6.35,
           "z": 20,
@@ -1353,37 +1320,15 @@
             -1,
             0
           ],
-          "width": 2.089
+          "width": 1.851
         }
       ]
     },
     {
       "id": "e-e3",
       "level": 1,
-      "name": "Dashboard / Website",
+      "name": "Shell / Dots",
       "placements": [
-        {
-          "key": "phmatray/matray-tech",
-          "x": 35.775,
-          "y": 6.35,
-          "z": 27.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/omarchy-plugins",
-          "x": 44.225,
-          "y": 6.35,
-          "z": 27.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
         {
           "key": "phmatray/dots-2.0",
           "x": 40,
@@ -1394,39 +1339,6 @@
             -1
           ],
           "width": 1.851
-        },
-        {
-          "key": "phmatray/soft-ui-dashboard",
-          "x": 32.15,
-          "y": 6.35,
-          "z": 30.175,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/tsh.ai",
-          "x": 32.15,
-          "y": 6.35,
-          "z": 37.325,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/awesome-omarchy",
-          "x": 47.85,
-          "y": 6.35,
-          "z": 33.5,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.7
         }
       ]
     }

@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest'
 import { MUSEE } from '../musee.ts'
 import { capacity } from '../rules.ts'
 import { assignRooms, hangPlan } from '../hang.ts'
+import { choisirVitrines } from '../vitrines.ts'
 import type { Artwork } from '../../domain/types.ts'
 
 const catalogue = JSON.parse(readFileSync(resolve(__dirname, '../../../public/data/catalogue.json'), 'utf8'))
@@ -60,8 +61,20 @@ describe('assignRooms', () => {
 })
 
 describe('hangPlan', () => {
-  const salles = assignRooms(MUSEE, ARTWORKS)
-  const accrochage = hangPlan(MUSEE, salles, catalogue.generatedAt)
+  // Comme `npm run accrocher` : les trois meilleurs projets vont aux vitrines.
+  const reservees = new Set(choisirVitrines(ARTWORKS, catalogue.owners).map((a) => a.key))
+  const salles = assignRooms(MUSEE, ARTWORKS, reservees)
+  const accrochage = hangPlan(MUSEE, salles, catalogue.generatedAt, reservees)
+
+  it('laisse le mur nord de la salle d’honneur aux vitrines, et n’accroche pas leurs projets', () => {
+    expect(reservees.size).toBe(3)
+    const honneur = accrochage.rooms.find((r) => r.id === 'honneur')!
+    expect(honneur.placements.length).toBeGreaterThan(0)
+    // Mur nord : z = 0, sa normale regarde le sud.
+    expect(honneur.placements.filter((p) => p.normal[1] === 1 && p.z < 1)).toEqual([])
+    const accrochees = accrochage.rooms.flatMap((r) => r.placements.map((p) => p.key))
+    for (const k of reservees) expect(accrochees).not.toContain(k)
+  })
 
   it('accroche chaque œuvre attribuée, et rien d’autre', () => {
     for (const r of accrochage.rooms) {
@@ -116,7 +129,7 @@ describe('hangPlan', () => {
   })
 
   it('rend un JSON identique octet pour octet d’un appel à l’autre', () => {
-    const encore = hangPlan(MUSEE, assignRooms(MUSEE, ARTWORKS), catalogue.generatedAt)
+    const encore = hangPlan(MUSEE, assignRooms(MUSEE, ARTWORKS, reservees), catalogue.generatedAt, reservees)
     expect(JSON.stringify(encore)).toBe(JSON.stringify(accrochage))
   })
 })
