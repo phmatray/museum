@@ -82,6 +82,8 @@ const MATIERES = [
  * réduite à 4096 × 2048 elle pèse un mégaoctet quand l'HDR 2k en pèse cinq.
  */
 export const CIEL = { id: 'kloofendal_48d_partly_cloudy_puresky', largeur: 4096 }
+/** Le ciel de nuit, étoilé, voie lactée comprise : le cycle jour/nuit fond l'un dans l'autre. */
+export const CIEL_NUIT = { id: 'rogland_clear_night', largeur: 4096 }
 
 /** HDRI d'intérieur neutre : il sert au spéculaire, pas à l'éclairage direct. */
 const HDRI = { id: 'brown_photostudio_02', resolution: '2k' }
@@ -222,14 +224,14 @@ async function recupererHdri(): Promise<string> {
   return telecharger({ url, dest })
 }
 
-async function recupererCiel(): Promise<string> {
-  const dest = join(OUT, 'ciel', `${CIEL.id}.jpg`)
+async function recupererCiel(ciel: { id: string; largeur: number } = CIEL): Promise<string> {
+  const dest = join(OUT, 'ciel', `${ciel.id}.jpg`)
   if (await existe(dest)) return 'cache'
   const brut = `${dest}.source`
-  const r = await telecharger({ url: `https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/${CIEL.id}.jpg`, dest: brut })
+  const r = await telecharger({ url: `https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/${ciel.id}.jpg`, dest: brut })
   if (r === 'echec') return r
   const { default: sharp } = await import('sharp')
-  await sharp(brut, { limitInputPixels: false }).resize(CIEL.largeur, CIEL.largeur / 2).jpeg({ quality: 82, mozjpeg: true }).toFile(dest)
+  await sharp(brut, { limitInputPixels: false }).resize(ciel.largeur, ciel.largeur / 2).jpeg({ quality: 82, mozjpeg: true }).toFile(dest)
   await rm(brut, { force: true })
   return 'ok'
 }
@@ -291,6 +293,8 @@ async function main() {
   journal.push(`| ${HDRI.id} | Poly Haven | CC0 | carte d'environnement, spéculaire |`)
   console.log(`  ${(await recupererCiel()).padEnd(6)} ${CIEL.id} ${CIEL.largeur} px`)
   journal.push(`| ${CIEL.id} | Poly Haven | CC0 | ciel du fond de scène, réduit en JPG |`)
+  console.log(`  ${(await recupererCiel(CIEL_NUIT)).padEnd(6)} ${CIEL_NUIT.id} ${CIEL_NUIT.largeur} px`)
+  journal.push(`| ${CIEL_NUIT.id} | Poly Haven | CC0 | ciel de nuit, réduit en JPG |`)
 
   const vegetation = [...PLANTES, ...ARBRES, ...ARBUSTES]
   for (const p of vegetation) {

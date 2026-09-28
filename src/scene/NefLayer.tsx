@@ -14,6 +14,7 @@ import * as THREE from 'three'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
+import { useGameStore } from '../stores/gameStore'
 import { anglesHorloge } from './horloge'
 
 export function NefLayer() {
@@ -50,5 +51,19 @@ export function NefLayer() {
       vivant = false
     }
   }, [])
+  // La nuit, la verrière cesse de luire (on voit les étoiles au travers) et les
+  // lanternes brûlent plus fort. Les matières gardent leur nom de Blender.
+  const jour = useGameStore((s) => s.ciel.jour)
+  useEffect(() => {
+    if (nef === null) return
+    nef.traverse((o) => {
+      if (!(o instanceof THREE.Mesh)) return
+      const m = o.material as THREE.MeshStandardMaterial
+      if (m.name === 'Nef_Verre') {
+        m.emissiveIntensity = 0.08 + 0.47 * jour
+        m.opacity = 0.3 + 0.25 * jour
+      } else if (m.name === 'Nef_Opale') m.emissiveIntensity = 3 + 3 * (1 - jour)
+    })
+  }, [nef, jour])
   return nef === null ? null : <primitive object={nef} />
 }

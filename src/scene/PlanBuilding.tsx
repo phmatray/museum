@@ -11,8 +11,8 @@ import { MUSEE } from '../plan/musee'
 import { meshLevel, type Box } from '../plan/mesh'
 import { creerVitrageGardeCorps } from '../builders/glazing'
 import { matiereDeDalle, useMatiere } from './materials'
-import { AMBIANCE, SOLEIL } from './lighting'
-import { Ciel } from './Ciel'
+import { Ciel, LumiereDuJour } from './Ciel'
+import { CycleSolaire } from './CycleSolaire'
 import { PlanToiles } from './PlanToiles'
 import { SculptureLayer } from './SculptureLayer'
 import { sculpturePlacements } from '../plan/sculptures'
@@ -42,9 +42,9 @@ export function PlanBuilding() {
     <>
       {/* Sans ce fond, le vide au-delà des ouvertures se rendait noir (#46). */}
       <Ciel />
-      {/* Les salles ont un plafond (plan/plafonds.ts) ; le soleil sans ombre éclaire encore tout. */}
-      <hemisphereLight args={[AMBIANCE.ciel, AMBIANCE.sol, AMBIANCE.intensite]} />
-      <directionalLight color={SOLEIL.couleur} intensity={SOLEIL.intensite} position={[30, 40, 20]} />
+      {/* Le soleil réel au-dessus du musée, la lune la nuit (domain/soleil.ts). Sans ombre : les plafonds n'assombrissent rien. */}
+      <CycleSolaire />
+      <LumiereDuJour />
       {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} />)}
       <NefLayer />
       <TableauDeparts />

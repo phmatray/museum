@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 
+import config from '../../museum.config.json'
+import { cielA, heureDemandee, type Ciel } from '../domain/soleil'
 import type { Museum } from '../domain/types'
 import type { Walker } from '../plan/walk'
 
@@ -25,6 +27,8 @@ interface GameState {
   tourEtape: number
   /** La toile que le visiteur regarde (clé du dépôt), publiée par `EveilLayer`. */
   toile: string | null
+  /** Le soleil du musée maintenant (ou à l'heure de `?heure=`), tenu à jour par `CycleSolaire`. */
+  ciel: Ciel
   setPaused: (paused: boolean) => void
   setCurrentRoomId: (id: string) => void
   setTourActive: (active: boolean) => void
@@ -41,6 +45,7 @@ export const useGameStore = create<GameState>((set) => ({
   visiteur: null,
   tourEtape: 0,
   toile: null,
+  ciel: cielDuMoment(),
   setPaused: (paused) => set({ paused }),
   setCurrentRoomId: (id) => set({ currentRoomId: id }),
   setTourActive: (active) => set({ tourActive: active }),
@@ -58,3 +63,10 @@ export const useGameStore = create<GameState>((set) => ({
  * pixels de glissé accumulés, que `PlanPlayer` consomme et remet à zéro.
  */
 export const toucher = { forward: 0, strafe: 0, lookX: 0, lookY: 0 }
+
+/** Le ciel à l'instant, ou à l'heure demandée par `?heure=HH:MM`, au lieu du musée. */
+export function cielDuMoment(): Ciel {
+  const maintenant = new Date()
+  const quand = (typeof location === 'undefined' ? null : heureDemandee(location.search, maintenant)) ?? maintenant
+  return cielA(quand, config.location.latitude, config.location.longitude)
+}
