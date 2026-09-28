@@ -35,20 +35,24 @@ import {
 /** Ratio largeur/hauteur par défaut : celui des OG images GitHub. */
 export const DEFAULT_ASPECT = 2
 
-/** Bornes de la taille d'une œuvre, en mètres (§ 7.4). */
-export const MIN_ARTWORK_HEIGHT = 0.5
+/**
+ * Bornes de la taille d'une œuvre, en mètres (§ 7.4). Le plancher est passé de
+ * 0,50 à 0,85 m : à 1 m de large, une toile se perdait sur un mur de 13 à 16 m ;
+ * à 1,70 m, elle tient la salle.
+ */
+export const MIN_ARTWORK_HEIGHT = 0.85
 export const MAX_ARTWORK_HEIGHT = 1.6
 
 /**
  * Hauteur de l'œuvre de référence servant à estimer la capacité d'un mur.
  *
- * 0,90 m correspond à ~40 étoiles. C'est très au-dessus de la médiane d'un
- * corpus réel (la moitié des dépôts n'ont aucune étoile et mesurent donc 0,50 m)
+ * 1,10 m correspond à ~9 étoiles. C'est au-dessus de la médiane d'un corpus
+ * réel (la moitié des dépôts n'ont aucune étoile et mesurent donc 0,85 m)
  * : la capacité annoncée est volontairement pessimiste, pour que la boucle
  * d'agrandissement de l'atrium se termine du bon côté — une salle trop grande
  * est un défaut esthétique, une salle trop petite perd des œuvres.
  */
-export const AVERAGE_ARTWORK_HEIGHT = 0.9
+export const AVERAGE_ARTWORK_HEIGHT = 1.1
 
 /** Nombre maximal de réductions de 10 % avant d'abandonner une œuvre. */
 export const MAX_SHRINK_STEPS = 5
@@ -133,7 +137,7 @@ export function wallCapacity(wall: Wall, averageHeight: number = AVERAGE_ARTWORK
 
 // ── Taille d'une œuvre ───────────────────────────────────────────────────
 
-/** h = clamp(0.50 + 0.25 × log10(1 + étoiles), 0.50, 1.60) (§ 7.4). */
+/** h = clamp(0.85 + 0.25 × log10(1 + étoiles), 0.85, 1.60) (§ 7.4). */
 export function artworkHeight(stars: number): number {
   const safe = Number.isFinite(stars) && stars > 0 ? stars : 0
   const h = MIN_ARTWORK_HEIGHT + 0.25 * Math.log10(1 + safe)

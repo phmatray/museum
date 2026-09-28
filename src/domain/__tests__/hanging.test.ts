@@ -170,21 +170,21 @@ describe('wallCapacity', () => {
 
 describe('artworkHeight', () => {
   it('applique la formule logarithmique bornée', () => {
-    expect(artworkHeight(0)).toBeCloseTo(0.5, 10)
-    expect(artworkHeight(9)).toBeCloseTo(0.75, 10)
-    expect(artworkHeight(99)).toBeCloseTo(1, 10)
+    expect(artworkHeight(0)).toBeCloseTo(0.85, 10)
+    expect(artworkHeight(9)).toBeCloseTo(1.1, 10)
+    expect(artworkHeight(99)).toBeCloseTo(1.35, 10)
     expect(artworkHeight(1e9)).toBe(1.6)
   })
 
   it('borne aussi les entrées absurdes', () => {
-    expect(artworkHeight(-10)).toBe(0.5)
-    expect(artworkHeight(Number.NaN)).toBe(0.5)
+    expect(artworkHeight(-10)).toBe(0.85)
+    expect(artworkHeight(Number.NaN)).toBe(0.85)
   })
 
   it('ne dépasse jamais les bornes sur le corpus réel', () => {
     for (const artwork of catalogue.artworks) {
       const h = artworkHeight(artwork.stars)
-      expect(h).toBeGreaterThanOrEqual(0.5)
+      expect(h).toBeGreaterThanOrEqual(0.85)
       expect(h).toBeLessThanOrEqual(1.6)
     }
   })
@@ -229,12 +229,13 @@ describe('hangWall — répartition automatique', () => {
   })
 
   it('réduit les tailles de 10 % plutôt que de renoncer', () => {
-    // 5 m de segment, 3 œuvres de 1 m : l'écart plein vaut 0,5 m < 0,60 m.
-    const wall = makeWall('w', 6)
+    // 6,75 m de segment, 3 œuvres de 1,70 m et quatre écarts de 0,60 m (bouts
+    // compris) : deux réductions de 10 % passent (6,53 m), une seule non (6,99 m).
+    const wall = makeWall('w', 7.75)
     const placements = hangWall(wall, makeEntries(3, () => 0))
     expect(placements).toHaveLength(3)
-    for (const placement of placements) expect(placement.height).toBeLessThan(0.5)
-    expect(placements[0].height).toBeCloseTo(0.5 * 0.9 * 0.9, 10)
+    for (const placement of placements) expect(placement.height).toBeLessThan(0.85)
+    expect(placements[0].height).toBeCloseTo(0.85 * 0.9 * 0.9, 10)
     expectNoOverlap(placements)
     expectInsideWall(wall, placements)
   })
@@ -506,9 +507,10 @@ describe('hangRoom', () => {
 
   it('répartit sur plusieurs murs et respecte l’invariant sur chacun', () => {
     const room = makeRoom('r1', fourWalls())
-    const hung = hangRoom(room, makeEntries(10, () => 0))
+    // Huit toiles de 1,70 m : plus qu'un seul mur n'en porte.
+    const hung = hangRoom(room, makeEntries(8, () => 0))
     const total = hung.walls.reduce((sum, w) => sum + w.placements.length, 0)
-    expect(total).toBe(10)
+    expect(total).toBe(8)
     expect(hung.walls.filter((w) => w.placements.length > 0).length).toBeGreaterThan(1)
     for (const wall of hung.walls) {
       expectNoOverlap(wall.placements)
