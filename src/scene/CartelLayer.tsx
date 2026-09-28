@@ -6,11 +6,11 @@
  * texte, donc un appel de dessin, et 116 d'un coup coûteraient plus que tout le
  * bâtiment. Au-delà de six mètres, un texte de 2 cm est illisible de toute façon.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 
-import type { Artwork, Catalogue } from '../domain/types'
 import { useAccrochage } from '../hooks/useAccrochage'
+import { useCatalogue } from '../hooks/useCatalogue'
 import { cartelPlacements, cartelTexte, type CartelPlacement } from '../plan/cartels'
 import { Cartel } from './Cartel'
 
@@ -48,29 +48,4 @@ export function CartelLayer() {
       })}
     </group>
   )
-}
-
-let catalogue: Promise<Map<string, Artwork> | null> | null = null
-
-/** Chargé une fois, sous `BASE_URL`. Sans catalogue, pas de cartels — la visite continue. */
-function useCatalogue(): Map<string, Artwork> | null {
-  const [oeuvres, setOeuvres] = useState<Map<string, Artwork> | null>(null)
-  useEffect(() => {
-    let vivant = true
-    catalogue ??= fetch(`${import.meta.env.BASE_URL}data/catalogue.json`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`)
-        return r.json() as Promise<Catalogue>
-      })
-      .then((c) => new Map(c.artworks.map((a) => [a.key, a])))
-      .catch((erreur: unknown) => {
-        console.error('catalogue.json indisponible', erreur)
-        return null
-      })
-    void catalogue.then((c) => vivant && setOeuvres(c))
-    return () => {
-      vivant = false
-    }
-  }, [])
-  return oeuvres
 }
