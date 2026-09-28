@@ -122,7 +122,7 @@ const JARDIN = ['rock_moss_set_01', 'rock_moss_set_02', 'boulder_01', 'fern_02']
 
 /**
  * Pièces en volume. Cet outil ne les RÉCUPÈRE pas — elles ne sont pas en CC0,
- * `tools/blender/build-sculptures.py` les produit à la main hors CI et le GLB
+ * `tools/blender/build-sculptures.py` et `build-bavette-anime.py` les produisent à la main hors CI et le GLB
  * est commité (voir `public/assets/sculptures/SOURCES.md`). Elles sont
  * déclarées ici uniquement pour que `CREDITS.md` les distingue des assets
  * récupérés : sans cette entrée, le gabarit ci-dessous écrirait « Tous en CC0
@@ -130,10 +130,10 @@ const JARDIN = ['rock_moss_set_01', 'rock_moss_set_02', 'boulder_01', 'fern_02']
  */
 const SCULPTURES = [
   {
-    id: 'bavette',
-    source: "Meshy, d'après une photo de l'auteur",
+    id: 'bavette-anime',
+    source: "Meshy, d'après une photo de l'auteur ; squelette et animations `tools/blender/build-bavette-anime.py`",
     licence: '© tous droits réservés',
-    usage: "pièce en volume, salle d'honneur",
+    usage: 'le chat Bavette, qui se promène dans le musée et le jardin',
   },
 ] as const
 

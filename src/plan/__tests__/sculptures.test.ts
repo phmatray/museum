@@ -1,6 +1,10 @@
 /**
- * Les sculptures du plan : Bavette dans le hall, sur son socle, là où
+ * Les sculptures du plan : une pièce dans le hall, sur son socle, là où
  * la marche ne peut pas la traverser.
+ *
+ * Le musée publié n'en expose plus — Bavette se promène désormais librement
+ * (`promenade.ts`) —, mais la config d'un fork peut en déclarer : on éprouve
+ * le placement sur une pièce d'essai.
  */
 import { describe, expect, it } from 'vitest'
 
@@ -11,9 +15,22 @@ import { step, type Walker } from '../walk.ts'
 const dans = (r: { x: number; z: number; width: number; depth: number }, x0: number, x1: number, z0: number, z1: number) =>
   x0 >= r.x && x1 <= r.x + r.width && z0 >= r.z && z1 <= r.z + r.depth
 
+const ESSAI = {
+  id: 'bavette',
+  file: 'bavette.glb',
+  height: 0.65,
+  facing: 'south',
+  plinth: { width: 1.1, depth: 1.1, height: 0.25 },
+  cartel: { author: 'Philippe Matray', title: 'Bavette', year: 2026, medium: 'Modèle 3D', credit: "Collection de l'artiste" },
+}
+
 describe('sculpturePlacements', () => {
-  const placements = sculpturePlacements(MUSEE)
+  const placements = sculpturePlacements(MUSEE, [ESSAI])
   const bavette = placements.find((p) => p.id === 'bavette')
+
+  it('ne pose rien quand la config n’en déclare pas — le musée publié', () => {
+    expect(sculpturePlacements(MUSEE)).toEqual([])
+  })
 
   it('pose Bavette dans le hall, au rez-de-chaussée', () => {
     expect(bavette).toBeDefined()

@@ -17,6 +17,7 @@ import { PlanToiles } from './PlanToiles'
 import { SculptureLayer } from './SculptureLayer'
 import { sculpturePlacements } from '../plan/sculptures'
 import { ParkLayer } from './ParkLayer'
+import { BavetteLayer } from './BavetteLayer'
 import { parkPlacements } from '../plan/park'
 import { PropsLayer } from './PropsLayer'
 import { CartelLayer } from './CartelLayer'
@@ -66,6 +67,7 @@ export function PlanBuilding() {
       <ProjecteursLayer />
       <PortesLayer />
       <ConstellationLayer />
+      <BavetteLayer />
       {/* Le décor à part : un texte qui attend sa police ne doit pas suspendre les murs. */}
       <FacadeLayer />
       <Suspense fallback={null}>

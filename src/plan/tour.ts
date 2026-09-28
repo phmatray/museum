@@ -41,7 +41,7 @@ const centre = (r: Rect): [number, number] => [r.x + r.width / 2, r.z + r.depth 
 export const capVers = (w: { x: number; z: number }, x: number, z: number) => Math.atan2(-(x - w.x), -(z - w.z))
 
 /** Les passages entre surfaces : portes et volées, avec leurs points dans le sens a → b. */
-function passages(plan: Plan): Map<string, { vers: string; points: [number, number][] }[]> {
+export function passages(plan: Plan): Map<string, { vers: string; points: [number, number][] }[]> {
   const g = new Map<string, { vers: string; points: [number, number][] }[]>()
   const lier = (a: string, b: string, points: [number, number][]) => {
     g.set(a, [...(g.get(a) ?? []), { vers: b, points }])
@@ -70,7 +70,7 @@ function passages(plan: Plan): Map<string, { vers: string; points: [number, numb
 }
 
 /** Le plus court chemin en nombre de passages, comme une liste de points. */
-function chemin(g: ReturnType<typeof passages>, de: string, a: string): [number, number][] | null {
+export function chemin(g: ReturnType<typeof passages>, de: string, a: string): [number, number][] | null {
   const venu = new Map<string, { de: string; points: [number, number][] } | null>([[de, null]])
   const file = [de]
   while (file.length) {

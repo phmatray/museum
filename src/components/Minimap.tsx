@@ -21,6 +21,7 @@ const OUVERTURE = 0.5
 export function Minimap() {
   const accrochage = useAccrochage()
   const visiteur = useGameStore((s) => s.visiteur)
+  const chat = useGameStore((s) => s.bavette)
   const vue = visiteur && projectForMinimap(MUSEE, visiteur)
   const level = vue?.level ?? MUSEE.spawn.level
   const fond = useMemo(() => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(renderLevel(MUSEE, level))}`, [level])
@@ -47,6 +48,8 @@ export function Minimap() {
         <img src={fond} alt="" style={{ display: 'block', width: '100%' }} />
         <svg viewBox={viewBox.join(' ')} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} role="img" aria-label={`Vous êtes ici : ${nom}`}>
           {room && <rect x={room.x * S} y={room.z * S} width={room.width * S} height={room.depth * S} fill="rgba(207,51,38,0.18)" stroke="#CF3326" strokeWidth={4} />}
+          {/* Bavette, un petit point clair, s'il se promène à cet étage. */}
+          {chat && chat.level === level && <circle cx={chat.x * S} cy={chat.z * S} r={6} fill="#f3efe6" stroke="#3a2f25" strokeWidth={2}><title>Bavette</title></circle>}
           <polygon points={cone} fill="rgba(207,51,38,0.45)" />
           <circle cx={p.x} cy={p.y} r={10} fill="#CF3326" stroke="#fff" strokeWidth={3} />
         </svg>

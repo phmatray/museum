@@ -38,7 +38,7 @@ Blender et sont donc commités.
 | rock_moss_set_02 | Poly Haven | CC0 | jardin japonais, décimé dans jardin.glb |
 | boulder_01 | Poly Haven | CC0 | jardin japonais, décimé dans jardin.glb |
 | fern_02 | Poly Haven | CC0 | jardin japonais, décimé dans jardin.glb |
-| bavette | Meshy, d'après une photo de l'auteur | © tous droits réservés | pièce en volume, salle d'honneur |
+| bavette-anime | Meshy, d'après une photo de l'auteur ; squelette et animations `tools/blender/build-bavette-anime.py` | © tous droits réservés | le chat Bavette, qui se promène dans le musée et le jardin |
 | PT Sans | Google Fonts (ParaType) | SIL OFL 1.1 | cartels et noms de salle (<Text> troika/drei) |
 | PT Serif | Google Fonts (ParaType), sous-ensemble latin | SIL OFL 1.1 | titres des vitrines de la salle d'honneur et de leur borne |
 | nef | `tools/blender/build-nef.py`, d'après le musée d'Orsay | œuvre originale du dépôt | voûte, verrière, horloge et lanternes du hall |

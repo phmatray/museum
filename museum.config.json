@@ -20,20 +20,5 @@
     "minClusterSize": 4,
     "maxClusterSize": 14
   },
-  "sculptures": [
-    {
-      "id": "bavette",
-      "file": "bavette.glb",
-      "height": 0.65,
-      "facing": "south",
-      "plinth": { "width": 1.1, "depth": 1.1, "height": 0.25 },
-      "cartel": {
-        "author": "Philippe Matray",
-        "title": "Bavette",
-        "year": 2026,
-        "medium": "Modèle 3D par IA (Meshy, d’après photographie), maillage décimé",
-        "credit": "Collection de l'artiste"
-      }
-    }
-  ]
+  "sculptures": []
 }
