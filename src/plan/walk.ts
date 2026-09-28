@@ -17,7 +17,8 @@
 import { VITESSE_HATE, VITESSE_MARCHE } from '../domain/locomotion.ts'
 import { edges, guardrails, isNordSud, sameLine, subtract, type Edge, type Interval, type Segment } from './geometry.ts'
 import { terrainDuParc } from './park.ts'
-import { PASSABLE, flightElevation, flightEnds, surfaceAt } from './rules.ts'
+import { hauteurDuParc } from './relief.ts'
+import { PARC, PASSABLE, flightElevation, flightEnds, surfaceAt } from './rules.ts'
 import type { Flight, Plan, Rect } from './types.ts'
 
 const RAYON = 0.3
@@ -133,9 +134,10 @@ function lire(plan: Plan, surface: string) {
     niveau = niveauDe(plan, f.bottom)
     cote = (x, z) => flightElevation(f, x, z)
   } else if (genre === 'parc') {
-    // Dehors, au sol : les murs du rez-de-chaussée sont ceux de la façade, percée de l'entrée.
+    // Dehors, sur la pelouse et ses buttes : les murs du rez-de-chaussée sont
+    // ceux de la façade, percée de l'entrée. Le parvis reste à 0 (`relief.ts`).
     niveau = niveauDe(plan, 0)
-    cote = () => 0
+    cote = hauteurDuParc
   } else if (genre === 'palier') {
     const l = plan.landings.find((l) => l.id === id)
     if (!l) throw new Error(`palier inconnu : ${surface}`)
@@ -219,7 +221,8 @@ export function step(
       suivante = dedans(s.volee, p.x, p.z) ? surface : surfaceAt(plan, p.x, p.z, s.cote(p.x, p.z))
     } else {
       // Les côtés d'une volée sont des garde-corps : y entrer, c'est passer par un bout à notre cote.
-      const e = s.cote(p.x, p.z)
+      // Au parc, la surface se cherche au plancher du rez-de-chaussée : une butte n'est pas un étage.
+      const e = surface === PARC ? 0 : s.cote(p.x, p.z)
       const f = plan.flights.find((f) => dedans(f, p.x, p.z) && (Math.abs(f.bottom - e) < EPS || Math.abs(f.top - e) < EPS))
       suivante = f ? `volee:${f.id}` : surfaceAt(plan, p.x, p.z, e)
     }

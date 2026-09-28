@@ -17,6 +17,7 @@
  * même parc, arbre pour arbre.
  */
 import { CONTOUR_ETANG, JARDIN, LEVRE, TABLIER, TRACE_RUISSEAU, distanceEtang, presDeLEau } from './jardin.ts'
+import { hauteurDuParc } from './relief.ts'
 import type { Plan, Rect } from './types.ts'
 
 export type EspeceParc =
@@ -32,7 +33,7 @@ export interface PlantPlacement {
   scale: number
   /** Demi-largeur du houppier : l'encombrement au sol. */
   rayon: number
-  /** Cote du pied : un rocher de berge s'enfonce dans l'eau. 0 par défaut. */
+  /** Cote du pied : sur le relief (`relief.ts`), ou dans l'eau pour un rocher de berge. 0 par défaut. */
   y?: number
 }
 
@@ -191,7 +192,9 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
   const planter = (espece: EspeceParc, x: number, z: number, scale = 0.85 + alea() * 0.3, y?: number) => {
     // ±15 % de taille : deux sujets identiques côte à côte trahiraient l'instanciation.
     const p: PlantPlacement = { espece, x, z, rotation: alea() * Math.PI * 2, scale, rayon: RAYON[espece] * scale }
-    if (y !== undefined) p.y = y
+    // Sur une pente, le pied se pose au plus bas de son tour : rien ne flotte côté aval.
+    const sol = Math.min(...[[0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5]].map(([dx, dz]) => hauteurDuParc(x + dx, z + dz)))
+    if (y !== undefined || sol > 0) p.y = (y ?? 0) + sol
     // Le dernier mot, houppier compris, quel que soit le tirage qui a proposé le sujet.
     if (surUneAllee(allees, x, z, p.rayon) || dansRect(parvis, x, z, p.rayon) || !dansRect(terrain, x, z, -p.rayon)) return
     plantations.push(p)

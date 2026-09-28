@@ -110,6 +110,19 @@ describe('la marche au rez-de-chaussée', () => {
     expect(Math.hypot(w.x - 24, w.z - 37)).toBeLessThan(0.05)
   })
 
+  it('gravit une butte du parc et en redescend, sans à-coup, et retrouve le parvis à 0', () => {
+    // Dehors par l'entrée, à l'ouest le long de la façade, puis la butte ouest (−27, 20) et retour.
+    const cotes: number[] = []
+    let w = [[24, 43], [-3, 43], [-3, 20]].reduce((v: Walker, [x, z]) => vers(v, x, z), depart())
+    expect(w.y).toBe(0)
+    w = [[-27, 20], [-3, 20]].reduce((v: Walker, [x, z]) => vers(v, x, z, (u) => cotes.push(u.y)), w)
+    expect(w.surface).toBe('parc:terrain')
+    expect(Math.max(...cotes)).toBeGreaterThan(1)
+    expect(w.y).toBe(0)
+    // À 1,4 m/s et 120 pas par seconde, un pas ne monte ni ne descend d'un centimètre.
+    for (let i = 1; i < cotes.length; i++) expect(Math.abs(cotes[i] - cotes[i - 1])).toBeLessThan(0.01)
+  })
+
   it('va de côté et en diagonale dans la direction et à la vitesse de directionMarche', () => {
     const cas = [
       { forward: 0, strafe: 1, touches: { forward: false, backward: false, left: false, right: true } },
