@@ -5,12 +5,13 @@
  * bordeaux, crème, un romain pour les titres.
  *
  * On le fait défiler à la molette (elle arrive même souris capturée) ou avec
- * Page préc./Page suiv. — les flèches font marcher. E ouvre le dépôt, H son site.
+ * Page préc./Page suiv. — les flèches font marcher. Entrée (ou V, ou H) visite
+ * le site du projet, E ouvre son code sur GitHub.
  */
 import { useEffect, useMemo, useRef } from 'react'
 
 import { couleurDeLangage, partsDeLangages } from '../domain/langages'
-import { useCatalogue, useReadme } from '../hooks/useCatalogue'
+import { useCapture, useCatalogue, useReadme } from '../hooks/useCatalogue'
 import { ilYA } from '../plan/eveil'
 import { readmeEnBlocs } from '../plan/vitrines'
 import { useGameStore } from '../stores/gameStore'
@@ -32,6 +33,8 @@ export function BorneOeuvre() {
   const catalogue = useCatalogue()
   const oeuvre = cle === null ? undefined : catalogue?.get(cle)
   const md = useReadme(cle)
+  const capture = useCapture(cle)
+  const site = oeuvre?.site ?? null
   const blocs = useMemo(() => (md ? readmeEnBlocs(md, 40000) : []), [md])
   const defile = useRef<HTMLDivElement>(null)
 
@@ -40,7 +43,7 @@ export function BorneOeuvre() {
     const touche = (e: KeyboardEvent) => {
       if (e.repeat) return
       if (e.code === 'KeyE') window.open(oeuvre.url, '_blank', 'noopener')
-      else if (e.code === 'KeyH' && oeuvre.homepage) window.open(oeuvre.homepage, '_blank', 'noopener')
+      else if (site && ['Enter', 'NumpadEnter', 'KeyV', 'KeyH'].includes(e.code)) window.open(site, '_blank', 'noopener')
       else if (e.code === 'PageDown' || e.code === 'PageUp') {
         const d = defile.current
         d?.scrollBy({ top: (e.code === 'PageDown' ? 0.85 : -0.85) * d.clientHeight, behavior: 'smooth' })
@@ -54,7 +57,7 @@ export function BorneOeuvre() {
       window.removeEventListener('keydown', touche)
       window.removeEventListener('wheel', molette)
     }
-  }, [oeuvre, paused])
+  }, [oeuvre, paused, site])
 
   if (oeuvre === undefined || paused) return null
   const parts = partsDeLangages(oeuvre.languages)
@@ -74,6 +77,13 @@ export function BorneOeuvre() {
       }}
     >
       <style>{`${POLICE} @keyframes borne-oeuvre { from { opacity: 0; transform: translateX(-12px) } } @media (prefers-reduced-motion: reduce) { aside[data-borne] { animation: none !important } }`}</style>
+      {capture && (
+        <img
+          src={capture}
+          alt={`Aperçu de ${oeuvre.name}`}
+          style={{ display: 'block', width: '100%', maxHeight: '28vh', objectFit: 'cover', objectPosition: 'top', borderRadius: '6px 6px 0 0', borderBottom: '1px solid rgba(224,176,96,0.35)', flexShrink: 0 }}
+        />
+      )}
       <header style={{ padding: '22px 28px 14px' }}>
         <div style={{ fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: OR }}>{oeuvre.owner} · salle d’honneur</div>
         <h2 style={{ font: `400 34px/1.15 ${SERIF}`, margin: '6px 0 10px', overflowWrap: 'anywhere' }}>{oeuvre.name}</h2>
@@ -113,8 +123,8 @@ export function BorneOeuvre() {
           ))}
       </div>
       <footer style={{ padding: '10px 28px 14px', display: 'flex', flexWrap: 'wrap', gap: '6px 18px', alignItems: 'center', fontSize: 13, borderTop: '1px solid rgba(241,228,198,0.15)' }}>
-        <span><Touche>E</Touche> ouvrir sur GitHub</span>
-        {oeuvre.homepage && <span><Touche>H</Touche> ouvrir le site</span>}
+        {site && <span style={{ color: OR, fontWeight: 600 }}><Touche>Entrée</Touche> visiter le site</span>}
+        <span><Touche>E</Touche> voir le code sur GitHub</span>
         <span style={{ color: '#c9b690' }}>molette ou <Touche>Pg↓</Touche> pour lire la suite</span>
       </footer>
     </aside>

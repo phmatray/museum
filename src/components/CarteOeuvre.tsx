@@ -1,17 +1,23 @@
 /**
  * La carte de l'œuvre regardée, en bas à gauche (la minimap tient la droite).
  *
- * Elle s'ouvre quand `EveilLayer` publie une toile : description, langages,
- * étoiles, dernier push, et la touche E pour ouvrir le dépôt sur GitHub. Hors
+ * Elle s'ouvre quand `EveilLayer` publie une toile : la capture du projet (son
+ * site ou son README), description, langages, étoiles, dernier push. Entrée (ou
+ * V) visite le site quand il y en a un — c'est ce qui parle au public —, E
+ * ouvre le code sur GitHub. Hors
  * de la 3D : un texte de 14 px se lit, un texte posé sur un mur à trois mètres
  * beaucoup moins, et il n'y a pas la place entre deux toiles.
  */
 import { useEffect } from 'react'
 
 import { couleurDeLangage, partsDeLangages } from '../domain/langages'
-import { useCatalogue } from '../hooks/useCatalogue'
+import { useCapture, useCatalogue } from '../hooks/useCatalogue'
 import { ilYA } from '../plan/eveil'
 import { useGameStore } from '../stores/gameStore'
+
+const Touche = ({ children }: { children: string }) => (
+  <kbd style={{ border: '1px solid rgba(255,255,255,0.4)', borderBottomWidth: 2, borderRadius: 4, padding: '0 6px', font: '600 12px system-ui' }}>{children}</kbd>
+)
 
 export function CarteOeuvre() {
   const toile = useGameStore((s) => s.toile)
@@ -20,11 +26,14 @@ export function CarteOeuvre() {
   const borne = useGameStore((s) => s.borne)
   const catalogue = useCatalogue()
   const oeuvre = toile === null || borne !== null ? undefined : catalogue?.get(toile)
+  const capture = useCapture(oeuvre?.key ?? null)
 
   useEffect(() => {
     if (oeuvre === undefined || paused) return
     const touche = (e: KeyboardEvent) => {
-      if (e.code === 'KeyE' && !e.repeat) window.open(oeuvre.url, '_blank', 'noopener')
+      if (e.repeat) return
+      if (e.code === 'KeyE') window.open(oeuvre.url, '_blank', 'noopener')
+      else if (oeuvre.site && (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'KeyV')) window.open(oeuvre.site, '_blank', 'noopener')
     }
     window.addEventListener('keydown', touche)
     return () => window.removeEventListener('keydown', touche)
@@ -44,6 +53,13 @@ export function CarteOeuvre() {
       }}
     >
       <style>{'@keyframes carte-oeuvre { from { opacity: 0; transform: translateY(8px) } } @media (prefers-reduced-motion: reduce) { aside { animation: none !important } }'}</style>
+      {capture && (
+        <img
+          src={capture}
+          alt={`Aperçu de ${oeuvre.name}`}
+          style={{ display: 'block', width: 'calc(100% + 32px)', margin: '-14px -16px 12px', aspectRatio: '16 / 10', objectFit: 'cover', objectPosition: 'top', borderRadius: '10px 10px 0 0', background: '#000' }}
+        />
+      )}
       <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#e0b060' }}>{oeuvre.owner}</div>
       <div style={{ fontSize: 20, fontWeight: 600, margin: '2px 0 6px', overflowWrap: 'anywhere' }}>{oeuvre.name}</div>
       {oeuvre.description && (
@@ -67,9 +83,15 @@ export function CarteOeuvre() {
       <div style={{ fontSize: 13, color: '#c9c2b4', fontVariantNumeric: 'tabular-nums' }}>
         ★ {oeuvre.stars.toLocaleString('fr-FR')} · ⑂ {oeuvre.forks.toLocaleString('fr-FR')} · poussé {ilYA(oeuvre.pushedAt, new Date())}
       </div>
-      <div style={{ marginTop: 10, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <kbd style={{ border: '1px solid rgba(255,255,255,0.4)', borderBottomWidth: 2, borderRadius: 4, padding: '0 6px', font: '600 12px system-ui' }}>E</kbd>
-        ouvrir sur GitHub
+      <div style={{ marginTop: 10, fontSize: 13, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 16px' }}>
+        {oeuvre.site && (
+          <span style={{ color: '#ffd796', fontWeight: 600 }}>
+            <Touche>Entrée</Touche> visiter le site
+          </span>
+        )}
+        <span style={{ color: oeuvre.site ? '#c9c2b4' : undefined }}>
+          <Touche>E</Touche> voir le code sur GitHub
+        </span>
       </div>
     </aside>
   )

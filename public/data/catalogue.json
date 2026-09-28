@@ -14,6 +14,7 @@
       "description": "Organization-level GitHub configuration and community health files",
       "url": "https://github.com/Atypical-Consulting/.github",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": null,
       "languages": {},
@@ -36,6 +37,7 @@
       "description": "Architectural Decision Records over MCP — search, author, validate, link, and trace decisions on disk. Works with Claude, Cursor & Copilot.",
       "url": "https://github.com/Atypical-Consulting/AdrMcp",
       "homepage": "https://atypical-consulting.github.io/AdrMcp/",
+      "site": "https://atypical-consulting.github.io/AdrMcp/",
       "topics": [
         "adr",
         "ai",
@@ -81,6 +83,7 @@
       "description": "Reference ASP.NET Core MVC + HTMX 2 app — hexagonal, feature-folders, EF Core + SQLite, no client-side JS",
       "url": "https://github.com/Atypical-Consulting/aspnet-htmx-mvc",
       "homepage": null,
+      "site": null,
       "topics": [
         "aspnet-core",
         "csharp",
@@ -121,6 +124,7 @@
       "description": "Structured code retrieval for AI agents — index once with tree-sitter, query symbols precisely via MCP. Cut code-reading token costs by up to 99%.",
       "url": "https://github.com/Atypical-Consulting/ASTral",
       "homepage": null,
+      "site": null,
       "topics": [
         "ai-agents",
         "ast",
@@ -161,6 +165,7 @@
       "description": "State management for Blazor — four paradigms (MVU, source-generated, Redux, Zustand) + a mutation utility, in one monorepo.",
       "url": "https://github.com/Atypical-Consulting/blazor-state",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "C#",
       "languages": {
@@ -192,6 +197,7 @@
       "description": "A Model-View-Update (MVU) pattern implementation for Blazor.",
       "url": "https://github.com/Atypical-Consulting/BlazorMVU",
       "homepage": "https://atypical-consulting.github.io/BlazorMVU/",
+      "site": "https://atypical-consulting.github.io/BlazorMVU/",
       "topics": [
         "architecture",
         "blazor",
@@ -229,6 +235,7 @@
       "description": "AI code reviews by Elon Musk, Steve Jobs & Linus Torvalds. Three personas debate your code until consensus. Claude Code skill — install in 10 seconds.",
       "url": "https://github.com/Atypical-Consulting/claude-legends-review",
       "homepage": "https://atypical-consulting.github.io/claude-legends-review/",
+      "site": "https://atypical-consulting.github.io/claude-legends-review/",
       "topics": [
         "ai-code-review",
         "ai-tools",
@@ -267,6 +274,7 @@
       "description": "Clean Architecture Solution Template for .NET 10. Use cases as central organizing structure, completely testable, decoupled from frameworks.",
       "url": "https://github.com/Atypical-Consulting/dotnet-clean-architecture",
       "homepage": null,
+      "site": null,
       "topics": [
         "aspire",
         "blazor",
@@ -307,6 +315,7 @@
       "description": "Server-side Blazor components rendered as HTMX-powered HTML fragments -- build interactive web UIs with .NET 10 and zero client-side Blazor runtime.",
       "url": "https://github.com/Atypical-Consulting/FastComponents",
       "homepage": null,
+      "site": null,
       "topics": [
         "anti-js",
         "architecture",
@@ -344,6 +353,7 @@
       "description": "Blazor components, compiled to JavaScript. A research compiler that lowers .razor — template and C# — to imperative JS with a sub-2 KB signals runtime and no .NET in the browser. A 1,000-row grid ships 4.4 KB gzip against Blazor WebAssembly's 1.88 MB; every number is measured, and every limit disclosed.",
       "url": "https://github.com/Atypical-Consulting/Filament",
       "homepage": "https://atypical-consulting.github.io/Filament/",
+      "site": "https://atypical-consulting.github.io/Filament/",
       "topics": [
         "blazor",
         "bundle-size",
@@ -393,6 +403,7 @@
       "description": "A modern, opinionated Git client built with Tauri and React that makes Gitflow workflows a first-class citizen.",
       "url": "https://github.com/Atypical-Consulting/FlowForge",
       "homepage": "https://atypical-consulting.github.io/FlowForge/",
+      "site": "https://atypical-consulting.github.io/FlowForge/",
       "topics": [
         "catppuccin-mocha",
         "git",
@@ -430,6 +441,7 @@
       "description": "Tools for managing GitHub repositories at scale — Claude Code skills, a Tauri desktop app, a Renovate CLI, and an Azure DevOps sync. Consolidated monorepo.",
       "url": "https://github.com/Atypical-Consulting/github-toolkit",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "TypeScript",
       "languages": {
@@ -459,6 +471,7 @@
       "description": "Claude Code skills for auditing, managing, and improving GitHub repositories",
       "url": "https://github.com/Atypical-Consulting/GitHubSkills",
       "homepage": "https://atypical-consulting.github.io/GitHubSkills/",
+      "site": "https://atypical-consulting.github.io/GitHubSkills/",
       "topics": [
         "ai-agents",
         "claude-code",
@@ -487,6 +500,7 @@
       "description": "Hexagonal Architecture by example - a hands-on introduction",
       "url": "https://github.com/Atypical-Consulting/hexagonal-dotnet",
       "homepage": null,
+      "site": null,
       "topics": [
         "clean-architecture",
         "csharp",
@@ -518,6 +532,7 @@
       "description": "Ways to build HTMX-powered .NET apps — a starter template, an MVC reference, and a dual-server experiment. Consolidated monorepo. (Component lib: FastComponents.)",
       "url": "https://github.com/Atypical-Consulting/htmx-samples",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "JavaScript",
       "languages": {
@@ -546,6 +561,7 @@
       "description": "A DSL for Domain-Driven Design: write your ubiquitous language once in .koi files and compile it to idiomatic, self-contained code — 7 languages (C#, TypeScript, Python, PHP, Rust, Java, Kotlin) plus living docs, AsyncAPI & OpenAPI. Value objects, entities, aggregates, invariants, events, state machines, CQRS, context maps.",
       "url": "https://github.com/Atypical-Consulting/Koine",
       "homepage": "https://atypical-consulting.github.io/Koine/",
+      "site": "https://atypical-consulting.github.io/Koine/",
       "topics": [
         "aggregates",
         "antlr",
@@ -600,6 +616,7 @@
       "description": "Markdown looks awful in the terminal — MarkdownInk renders it beautifully (syntax-highlighted code, tables, footnotes) as the mdink CLI or an MCP server for AI agents.",
       "url": "https://github.com/Atypical-Consulting/MarkdownInk",
       "homepage": "https://atypical-consulting.github.io/MarkdownInk/",
+      "site": "https://atypical-consulting.github.io/MarkdownInk/",
       "topics": [
         "ai-agents",
         "ansi",
@@ -644,6 +661,7 @@
       "description": "An NFT collection produced to highlight AI, digital art and photography.",
       "url": "https://github.com/Atypical-Consulting/NFT",
       "homepage": null,
+      "site": null,
       "topics": [
         "ai-art",
         "collection",
@@ -672,6 +690,7 @@
       "description": "One attribute. Full REST API. Zero boilerplate.",
       "url": "https://github.com/Atypical-Consulting/Ninjadog",
       "homepage": "https://atypical-consulting.github.io/Ninjadog/",
+      "site": "https://atypical-consulting.github.io/Ninjadog/",
       "topics": [
         "code-generation",
         "csharp",
@@ -709,6 +728,7 @@
       "description": "Public distribution for the NuGetKeep installer — backs nugetkeep.com/install",
       "url": "https://github.com/Atypical-Consulting/nugetkeep-releases",
       "homepage": "https://nugetkeep.com",
+      "site": "https://nugetkeep.com/",
       "topics": [],
       "language": null,
       "languages": {},
@@ -731,6 +751,7 @@
       "description": "🏗 The AKEless Build System for C#/.NET",
       "url": "https://github.com/Atypical-Consulting/nuke",
       "homepage": "https://nuke.build",
+      "site": "https://nuke.build/",
       "topics": [],
       "language": "C#",
       "languages": {
@@ -760,6 +781,7 @@
       "description": "Server-side image generation API. Generate OG images, social cards, and email banners in 2ms — 500x faster than Puppeteer.",
       "url": "https://github.com/Atypical-Consulting/og-engine",
       "homepage": "https://og-engine.com",
+      "site": "https://og-engine.com/",
       "topics": [
         "api",
         "canvas",
@@ -797,6 +819,7 @@
       "description": "Score & harmonize README quality across any GitHub org — 21-feature scoring, deterministic sweeps, and a live progress dashboard toward 100% complete.",
       "url": "https://github.com/Atypical-Consulting/readme-forge",
       "homepage": null,
+      "site": "https://atypical-consulting.github.io/readme-forge/",
       "topics": [],
       "language": "Python",
       "languages": {
@@ -821,6 +844,7 @@
       "description": "Roslyn code intelligence for AI coding agents, over MCP. Navigate C# by structure — symbols, references, call graphs, surgical edits — for 81% fewer tokens than reading files. Works with Claude, Cursor & Copilot.",
       "url": "https://github.com/Atypical-Consulting/RoselineMCP",
       "homepage": "https://atypical-consulting.github.io/RoselineMCP/",
+      "site": "https://atypical-consulting.github.io/RoselineMCP/",
       "topics": [
         "code-analysis",
         "csharp",
@@ -870,6 +894,7 @@
       "description": "A CLI tool powered by OpenAI GPT-4 to generate compelling sales pitches in multiple languages. Supports various sales frameworks and offers a user-friendly interface with Spectre.Console. Perfect for sales professionals and marketers looking to craft impactful pitches effortlessly.",
       "url": "https://github.com/Atypical-Consulting/SalesPitch",
       "homepage": null,
+      "site": null,
       "topics": [
         "chatgpt",
         "console-application",
@@ -914,6 +939,7 @@
       "description": "A static website generator built with .NET and Nuke build automation",
       "url": "https://github.com/Atypical-Consulting/StaticWGen",
       "homepage": "https://atypical-consulting.github.io/StaticWGen/",
+      "site": "https://atypical-consulting.github.io/StaticWGen/",
       "topics": [
         "csharp",
         "dotnet",
@@ -953,6 +979,7 @@
       "description": "Zero-friction multi-tenancy middleware for ASP.NET Core",
       "url": "https://github.com/Atypical-Consulting/TenantKit",
       "homepage": null,
+      "site": null,
       "topics": [
         "aspnet-core",
         "csharp",
@@ -984,6 +1011,7 @@
       "description": "A .NET startup manager using the Strategy pattern for configurable ASP.NET Core application initialization",
       "url": "https://github.com/Atypical-Consulting/TheAppManager",
       "homepage": "https://atypical-consulting.github.io/TheAppManager/",
+      "site": "https://atypical-consulting.github.io/TheAppManager/",
       "topics": [
         "csharp",
         "design-patterns",
@@ -1012,6 +1040,7 @@
       "description": "A minimalistic blockchain written with Node.js + Express using TypeScript as the base programming language.",
       "url": "https://github.com/Atypical-Consulting/ts-blockchain",
       "homepage": null,
+      "site": null,
       "topics": [
         "blockchain",
         "typescript",
@@ -1046,6 +1075,7 @@
       "description": "Test filesystem code without touching the real disk — fast, deterministic, and disposable.",
       "url": "https://github.com/Atypical-Consulting/VirtualFileSystem",
       "homepage": "https://atypical-consulting.github.io/VirtualFileSystem/",
+      "site": "https://atypical-consulting.github.io/VirtualFileSystem/",
       "topics": [
         "csharp",
         "dotnet",
@@ -1080,6 +1110,7 @@
       "description": "The .NET implementation of x402 v2 — HTTP 402 micropayments for APIs and MCP tools on Base. Euro-first: EURC and USDC are both first-class settlement assets, unlike every other x402 SDK. Non-custodial by design: the server never holds a key and never touches the funds.",
       "url": "https://github.com/Atypical-Consulting/x402-dotnet",
       "homepage": null,
+      "site": null,
       "topics": [
         "aspnetcore",
         "base",
@@ -1118,6 +1149,7 @@
       "description": "Support, bug reports, and feature requests for Yendor — a faithful Rogue 5.4.4 reimplementation for macOS",
       "url": "https://github.com/Atypical-Consulting/YendorSupport",
       "homepage": "https://atypical-consulting.github.io/YendorSupport/",
+      "site": "https://atypical-consulting.github.io/YendorSupport/",
       "topics": [
         "app-store",
         "dungeon-crawler",
@@ -1156,6 +1188,7 @@
       "description": " :cyclone: Clean Architecture with .NET6, C#10 and React+Redux. Use cases as central organizing structure, completely testable, decoupled from frameworks",
       "url": "https://github.com/ivanpaulovich/clean-architecture-manga",
       "homepage": "http://paulovich.net/",
+      "site": "http://paulovich.net/",
       "topics": [
         "solid-principles",
         "ddd-architecture",
@@ -1208,6 +1241,7 @@
       "description": "Default community health files for Philippe Matray's repositories",
       "url": "https://github.com/phmatray/.github",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": null,
       "languages": {},
@@ -1230,6 +1264,7 @@
       "description": "",
       "url": "https://github.com/phmatray/ai-migration-kit",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "HTML",
       "languages": {
@@ -1256,6 +1291,7 @@
       "description": "AI-powered prompt management and orchestration tool for Claude and OpenAI, built with .NET",
       "url": "https://github.com/phmatray/AIPromptMaster",
       "homepage": null,
+      "site": null,
       "topics": [
         "ai",
         "csharp",
@@ -1289,6 +1325,7 @@
       "description": "A .NET template for creating Antlr4 projects in C#, including a sample CSV parser for building language parsers and interpreters",
       "url": "https://github.com/phmatray/Antlr4Library",
       "homepage": "https://www.nuget.org/packages/Antlr4Library",
+      "site": "https://www.nuget.org/packages/Antlr4Library",
       "topics": [
         "antlr",
         "dotnet",
@@ -1325,6 +1362,7 @@
       "description": "This project demonstrates the construction of a basic compiler using ANTLR4 and Roslyn.",
       "url": "https://github.com/phmatray/Antlr4Roslyn",
       "homepage": null,
+      "site": null,
       "topics": [
         "antlr4",
         "compiler",
@@ -1358,6 +1396,7 @@
       "description": "Shows how to use the .NET 8 Aspire App with an Automation container provided by n8n.",
       "url": "https://github.com/phmatray/aspire-app-with-n8n",
       "homepage": null,
+      "site": null,
       "topics": [
         "dotnet8",
         "dotnet-aspire",
@@ -1395,6 +1434,7 @@
       "description": "A collection of .NET Aspire samples — n8n, Strapi CMS, micro-frontends, PrestaShop, TickerQ, container orchestration. Consolidated monorepo.",
       "url": "https://github.com/phmatray/aspire-samples",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": null,
       "languages": {},
@@ -1417,6 +1457,7 @@
       "description": "A demo stack for .NET developers using Strapi 5 as a headless CMS backend with .NET 10, Aspire, Blazor, StrawberryShake and PostgreSQL",
       "url": "https://github.com/phmatray/AspireStrapi",
       "homepage": "https://phmatray.github.io/AspireStrapi/",
+      "site": "https://phmatray.github.io/AspireStrapi/",
       "topics": [
         "csharp",
         "dotnet",
@@ -1453,6 +1494,7 @@
       "description": "Autonomous AI developer system that resolves GitHub issues by orchestrating Claude Code CLI and GitHub API",
       "url": "https://github.com/phmatray/AutonomousAgent",
       "homepage": null,
+      "site": null,
       "topics": [
         "ai",
         "csharp",
@@ -1488,6 +1530,7 @@
       "description": "A .NET global tool for automatically adding data-testid attributes to Blazor Razor components",
       "url": "https://github.com/phmatray/AutoTestId",
       "homepage": null,
+      "site": null,
       "topics": [
         "blazor",
         "csharp",
@@ -1517,6 +1560,7 @@
       "description": "Automated E2E testing demo for Blazor using Reqnroll, showcasing BDD acceptance tests with Gherkin syntax and Playwright .NET",
       "url": "https://github.com/phmatray/AutoTests",
       "homepage": null,
+      "site": null,
       "topics": [
         "blazor",
         "demo",
@@ -1555,6 +1599,7 @@
       "description": "A .NET 9 Web API for validating Belgian and EU VAT numbers using the VIES service",
       "url": "https://github.com/phmatray/BelgiumVatChecker",
       "homepage": null,
+      "site": null,
       "topics": [
         "belgium",
         "csharp",
@@ -1586,6 +1631,7 @@
       "description": "",
       "url": "https://github.com/phmatray/blazor-state-experiments",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "C#",
       "languages": {
@@ -1614,6 +1660,7 @@
       "description": "Tailwind CSS + Blazor UI — 3 component kits (daisyUI, Catalyst, shadcn), a starter template, and a setup CLI. Consolidated monorepo.",
       "url": "https://github.com/phmatray/blazor-tailwind-ui",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "HTML",
       "languages": {
@@ -1645,6 +1692,7 @@
       "description": "A collection of cute, customizable SVG components for Blazor applications. Features 16 kawaii components with 7 different moods.",
       "url": "https://github.com/phmatray/BlazorKawaii",
       "homepage": "https://phmatray.github.io/BlazorKawaii/",
+      "site": "https://phmatray.github.io/BlazorKawaii/",
       "topics": [
         "blazor",
         "blazor-components",
@@ -1688,6 +1736,7 @@
       "description": "BlazorLeaflet is a Blazor component wrapping Leaflet's APIs, offering a simple and homogeneous implementation of the Leaflet maps.",
       "url": "https://github.com/phmatray/BlazorLeaflet",
       "homepage": null,
+      "site": null,
       "topics": [
         "blazor",
         "blazor-components",
@@ -1727,6 +1776,7 @@
       "description": "Blazor MVVM Todo App demonstrating the Model-View-ViewModel pattern with CommunityToolkit.Mvvm",
       "url": "https://github.com/phmatray/BlazorMvvmApp",
       "homepage": null,
+      "site": null,
       "topics": [
         "aspnet-core",
         "blazor",
@@ -1768,6 +1818,7 @@
       "description": "A reflection-free plugin architecture for Blazor applications using source generators",
       "url": "https://github.com/phmatray/BlazorPluginArch",
       "homepage": null,
+      "site": null,
       "topics": [
         "dotnet",
         "plugin-system",
@@ -1801,6 +1852,7 @@
       "description": "Load Blazor Razor Class Library components dynamically at runtime without compile-time project references",
       "url": "https://github.com/phmatray/BlazorPluginComponents",
       "homepage": null,
+      "site": null,
       "topics": [
         "blazor",
         "blazor-components",
@@ -1837,6 +1889,7 @@
       "description": "",
       "url": "https://github.com/phmatray/BlazorTSInterop",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "CSS",
       "languages": {
@@ -1865,6 +1918,7 @@
       "description": "A .NET global build tool automating library delivery to NuGet & GitHub using Nuke, MinVer, and Git-Cliff",
       "url": "https://github.com/phmatray/BuildSphere",
       "homepage": null,
+      "site": null,
       "topics": [
         "build-automation",
         "cicd",
@@ -1903,6 +1957,7 @@
       "description": "Fluent guard clauses for .NET — throw exceptions in one expressive line with auto-captured argument names",
       "url": "https://github.com/phmatray/CCross.ThrowIf",
       "homepage": "http://phmatray.github.io/CCross.ThrowIf/",
+      "site": "http://phmatray.github.io/CCross.ThrowIf/",
       "topics": [
         "argument-validation",
         "csharp",
@@ -1936,6 +1991,7 @@
       "description": "Simplify your developments with this collection of helpers and extensions methods.",
       "url": "https://github.com/phmatray/CCrossHelper",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "C#",
       "languages": {
@@ -1961,6 +2017,7 @@
       "description": "Converts .NET projects to use Centralised Package Management (CPM) automatically",
       "url": "https://github.com/phmatray/CentralisedPackageConverter",
       "homepage": null,
+      "site": null,
       "topics": [
         "csharp",
         "dotnet",
@@ -1989,6 +2046,7 @@
       "description": "A .NET SDK for Claude Code CLI providing a strongly-typed async-first interface for AI integration",
       "url": "https://github.com/phmatray/ClaudeCodeSdkNet",
       "homepage": null,
+      "site": null,
       "topics": [
         "ai",
         "csharp",
@@ -2021,6 +2079,7 @@
       "description": ".NET parser for Belgian CODA banking files",
       "url": "https://github.com/phmatray/coda-parser",
       "homepage": null,
+      "site": null,
       "topics": [
         "banking",
         "belgium",
@@ -2053,6 +2112,7 @@
       "description": "Get computer info from a BackgroundService based on a SignalR connection",
       "url": "https://github.com/phmatray/ComputerInfo",
       "homepage": null,
+      "site": null,
       "topics": [
         "background-service",
         "blazor",
@@ -2085,6 +2145,7 @@
       "description": "Belgian address API client for CRAB — the central Belgian address reference file with geographical coordinates",
       "url": "https://github.com/phmatray/Crab",
       "homepage": null,
+      "site": null,
       "topics": [
         "aspnet",
         "csharp",
@@ -2115,6 +2176,7 @@
       "description": "GraphQL endpoint for Crab",
       "url": "https://github.com/phmatray/CrabGraphQL",
       "homepage": null,
+      "site": null,
       "topics": [
         "express",
         "graphql",
@@ -2145,6 +2207,7 @@
       "description": "A Tailwind CSS v4 + daisyUI v5 component library for Blazor — 60+ daisyUI-native components, a MudBlazor-compatible API, theming, dialogs, snackbars, dependency-free SVG charts, a CSS preset, and a dotnet new template.",
       "url": "https://github.com/phmatray/daisyblazor",
       "homepage": "https://phmatray.github.io/daisyblazor/",
+      "site": "https://phmatray.github.io/daisyblazor/",
       "topics": [
         "blazor",
         "blazor-components",
@@ -2184,6 +2247,7 @@
       "description": "",
       "url": "https://github.com/phmatray/doji",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "C#",
       "languages": {
@@ -2209,6 +2273,7 @@
       "description": "Common build standards and EditorConfig for the Matray .NET Ecosystem",
       "url": "https://github.com/phmatray/dotnet-standards",
       "homepage": null,
+      "site": null,
       "topics": [
         "dotnet",
         "editorconfig",
@@ -2236,6 +2301,7 @@
       "description": "A collection of small, focused .NET utility libraries (guards, LINQ, records, monads, CQRS, DI source-gen, helpers) — each ships as its own NuGet package. Consolidated monorepo.",
       "url": "https://github.com/phmatray/dotnet-toolbelt",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "C#",
       "languages": {
@@ -2261,6 +2327,7 @@
       "description": "eww + bspwm rice for Tuxedo Pulse v2",
       "url": "https://github.com/phmatray/dots-2.0",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "Shell",
       "languages": {
@@ -2291,6 +2358,7 @@
       "description": "Ducky is a state management library designed for Blazor applications, inspired by the Redux pattern commonly used in JavaScript applications. It provides a predictable state container for .NET, ensuring that the application state is managed in a clear, consistent, and centralized manner.",
       "url": "https://github.com/phmatray/Ducky",
       "homepage": "https://phmatray.github.io/Ducky/",
+      "site": "https://phmatray.github.io/Ducky/",
       "topics": [
         "blazor",
         "redux",
@@ -2333,6 +2401,7 @@
       "description": "Build type-safe, dynamic forms in Blazor with an elegant fluent   API. FormCraft simplifies complex form creation with automatic   field rendering, validation, and dependency management. Features   include customizable field renderers, async validation,   conditional visibility, and seamless MudBlazor integration. ",
       "url": "https://github.com/phmatray/FormCraft",
       "homepage": "https://phmatray.github.io/FormCraft/",
+      "site": "https://phmatray.github.io/FormCraft/",
       "topics": [
         "blazor-components",
         "blazor-library",
@@ -2374,6 +2443,7 @@
       "description": "A console-based Treasures & Monsters game in C# demonstrating game loop mechanics, entity management, and feature-driven architecture",
       "url": "https://github.com/phmatray/G3.TreasuresMonsters",
       "homepage": null,
+      "site": null,
       "topics": [
         "csharp",
         "dotnet",
@@ -2402,6 +2472,7 @@
       "description": "Java implementation of the Treasures & Monsters rogue-lite dungeon game",
       "url": "https://github.com/phmatray/G3.TreasuresMonsters.Java",
       "homepage": null,
+      "site": null,
       "topics": [
         "game",
         "java",
@@ -2431,6 +2502,7 @@
       "description": "A web API that generates geometric images based on user-defined parameters like mirror power, cell size, seed, and color themes",
       "url": "https://github.com/phmatray/Geometrix",
       "homepage": "https://geometrix-ui.garry-ai.cloud",
+      "site": "https://geometrix-ui.garry-ai.cloud/",
       "topics": [
         "aspnet",
         "csharp",
@@ -2464,6 +2536,7 @@
       "description": "A collection of Godot 4 + .NET games and engines — Lenia, a gacha game, a dungeon generator, and a 2D platformer. Consolidated monorepo.",
       "url": "https://github.com/phmatray/godot-games",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "C#",
       "languages": {
@@ -2488,6 +2561,7 @@
       "description": "",
       "url": "https://github.com/phmatray/hackathon-backend",
       "homepage": "HomePage",
+      "site": null,
       "topics": [],
       "language": "C#",
       "languages": {
@@ -2512,6 +2586,7 @@
       "description": "Hexagonal Architecture service template with DDD, CQRS, TDD and SOLID using .NET Core",
       "url": "https://github.com/phmatray/hexagonal-architecture-acerola",
       "homepage": "http://paulovich.net/acerola/",
+      "site": "http://paulovich.net/acerola/",
       "topics": [
         "clean-architecture",
         "csharp",
@@ -2543,6 +2618,7 @@
       "description": "Blazor library for seamless IndexedDB interaction via JavaScript interop — typed async CRUD API",
       "url": "https://github.com/phmatray/IdxDb",
       "homepage": null,
+      "site": null,
       "topics": [
         "blazor",
         "blazor-components",
@@ -2578,6 +2654,7 @@
       "description": "Quelques notes de cours pour les apprenants de l'IFAPME",
       "url": "https://github.com/phmatray/IFAPME-OMD",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": null,
       "languages": {},
@@ -2600,6 +2677,7 @@
       "description": "A .NET 8 application for generating professionally formatted PDF invoices using LaTeX",
       "url": "https://github.com/phmatray/InvoiceGenerator",
       "homepage": null,
+      "site": null,
       "topics": [
         "csharp",
         "dotnet"
@@ -2628,6 +2706,7 @@
       "description": "",
       "url": "https://github.com/phmatray/java-teaching-materials",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "Java",
       "languages": {
@@ -2652,6 +2731,7 @@
       "description": "Token-efficient MCP server for GitHub source code exploration via tree-sitter AST parsing",
       "url": "https://github.com/phmatray/jcodemunch-mcp",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "Python",
       "languages": {
@@ -2676,6 +2756,7 @@
       "description": "A visual secrets manager organized as a tree, with zero-knowledge encryption — for freelancers and small teams",
       "url": "https://github.com/phmatray/key3s",
       "homepage": null,
+      "site": null,
       "topics": [
         "encryption",
         "nextjs",
@@ -2711,6 +2792,7 @@
       "description": "A high-performance, real-time implementation of Lenia - a fascinating continuous cellular automaton that creates complex, lifelike patterns. Built with Blazor WebAssembly and MudBlazor for a modern, interactive web experience.",
       "url": "https://github.com/phmatray/lenia",
       "homepage": null,
+      "site": null,
       "topics": [
         "artificial-life",
         "blazor",
@@ -2750,6 +2832,7 @@
       "description": "A beautiful implementation of Lenia, a continuous cellular automaton system, built with Godot 4.",
       "url": "https://github.com/phmatray/lenia-godot",
       "homepage": null,
+      "site": null,
       "topics": [
         "artificial-life",
         "cellular-automaton",
@@ -2783,6 +2866,7 @@
       "description": "Use your favorite CLI tools without leaving your code editor",
       "url": "https://github.com/phmatray/MasterCommander",
       "homepage": "https://phmatray.github.io/MasterCommander/",
+      "site": "https://phmatray.github.io/MasterCommander/",
       "topics": [
         "beta",
         "cli",
@@ -2827,6 +2911,7 @@
       "description": "My personal website",
       "url": "https://github.com/phmatray/matray-tech",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "HTML",
       "languages": {
@@ -2853,6 +2938,7 @@
       "description": "A zero-reflection, compile-time mediator pattern for .NET using source generators — AOT-friendly MediatR alternative",
       "url": "https://github.com/phmatray/Mediateur",
       "homepage": null,
+      "site": null,
       "topics": [
         "csharp",
         "design-patterns",
@@ -2882,6 +2968,7 @@
       "description": "Metatrader 5 Docker, wine64 and vnc with openbox gui and slim for Authentication  pyzmq python3",
       "url": "https://github.com/phmatray/Metatrader5-Docker",
       "homepage": null,
+      "site": null,
       "topics": [
         "docker",
         "metatrader",
@@ -2920,6 +3007,7 @@
       "description": "🎮 A modern, feature-rich MineSweeper game built with Blazor   WebAssembly and .NET 9. Features achievements, statistics tracking,   sound effects, particle animations, and PWA support.",
       "url": "https://github.com/phmatray/MineSweeper",
       "homepage": "https://phmatray.github.io/MineSweeper/",
+      "site": "https://phmatray.github.io/MineSweeper/",
       "topics": [
         "achievements",
         "blazor",
@@ -2965,6 +3053,7 @@
       "description": "A minimal .NET template for creating HTMX-based Blazor projects",
       "url": "https://github.com/phmatray/MinimalHtmx",
       "homepage": null,
+      "site": null,
       "topics": [
         "blazor",
         "dotnet",
@@ -2997,6 +3086,7 @@
       "description": "Rigorous exploration of monads in C# with practical examples — companion to a LinkedIn article",
       "url": "https://github.com/phmatray/Monads",
       "homepage": null,
+      "site": null,
       "topics": [
         "csharp",
         "dotnet",
@@ -3025,6 +3115,7 @@
       "description": "",
       "url": "https://github.com/phmatray/museum",
       "homepage": null,
+      "site": "https://phmatray.github.io/museum/",
       "topics": [],
       "language": "TypeScript",
       "languages": {
@@ -3053,6 +3144,7 @@
       "description": "Music and audio for .NET — a theory library, chord engine, MIDI tooling, Web Audio bindings, and a VGM player. Consolidated monorepo.",
       "url": "https://github.com/phmatray/music-dotnet",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "JavaScript",
       "languages": {
@@ -3086,6 +3178,7 @@
       "description": "A comprehensive .NET library for music theory, providing immutable domain models for notes, intervals, scales, chords, and chord progressions. Features frequency    calculations, MIDI support, enharmonic equivalence, and fluent APIs for musical composition.",
       "url": "https://github.com/phmatray/MusicTheory",
       "homepage": "https://phmatray.github.io/MusicTheory/",
+      "site": "https://phmatray.github.io/MusicTheory/",
       "topics": [
         "chords",
         "composition",
@@ -3131,6 +3224,7 @@
       "description": "Immutable Record Mutation Made Easy",
       "url": "https://github.com/phmatray/Mutty",
       "homepage": "https://phmatray.github.io/Mutty/",
+      "site": "https://phmatray.github.io/Mutty/",
       "topics": [
         "csharp",
         "dotnet",
@@ -3167,6 +3261,7 @@
       "description": "About me",
       "url": "https://github.com/phmatray/phmatray",
       "homepage": null,
+      "site": null,
       "topics": [
         "github-profile",
         "readme"
@@ -3192,6 +3287,7 @@
       "description": "generated mapping class for phosphore icons usable with MudBlazor",
       "url": "https://github.com/phmatray/Phosphor",
       "homepage": null,
+      "site": null,
       "topics": [
         "dotnet",
         "icons",
@@ -3228,6 +3324,7 @@
       "description": "A fluent validation and guard clause library for .NET using pipe operators and C# extensions.",
       "url": "https://github.com/phmatray/PipeException",
       "homepage": null,
+      "site": null,
       "topics": [
         "dotnet10",
         "exceptions",
@@ -3260,6 +3357,7 @@
       "description": "A 2D platformer game built with Godot 4.2 and .NET 8, following the Brackeys beginner tutorial",
       "url": "https://github.com/phmatray/Platformer2D_Brackeys",
       "homepage": null,
+      "site": null,
       "topics": [
         "csharp",
         "dotnet",
@@ -3288,6 +3386,7 @@
       "description": "A UWP Pokédex application with a .NET web service backend and unit tests",
       "url": "https://github.com/phmatray/pokedex",
       "homepage": "https://phmatray.github.io/pokedex/",
+      "site": "https://phmatray.github.io/pokedex/",
       "topics": [
         "csharp",
         "dotnet",
@@ -3320,6 +3419,7 @@
       "description": "A REST WebAPI for retrieving comprehensive Pokémon information, built with ASP.NET Core and EF Core",
       "url": "https://github.com/phmatray/PokemonAPI",
       "homepage": null,
+      "site": "https://phmatray.github.io/PokemonAPI/",
       "topics": [
         "aspnet",
         "csharp",
@@ -3352,6 +3452,7 @@
       "description": "A coding challenge for building a power plant load optimization API in .NET",
       "url": "https://github.com/phmatray/powerplant-coding-challenge",
       "homepage": null,
+      "site": null,
       "topics": [
         "csharp",
         "dotnet"
@@ -3380,6 +3481,7 @@
       "description": "A gacha-style game built with Godot and gRPC — server-authoritative game logic with .NET backend services",
       "url": "https://github.com/phmatray/Raga",
       "homepage": null,
+      "site": null,
       "topics": [
         "csharp",
         "dotnet",
@@ -3410,6 +3512,7 @@
       "description": "Achieve true value equality in .NET records using ValueCollection",
       "url": "https://github.com/phmatray/RecordEquality",
       "homepage": "https://www.linkedin.com/pulse/understanding-value-equality-net-records-philippe-matray--cdlke/",
+      "site": null,
       "topics": [
         "dotnet",
         "record",
@@ -3440,6 +3543,7 @@
       "description": "A C# implementation of a Red-Black Tree with full unit tests",
       "url": "https://github.com/phmatray/RedBlack",
       "homepage": null,
+      "site": null,
       "topics": [
         "algorithms",
         "csharp",
@@ -3470,6 +3574,7 @@
       "description": "Soft UI Dashboard - Free and OpenSource Bootstrap 5 Dashboard",
       "url": "https://github.com/phmatray/soft-ui-dashboard",
       "homepage": "https://www.creative-tim.com/product/soft-ui-dashboard",
+      "site": "https://www.creative-tim.com/product/soft-ui-dashboard",
       "topics": [
         "bootstrap",
         "css",
@@ -3503,6 +3608,7 @@
       "description": "💫 Toolkit to help you get started with Spec-Driven Development",
       "url": "https://github.com/phmatray/spec-kit-dotnet",
       "homepage": null,
+      "site": null,
       "topics": [
         "dotnet",
         "python",
@@ -3535,6 +3641,7 @@
       "description": "A Sudoku puzzle solver based on Hexagonal Architecture and written in C#. The application uses Google's OR-Tools for the solution process.",
       "url": "https://github.com/phmatray/SudokuSolver",
       "homepage": null,
+      "site": null,
       "topics": [
         "clean-architecture",
         "constraint-programming",
@@ -3568,6 +3675,7 @@
       "description": "Modern C# port of TA-Lib: 200+ technical analysis indicators supporting Double, Float, and Decimal via Generic Math",
       "url": "https://github.com/phmatray/TaLibStandard",
       "homepage": "https://phmatray.github.io/TaLibStandard/",
+      "site": "https://phmatray.github.io/TaLibStandard/",
       "topics": [
         "technical-analysis",
         "dotnet-standard",
@@ -3607,6 +3715,7 @@
       "description": "A .NET console application demonstrating advanced collection management with a custom PersonCollection class, sorting, filtering, and event-driven notifications",
       "url": "https://github.com/phmatray/TheRightCollection",
       "homepage": null,
+      "site": null,
       "topics": [
         "csharp",
         "dotnet",
@@ -3644,6 +3753,7 @@
       "description": "A workbench of algorithmic-trading experiments, bots, strategies and tooling (.NET + Python). Consolidated monorepo. Indicators lib lives separately in TaLibStandard.",
       "url": "https://github.com/phmatray/trading-lab",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "C#",
       "languages": {
@@ -3676,6 +3786,7 @@
       "description": "Personal brand hub + newsletter landing page — Le Chai du Dev ☕ .NET + AI agents",
       "url": "https://github.com/phmatray/tsh.ai",
       "homepage": null,
+      "site": null,
       "topics": [
         "blazor",
         "dotnet",
@@ -3710,6 +3821,7 @@
       "description": "Deal with Primitive Obsession - define ValueObjects in a single line (of C#).",
       "url": "https://github.com/phmatray/ValueOf",
       "homepage": null,
+      "site": null,
       "topics": [
         "csharp",
         "design-patterns",
@@ -3738,6 +3850,7 @@
       "description": "Belgian VAT & enterprise number toolkit for .NET — KBO validation, VIES lookup, VAT rate calculator + Blazor UI",
       "url": "https://github.com/phmatray/VatBe",
       "homepage": null,
+      "site": null,
       "topics": [
         "belgium",
         "dotnet",
@@ -3772,6 +3885,7 @@
       "description": "A Go-based WebAssembly sample with React app! 😎",
       "url": "https://github.com/phmatray/webassembly-demo",
       "homepage": null,
+      "site": null,
       "topics": [
         "webassembly",
         "react",
@@ -3803,6 +3917,7 @@
       "description": "A tree-walk interpreter for the Wisp scripting language implemented in C#",
       "url": "https://github.com/phmatray/WispLang",
       "homepage": null,
+      "site": null,
       "topics": [
         "csharp",
         "dotnet",
@@ -3833,6 +3948,7 @@
       "description": "Music Tracker with FM Synthesis",
       "url": "https://github.com/stephaneweg/MusicTracker",
       "homepage": null,
+      "site": null,
       "topics": [],
       "language": "C#",
       "languages": {

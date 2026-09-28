@@ -267,6 +267,9 @@ const artworkSchema = z.object({
   description: z.string(),
   url: z.url(),
   homepage: z.string().nullable(),
+  // Le site à visiter (homepage valide, sinon GitHub Pages). Absent des catalogues
+  // d'avant les captures : `null`, et l'interface retombe sur le seul GitHub.
+  site: z.string().nullable().default(null),
   topics: z.array(z.string()),
   language: z.string().nullable(),
   languages: z.record(z.string(), z.number()),

@@ -15,6 +15,8 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { siteDuDepot } from '../src/domain/captures.ts'
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const GRAPHQL = 'https://api.github.com/graphql'
 
@@ -29,6 +31,8 @@ export interface Artwork {
   description: string
   url: string
   homepage: string | null
+  /** Le site à visiter : `homepage` s'il est un vrai site, sinon GitHub Pages. */
+  site: string | null
   topics: string[]
   language: string | null
   languages: Record<string, number>
@@ -253,6 +257,7 @@ function toArtwork(r: GqlRepo): Artwork {
     description: r.description ?? '',
     url: r.url,
     homepage: r.homepageUrl || null,
+    site: siteDuDepot(r.homepageUrl, null),
     topics: r.repositoryTopics.nodes.map((n) => n.topic.name),
     language: r.languages.edges[0]?.node.name ?? null,
     languages,
@@ -267,6 +272,40 @@ function toArtwork(r: GqlRepo): Artwork {
     license: r.licenseInfo?.spdxId ?? null,
     readmeExcerpt: readmeExcerpt(r.readme?.text ?? r.readmeLower?.text),
   }
+}
+
+// ── GitHub Pages ─────────────────────────────────────────────────────────
+
+/**
+ * `owner/nom` → URL GitHub Pages, pour les dépôts qui en publient une. GraphQL
+ * ne dit pas si Pages est actif : le REST, si (`has_pages` sur la liste des
+ * dépôts, puis `/pages` pour l'URL réelle, domaine personnalisé compris). Un
+ * échec ne coûte que les sites : on rend ce qu'on a, jamais une exception.
+ */
+export async function pagesDesProprietaires(owners: string[], token: string | null): Promise<Map<string, string>> {
+  const headers: Record<string, string> = { accept: 'application/vnd.github+json', 'user-agent': 'virtual-museum-fetch' }
+  if (token) headers.authorization = `bearer ${token}`
+  const api = async <T,>(path: string): Promise<T | null> => {
+    try {
+      const res = await fetch(`https://api.github.com${path}`, { headers, signal: AbortSignal.timeout(20_000) })
+      return res.ok ? ((await res.json()) as T) : null
+    } catch {
+      return null
+    }
+  }
+  const pages = new Map<string, string>()
+  for (const login of owners) {
+    for (let page = 1; ; page++) {
+      const repos = await api<{ full_name: string; has_pages: boolean }[]>(`/users/${login}/repos?per_page=100&page=${page}`)
+      if (!repos?.length) break
+      for (const r of repos.filter((r) => r.has_pages)) {
+        const info = await api<{ html_url?: string }>(`/repos/${r.full_name}/pages`)
+        if (info?.html_url) pages.set(r.full_name, info.html_url)
+      }
+      if (repos.length < 100) break
+    }
+  }
+  return pages
 }
 
 // ── Point d'entrée ───────────────────────────────────────────────────────
@@ -336,6 +375,8 @@ async function main() {
 
   const readmes = new Map<string, string>()
   const catalogue = await fetchCatalogue(config.owners, token, readmes)
+  const pages = await pagesDesProprietaires(config.owners, token)
+  for (const a of catalogue.artworks) a.site = siteDuDepot(a.homepage, pages.get(a.key))
 
   const out = resolve(ROOT, 'public/data/catalogue.json')
   await mkdir(dirname(out), { recursive: true })
@@ -361,7 +402,8 @@ async function main() {
       `  forks     : ${kept.filter((a) => a.isFork).length}\n` +
       `  archivés  : ${kept.filter((a) => a.isArchived).length}\n` +
       `  avec topics : ${kept.filter((a) => a.topics.length > 0).length}\n` +
-      `  avec README : ${kept.filter((a) => a.readmeExcerpt.length > 0).length}`
+      `  avec README : ${kept.filter((a) => a.readmeExcerpt.length > 0).length}\n` +
+      `  avec site   : ${kept.filter((a) => a.site).length} (dont ${pages.size} GitHub Pages)`
   )
 }
 

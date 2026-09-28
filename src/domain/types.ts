@@ -50,6 +50,8 @@ export interface Artwork {
   description: string
   url: string
   homepage: string | null
+  /** Le site du projet à visiter : `homepage` s'il est un vrai site, sinon GitHub Pages. */
+  site?: string | null
   topics: string[]
   language: string | null
   languages: Record<string, number>

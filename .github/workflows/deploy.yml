@@ -101,6 +101,15 @@ jobs:
             exit 1
           }
 
+      # Ce que le public VOIT d'un projet : la page de son site, photographiée par
+      # le Chrome du runner, ou la première vraie image de son README. AVANT les
+      # médias, qui en font les toiles. Sous `public/media/`, donc dans le cache
+      # des médias ci-dessus : seuls les dépôts poussés depuis sont repris. Un
+      # bonus, jamais un blocage : sans Chrome, les sites sont sautés.
+      - name: Capturer les sites et les README
+        continue-on-error: true
+        run: npm run captures
+
       - name: Construire les médias
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

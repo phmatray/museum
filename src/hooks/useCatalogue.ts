@@ -4,6 +4,7 @@
  */
 import { useEffect, useState } from 'react'
 
+import type { IndexCaptures } from '../domain/captures'
 import type { Artwork, Catalogue } from '../domain/types'
 import { cheminReadme, choisirVitrines } from '../plan/vitrines'
 
@@ -70,4 +71,27 @@ export function useReadme(key: string | null): string | null {
     }
   }, [key])
   return md?.key === key ? md.md : null
+}
+
+let captures: Promise<IndexCaptures> | null = null
+
+/**
+ * L'URL de la capture d'un dépôt (site ou README, `tools/build-captures.ts`),
+ * `null` s'il n'en a pas — ou tant que l'index n'est pas arrivé. Sans index
+ * (build sans captures), jamais d'erreur : les cartes restent sans image.
+ */
+export function useCapture(key: string | null): string | null {
+  const [index, setIndex] = useState<IndexCaptures | null>(null)
+  useEffect(() => {
+    let vivant = true
+    captures ??= fetch(`${import.meta.env.BASE_URL}media/captures.json`)
+      .then((r) => (r.ok ? (r.json() as Promise<IndexCaptures>) : {}))
+      .catch(() => ({}))
+    void captures.then((i) => vivant && setIndex(i))
+    return () => {
+      vivant = false
+    }
+  }, [])
+  const file = key === null ? undefined : index?.[key]?.file
+  return file ? `${import.meta.env.BASE_URL}media/${file}` : null
 }
