@@ -1,9 +1,10 @@
 /**
  * La constellation de la nef : chaque dépôt accroché est une étoile suspendue
  * dans le vide du hall, chaque salle un amas qui porte son nom, ses étoiles
- * reliées par un filet d'or. Elle flotte entre les deux balcons, à hauteur des
- * yeux de qui s'y tient (le plancher des balcons est à +4,80) : on la traverse
- * du regard depuis l'étage, on la voit d'en bas comme un lustre de lumières.
+ * reliées par un filet d'or. Elle flotte entre les deux balcons, chaque amas à
+ * sa hauteur, de l'étage (le plancher des balcons est à +4,80) jusque sous la
+ * voûte : on la traverse du regard depuis les balcons, on la voit d'en bas
+ * comme un lustre de lumières.
  *
  * Elle était d'abord plaquée sous la verrière, à vingt mètres : coincée dans le
  * plafond et illisible. Chaque étoile pend maintenant à un fil, jusqu'à la voûte.
@@ -12,8 +13,13 @@
  */
 import type { Accrochage } from './hang.ts'
 
-/** Le volume libre de la nef : entre les garde-corps des balcons, au-dessus de l'escalier. */
-export const VOLUME = { x0: 19.9, x1: 28.1, z0: 16.5, z1: 39.2, y0: 6.1, y1: 8.6 }
+/**
+ * Le volume libre de la nef : entre les garde-corps des balcons, au-dessus de
+ * l'escalier. Chaque amas y prend SA hauteur (entre `y0` et `y1`), et ses étoiles
+ * s'étagent de ±`epaisseur`/2 autour : des groupes tous au même niveau faisaient
+ * une nappe, pas un ciel.
+ */
+export const VOLUME = { x0: 19.9, x1: 28.1, z0: 16.5, z1: 39.2, y0: 5.6, y1: 10.6, epaisseur: 1.4 }
 /** Les lanternes de `build-nef.py` : deux files, trois par file ; les étoiles s'en écartent. */
 const LANTERNES = [20.5, 27.5].flatMap((x) => [20.75, 27.75, 34.75].map((z) => ({ x, z })))
 const GARDE_LANTERNE = 0.9
@@ -91,6 +97,7 @@ export function constellations(accrochage: Accrochage, etoilesGithub: ReadonlyMa
   const [dz, dx] = [(VOLUME.z1 - VOLUME.z0) / COLONNES, (VOLUME.x1 - VOLUME.x0) / rangs]
   return salles.map((salle, i) => {
     const [cz, cx] = [VOLUME.z0 + (i % COLONNES) * dz, VOLUME.x0 + Math.floor(i / COLONNES) * dx]
+    const cy = VOLUME.y0 + hache(salle.id, 'hauteur') * (VOLUME.y1 - VOLUME.y0)
     const etoiles = salle.placements.map((p) => {
       const z = cz + MARGE + hache(p.key, 'z') * (dz - 2 * MARGE)
       const x = horsDesLanternes(cx + MARGE + hache(p.key, 'x') * (dx - 2 * MARGE), z)
@@ -98,7 +105,7 @@ export function constellations(accrochage: Accrochage, etoilesGithub: ReadonlyMa
         key: p.key,
         salle: salle.id,
         x,
-        y: VOLUME.y0 + hache(p.key, 'y') * (VOLUME.y1 - VOLUME.y0 - 0.5),
+        y: cy + (hache(p.key, 'y') - 0.5) * VOLUME.epaisseur,
         z,
         taille: Math.min(0.2, 0.05 + 0.03 * Math.log2(1 + (etoilesGithub.get(p.key) ?? 0))),
         accroche: voute(x),
@@ -109,7 +116,7 @@ export function constellations(accrochage: Accrochage, etoilesGithub: ReadonlyMa
       nom: salle.name,
       etoiles,
       filets: arbreCouvrant(etoiles),
-      etiquette: { x: cx + dx / 2, y: VOLUME.y1 + 0.1, z: cz + dz / 2 },
+      etiquette: { x: cx + dx / 2, y: cy + VOLUME.epaisseur / 2 + 0.15, z: cz + dz / 2 },
     }
   })
 }
