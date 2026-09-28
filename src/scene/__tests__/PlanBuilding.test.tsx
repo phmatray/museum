@@ -24,7 +24,7 @@ import { CIEL } from '../lighting'
 
 // Ordre exact des <Boites> par niveau dans PlanBuilding.tsx : un InstancedMesh
 // par sorte, toujours dans cet ordre, même vide.
-const ORDRE_SORTES: Box['kind'][] = ['wall', 'lintel', 'slab', 'landing', 'step', 'railing', 'glass']
+const ORDRE_SORTES: Box['kind'][] = ['wall', 'lintel', 'slab', 'landing', 'step', 'railing', 'handrail', 'glass']
 
 /**
  * `InstancedMesh` n'écrase pas `Object3D.type` (il reste `'Mesh'`, hérité de
