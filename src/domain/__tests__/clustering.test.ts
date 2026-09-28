@@ -94,13 +94,16 @@ describe('vectorisation sur le corpus réel', () => {
   })
 
   it('ordonne l’IDF exactement à l’inverse du DF, sur tout le corpus', () => {
-    const termes = [...v.df.keys()].sort()
-    for (const a of termes) {
-      for (const b of termes) {
-        if (v.df.get(a)! < v.df.get(b)!) {
-          expect(v.idf.get(a)!).toBeGreaterThanOrEqual(v.idf.get(b)!)
-        }
-      }
+    // Pour tout couple df(a) < df(b), idf(a) ≥ idf(b). Plutôt que les millions de
+    // couples (le test dépassait les 5 s), par groupes de df croissants : chaque
+    // groupe ne doit pas dépasser le plus petit idf de tous les groupes d'avant.
+    const parDf = new Map<number, number[]>()
+    for (const [t, df] of v.df) parDf.set(df, [...(parDf.get(df) ?? []), v.idf.get(t)!])
+    let plancher = Infinity
+    for (const df of [...parDf.keys()].sort((a, b) => a - b)) {
+      const idfs = parDf.get(df)!
+      expect(Math.max(...idfs), `df = ${df}`).toBeLessThanOrEqual(plancher)
+      plancher = Math.min(plancher, ...idfs)
     }
   })
 
