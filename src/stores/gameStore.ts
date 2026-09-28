@@ -35,6 +35,10 @@ interface GameState {
   bavette: { x: number; z: number; level: number } | null
   /** Le soleil du musée maintenant (ou à l'heure de `?heure=`), tenu à jour par `CycleSolaire`. */
   ciel: Ciel
+  /** Le tableau des départs commence à tourner ses palettes (`TableauDeparts`) : leur cliquetis. */
+  volets: { at: number; ms: number } | null
+  /** Un nouveau projet vient de paraître : le carillon l'annonce. */
+  annonce: { key: string; tag: string; at: number } | null
   setPaused: (paused: boolean) => void
   setCurrentRoomId: (id: string) => void
   setTourActive: (active: boolean) => void
@@ -55,6 +59,8 @@ export const useGameStore = create<GameState>((set) => ({
   bavetteRegarde: false,
   bavette: null,
   ciel: cielDuMoment(),
+  volets: null,
+  annonce: null,
   setPaused: (paused) => set({ paused }),
   setCurrentRoomId: (id) => set({ currentRoomId: id }),
   setTourActive: (active) => set({ tourActive: active }),
