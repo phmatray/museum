@@ -11,13 +11,13 @@ tableau dit exactement lequel.
 
 | Pièce | Fichier source | SHA-256 | Provenance | Licence |
 |---|---|---|---|---|
-| `bavette.glb` | `Bavette Catnap Texture.glb` (80 Mo) | `9f917aa4b25ea102f6dbf545ca9290c3a313a1c5a3436a28941934ca80c581cf` | Meshy (`meshy-scene`), à partir d'une photographie de Philippe Matray | © Philippe Matray — tous droits réservés |
+| `bavette.glb` | `Bavette Meshy image-to-3d.glb` (13 Mo) | `cca8bfb191e82d9c8ba9b5cc0b7b3ede2488722a94f50baa5858c356dc0cb1a3` | Meshy image-to-3D (`latest`, 60 000 triangles, textures PBR), à partir d'une photographie de Bavette debout par Philippe Matray (septembre 2026) ; remplace la version endormie `Bavette Catnap Texture.glb` | © Philippe Matray — tous droits réservés |
 
 ## Reconstruire
 
 ```bash
 blender --background --python tools/blender/build-sculptures.py -- \
-  bavette "/chemin/vers/Bavette Catnap Texture.glb"
+  bavette "/chemin/vers/Bavette Meshy image-to-3d.glb"
 ```
 
 Le budget de triangles et la cote des cartes vivent dans `PIECES`, en tête du

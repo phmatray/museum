@@ -1,5 +1,5 @@
 /**
- * Les sculptures du plan : Bavette endormi dans le hall, sur son socle, là où
+ * Les sculptures du plan : Bavette dans le hall, sur son socle, là où
  * la marche ne peut pas la traverser.
  */
 import { describe, expect, it } from 'vitest'
@@ -13,9 +13,9 @@ const dans = (r: { x: number; z: number; width: number; depth: number }, x0: num
 
 describe('sculpturePlacements', () => {
   const placements = sculpturePlacements(MUSEE)
-  const bavette = placements.find((p) => p.cartel.title === 'Bavette endormi')
+  const bavette = placements.find((p) => p.id === 'bavette')
 
-  it('pose Bavette endormi dans le hall, au rez-de-chaussée', () => {
+  it('pose Bavette dans le hall, au rez-de-chaussée', () => {
     expect(bavette).toBeDefined()
     const p = bavette!
     const hall = MUSEE.levels[0].rooms.find((r) => r.id === 'hall')!

@@ -2,7 +2,7 @@
 Ramène une pièce en volume aux cotes et au budget du musée.
 
     blender --background --python tools/blender/build-sculptures.py -- \
-        bavette "/chemin/vers/Bavette Catnap Texture.glb"
+        bavette "/chemin/vers/Bavette Meshy image-to-3d.glb"
 
 Produit `public/assets/sculptures/<id>.glb`.
 
@@ -60,7 +60,7 @@ PIECES = {
     "bavette": {
         "triangles": 18_000,
         "textures": 1024,
-        "hauteur": 0.90,
+        "hauteur": 0.65,
         "front_yaw": 0.0,
     },
 }
