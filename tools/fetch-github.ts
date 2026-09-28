@@ -11,7 +11,7 @@
  * sur le quota anonyme (60 req/h), ce qui suffit à peine à un essai.
  */
 import { execFileSync } from 'node:child_process'
-import { mkdir, writeFile, readFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -271,7 +271,11 @@ function toArtwork(r: GqlRepo): Artwork {
 
 // ── Point d'entrée ───────────────────────────────────────────────────────
 
-export async function fetchCatalogue(owners: string[], token: string | null): Promise<Catalogue> {
+/**
+ * `readmes`, si fourni, reçoit le README brut de chaque dépôt : le catalogue n'en
+ * garde qu'un extrait, les vitrines de la salle d'honneur ont besoin du texte.
+ */
+export async function fetchCatalogue(owners: string[], token: string | null, readmes?: Map<string, string>): Promise<Catalogue> {
   const artworks: Artwork[] = []
   const seen = new Set<string>()
 
@@ -289,6 +293,8 @@ export async function fetchCatalogue(owners: string[], token: string | null): Pr
       const { nodes, pageInfo } = owner.repositories
       for (const r of nodes) {
         const a = toArtwork(r)
+        const md = r.readme?.text ?? r.readmeLower?.text
+        if (readmes && md) readmes.set(a.key, md)
         // Un dépôt peut apparaître deux fois si l'on liste à la fois un
         // utilisateur et une organisation dont il est membre.
         if (seen.has(a.key)) continue
@@ -328,11 +334,26 @@ async function main() {
   const token = resolveToken()
   console.log(`Récupération de ${config.owners.join(', ')}${token ? '' : ' (SANS JETON — quota 60 req/h)'}`)
 
-  const catalogue = await fetchCatalogue(config.owners, token)
+  const readmes = new Map<string, string>()
+  const catalogue = await fetchCatalogue(config.owners, token, readmes)
 
   const out = resolve(ROOT, 'public/data/catalogue.json')
   await mkdir(dirname(out), { recursive: true })
   await writeFile(out, JSON.stringify(catalogue, null, 2) + '\n')
+
+  // Les README complets des meilleurs projets des propriétaires, pour les vitrines
+  // de la salle d'honneur (src/plan/vitrines.ts, même règle : les plus étoilés
+  // des propriétaires, clé en départage). Dix plutôt que trois : la marge d'un
+  // accrochage qui écarterait un dépôt.
+  const dossier = resolve(ROOT, 'public/data/readmes')
+  await rm(dossier, { recursive: true, force: true })
+  await mkdir(dossier, { recursive: true })
+  const meilleurs = catalogue.artworks
+    .filter((a) => catalogue.owners.includes(a.owner) && !a.isFork && readmes.has(a.key))
+    .sort((a, b) => b.stars - a.stars || a.key.localeCompare(b.key))
+    .slice(0, 10)
+  for (const a of meilleurs) await writeFile(resolve(dossier, `${a.key.replace('/', '__')}.md`), readmes.get(a.key)!)
+  console.log(`${meilleurs.length} README complets écrits dans public/data/readmes/`)
 
   const kept = catalogue.artworks
   console.log(

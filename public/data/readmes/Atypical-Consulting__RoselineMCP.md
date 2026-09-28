@@ -1,0 +1,1077 @@
+![RoselineMCP banner](.github/banner.png)
+
+# RoselineMCP
+
+<!-- mcp-name: io.github.Atypical-Consulting/roseline-mcp -->
+
+> **Roslyn code intelligence for AI coding agents, over MCP.** Give Claude, Cursor, and Copilot a semantic view of your C# solution — symbols, references, call graphs, surgical edits — so they navigate by *structure* instead of re-reading source. **[Measured 85% fewer tokens (median) →](https://atypical-consulting.github.io/RoselineMCP/benchmark)**
+
+<!-- Badges: Row 1 — Identity -->
+[![Atypical-Consulting - RoselineMCP](https://img.shields.io/static/v1?label=Atypical-Consulting&message=RoselineMCP&color=blue&logo=github)](https://github.com/Atypical-Consulting/RoselineMCP)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![.NET 10](https://img.shields.io/badge/.NET-10.0-purple?logo=dotnet)](https://dotnet.microsoft.com/)
+[![stars - RoselineMCP](https://img.shields.io/github/stars/Atypical-Consulting/RoselineMCP?style=social)](https://github.com/Atypical-Consulting/RoselineMCP)
+[![forks - RoselineMCP](https://img.shields.io/github/forks/Atypical-Consulting/RoselineMCP?style=social)](https://github.com/Atypical-Consulting/RoselineMCP)
+
+<!-- Badges: Row 2 — Activity -->
+[![GitHub tag](https://img.shields.io/github/tag/Atypical-Consulting/RoselineMCP?include_prereleases=&sort=semver&color=blue)](https://github.com/Atypical-Consulting/RoselineMCP/releases/)
+[![issues - RoselineMCP](https://img.shields.io/github/issues/Atypical-Consulting/RoselineMCP)](https://github.com/Atypical-Consulting/RoselineMCP/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/Atypical-Consulting/RoselineMCP)](https://github.com/Atypical-Consulting/RoselineMCP/pulls)
+[![GitHub last commit](https://img.shields.io/github/last-commit/Atypical-Consulting/RoselineMCP)](https://github.com/Atypical-Consulting/RoselineMCP/commits/main)
+
+<!-- Badges: Row 3 — Quality -->
+[![CI](https://github.com/Atypical-Consulting/RoselineMCP/actions/workflows/ci.yml/badge.svg)](https://github.com/Atypical-Consulting/RoselineMCP/actions/workflows/ci.yml)
+
+<!-- Badges: Row 4 — Distribution -->
+[![NuGet](https://img.shields.io/nuget/v/RoselineMCP.svg)](https://www.nuget.org/packages/RoselineMCP/)
+[![Docker](https://img.shields.io/docker/v/phmatray/roseline-mcp?label=docker)](https://hub.docker.com/r/phmatray/roseline-mcp)
+
+<!-- Badges: Row 5 — Docs & result -->
+[![Docs & Benchmark](https://img.shields.io/badge/docs-site-e01e5a)](https://atypical-consulting.github.io/RoselineMCP/)
+[![Tokens saved](https://img.shields.io/badge/tokens-85%25_fewer_(median)-1baf7a)](https://atypical-consulting.github.io/RoselineMCP/benchmark)
+
+**📖 [Documentation, tool reference & the honest benchmark →](https://atypical-consulting.github.io/RoselineMCP/)**
+
+---
+
+## Table of Contents
+
+- [Why RoselineMCP](#why-roselinemcp)
+- [Quick Start](#quick-start)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [MCP Client Compatibility](#mcp-client-compatibility)
+- [Available Tools](#available-tools)
+- [Tool Annotations](#tool-annotations)
+- [Tool Compatibility Policy](#tool-compatibility-policy)
+- [Architecture](#architecture)
+- [Project Structure](#project-structure)
+- [Compile guard](#compile-guard)
+- [Security](#security)
+- [Documentation](#documentation)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
+- [Acknowledgments](#acknowledgments)
+
+## Why RoselineMCP
+
+Your coding agent shouldn't read a 700-line file to change one method. Source code dominates an
+agent's token budget, so the cheapest win is to stop feeding it whole files.
+
+RoselineMCP wraps the [Roslyn](https://github.com/dotnet/roslyn) compiler platform as an MCP server.
+Instead of dumping source into the model, it answers *structural* questions precisely — where is
+this symbol used, what implements this interface, who calls this method, what's the shape of this
+file — and it edits **surgically**: a member-level diff, not a whole-file rewrite.
+
+On RoselineMCP's own source, the read-only navigation tools returned a **median 85% fewer tokens
+per task** (pooled, size-weighted: 93%) than reading the corresponding files —
+[measured honestly, weak cases included](https://atypical-consulting.github.io/RoselineMCP/benchmark).
+
+> `search_symbols` on `Program.cs`: **2,093 tokens → 120** (−94%). The agent gets the shape of the
+> file; you skip the wall.
+
+## Quick Start
+
+Any MCP client that speaks `dnx` (the .NET equivalent of `npx`) runs it on demand — no install step.
+Requires the .NET 10 SDK.
+
+```jsonc
+// claude_desktop_config.json  ·  .vscode/mcp.json  ·  ~/.cursor/mcp.json
+{
+  "mcpServers": {
+    "roseline": { "command": "dnx", "args": ["RoselineMCP", "--yes"] }
+  }
+}
+```
+
+Then ask your agent to *"find every caller of `OrderService.Checkout`"* or *"rename `Foo` to `Bar`
+across the solution."* Prefer a pinned NuGet install or Docker? See
+[Getting Started](#getting-started).
+
+## Features
+
+- [x] **Token-efficient code navigation** -- symbols, references, call graphs, type hierarchies, and file outlines via Roslyn instead of whole files. A measured **85% median** token reduction per task (93% pooled, size-weighted) -- [see the benchmark](https://atypical-consulting.github.io/RoselineMCP/benchmark).
+- [x] **Surgical code edits** -- replace/add/delete a member or rename a symbol solution-wide, emitting a unified diff instead of a whole-file rewrite. Preview by default.
+- [x] **Comprehensive analysis & auto-fix** -- diagnostics across a solution (Roslyn + Roslynator) with automated fixes and reviewable patches.
+- [x] **Read-only by default** -- the seven navigation tools and the diagnostics/patch tools never touch disk; the three write tools require an explicit `previewOnly: false`.
+- [x] **Compile guard (opt-in)** -- a `PostToolUse` hook that puts the compiler's verdict behind **every** file write, not just RoselineMCP's own -- see [Compile guard](#compile-guard) below.
+- [x] **Works with your client** -- Claude Desktop, VS Code (Copilot / MCP), Cursor. Install via `dnx`, NuGet global tool, or Docker.
+- [x] **Honest, reproducible benchmark** -- run it against your own solution: `dotnet run --project RoselineMCP.TokenBenchmark -c Release`.
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Runtime | .NET 10.0 |
+| Compiler Platform | Roslyn (Microsoft.CodeAnalysis) 5.6.0 |
+| Analyzers | Roslynator 4.15.0 |
+| MCP SDK | ModelContextProtocol 2.2.0 |
+| Diff Engine | DiffPlex 1.9.0 |
+| Build System | MSBuild 18.8.2 |
+| Hosting | Microsoft.Extensions.Hosting 10.0.10 |
+
+> Versions above are kept in sync with [`RoselineMCP/RoselineMCP.csproj`](RoselineMCP/RoselineMCP.csproj) — that file is the source of truth if this table ever drifts.
+
+## Getting Started
+
+### Prerequisites
+
+- **NuGet global tool**: .NET 10.0 SDK or later
+- **Docker**: Docker Desktop or Docker Engine
+- **Build from source**: .NET 10.0 SDK + MSBuild (included with Visual Studio or .NET SDK)
+- **MCP client**: Claude Desktop or any MCP-compatible client
+
+### Installation
+
+> **Claude Desktop, one click:** download **`RoselineMCP.mcpb`** from the
+> [latest release](https://github.com/Atypical-Consulting/RoselineMCP/releases/latest) and open it —
+> Claude Desktop shows an install dialog, no config editing. (It launches via `dnx` under the hood,
+> so the .NET 10 SDK is still required.) Prefer to edit config yourself, or using another client?
+> Use one of the options below.
+
+**Option 1 -- `dnx` (no install step)** *(recommended)*
+
+RoselineMCP ships an [MCP server registry manifest](.mcp/server.json), so any MCP client that
+understands the `dnx` launcher (the .NET equivalent of `npx` — resolves and runs a NuGet-packaged
+tool on demand, without a separate `dotnet tool install` step) can start it directly. Requires the
+.NET 10.0 SDK.
+
+```json
+{
+  "mcpServers": {
+    "roseline": {
+      "command": "dnx",
+      "args": ["RoselineMCP", "--yes"]
+    }
+  }
+}
+```
+
+Add this to your Claude Desktop or VS Code MCP configuration (see
+[MCP Client Compatibility](#mcp-client-compatibility) below for exact file locations per client).
+`dnx` downloads and caches the tool on first use, so there's nothing to pre-install globally.
+
+---
+
+**Option 2 -- NuGet Global Tool** *(offline / pinned-version installs)*
+
+Requires .NET 10.0 SDK or later.
+
+```bash
+dotnet tool install -g RoselineMCP
+```
+
+After installation, the `roseline-mcp` command is available globally.
+
+#### Claude Desktop configuration (NuGet global tool)
+
+Add to your Claude Desktop configuration file (`claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "roseline": {
+      "command": "roseline-mcp"
+    }
+  }
+}
+```
+
+> **Config file location:**
+> - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+> - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+
+---
+
+**Option 3 -- Docker**
+
+No SDK required. Works on any platform with Docker installed.
+
+```bash
+docker run -i --rm phmatray/roseline-mcp:latest
+```
+
+#### Claude Desktop configuration (Docker)
+
+```json
+{
+  "mcpServers": {
+    "roseline": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "phmatray/roseline-mcp:latest"
+      ]
+    }
+  }
+}
+```
+
+> **Note:** The `-i` flag is required for stdio transport. The `--rm` flag removes the container after the session ends.
+
+---
+
+**Option 4 -- Build from Source**
+
+```bash
+git clone https://github.com/Atypical-Consulting/RoselineMCP.git
+cd RoselineMCP
+dotnet build
+dotnet test
+```
+
+#### Claude Desktop configuration (build from source)
+
+```json
+{
+  "mcpServers": {
+    "roseline": {
+      "command": "dotnet",
+      "args": ["run", "--project", "/path/to/RoselineMCP/RoselineMCP.csproj"]
+    }
+  }
+}
+```
+
+## MCP Client Compatibility
+
+RoselineMCP speaks plain stdio MCP, so it should work with any MCP-compatible client. The
+snippets below are **documented, not independently verified in every case** — we've confirmed the
+protocol-level behavior (stdio transport, tool discovery, JSON responses) works correctly, but we
+have not personally exercised each client's own configuration UI/file end to end. If one of these
+doesn't work as written for your client version, please open an issue.
+
+<details>
+<summary><strong>Claude Desktop</strong></summary>
+
+Edit `claude_desktop_config.json` (see file locations under [Installation](#getting-started)
+above) and add a `roseline` entry under `mcpServers`, using any of the four install options shown
+above (`dnx`, global tool, Docker, or build-from-source).
+
+</details>
+
+<details>
+<summary><strong>VS Code (GitHub Copilot / MCP extension)</strong></summary>
+
+Add an entry to your workspace or user `mcp.json` (Command Palette → "MCP: Open User
+Configuration", or `.vscode/mcp.json` in the workspace):
+
+```json
+{
+  "servers": {
+    "roseline": {
+      "command": "dnx",
+      "args": ["RoselineMCP", "--yes"]
+    }
+  }
+}
+```
+
+Substitute `"command": "roseline-mcp"` (no `args`) if you installed via the NuGet global tool
+instead.
+
+</details>
+
+<details>
+<summary><strong>Cursor</strong></summary>
+
+Add a `roseline` entry to `~/.cursor/mcp.json` (global) or `.cursor/mcp.json` (project-local),
+using the same `command`/`args` shape as the VS Code snippet above.
+
+</details>
+
+## Available Tools
+
+Every tool's description — the text an MCP client shows the model at tool-selection time — states
+its own `Limitations:` and shows one `Example:` call, within a test-enforced word ceiling; the
+twelve tools with an optional `project` share one wording for the worktree caveat below, and
+`resolvedPath` is how you confirm which checkout actually answered. See
+[docs/API.md § Tool description contract](docs/API.md#tool-description-contract).
+
+### 1. AnalyzeSolution
+
+Analyzes an entire C# solution for diagnostics. Read-only — never modifies files on disk.
+`pathOrGit` also accepts an `http(s)://` Git URL, which is shallow-cloned to a temp directory,
+analyzed, and deleted afterward.
+
+```typescript
+analyzeSolution({
+  pathOrGit: "/path/to/solution.sln",
+  include: "Core",              // Optional: only project names containing this substring
+  exclude: "Test",              // Optional: skip project names containing this substring
+  severity: "warning",          // Optional: minimum severity (Error|Warning|Info|Hidden)
+  maxDiagnostics: 100           // Optional: Maximum diagnostics to return (default: 100)
+})
+```
+
+**Returns:** solution file name, project count, a `diagnosticSummary` (counts by severity), a
+`topDiagnostics` array with project/file/line/column/id/severity/message per diagnostic, and
+`analyzerLoad` — present only when an analyzer reference contributed nothing (merged across the
+analyzed projects), naming it and why.
+
+### 2. ListDiagnostics
+
+Gets detailed diagnostics for a specific project. Read-only — never modifies files on disk.
+`project` is **optional** and accepts the same references as the navigation tools (name,
+directory, `.csproj`, or `.sln` path); when omitted, the solution/project is auto-discovered from
+the working directory.
+
+```typescript
+listDiagnostics({
+  project: "MyProject.csproj",     // Optional: name, directory, .csproj, or .sln; auto-discovered if omitted
+  ids: ["CS0168", "CS0219"],       // Optional: Filter by diagnostic IDs
+  files: ["Controller.cs"],        // Optional: substring match against each diagnostic's file path (case-insensitive; NOT a glob pattern)
+  max: 50                          // Optional: Maximum results
+})
+```
+
+**Returns:** project name, `resolvedPath` (the absolute `.sln`/`.csproj` actually loaded),
+`totalDiagnostics` count, the filtered `diagnostics` list, `stats` (counts grouped by ID and by
+severity), `suggestedFixableIds` — diagnostic IDs a code fix provider is actually registered for,
+whether it ships with Roslyn, in the bundled Roslynator catalog, or **inside one of the project's
+own analyzer references** — and `analyzerLoad`, which names every analyzer reference that
+contributed nothing (and why), present only when there is something to say.
+
+### 3. ApplyFixes
+
+Applies automated code fixes for specified diagnostics. **Defaults to preview mode**:
+`previewOnly` defaults to `true`, so calling this tool without setting it never writes to disk —
+you must pass `previewOnly: false` explicitly to apply changes. `project` is **optional** and
+accepts the same references as the navigation tools (name, directory, `.csproj`, or `.sln` path);
+when omitted, the solution/project is auto-discovered from the working directory. For a **write**
+(`previewOnly: false`) make it an **absolute** path — see the worktree note below.
+
+```typescript
+applyFixes({
+  ids: ["CS0168", "RCS1001"],   // Diagnostic IDs to fix
+  project: "/repo/src/MyProject/MyProject.csproj",  // Optional; absolute for a write (see the worktree note)
+  previewOnly: false             // Optional (default: true). Set false to write changes to disk.
+})
+```
+
+**Returns:** project name, `resolvedPath` (the absolute `.sln`/`.csproj` actually loaded),
+`fixedCount`, `fixersApplied` (diagnostic IDs actually fixed), `changedFiles`
+(relative to `resolvedPath`'s directory, forward slashes — the same path base as the navigation
+tools), a unified
+diff `patch`, `notes` (the scope — which project was fixed and which of the solution's projects were
+not analyzed, plus any linked file whose write reaches a sibling — and skipped/failed IDs and status
+messages), `previewOnly` echoing back what the caller asked for, `applied` (whether anything
+actually reached disk), `verification` — the compiler's verdict on the fixed code — and
+`analyzerLoad` (present only when an analyzer reference contributed nothing, so "no diagnostics
+found for X" can be told apart from "the analyzer that reports X never loaded"). Fixers are looked
+up in the Roslyn built-ins, then the bundled Roslynator catalog, then the project's own analyzer
+references; the bundled provider wins for an ID both carry.
+
+A `.sln` target fixes **one** project — its primary project — and that scope is enforced on the
+write path, not only announced by the confirmation prompt: only the anchor project's documents are
+verified and written, and a caller who never sees a prompt (preview, a non-eliciting client, an
+unattended host) still reads which projects were skipped in `notes`. Pass a `.csproj` to fix a
+specific project — then nothing is reported as skipped, since that is what was asked for.
+
+### 14. CheckCompilation
+
+Answers **"does this compile right now, and what broke"** against on-disk state — the replacement
+for a `dotnet build` round trip in an agent's edit loop. Read-only, and compiler diagnostics only:
+analyzers cost several times a bare compile, which is the whole reason this tool is fast enough to
+run after every edit.
+
+It reports on whatever is on disk, whoever wrote it, so it works just as well for edits made by
+other tools. The speed comes from the warm `MSBuildWorkspace` the server already holds: the first
+call of a session pays a cold load, every call after it reuses an incremental Roslyn compilation.
+
+```typescript
+checkCompilation({
+  project: "MyApp.sln",  // Optional: name, directory, .csproj, or .sln; auto-discovered if omitted
+  max: 20                 // Optional (default: 20). The rest are counted in `omitted`.
+})
+```
+
+**Returns:** `resolvedPath`, `compiles`, `errors` (omitted when it compiles), `omitted`, `scope`
+(the projects compiled), `scopeComplete` and `notes`.
+
+> **`check_compilation` vs `list_diagnostics`:** `check_compilation` answers *"is it still
+> building?"* — compiler errors, fast, for the edit loop. `list_diagnostics` answers *"what should I
+> clean up?"* — analyzer diagnostics, statistics, and which IDs are auto-fixable. Reach for the
+> first after an edit and the second when exploring.
+
+### 4. CreatePatch
+
+Generates a unified diff between two text versions. Read-only — operates purely on the provided
+strings, never touches the filesystem.
+
+```typescript
+createPatch({
+  before: "original code",
+  after: "modified code",
+  fileName: "Example.cs",        // Optional: For display in diff
+  ignoreWhitespace: false,       // Optional: ignore whitespace-only differences
+  ignoreCase: false              // Optional: ignore case differences
+})
+```
+
+**Returns:** the unified diff `patch`, `hasChanges`, `linesAdded`, `linesRemoved`, and the
+`fileName`/`summary` used in the diff header.
+
+### Code Navigation Tools (read-only)
+
+These tools return **precise structure instead of whole files**, so an AI agent can orient itself
+in a codebase while spending far fewer tokens than reading source directly. All are read-only and
+take an **optional** `project` (name, directory, `.csproj` path, or `.sln` path) — when omitted,
+RoselineMCP auto-discovers the solution/project from its working directory. When the project belongs
+to a solution, the whole solution is loaded and symbol search/resolution spans every project in it
+(including sibling projects the requested project doesn't reference), so references/renames span
+projects. Full request/response shapes are in [docs/API.md](docs/API.md).
+
+> **Working in a git worktree?** Auto-discovery is anchored to **the server's** working directory —
+> the one the MCP client launched RoselineMCP in, fixed for the life of the process — not yours. What
+> matters is only that the two differ, whether you walked into another checkout or were started in
+> one: a worktree (e.g. `.claude/worktrees/<name>`) sits below the discovery walk's reach, so an
+> omitted `project` resolves the **main checkout** instead. Every tool that takes an optional
+> `project` — the seven navigation tools, both edit tools, `listDiagnostics` and `applyFixes` —
+> reports `resolvedPath`, the absolute `.sln`/`.csproj` that actually answered — the `.sln` when the
+> solution was loaded and contains the project, otherwise the `.csproj` that was opened directly
+> (e.g. a project not listed in its nearest ancestor `.sln`). Check it, and pass
+> an absolute path as `project` to target a specific checkout. (`analyzeSolution` is the exception:
+> its `pathOrGit` is required, so it auto-discovers nothing.)
+>
+> **How you meet this depends on whether you are reading or writing.** A **read** for something the
+> other checkout does not have answers `NotFoundError: Symbol not found: 'X'`; a read for something
+> it does answers successfully, with a `resolvedPath` you did not expect. Either way the failure
+> envelope's `error.resolvedPath` names the checkout that was searched (omitted entirely when the
+> call failed before resolving anything), so "not there" stays distinguishable from "wrong tree".
+>
+> A **write** is not left to that: two checkouts of one repository mostly hold the *same* code, so a
+> wrong-checkout write resolves, applies and returns an ordinary success in the tree you did not
+> mean — disclosure that arrives only in the response to the call that already changed the file. So
+> `applyFixes`, `editMember` and `renameSymbol` called with `previewOnly: false` and a `project`
+> that is **not an absolute path** — omitted, blank, `"."`, a bare project name, a relative
+> `"App.sln"` — are refused outright (`ValidationError`, nothing written, no prompt) when the
+> resolved checkout belongs to a repository with linked worktrees — regardless of
+> `RoselineMCP:ConfirmDestructiveWrites`. Only an **absolute** `project` steps past the refusal,
+> because only an absolute path names a checkout: every other spelling resolves against the server's
+> working directory, the very thing you don't know. See
+> [docs/API.md](docs/API.md#which-checkout-answered).
+>
+> **Relative file paths hang off `resolvedPath`.** The navigation tools' `file`/`definitionFile`,
+> `applyFixes`/`editMember`/`renameSymbol`'s `changedFiles` **and patch headers**, and
+> `verification.errors[]`/`checkCompilation`'s `errors[]` `file`, are relative
+> to the directory containing `resolvedPath` — so `dirname(resolvedPath) + <returned path>` is the
+> real file, and a returned `patch` applies (`git apply -p1`) from that directory. That is the
+> solution root in the usual case, and the project's own directory whenever a `.csproj` answered
+> directly — including a project not listed in its nearest ancestor `.sln`. One exception:
+> `listDiagnostics`/`analyzeSolution` report `file` **absolute**, so there is nothing to join. See
+> [docs/API.md](docs/API.md#code-navigation-tools).
+
+> **Tool names on the wire are `snake_case`.** The section headings below use friendly
+> PascalCase/`camelCase` for readability, but the actual MCP tool names returned by `tools/list`
+> (and expected by `tools/call`) are: `search_symbols`, `get_symbol_info`, `find_references`,
+> `find_implementations`, `get_call_graph`, `get_type_hierarchy`, `get_symbol_at_position`,
+> `edit_member`, `rename_symbol`
+> (matching the existing `analyze_solution` / `list_diagnostics` / `apply_fixes` /
+> `check_compilation` / `create_patch`).
+
+#### 5. SearchSymbols
+
+Find symbols by wildcard/substring name pattern, or outline a single file.
+
+```typescript
+searchSymbols({
+  project: "MyApp.Core",
+  query: "*Service",             // Substring, or wildcard with * and ? — omit to outline a file
+  file: "UserService.cs",        // Optional: restrict to one file, or outline it when query omitted
+  kinds: ["class", "method"],    // Optional: filter by kind (also accepts "type" / "member")
+  max: 50                        // Optional (default: 50)
+})
+```
+
+**Returns:** `symbols` (name, fullName, kind, signature, file, line — `file` is relative to `resolvedPath`'s directory; the single-file outline instead returns name, kind, signature, line, containingType), `totalFound`, `truncated` (omitted when not capped).
+
+#### 6. GetSymbolInfo
+
+The compact "go to definition": a symbol's declaration metadata and (optionally) its source.
+
+```typescript
+getSymbolInfo({
+  project: "MyApp.Core",
+  symbol: "Acme.Users.UserService.GetUser",  // Simple or fully-qualified name
+  includeSource: true                          // Optional (default: true)
+})
+```
+
+**Returns:** name, fullName, kind, signature, and (each omitted when empty/absent) modifiers, baseTypes, interfaces, documentation, definitionFile/Line, and source. Accessibility is already part of `signature`; `definitionFile` is relative to `resolvedPath`'s directory.
+
+#### 7. FindReferences
+
+Every use site of a symbol across the solution, as location + one-line snippet.
+
+```typescript
+findReferences({ project: "MyApp.Core", symbol: "GetUser", includeDefinition: false, max: 100 })
+```
+
+**Returns:** `references` (file — relative to `resolvedPath`'s directory, line, snippet), `totalReferences`, `truncated` (omitted when not capped).
+
+#### 8. FindImplementations
+
+Implementations of an interface/member, overrides of a virtual/abstract member, or derived types of a class.
+
+```typescript
+findImplementations({ project: "MyApp.Core", symbol: "IRepository", max: 100 })
+```
+
+**Returns:** `implementations` (symbol summaries), `totalFound`, `truncated`.
+
+#### 9. GetCallGraph
+
+A depth-bounded caller and/or callee graph for a method, with cycle detection.
+
+```typescript
+getCallGraph({
+  project: "MyApp.Core",
+  method: "Handle",
+  direction: "callers",   // "callers" (default) | "callees" | "both"
+  depth: 1,               // 1-3 (default: 1)
+  max: 50                 // Optional: nodes expanded per direction
+})
+```
+
+**Returns:** `callers`/`callees` trees of nodes (fullName with simple parameter-type names, file — relative to `resolvedPath`'s directory, line, truncated, children). Call GetSymbolInfo for a node's full signature.
+
+#### 10. GetTypeHierarchy
+
+A type's base-class chain, implemented interfaces, and/or derived types.
+
+```typescript
+getTypeHierarchy({
+  project: "MyApp.Core",
+  type: "SqlRepository",
+  direction: "both",   // "base" | "derived" | "both" (default)
+  max: 100             // Optional: maximum derived types returned (default: 100)
+})
+```
+
+**Returns:** `baseTypes`, `interfaces`, `derivedTypes` (as symbol summaries).
+
+#### 13. GetSymbolAtPosition
+
+The symbol living at a `file:line(:column)` position — turn a diagnostic, stack trace, or grep hit
+into a symbol name without reading the file.
+
+```typescript
+getSymbolAtPosition({
+  project: "MyApp.Core",
+  file: "UserService.cs",  // File name or path suffix (same matching as SearchSymbols)
+  line: 42,                // 1-based
+  column: 17               // Optional (1-based) — omit to resolve the most relevant symbol on the line
+})
+```
+
+**Returns:** name, fullName, kind, signature, `isDeclaration` (whether the position sits on the symbol's own declaration), and (each omitted when empty/absent) containingType, documentation, definitionFile/Line (relative to `resolvedPath`'s directory). Line-only queries prefer declarations on the line over referenced symbols.
+
+### Code Editing Tools (preview by default)
+
+Surgical edits that emit a member-level change rather than a whole-file rewrite. Like `ApplyFixes`,
+both **default to preview mode** (`previewOnly: true`) — nothing is written to disk unless you pass
+`previewOnly: false` explicitly.
+
+#### 11. EditMember
+
+Replace, add, or delete a single type member; returns a unified diff.
+
+```typescript
+editMember({
+  project: "/repo/src/MyApp.Core/MyApp.Core.csproj",
+  symbol: "Acme.UserService.GetUser",  // The member (replace/delete), or the container type (add)
+  operation: "replace",                 // "replace" | "add" | "delete"
+  newSource: "public User GetUser(int id) => _repo.Find(id);",  // Required for replace/add
+  previewOnly: false                    // Optional (default: true). Set false to write to disk.
+})
+```
+
+**Returns:** operation, target, `changedFiles`, `patch`, `previewOnly`, `applied`, `notes`.
+
+#### 12. RenameSymbol
+
+Rename a symbol and update every reference across the solution (Roslyn rename); returns a unified diff.
+
+```typescript
+renameSymbol({ project: "/repo/src/MyApp.Core/MyApp.Core.csproj", symbol: "GetUser", newName: "GetUserById", previewOnly: false })
+```
+
+**Returns:** symbol, newName, `changedFiles`, `patch`, `previewOnly`, `applied`, `verification`, `notes`.
+
+> **Every write is compile-verified.** Before `edit_member`, `rename_symbol` or `apply_fixes`
+> touches disk, the candidate change is compiled in memory. If it *introduces* compiler errors —
+> including in a downstream project you never named — the write is **refused**: the call still
+> succeeds, `applied` comes back `false`, nothing is written, and you get the diff *and* the
+> errors. Pass `allowIntroducedErrors: true` to write anyway. A repository that was already
+> broken stays editable: the gate is what the change *introduces*, never whether the tree
+> compiles. See [Compile Verification](docs/API.md#compile-verification) for the scope rule and
+> the guarantee boundary.
+
+## Tool Annotations
+
+RoselineMCP's SDK (`ModelContextProtocol` 2.2.0) supports the standard MCP tool
+[annotation hints](https://modelcontextprotocol.io/) (`readOnlyHint`, `destructiveHint`,
+`idempotentHint`), and every tool declares them via `[McpServerTool(ReadOnly = ..., Destructive =
+..., Idempotent = ...)]`:
+
+| Tool | readOnlyHint | destructiveHint | idempotentHint | Notes |
+|------|:---:|:---:|:---:|-------|
+| `AnalyzeSolution` | ✅ true | ❌ false | ✅ true | Never writes to disk. |
+| `ListDiagnostics` | ✅ true | ❌ false | ✅ true | Never writes to disk. |
+| `ApplyFixes` | ❌ false | ⚠️ true | ❌ false | `destructiveHint` is a static, worst-case annotation: it's `true` because the tool *can* write files when `previewOnly: false` is passed, even though the default call (`previewOnly` unset, i.e. `true`) writes nothing. The SDK's annotation model has no way to express "destructive only for a specific parameter value" — see the doc comment on `ApplyFixesTool.ApplyFixes` in source. |
+| `CheckCompilation` | ✅ true | ❌ false | ✅ true | Never writes to disk. Compiles the loaded solution and reports the compiler's verdict. |
+| `CreatePatch` | ✅ true | ❌ false | ✅ true | Operates purely on the two provided strings; never touches the filesystem. |
+| `SearchSymbols` | ✅ true | ❌ false | ✅ true | Never writes to disk. |
+| `GetSymbolInfo` | ✅ true | ❌ false | ✅ true | Never writes to disk. |
+| `FindReferences` | ✅ true | ❌ false | ✅ true | Never writes to disk. |
+| `FindImplementations` | ✅ true | ❌ false | ✅ true | Never writes to disk. |
+| `GetCallGraph` | ✅ true | ❌ false | ✅ true | Never writes to disk. |
+| `GetTypeHierarchy` | ✅ true | ❌ false | ✅ true | Never writes to disk. |
+| `GetSymbolAtPosition` | ✅ true | ❌ false | ✅ true | Never writes to disk. |
+| `EditMember` | ❌ false | ⚠️ true | ❌ false | Same worst-case `destructiveHint` rationale as `ApplyFixes`: writes a file only when `previewOnly: false` is passed; the default call writes nothing. |
+| `RenameSymbol` | ❌ false | ⚠️ true | ❌ false | Same worst-case `destructiveHint` rationale as `ApplyFixes`: writes files only when `previewOnly: false` is passed; the default call writes nothing. |
+
+These hints are static per-tool metadata for MCP clients that surface them (e.g. to warn a user
+before an agent invokes a destructive tool) — they describe the tool's worst-case behavior, not
+the outcome of any specific call. See [Tool Compatibility Policy](#tool-compatibility-policy)
+below for the stability guarantees around tool names and parameters that these annotations sit on
+top of.
+
+## Tool Compatibility Policy
+
+- **Tool names and required parameters are stable within a major version.** An MCP client
+  integration written against `AnalyzeSolution(pathOrGit, ...)` on `1.x` will keep working across
+  all `1.x` releases.
+- **Optional parameters may be added in minor versions** (e.g. `CreatePatch` gained
+  `ignoreWhitespace`/`ignoreCase` as optional, defaulted parameters without breaking existing
+  callers).
+- **Renaming or removing a parameter, changing a parameter's required/optional status, or
+  changing a tool's name is a breaking change.** Breaking changes are called out under a
+  dedicated "Breaking Changes" heading in [`CHANGELOG.md`](CHANGELOG.md) and only ship in a major
+  version bump.
+- Response *shapes* (JSON field names/types) are documented in [`docs/API.md`](docs/API.md) and
+  follow the same policy: additive fields are non-breaking, renamed/removed fields are breaking.
+
+## Supported Analyzers
+
+The diagnostics tools (`analyze_solution`, `list_diagnostics`, `apply_fixes`) report compiler
+diagnostics plus analyzer diagnostics, executed via Roslyn's `CompilationWithAnalyzers`
+(`check_compilation` is deliberately **not** in this list — it is compiler-only, which is what makes
+it fast enough for an edit loop):
+
+- **Roslyn Analyzers** -- Built-in C# compiler diagnostics
+- **Roslynator** -- 500+ analyzers and fixes for C#, **bundled with RoselineMCP** (shipped as an
+  `analyzers/` folder next to `RoselineMCP.dll`) and executed by default, so RCS* diagnostics
+  surface and are fixable out of the box
+- **Custom Analyzers** -- Any Roslyn-based analyzer referenced by your analyzed solution is
+  loaded from the project's analyzer references and run alongside the bundled ones (there is no
+  built-in StyleCop.Analyzers reference — add it to your analyzed solution if you want SA*
+  diagnostics). **Their code fixers are loaded too**: an analyzer-reported rule is auto-fixable
+  when a matching fixer ships with Roslyn, in the bundled catalog, or inside one of the project's
+  own analyzer references (the bundled one wins for an ID both carry).
+
+**What could not be loaded is named.** Roslyn reports an analyzer reference it cannot load — one
+built against a newer `Microsoft.CodeAnalysis` than RoselineMCP's, a corrupt file — by
+contributing *zero* analyzers, not by failing. The three diagnostics responses carry an
+`analyzerLoad` block (`analyzersRan`, `referencesConsulted`, `referencesContributing`, `analyzersLoaded`, and a
+`notes[]` entry per reference that contributed nothing: its name, the reason — `load-failure`
+with Roslyn's `errorCode` and message, `no C# analyzers`, `unresolved` (the assembly is not on
+disk, so it was removed from the loaded solution before Roslyn choked on it), or `exception`). The block is omitted
+when every reference contributed, so a present one always says something; see
+[`docs/API.md`](docs/API.md#analyzerloadreport).
+
+Set `RoselineMCP:RunAnalyzers` to `false` for compiler-only diagnostics (faster on big
+solutions; see [Configuration](#configuration) and the analyzer-execution note in
+[`SECURITY.md`](SECURITY.md)). The block is then present with `analyzersRan: false`, so "off"
+stays distinguishable from "all fine".
+
+## Examples
+
+### Analyzing a Solution
+
+```bash
+# Using with an MCP client
+mcp call analyzeSolution '{
+  "pathOrGit": "/Users/dev/MyProject/MyProject.sln",
+  "severity": "warning",
+  "maxDiagnostics": 50
+}'
+```
+
+Response:
+```json
+{
+  "solution": "MyProject.sln",
+  "projects": 5,
+  "diagnosticSummary": {
+    "error": 2,
+    "warning": 15,
+    "info": 28
+  },
+  "topDiagnostics": [
+    {
+      "id": "CS0168",
+      "severity": "warning",
+      "message": "The variable 'ex' is declared but never used",
+      "file": "Program.cs",
+      "line": 42
+    }
+  ]
+}
+```
+
+### Applying Fixes
+
+```bash
+mcp call applyFixes '{
+  "project": "MyProject.Core.csproj",
+  "ids": ["CS0168", "RCS1001"],
+  "previewOnly": true
+}'
+```
+
+Response includes a unified diff patch showing all changes that would be applied.
+
+## Configuration
+
+RoselineMCP reads `appsettings.json` and `appsettings.{Environment}.json` from the directory the
+server binary is installed in (`AppContext.BaseDirectory`) — **not** from the process working
+directory. Launching the server from inside a target repository never picks up that repository's
+own `appsettings.json`, and the settings packaged with the `dotnet tool` install are always found.
+Configuration is read once at startup; there is no reload-on-change file watching.
+
+### Environment Variables
+
+Environment variables prefixed with `ROSELINE_` override the JSON files, using `__` as the section
+separator. Settings under the `RoselineMCP` section therefore take a double prefix:
+
+```bash
+# RoselineMCP:EnableDiagnosticLogging
+ROSELINE_RoselineMCP__EnableDiagnosticLogging=true
+
+# RoselineMCP:DefaultTimeout (ms)
+ROSELINE_RoselineMCP__DefaultTimeout=300000
+
+# RoselineMCP:RunAnalyzers (compiler-only diagnostics when false)
+ROSELINE_RoselineMCP__RunAnalyzers=false
+
+# RoselineMCP:ConfirmDestructiveWrites (no elicitation before writes; unattended hosts)
+ROSELINE_RoselineMCP__ConfirmDestructiveWrites=false
+
+# RoselineMCP:ConfirmDestructiveWritesTimeout (ms to wait for that confirmation; 0 = forever)
+ROSELINE_RoselineMCP__ConfirmDestructiveWritesTimeout=300000
+
+# Logging:LogLevel:RoselineMCP
+ROSELINE_Logging__LogLevel__RoselineMCP=Debug
+```
+
+- `DOTNET_ENVIRONMENT`: Set environment (Development, Production)
+
+### appsettings.json
+
+Configure logging and other settings:
+
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "RoselineMCP": "Debug"
+    }
+  },
+  "RoselineMCP": {
+    "DefaultTimeout": 120000,
+    "EnableDiagnosticLogging": false,
+    "WorkspaceCache": true,
+    "RunAnalyzers": true,
+    "ConfirmDestructiveWrites": true,
+    "ConfirmDestructiveWritesTimeout": 300000
+  }
+}
+```
+
+- `RoselineMCP:DefaultTimeout`: Wall-clock **analysis** budget (ms) applied to each tool call, in addition to the caller's own cancellation. `0` disables it. On the three write tools it does not cover the whole invocation: when a write confirmation is elicited, this clock starts only *after* the human answers, so think-time is charged to `ConfirmDestructiveWritesTimeout` instead. Size it for the analysis, not for the span a caller observes.
+- `RoselineMCP:EnableDiagnosticLogging`: Opt-in, local-only tracing of tool invocations — see [Debug Logging](#debug-logging). Disabled by default; enabled in `appsettings.Development.json`.
+- `RoselineMCP:WorkspaceCache`: Reuse the loaded MSBuild workspace across navigation/edit tool calls (enabled by default) — see [Performance](#performance). Set to `false` to load a fresh workspace on every call. **This is an isolation/debugging switch, not a memory-saving one** — measured, disabling it costs ~26% more resident memory and ~45× second-call latency; see [Memory Management](docs/ARCHITECTURE.md#memory-management).
+- `RoselineMCP:RunAnalyzers`: Run Roslyn analyzers (bundled Roslynator + the target project's own analyzer references) in the diagnostics tools (enabled by default) — see [Supported Analyzers](#supported-analyzers). Set to `false` for compiler-only diagnostics.
+- `RoselineMCP:ConfirmDestructiveWrites`: Ask the client to confirm (via MCP elicitation) before a write tool actually writes, when the caller passed `previewOnly: false` (enabled by default). Set to `false` for unattended hosts — CI, headless agents, or any client that cannot answer an elicitation — in which case the explicit `previewOnly: false` opt-in is the only guard before a write.
+- `RoselineMCP:ConfirmDestructiveWritesTimeout`: How long (ms) to wait for that confirmation before treating the silence as "no" and returning a preview (default `300000`, 5 minutes). It is deliberately **not** `DefaultTimeout` — that is an analysis budget, and a human reading a real diff may legitimately exceed it. A client that accepts the prompt and never answers used to block the tool call forever; set this to `0` or less to restore that unbounded wait.
+
+## Architecture
+
+RoselineMCP uses **stdio transport** — this is an intentional design decision. The server runs as a local process launched by the MCP client (Claude Desktop, AI agents), communicates over stdin/stdout, and exits when the client disconnects. This makes it perfectly suited for distribution as a NuGet global tool (`dotnet tool install -g RoselineMCP`) or Docker image — no port binding, no HTTP server, no infrastructure to manage.
+
+```
+┌─────────────────────┐
+│   MCP Client        │
+│  (Claude Desktop,   │
+│   AI Assistants)    │
+└────────┬────────────┘
+         │ MCP Protocol (stdio)
+         ▼
+┌─────────────────────┐
+│   RoselineMCP       │
+│   MCP Server        │
+│                     │
+│  ┌───────────────┐  │
+│  │  Tool Layer   │  │
+│  │  (Analyze,    │  │
+│  │   Fix, Patch) │  │
+│  └───────┬───────┘  │
+│          ▼          │
+│  ┌───────────────┐  │
+│  │ Service Layer │  │
+│  │ (Workspace,   │  │
+│  │  Diagnostics) │  │
+│  └───────┬───────┘  │
+│          ▼          │
+│  ┌───────────────┐  │
+│  │ Roslyn +      │  │
+│  │ Roslynator    │  │
+│  │ Analyzers     │  │
+│  └───────────────┘  │
+└─────────────────────┘
+         │
+         ▼
+┌─────────────────────┐
+│  C# Source Code     │
+│  (.sln / .csproj)   │
+└─────────────────────┘
+```
+
+## Project Structure
+
+```
+RoselineMCP/
+├── RoselineMCP/
+│   ├── Interfaces/       # Service interfaces
+│   ├── Services/         # Core business logic
+│   ├── Tools/            # MCP tool implementations
+│   ├── Models/           # Data transfer objects
+│   └── Program.cs        # Application entry point
+├── RoselineMCP.Tests/    # Unit tests
+├── .github/workflows/    # CI/CD pipelines
+├── Dockerfile            # Container build
+└── RoselineMCP.sln       # Solution file
+```
+
+## Performance
+
+- **Workspace Cache** -- The navigation, edit, and diagnostics/fix tools (`ListDiagnostics`,
+  `ApplyFixes`, and everything backed by `IProjectLoader`) reuse the loaded `MSBuildWorkspace`
+  across calls, cutting hundreds of milliseconds of reload off every call after the first. Cached
+  entries are fingerprinted (last-write-time + size of the `.sln`, every `.csproj`, and every
+  source file, plus their directories) and re-checked on each call, so any change on disk —
+  including RoselineMCP's own edits — triggers a fresh reload. A file/directory whose own last
+  write was still fresh when its stamp was captured also gets a content signature (a hash, or a
+  directory listing) recorded alongside it, so a same-length write landing in the same
+  filesystem-timestamp bucket is still caught by comparing that signature rather than trusted on a
+  bare stat match — cheaply, without forcing a reload on every call while the file stays fresh.
+  Disable with
+  `RoselineMCP:WorkspaceCache = false` — but note that this is an isolation/debugging switch, **not**
+  a way to reduce memory: a disposed workspace's memory is not returned to the OS, so disabling the
+  cache measures ~26% *worse* on resident memory as well as ~45× slower. The measured profile — and
+  why an idle-release was evaluated and rejected — is in
+  [Memory Management](docs/ARCHITECTURE.md#memory-management)
+- **Workspace Isolation (AnalyzeSolution)** -- `AnalyzeSolution` still creates a fresh
+  `MSBuildWorkspace` per operation (see [Architecture](#architecture))
+- **Sequential Project Analysis** -- Projects within a solution are analyzed one at a time, not
+  concurrently, to keep MSBuild workspace state consistent
+- **Result Capping** -- `maxDiagnostics`/`max` bound how many diagnostics are returned per call,
+  independent of how many were found
+
+## Compile guard
+
+The compile gate behind `EditMember`/`RenameSymbol`/`ApplyFixes` only fires on writes made **through
+those tools**. The compile guard puts the same verdict behind every file write in a C# solution —
+`Edit`, `Write`, `MultiEdit`, whatever your agent reached for — by running as a `PostToolUse` hook
+that asks the already-running server for a verdict over a local socket.
+
+**It reports; it cannot block.** `PostToolUse` fires *after* the tool has written, and the hook
+contract carries no blocking decision. What the guard does is surface the introduced compiler errors
+to the agent inside the same turn, so the next thing it does is repair them instead of building on
+top of them. Preventing the write is not on offer — see
+[the issue](https://github.com/Atypical-Consulting/RoselineMCP/issues/168) for why the alternative
+that *can* block was rejected.
+
+Turn it on (it is **off** by default), then install the hook:
+
+```bash
+# 1. the server opens the local guard endpoint
+export ROSELINE_RoselineMCP__Guard=true
+
+# 2. print the settings.json block and paste it into .claude/settings.json
+roseline-mcp guard --print-hook
+```
+
+What it does on each write:
+
+| Situation | Result |
+|---|---|
+| The edit introduced compiler errors | the errors, in the agent's turn (exit `2`, stderr) |
+| The edit introduced nothing | **silence** — exit `0`, no output, no tokens |
+| The branch was already red | **silence** — pre-existing errors are not the agent's doing |
+| Not a `.cs` file, or no owning project | **silence** |
+| Server not running, or slow to answer | **silence** — a guard that cannot inform must not interrupt |
+
+Compiler diagnostics only, and scoped to the changed project plus its dependents, so it is fast
+enough to sit in an inner loop. It adds a local IPC endpoint: read
+[SECURITY.md](SECURITY.md#known-risk-the-compile-guard-endpoint) before enabling it on a shared
+machine.
+
+## Security
+
+- **Read-Only by Default** -- `AnalyzeSolution`, `ListDiagnostics`, `CreatePatch`, and all six code
+  navigation tools (`SearchSymbols`, `GetSymbolInfo`, `FindReferences`, `FindImplementations`,
+  `GetCallGraph`, `GetTypeHierarchy`) never write to disk. The three write-capable tools —
+  `ApplyFixes`, `EditMember`, and `RenameSymbol` — each default to `previewOnly: true`; writing
+  requires the caller to pass `previewOnly: false` explicitly. Behind that opt-in sits a second,
+  best-effort guard: the write tools ask the client to confirm via MCP elicitation before writing,
+  and a decline downgrades the call to a preview. So does an unanswered prompt — the round-trip is
+  bounded by `RoselineMCP:ConfirmDestructiveWritesTimeout` (default 5 minutes), after which the call
+  returns a preview rather than writing or hanging. That confirmation is skipped when the client
+  cannot elicit, and an operator can disable it outright with
+  `RoselineMCP:ConfirmDestructiveWrites=false` — after which `previewOnly: false` is the only guard
+  left. See [SECURITY.md](SECURITY.md).
+- **Real, Read-Only Git Cloning** -- `pathOrGit` accepts `http(s)://` Git URLs, which are
+  shallow-cloned (`git clone --depth 1`) into a temp directory that's deleted after the operation.
+  No other URL scheme is treated as a Git remote.
+- **MSBuild Is Not a Sandbox** -- loading a `.sln`/`.csproj` via `MSBuildWorkspace` is a
+  design-time MSBuild evaluation and can execute build logic embedded in the project (`<Exec>`
+  tasks, custom `UsingTask` assemblies, imported `.targets`/`.props`). Analyzing a fully untrusted
+  repository or URL carries a real code-execution risk on the host. **See
+  [`SECURITY.md`](SECURITY.md)** for the full write-up and operator recommendations before
+  pointing RoselineMCP at untrusted input.
+- **Analyzer Execution Is Code Execution** -- the diagnostics tools also run the target project's
+  own referenced Roslyn analyzers in-process (see
+  [Supported Analyzers](#supported-analyzers)); an analyzer from an untrusted repository is
+  arbitrary code. `RoselineMCP:RunAnalyzers = false` disables the **diagnostic analyzer** pass
+  (bundled Roslynator included). See [`SECURITY.md`](SECURITY.md).
+- **Code-Fix Providers Come From Those Same References** -- `list_diagnostics` and `apply_fixes`
+  also load the `CodeFixProvider` types a project's own analyzer references carry. That adds no
+  assembly the analyzer pass does not already load (each is obtained through the reference's own
+  assembly loader), but it is a decision rather than an accident, and `RunAnalyzers = false` does
+  not govern it. Recorded in [`SECURITY.md`](SECURITY.md).
+- **Source Generators Run Regardless Of That Switch** -- generators ship through the same
+  `AnalyzerReferences`, but run as part of building *any* compilation rather than as part of the
+  diagnostics pass, so every semantic path executes them -- all navigation tools included. They
+  cannot be suppressed without breaking semantic analysis. `RunAnalyzers = false` narrows the
+  code-execution surface of an untrusted repository; it does not close it. Isolate instead --
+  see [`SECURITY.md`](SECURITY.md).
+- **No Dedicated Path-Traversal Sandbox** -- paths are resolved with plain existence checks, not
+  canonicalized against an allowed root; treat `pathOrGit`/`project`/`branch` as trusted operator
+  input.
+
+## Troubleshooting
+
+### Common Issues
+
+1. **MSBuild not found**: Ensure .NET SDK is installed and in PATH
+2. **Solution won't load**: Check for missing NuGet packages, run `dotnet restore`
+3. **No analyzer (RCS*/SA*) diagnostics found**: Verify `RoselineMCP:RunAnalyzers` isn't set to `false`; for non-bundled rule sets (e.g. StyleCop), verify the analyzer is installed in the target project
+4. **Permission denied**: Ensure read access to solution files
+
+### Debug Logging
+
+Enable detailed logging:
+
+```bash
+ROSELINE_Logging__LogLevel__RoselineMCP=Debug dotnet run --project RoselineMCP/RoselineMCP.csproj
+```
+
+### Tracing Individual Tool Calls
+
+Every tool call gets a per-invocation correlation ID (a GUID). It's cheap to generate so it's
+always created, but it's only surfaced when you need it: it's included in every JSON error
+response (`correlationId`) and attached to that call's log lines via `ILogger.BeginScope`, so a
+user reporting a failure can hand you one ID that ties back to the full server-side log entry —
+without needing to grep timestamps.
+
+For deeper, opt-in tracing of each tool invocation (start/stop, duration, success/failure) as a
+`System.Diagnostics.Activity` span, set `RoselineMCP:EnableDiagnosticLogging` to `true` (it's
+already `true` in `appsettings.Development.json`):
+
+```bash
+ROSELINE_RoselineMCP__EnableDiagnosticLogging=true dotnet run --project RoselineMCP/RoselineMCP.csproj
+```
+
+This uses the built-in `ActivitySource`/`Activity` APIs rather than the OpenTelemetry SDK, so it
+adds no extra dependency. Spans are logged exclusively through the existing `ILogger` pipeline,
+which is already routed to stderr — never to stdout (the MCP JSON-RPC channel) — and nothing is
+ever sent over the network; when the flag is off (the default), no listener is registered and the
+spans cost essentially nothing.
+
+## Roadmap
+
+- [ ] Additional analyzer rule sets (SonarAnalyzer, FxCop)
+- [ ] Auto-fix suggestions with confidence scoring
+- [ ] CI/CD integration for automated analysis pipelines
+- [ ] Multi-solution support in a single session
+- [ ] Incremental analysis (only changed files)
+- [ ] Custom analyzer rule configuration via MCP
+
+> Want to contribute? Pick any roadmap item and open a PR!
+
+## Documentation
+
+- **[Documentation site](https://atypical-consulting.github.io/RoselineMCP/)** -- overview, tool
+  reference, and the [token-savings benchmark](https://atypical-consulting.github.io/RoselineMCP/benchmark)
+  (built from `website/`, deployed to GitHub Pages)
+- [docs/API.md](docs/API.md) -- Full request/response reference for every MCP tool, service
+  interfaces, models, and the error-response contract
+- [docs/AGENT-BENCHMARK.md](docs/AGENT-BENCHMARK.md) -- End-to-end A/B: does an AI agent actually
+  spend fewer tokens with RoselineMCP? (honest answer — a large-codebase win, break-even on small)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) -- Layered architecture, data flow, and design
+  patterns
+- [PROMPTS.md](PROMPTS.md) -- Example prompts and end-to-end workflows for each tool
+- [CHANGELOG.md](CHANGELOG.md) -- Release history and breaking changes
+- [SECURITY.md](SECURITY.md) -- Vulnerability reporting and the MSBuild code-execution caveat
+- [CONTRIBUTING.md](CONTRIBUTING.md) -- Development setup and PR process
+
+## Atypical MCP servers
+
+Part of a suite of Model Context Protocol servers by Atypical Consulting:
+
+- [RoselineMCP](https://github.com/Atypical-Consulting/RoselineMCP) — Roslyn code intelligence for AI agents
+- [ASTral](https://github.com/Atypical-Consulting/ASTral) — structured code retrieval (tree-sitter)
+- [AdrMcp](https://github.com/Atypical-Consulting/AdrMcp) — Architecture Decision Records over MCP
+- [MarkdownInk](https://github.com/Atypical-Consulting/MarkdownInk) — Markdown rendering for the terminal
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit using [conventional commits](https://www.conventionalcommits.org/) (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+[MIT](LICENSE) © 2026 [Atypical Consulting SRL](https://atypical.garry-ai.cloud)
+
+## Acknowledgments
+
+- Built on [Roslyn](https://github.com/dotnet/roslyn) -- The .NET Compiler Platform
+- Powered by [Roslynator](https://github.com/JosefPihrt/Roslynator) -- C# analyzers and refactorings
+- Uses [DiffPlex](https://github.com/mmanela/diffplex) -- Diff generation library
+- Implements [Model Context Protocol](https://modelcontextprotocol.io) -- AI assistant integration protocol
+
+---
+
+Built with care by [Atypical Consulting](https://atypical.garry-ai.cloud) -- opinionated, production-grade open source.
+
+[![Contributors](https://contrib.rocks/image?repo=Atypical-Consulting/RoselineMCP)](https://github.com/Atypical-Consulting/RoselineMCP/graphs/contributors)
+
+<!-- portfolio-nugetkeep:start -->
+---
+Built by [Atypical Consulting](https://www.atypical.consulting). We also make
+[NuGetKeep](https://nugetkeep.com/?utm_source=github-readme&utm_medium=readme&utm_campaign=launch-2026-07),
+a self-hosted NuGet server with supply-chain quarantine.
+<!-- portfolio-nugetkeep:end -->
