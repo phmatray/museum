@@ -32,10 +32,23 @@ const PARAPET = 1.2
 const COUVERTINE = 0.12
 const PEAU = 0.03
 
+/**
+ * La baie du milieu est celle de l'entrée : plus large que l'ouverture du mur
+ * (3,20 m) et 30 cm de jeu de chaque côté, sinon les piliers se dressent dans
+ * l'embrasure. Les quatre autres se partagent le reste.
+ */
+const BAIE_ENTREE = 3.2 + 2 * 0.3
 const baies = (): [number, number][] => {
   const [a, b] = [P.x0 + JAMBAGE, P.x1 - JAMBAGE]
-  const l = (b - a - PILIERS * PILIER) / (PILIERS + 1)
-  return Array.from({ length: PILIERS + 1 }, (_, i) => [a + i * (l + PILIER), a + i * (l + PILIER) + l])
+  const l = (b - a - PILIERS * PILIER - BAIE_ENTREE) / PILIERS
+  const largeurs = [l, l, BAIE_ENTREE, l, l]
+  const out: [number, number][] = []
+  let x = a
+  for (const w of largeurs) {
+    out.push([x, x + w])
+    x += w + PILIER
+  }
+  return out
 }
 
 const pave = (x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, kind: Box['kind'] = 'wall'): Box =>
