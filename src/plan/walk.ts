@@ -9,13 +9,14 @@
  * ── Les surfaces ──
  *
  * Le visiteur est toujours sur une SURFACE : une salle d'un niveau, le palier,
- * ou une volée (les noms de `surfaceAt`). Une volée est un plan incliné : sa
+ * une volée, ou le parc dehors (les noms de `surfaceAt`). Une volée est un plan incliné : sa
  * cote est `flightElevation`, sans marche ni saut. On ne change de cote que par
  * le départ ou l'arrivée d'une volée — ses côtés sont des garde-corps, lus dans
  * `guardrails` comme ceux du palier et des balcons.
  */
 import { VITESSE_HATE, VITESSE_MARCHE } from '../domain/locomotion.ts'
 import { edges, guardrails, isNordSud, sameLine, subtract, type Edge, type Interval, type Segment } from './geometry.ts'
+import { terrainDuParc } from './park.ts'
 import { PASSABLE, flightElevation, flightEnds, surfaceAt } from './rules.ts'
 import type { Flight, Plan, Rect } from './types.ts'
 
@@ -24,7 +25,7 @@ const RAYON = 0.3
 export interface Walker {
   /** Le niveau dont relève la surface : celui du plancher sous le pied, ou sous la volée. */
   level: number
-  /** `<niveau>:<salle>`, `palier:<id>` ou `volee:<id>`. */
+  /** `<niveau>:<salle>`, `palier:<id>`, `volee:<id>` ou `parc:terrain`. */
   surface: string
   x: number
   z: number
@@ -131,6 +132,10 @@ function lire(plan: Plan, surface: string) {
     volee = f
     niveau = niveauDe(plan, f.bottom)
     cote = (x, z) => flightElevation(f, x, z)
+  } else if (genre === 'parc') {
+    // Dehors, au sol : les murs du rez-de-chaussée sont ceux de la façade, percée de l'entrée.
+    niveau = niveauDe(plan, 0)
+    cote = () => 0
   } else if (genre === 'palier') {
     const l = plan.landings.find((l) => l.id === id)
     if (!l) throw new Error(`palier inconnu : ${surface}`)
@@ -180,6 +185,7 @@ export function step(
   const dz = (-a * cos - c * sin) * v
 
   const n = Math.max(1, Math.ceil(Math.hypot(dx, dz) / (RAYON / 2)))
+  const terrain = terrainDuParc(plan)
   const p = { x: walker.x, z: walker.z }
   for (let i = 0; i < n; i++) {
     const avant = { ...p }
@@ -188,11 +194,10 @@ export function step(
     // Deux passes : sortir d'un mur peut enfoncer dans l'autre, dans un angle.
     repousser(p, s.murs)
     repousser(p, s.murs)
-    // L'entrée est un trou dans la façade, mais dehors il n'y a encore ni sol
-    // ni parvis : on reste dans l'emprise.
-    // ponytail: bornage à l'emprise, à retirer quand le parvis existera.
-    p.x = Math.min(Math.max(p.x, RAYON), plan.width - RAYON)
-    p.z = Math.min(Math.max(p.z, RAYON), plan.depth - RAYON)
+    // On sort par l'entrée dans le parc ; on s'arrête au bord du terrain.
+    // ponytail: ni les troncs ni les massifs n'arrêtent la marche — des cercles à repousser si ça gêne.
+    p.x = Math.min(Math.max(p.x, terrain.x + RAYON), terrain.x + terrain.width - RAYON)
+    p.z = Math.min(Math.max(p.z, terrain.z + RAYON), terrain.z + terrain.depth - RAYON)
 
     let suivante: string | null
     if (s.volee) {

@@ -9,7 +9,7 @@
  * au rez-de-chaussée, le palier et les trois volées de l'escalier impérial.
  */
 import { guardrails, isNordSud, subtract, type Interval, type Segment } from './geometry.ts'
-import { contains } from './rules.ts'
+import { contains, flightElevation } from './rules.ts'
 import { EXT, INT } from './svg.ts'
 import type { Flight, Opening, Plan } from './types.ts'
 import { wallSegments } from './walk.ts'
@@ -17,7 +17,14 @@ import { wallSegments } from './walk.ts'
 /** Hauteur sous linteau : une porte est un trou de 2,40 m, le mur continue au-dessus. */
 const LINTEAU = 2.4
 const GARDE_CORPS = 1
-const EP_GARDE_CORPS = 0.05
+/** Le verre du garde-corps : un feuilleté de 15 mm, posé 4 cm au-dessus du sol. */
+const EP_VERRE = 0.015
+const SABOT = 0.04
+const PANNEAU_MAX = 1.5
+const JOINT = 0.02
+/** La main courante : un méplat d'acier de 5 × 4 cm. */
+const MAIN_L = 0.05
+const MAIN_H = 0.04
 const EPS = 1e-6
 
 /**
@@ -51,7 +58,13 @@ export interface Box {
   w: number
   h: number
   d: number
-  kind: 'wall' | 'slab' | 'lintel' | 'step' | 'landing' | 'railing' | 'glass'
+  kind: 'wall' | 'slab' | 'lintel' | 'step' | 'landing' | 'railing' | 'handrail' | 'glass'
+  /**
+   * Pente du dessus et du dessous le long du grand côté horizontal (x si w > d,
+   * sinon z), en mètres par mètre : un garde-corps rampant. Les faces d'about
+   * restent verticales — c'est un cisaillement, pas une rotation.
+   */
+  pente?: number
 }
 
 export function meshLevel(plan: Plan, levelId: number): Box[] {
@@ -92,30 +105,44 @@ export function meshLevel(plan: Plan, levelId: number): Box[] {
 
   const volees = plan.flights.filter((f) => bande(f.bottom))
 
-  // Un garde-corps de 1,00 m au-dessus de la surface qu'il borde ; le long d'une
-  // volée, il suit ses marches, par gradins. guardrails() rend déjà la cote et
-  // le type de la surface portée (#27) : plus de devinette par le milieu.
+  // Un garde-corps de 1,00 m au-dessus de la surface qu'il borde : des panneaux
+  // de verre clair d'au plus 1,50 m, et une main courante continue par-dessus.
+  // Le long d'une volée, les deux suivent sa pente d'un seul trait (`pente`),
+  // comme un vrai garde-corps rampant, au lieu de gradins marche par marche.
+  // guardrails() rend déjà la cote et le type de la surface portée (#27).
   const rails: Box[] = []
   const auSol: Segment[] = []
-  const e = EP_GARDE_CORPS / 2
+  /** Le garde-corps d'un segment, le sol passant de `y0` en `s` à `y1` en `t`. */
+  const garde = (long: boolean, at: number, s: number, t: number, y0: number, y1: number) => {
+    const pente = (y1 - y0) / (t - s)
+    const sol = (u: number) => y0 + pente * (u - s)
+    const le_long = (u: number, v: number, bas: number, h: number, ep: number, kind: Box['kind']): Box => {
+      const y = sol((u + v) / 2) + bas + h / 2
+      const b: Box = long
+        ? { x: (u + v) / 2, y, z: at, w: v - u, h, d: ep, kind }
+        : { x: at, y, z: (u + v) / 2, w: ep, h, d: v - u, kind }
+      return pente === 0 ? b : { ...b, pente }
+    }
+    const n = Math.ceil((t - s) / PANNEAU_MAX - EPS)
+    for (let i = 0; i < n; i++) {
+      const [u, v] = [s + ((t - s) * i) / n, s + ((t - s) * (i + 1)) / n]
+      rails.push(le_long(u + (i > 0 ? JOINT / 2 : 0), v - (i < n - 1 ? JOINT / 2 : 0), SABOT, GARDE_CORPS - SABOT - MAIN_H, EP_VERRE, 'railing'))
+    }
+    rails.push(le_long(s, t, GARDE_CORPS - MAIN_H, MAIN_H, MAIN_L, 'handrail'))
+  }
   for (const g of guardrails(plan, levelId)) {
     const long = g.z1 === g.z2
+    const [at, s, t] = long ? [g.z1, g.x1, g.x2] : [g.x1, g.z1, g.z2]
     if (g.kind === 'flight') {
       const [mx, mz] = [(g.x1 + g.x2) / 2, (g.z1 + g.z2) / 2]
       const f = volees.find((f) => contains(f, mx, mz) && (long ? !isNordSud(f) : isNordSud(f)))
       if (!f) throw new Error(`garde-corps de volée sans volée : ${JSON.stringify(g)}`)
-      const [s, t] = long ? [g.x1, g.x2] : [g.z1, g.z2]
-      for (const { de, a, dessus } of marches(f)) {
-        const [u, v] = [Math.max(s, de), Math.min(t, a)]
-        if (v - u < EPS) continue
-        rails.push(long ? pave(u, v, dessus, dessus + GARDE_CORPS, g.z1 - e, g.z1 + e, 'railing') : pave(g.x1 - e, g.x1 + e, dessus, dessus + GARDE_CORPS, u, v, 'railing'))
-      }
+      const cote = (u: number) => (long ? flightElevation(f, u, at) : flightElevation(f, at, u))
+      garde(long, at, s, t, cote(s), cote(t))
       continue
     }
     if (Math.abs(g.elevation - level.elevation) < EPS) auSol.push(g)
-    rails.push(long
-      ? pave(g.x1, g.x2, g.elevation, g.elevation + GARDE_CORPS, g.z1 - e, g.z1 + e, 'railing')
-      : pave(g.x1 - e, g.x1 + e, g.elevation, g.elevation + GARDE_CORPS, g.z1, g.z2, 'railing'))
+    garde(long, at, s, t, g.elevation, g.elevation)
   }
 
   // Un garde-corps posé au plancher remplace le mur sur le vide (le bord d'un

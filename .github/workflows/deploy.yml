@@ -64,6 +64,7 @@ jobs:
           path: |
             public/assets/materials
             public/assets/hdri
+            public/assets/ciel
           key: assets-${{ runner.os }}-${{ hashFiles('tools/fetch-assets.ts') }}
           restore-keys: assets-${{ runner.os }}-
 

@@ -89,27 +89,30 @@ describe("meshLevel et l'escalier impérial", () => {
   })
 
   it.each([0, 1])('bâtit un garde-corps de 1,00 m sur toute la longueur de chaque segment de guardrails(), au niveau %i', (id) => {
-    const rampes = meshLevel(MUSEE, id).filter((b) => b.kind === 'railing')
+    const boites = meshLevel(MUSEE, id)
+    const [verres, mains] = [boites.filter((b) => b.kind === 'railing'), boites.filter((b) => b.kind === 'handrail')]
     const segments = guardrails(MUSEE, id)
     expect(segments.length).toBeGreaterThan(0)
     for (const g of segments) {
       const long = Math.hypot(g.x2 - g.x1, g.z2 - g.z1)
+      const couvre = (b: Box, x: number, z: number) => Math.abs(b.x - x) <= b.w / 2 + 1e-6 && Math.abs(b.z - z) <= b.d / 2 + 1e-6
+      // Le verre couvre le segment, aux joints de 2 cm près entre panneaux d'au plus 1,50 m.
+      const panneaux = verres.filter((b) => couvre(b, g.x1, g.z1) || couvre(b, g.x2, g.z2) || couvre(b, (g.x1 + g.x2) / 2, (g.z1 + g.z2) / 2) || (
+        g.z1 === g.z2 ? Math.abs(b.z - g.z1) < 1e-6 && b.x > Math.min(g.x1, g.x2) && b.x < Math.max(g.x1, g.x2) : Math.abs(b.x - g.x1) < 1e-6 && b.z > Math.min(g.z1, g.z2) && b.z < Math.max(g.z1, g.z2)))
+      const verre = panneaux.reduce((n, b) => n + Math.max(b.w, b.d), 0)
+      expect(verre, JSON.stringify(g)).toBeGreaterThan(long - 0.02 * Math.ceil(long / 1.5) - 1e-6)
+      for (const b of panneaux) expect(Math.max(b.w, b.d)).toBeLessThanOrEqual(1.5 + 1e-6)
       for (let t = 0.05; t < long; t += 0.25) {
         const [x, z] = [g.x1 + ((g.x2 - g.x1) * t) / long, g.z1 + ((g.z2 - g.z1) * t) / long]
-        const ici = rampes.filter((b) => Math.abs(b.x - x) <= b.w / 2 + 1e-6 && Math.abs(b.z - z) <= b.d / 2 + 1e-6)
-        expect(ici.length, `${JSON.stringify(g)} en ${t}`).toBeGreaterThan(0)
-        for (const b of ici) {
-          expect(Math.min(b.w, b.d)).toBeCloseTo(0.05)
-          expect(b.h).toBeCloseTo(1)
-        }
-        // Le pied du garde-corps : la cote du palier, du balcon, ou d'une marche au-dessus de la rampe.
+        const ici = mains.filter((b) => couvre(b, x, z))
+        expect(ici.length, `${JSON.stringify(g)} en ${t}`).toBe(1)
+        const [m] = ici
+        // Le dessus de la main courante en ce point, pente comprise.
+        const u = m.w > m.d ? x - m.x : z - m.z
+        const dessusIci = m.y + m.h / 2 + (m.pente ?? 0) * u
         const volee = MUSEE.flights.find((f) => x >= f.x - 1e-6 && x <= f.x + f.width + 1e-6 && z >= f.z - 1e-6 && z <= f.z + f.depth + 1e-6)
-        const pied = Math.min(...ici.map((b) => b.y - b.h / 2))
-        if (volee) {
-          const rampe = flightElevation(volee, x, z)
-          expect(pied).toBeGreaterThanOrEqual(rampe - 1e-6)
-          expect(pied).toBeLessThanOrEqual(rampe + 0.16 + 1e-6)
-        } else expect(pied).toBeCloseTo(id === 0 ? 2.4 : 4.8)
+        const sol = volee ? flightElevation(volee, x, z) : id === 0 ? 2.4 : 4.8
+        expect(dessusIci).toBeCloseTo(sol + 1, 6)
       }
     }
   })
@@ -183,13 +186,21 @@ describe('meshLevel() et un garde-corps de balcon dont le rectangle recouvre une
   }
 
   it('pose un garde-corps plat, pleine longueur, sur les deux côtés du balcon', () => {
-    const rampes = meshLevel(plan, 0).filter((b) => b.kind === 'railing')
-    expect(rampes).toHaveLength(2)
-    for (const b of rampes) {
-      expect(b.y - b.h / 2).toBeCloseTo(0)
-      expect(b.h).toBeCloseTo(1)
+    const boites = meshLevel(plan, 0)
+    const mains = boites.filter((b) => b.kind === 'handrail')
+    expect(mains).toHaveLength(2)
+    for (const b of mains) {
+      expect(b.pente).toBeUndefined()
+      expect(b.y + b.h / 2).toBeCloseTo(1)
       expect(b.z - b.d / 2).toBeCloseTo(0)
       expect(b.z + b.d / 2).toBeCloseTo(10)
+    }
+    // Sept panneaux de 10/7 m par côté, posés à plat sur le sabot de 4 cm.
+    const verres = boites.filter((b) => b.kind === 'railing')
+    expect(verres).toHaveLength(14)
+    for (const b of verres) {
+      expect(b.pente).toBeUndefined()
+      expect(b.y - b.h / 2).toBeCloseTo(0.04)
     }
   })
 })
