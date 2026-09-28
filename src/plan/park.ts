@@ -10,12 +10,19 @@
  * Le parc se visite : on y sort par l'entrée, et la marche y reste bornée au
  * terrain (`terrainDuParc`, lu par `surfaceAt` et `walk.ts`).
  *
+ * Au sud-est, le parc devient jardin japonais (`jardin.ts`) : l'eau, ses
+ * rochers, des érables du Japon et des boules taillées.
+ *
  * Aucun aléa réel : le tirage est semé par un texte, deux appels donnent le
  * même parc, arbre pour arbre.
  */
+import { CONTOUR_ETANG, JARDIN, LEVRE, TABLIER, TRACE_RUISSEAU, distanceEtang, presDeLEau } from './jardin.ts'
 import type { Plan, Rect } from './types.ts'
 
-export type EspeceParc = 'arbre-01' | 'arbre-02' | 'arbuste-01' | 'arbuste-02'
+export type EspeceParc =
+  | 'arbre-01' | 'arbre-02' | 'arbuste-01' | 'arbuste-02'
+  | 'erable-rouge' | 'erable-vert' | 'buis' | 'azalee' | 'fougere' | 'petales'
+  | 'rocher-1' | 'rocher-2' | 'rocher-3' | 'rocher-4' | 'rocher-5'
 
 export interface PlantPlacement {
   espece: EspeceParc
@@ -26,6 +33,8 @@ export interface PlantPlacement {
   scale: number
   /** Demi-largeur du houppier : l'encombrement au sol. */
   rayon: number
+  /** Cote du pied : un rocher de berge s'enfonce dans l'eau. 0 par défaut. */
+  y?: number
 }
 
 export interface Allee {
@@ -55,7 +64,16 @@ const LARGEUR_ACCES = 2.4
 const PAS_GRILLE = 11
 /** Les arbustes font la strate basse, et coûtent cinq fois moins. */
 const PART_ARBUSTES = 0.6
-const RAYON: Record<EspeceParc, number> = { 'arbre-01': 3.2, 'arbre-02': 2.8, 'arbuste-01': 1.1, 'arbuste-02': 0.9 }
+const RAYON: Record<EspeceParc, number> = {
+  'arbre-01': 3.2, 'arbre-02': 2.8, 'arbuste-01': 1.1, 'arbuste-02': 0.9,
+  'erable-rouge': 3.2, 'erable-vert': 3.2, buis: 0.8, azalee: 0.75, fougere: 0.5, petales: 0,
+  'rocher-1': 1.4, 'rocher-2': 1.1, 'rocher-3': 1.0, 'rocher-4': 1.0, 'rocher-5': 0.9,
+}
+/** Au jardin, un semis plus serré : érables et boules taillées, pas les grands arbres. */
+const PAS_JARDIN = 3.5
+/** À moins de 12 m de l'eau, le parc devient jardin japonais. */
+const PRES_DE_L_EAU = 12
+const ROCHERS = ['rocher-1', 'rocher-2', 'rocher-3', 'rocher-4', 'rocher-5'] as const
 
 /** FNV-1a puis mulberry32 : une graine stable, zéro dépendance. */
 function generateur(texte: string): () => number {
@@ -104,6 +122,31 @@ export function couronne(e: Rect, trou: Rect): Rect[] {
   ].filter((r) => r.width > 1e-6 && r.depth > 1e-6)
 }
 
+/**
+ * Un accès qui serpente : il part et arrive dans l'axe, et ondule entre les
+ * deux d'une amplitude `a`. Le jardin japonais ne trace pas de ligne droite
+ * — sauf l'axe de l'entrée, qui doit se lire depuis le portique.
+ */
+function serpenter(a: Allee['a'], b: Allee['b'], amplitude: number, largeur: number, n = 14): Allee[] {
+  const [dx, dz] = [b.x - a.x, b.z - a.z]
+  const l = Math.hypot(dx, dz)
+  const pt = (t: number) => {
+    const e = amplitude * Math.sin(Math.PI * t) * Math.sin(3 * Math.PI * t)
+    return { x: a.x + t * dx - (dz / l) * e, z: a.z + t * dz + (dx / l) * e }
+  }
+  return Array.from({ length: n }, (_, i) => ({ a: pt(i / n), b: pt((i + 1) / n), largeur }))
+}
+
+/** Une allée droite, coupée là où elle passe le pont : le tablier prend le relais. */
+function coupee(a: Allee['a'], b: Allee['b'], largeur: number): Allee[] {
+  const [x0, x1] = [TABLIER.x - 0.8, TABLIER.x + TABLIER.width + 0.8]
+  const croise = Math.abs(a.z - b.z) < 1e-9 && a.z > TABLIER.z && a.z < TABLIER.z + TABLIER.depth
+    && Math.min(a.x, b.x) < x0 && Math.max(a.x, b.x) > x1
+  if (!croise) return [{ a, b, largeur }]
+  const [g, d] = a.x < b.x ? [a, b] : [b, a]
+  return [{ a: g, b: { x: x0, z: g.z }, largeur }, { a: { x: x1, z: g.z }, b: d, largeur }]
+}
+
 /** Une boucle fermée autour du parvis, et un accès au milieu de chaque côté. */
 function tracerAllees(parvis: Rect, terrain: Rect): Allee[] {
   const [x0, x1] = [parvis.x - RETRAIT_PERIPHERIQUE, parvis.x + parvis.width + RETRAIT_PERIPHERIQUE]
@@ -112,12 +155,12 @@ function tracerAllees(parvis: Rect, terrain: Rect): Allee[] {
   const [cx, cz] = [parvis.x + parvis.width / 2, parvis.z + parvis.depth / 2]
   return [
     ...coins.map((a, i) => ({ a, b: coins[(i + 1) % 4], largeur: LARGEUR_PERIPHERIQUE })),
-    ...[
-      [{ x: cx, z: z0 }, { x: cx, z: terrain.z }],
-      [{ x: cx, z: z1 }, { x: cx, z: terrain.z + terrain.depth }],
-      [{ x: x0, z: cz }, { x: terrain.x, z: cz }],
-      [{ x: x1, z: cz }, { x: terrain.x + terrain.width, z: cz }],
-    ].map(([a, b]) => ({ a, b, largeur: LARGEUR_ACCES })),
+    ...serpenter({ x: cx, z: z0 }, { x: cx, z: terrain.z }, 2.2, LARGEUR_ACCES),
+    // L'axe de l'entrée : droit, du portique au bord du terrain.
+    { a: { x: cx, z: z1 }, b: { x: cx, z: terrain.z + terrain.depth }, largeur: LARGEUR_ACCES },
+    ...serpenter({ x: x0, z: cz }, { x: terrain.x, z: cz }, 2.2, LARGEUR_ACCES),
+    // L'accès est franchit le ruisseau sur le pont du jardin.
+    ...coupee({ x: x1, z: cz }, { x: terrain.x + terrain.width, z: cz }, LARGEUR_ACCES),
   ]
 }
 
@@ -137,21 +180,133 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
   const allees = tracerAllees(parvis, terrain)
   const alea = generateur(graine)
   const plantations: PlantPlacement[] = []
+  const lanterne = JARDIN.lanterne
 
+  /** Libre : hors du parvis et des allées, sur le terrain, au sec, sans chevaucher. */
+  const libre = (x: number, z: number, rayon: number, eau = 0.8, serre = 1) =>
+    !dansRect(parvis, x, z, rayon) && dansRect(terrain, x, z, -rayon) && !surUneAllee(allees, x, z, rayon)
+    && !presDeLEau(x, z, rayon + eau) && !dansRect(TABLIER, x, z, rayon + 1)
+    && Math.hypot(x - lanterne.x, z - lanterne.z) > rayon + 1.2
+    && !JARDIN.pas.some(([px, pz]) => Math.hypot(x - px, z - pz) < rayon + 0.6)
+    && !plantations.some((p) => Math.hypot(p.x - x, p.z - z) < (p.rayon + rayon) * serre)
+  const planter = (espece: EspeceParc, x: number, z: number, scale = 0.85 + alea() * 0.3, y?: number) => {
+    // ±15 % de taille : deux sujets identiques côte à côte trahiraient l'instanciation.
+    const p: PlantPlacement = { espece, x, z, rotation: alea() * Math.PI * 2, scale, rayon: RAYON[espece] * scale }
+    if (y !== undefined) p.y = y
+    // Le dernier mot, houppier compris, quel que soit le tirage qui a proposé le sujet.
+    if (surUneAllee(allees, x, z, p.rayon) || dansRect(parvis, x, z, p.rayon) || !dansRect(terrain, x, z, -p.rayon)) return
+    plantations.push(p)
+  }
+  const rocher = () => ROCHERS[Math.floor(alea() * ROCHERS.length)]
+
+  // 1. Les rochers d'abord : ils tiennent la berge, le reste pousse autour.
+  //    Deux gros de part et d'autre de la cascade, puis la rive de l'étang et
+  //    celle du ruisseau, enfoncés dans l'eau d'un bon tiers.
+  const [lx, lz] = LEVRE
+  const [px, pz] = TRACE_RUISSEAU[Math.max(0, TRACE_RUISSEAU.indexOf(LEVRE) - 1)]
+  const l = Math.hypot(lx - px, lz - pz)
+  const [ux, uz] = [(lx - px) / l, (lz - pz) / l]
+  for (const s of [-1, 1]) planter(s < 0 ? 'rocher-2' : 'rocher-4', lx - uz * s * 1.9 - ux * 0.3, lz + ux * s * 1.9 - uz * 0.3, 0.72, -0.3)
+  CONTOUR_ETANG.forEach(([x, z], k) => {
+    if (k % 3 !== 0 || alea() < 0.45) return
+    const s = 0.3 + alea() * 0.35
+    const espece = rocher()
+    if (Math.hypot(x - lx, z - lz) < 3.5 || surUneAllee(allees, x, z, 1)) return
+    if (plantations.some((p) => Math.hypot(p.x - x, p.z - z) < (p.rayon + RAYON[espece] * s) * 0.7)) return
+    planter(espece, x, z, s, -0.2 - 0.35 * s)
+  })
+  // Des fougères entre les rochers, sur la berge, à un mètre de l'eau.
+  const [cx, cz] = CONTOUR_ETANG.reduce(([a, b], [x, z]) => [a + x / CONTOUR_ETANG.length, b + z / CONTOUR_ETANG.length], [0, 0])
+  CONTOUR_ETANG.forEach(([x, z], k) => {
+    if (k % 2 !== 1 || alea() < 0.4) return
+    const d = Math.hypot(x - cx, z - cz)
+    const [fx, fz] = [x + ((x - cx) / d) * 1.0, z + ((z - cz) / d) * 1.0]
+    if (libre(fx, fz, 0.2, 0.3)) planter('fougere', fx, fz, 1.1 + alea() * 0.7)
+  })
+  TRACE_RUISSEAU.forEach(([x, z, w], k) => {
+    if (k % 3 !== 0 || alea() < 0.35) return
+    const [ax, az] = TRACE_RUISSEAU[Math.min(k + 1, TRACE_RUISSEAU.length - 1)]
+    const d = Math.hypot(ax - x, az - z) || 1
+    const [nx, nz] = [-(az - z) / d, (ax - x) / d]
+    const cote = alea() < 0.5 ? -1 : 1
+    const [rx, rz] = [x + nx * cote * (w / 2 + 0.2), z + nz * cote * (w / 2 + 0.2)]
+    const s = 0.22 + alea() * 0.25
+    if (distanceEtang(rx, rz) < 2 || dansRect(TABLIER, rx, rz, 1.5) || surUneAllee(allees, rx, rz, 0.8)) return
+    planter(rocher(), rx, rz, s, -0.08 - 0.3 * s)
+    // Une fougère au pied du rocher, côté terre.
+    const [fx, fz] = [rx + nx * cote * 1.1, rz + nz * cote * 1.1]
+    if (alea() < 0.7 && libre(fx, fz, RAYON.fougere * 0.3, 0.2)) planter('fougere', fx, fz, 1.2 + alea() * 0.6)
+  })
+
+  // 2. Un rideau de grands arbres au fond du jardin, le long du bord du terrain :
+  //    sans lui, la pelouse filait jusqu'au ciel derrière l'étang.
+  const [xMax, zMax] = [terrain.x + terrain.width, terrain.z + terrain.depth]
+  const rideau: [number, number][] = []
+  for (let x = JARDIN.zones[0].x; x < xMax; x += 7) rideau.push([x, zMax - 3.5])
+  for (let z = JARDIN.zones[1].z; z < zMax - 7; z += 7) rideau.push([xMax - 3.5, z])
+  for (const [x, z] of rideau) {
+    const espece = alea() < 0.5 ? 'arbre-01' : 'arbre-02'
+    const [rx, rz] = [x + (alea() - 0.5) * 3, z + (alea() - 0.5) * 2]
+    if (libre(rx, rz, RAYON[espece] * 0.8, 1.5)) planter(espece, rx, rz, 0.95 + alea() * 0.3)
+  }
+
+  // 3. Le jardin : un semis serré à moins de `PRES_DE_L_EAU` de l'eau, érables
+  //    et boules taillées en massifs.
+  const [gx0, gz0] = [Math.min(...JARDIN.zones.map((r) => r.x)), Math.min(...JARDIN.zones.map((r) => r.z))]
+  const [gx1, gz1] = [Math.max(...JARDIN.zones.map((r) => r.x + r.width)), Math.max(...JARDIN.zones.map((r) => r.z + r.depth))]
+  for (let x = gx0 - PRES_DE_L_EAU + PAS_JARDIN / 2; x < gx1; x += PAS_JARDIN) {
+    for (let z = gz0 + PAS_JARDIN / 2; z < gz1; z += PAS_JARDIN) {
+      const [jx, jz] = [x + (alea() - 0.5) * PAS_JARDIN * 0.9, z + (alea() - 0.5) * PAS_JARDIN * 0.9]
+      const tirage = alea()
+      if (!presDeLEau(jx, jz, PRES_DE_L_EAU)) continue
+      if (tirage < 0.42) {
+        // Un érable penche volontiers sur l'eau : son houppier peut la surplomber.
+        const espece = alea() < 0.45 ? 'erable-rouge' : 'erable-vert'
+        if (libre(jx, jz, 1.8, -0.2, 0.75)) planter(espece, jx, jz, 0.8 + alea() * 0.35)
+      } else if (tirage < 0.85) {
+        // Un massif de boules : une grande, deux petites à côté (o-karikomi).
+        const espece = alea() < 0.45 ? 'azalee' : 'buis'
+        const s0 = 0.9 + alea() * 0.5
+        if (!libre(jx, jz, RAYON[espece] * s0, 0.8, 0.7)) continue
+        planter(espece, jx, jz, s0)
+        for (let k = 0; k < 2; k++) {
+          const a = alea() * Math.PI * 2
+          const s1 = 0.55 + alea() * 0.3
+          const r = RAYON[espece] * (s0 + s1) * 0.8
+          const [bx, bz] = [jx + Math.cos(a) * r, jz + Math.sin(a) * r]
+          if (libre(bx, bz, RAYON[espece] * s1 * 0.6, 0.8, 0.7)) planter(alea() < 0.7 ? espece : 'buis', bx, bz, s1)
+        }
+      }
+    }
+  }
+
+  // 4. Le reste du parc, comme avant : une grille perturbée. Près de l'eau, plus
+  //    de grands arbres : l'érable et la boule prennent la place.
   for (let i = 0; i < Math.floor(terrain.width / PAS_GRILLE); i++) {
     for (let j = 0; j < Math.floor(terrain.depth / PAS_GRILLE); j++) {
       const x = terrain.x + (i + 0.5) * PAS_GRILLE + (alea() - 0.5) * PAS_GRILLE * 0.8
       const z = terrain.z + (j + 0.5) * PAS_GRILLE + (alea() - 0.5) * PAS_GRILLE * 0.8
-      const espece: EspeceParc = alea() < PART_ARBUSTES
-        ? alea() < 0.5 ? 'arbuste-01' : 'arbuste-02'
-        : alea() < 0.5 ? 'arbre-01' : 'arbre-02'
-      const rayon = RAYON[espece]
-      if (dansRect(parvis, x, z, rayon) || !dansRect(terrain, x, z, -rayon) || surUneAllee(allees, x, z, rayon)) continue
-      if (plantations.some((p) => Math.hypot(p.x - x, p.z - z) < p.rayon + rayon)) continue
-      // ±15 % de taille : deux sujets identiques côte à côte trahiraient l'instanciation.
-      plantations.push({ espece, x, z, rotation: alea() * Math.PI * 2, scale: 0.85 + alea() * 0.3, rayon })
+      const tirage = alea()
+      const espece: EspeceParc = presDeLEau(x, z, PRES_DE_L_EAU)
+        ? tirage < 0.5 ? (alea() < 0.5 ? 'erable-rouge' : 'erable-vert') : alea() < 0.5 ? 'buis' : 'azalee'
+        : tirage < PART_ARBUSTES * 0.5
+          ? alea() < 0.5 ? 'arbuste-01' : 'arbuste-02'
+          : tirage < PART_ARBUSTES
+            ? alea() < 0.4 ? 'erable-rouge' : alea() < 0.5 ? 'erable-vert' : 'buis'
+            : alea() < 0.5 ? 'arbre-01' : 'arbre-02'
+      if (libre(x, z, RAYON[espece])) planter(espece, x, z)
     }
   }
 
-  return { terrain, parvis, sol: couronne(terrain, parvis), dalles: couronne(parvis, emprise), allees, plantations }
+  // 5. En dernier, pour ne rien empêcher de pousser : des pétales tombés sous
+  //    les azalées et les érables pourpres.
+  for (const p of [...plantations]) {
+    if ((p.espece !== 'azalee' && p.espece !== 'erable-rouge') || alea() < 0.45) continue
+    const [x, z] = [p.x + (alea() - 0.5) * 1.5, p.z + (alea() - 0.5) * 1.5]
+    if (!presDeLEau(x, z, 1.6) && !surUneAllee(allees, x, z, 1.3) && !dansRect(parvis, x, z, 1.3)) planter('petales', x, z, 0.8 + alea() * 0.6)
+  }
+
+  // La pelouse s'arrête où commence le sol creusé du jardin (build-jardin.py).
+  const sol = JARDIN.zones.reduce((rs, zone) => rs.flatMap((r) => couronne(r, zone)), couronne(terrain, parvis))
+  return { terrain, parvis, sol, dalles: couronne(parvis, emprise), allees, plantations }
 }

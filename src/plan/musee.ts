@@ -20,6 +20,7 @@
  * 2h + g = 0,64 m, au milieu de la fourchette de Blondel.
  */
 import { OBSTACLES_PORTIQUE } from './facade.ts'
+import { OBSTACLES_JARDIN } from './jardin.ts'
 import type { Plan } from './types.ts'
 
 const STOREY = 4.8
@@ -74,6 +75,8 @@ export const MUSEE: Plan = {
         { x: 29, z: 15.5, width: 3, depth: 4.5 },
         // Dehors, les piliers et jambages du portique d'entrée (facade.ts).
         ...OBSTACLES_PORTIQUE,
+        // Dehors encore, l'étang et le ruisseau du jardin, sauf le tablier du pont (jardin.ts).
+        ...OBSTACLES_JARDIN,
       ],
     },
     {

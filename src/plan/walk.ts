@@ -150,9 +150,23 @@ function lire(plan: Plan, surface: string) {
   // Les obstacles ne ferment que le plancher : le palier passe au-dessus du sien.
   // ponytail: les garde-corps d'un niveau arrêtent aussi son plancher — vrai ici, où
   // tout ce qu'ils bordent au-dessus du sol est déclaré en obstacle.
-  // ponytail: murs recalculés à chaque pas et à chaque changement de surface, à mettre en cache si le profil le montre.
-  const murs = [...wallSegments(plan, niveau, !volee && genre !== 'palier'), ...guardrails(plan, niveau)]
-  return { niveau, volee, cote, murs }
+  return { niveau, volee, cote, murs: mursDe(plan, niveau, !volee && genre !== 'palier') }
+}
+
+/**
+ * Les murs d'un niveau, calculés une fois par plan. Le profil l'a montré : depuis
+ * que l'étang et le ruisseau du jardin ajoutent leurs rectangles aux obstacles,
+ * les recalculer à chaque pas doublait la durée des marches de test.
+ * ponytail: suppose le plan figé une fois qu'on y marche — vrai partout ici.
+ */
+const MURS = new WeakMap<Plan, Map<string, Segment[]>>()
+function mursDe(plan: Plan, niveau: number, obstacles: boolean): Segment[] {
+  const parPlan = MURS.get(plan) ?? new Map<string, Segment[]>()
+  MURS.set(plan, parPlan)
+  const cle = `${niveau}:${obstacles}`
+  let murs = parPlan.get(cle)
+  if (!murs) parPlan.set(cle, (murs = [...wallSegments(plan, niveau, obstacles), ...guardrails(plan, niveau)]))
+  return murs
 }
 
 /**

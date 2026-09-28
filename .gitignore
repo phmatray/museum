@@ -85,3 +85,8 @@ public/assets/fonts/*
 # La nef du hall exige Blender (`tools/blender/build-nef.py`) : commitée, comme le kit de props.
 !public/assets/architecture/
 !public/assets/architecture/nef.glb
+
+# Le jardin japonais exige Blender (`tools/blender/build-jardin.py`) : commité, comme la nef.
+!public/assets/jardin/
+public/assets/jardin/*
+!public/assets/jardin/jardin.glb

@@ -9,8 +9,8 @@ Les **pièces en volume** de `sculptures/` n'en font pas partie : ce sont des
 licence sont dans `sculptures/SOURCES.md`.
 
 Récupérés par `node tools/fetch-assets.ts`, non versionnés — sauf les LOD de
-végétation, le kit de props, la nef et les pièces en volume, qui exigent Blender et
-sont donc commités.
+végétation, le kit de props, la nef, le jardin et les pièces en volume, qui exigent
+Blender et sont donc commités.
 
 | Asset | Source | Licence | Usage |
 |---|---|---|---|
@@ -34,9 +34,14 @@ sont donc commités.
 | jacaranda_tree | Poly Haven | CC0 | végétation, décimée dans les LOD |
 | shrub_01 | Poly Haven | CC0 | végétation, décimée dans les LOD |
 | shrub_03 | Poly Haven | CC0 | végétation, décimée dans les LOD |
+| rock_moss_set_01 | Poly Haven | CC0 | jardin japonais, décimé dans jardin.glb |
+| rock_moss_set_02 | Poly Haven | CC0 | jardin japonais, décimé dans jardin.glb |
+| boulder_01 | Poly Haven | CC0 | jardin japonais, décimé dans jardin.glb |
+| fern_02 | Poly Haven | CC0 | jardin japonais, décimé dans jardin.glb |
 | bavette | Meshy, d'après une photo de l'auteur | © tous droits réservés | pièce en volume, salle d'honneur |
 | PT Sans | Google Fonts (ParaType) | SIL OFL 1.1 | cartels et noms de salle (<Text> troika/drei) |
 | nef | `tools/blender/build-nef.py`, d'après le musée d'Orsay | œuvre originale du dépôt | voûte, verrière, horloge et lanternes du hall |
 | batllo | `tools/blender/build-batllo.py`, d'après la Casa Batlló de Gaudí | œuvre originale du dépôt | baie de la salle d'honneur : colonnes en os, chêne ondulé, vitrail de cives |
 | escalier | `tools/blender/build-escalier.py`, d'après le Grand Escalier de l'Opéra Garnier | œuvre originale du dépôt | l'escalier impérial de marbre : volées, bulbes du départ, limons et palier |
 | chambranle | `tools/blender/build-chambranle.py`, d'après les portes des salles d'Orsay et du Louvre | œuvre originale du dépôt | chambranles moulurés, plinthes et entablements de pierre des portes |
+| jardin | `tools/blender/build-jardin.py`, d'après le jardin japonais de Hasselt | œuvre originale du dépôt | étang, ruisseau, pont, lanterne, érables du Japon et boules taillées du parc |

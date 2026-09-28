@@ -5,6 +5,7 @@
  * d'instances par essence et par matériau.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
@@ -12,6 +13,8 @@ import type { Parc, PlantPlacement, EspeceParc } from '../plan/park'
 import type { Rect } from '../plan/types'
 import { REGLAGE_MATIERE, repetitionMetrique, useMatiere } from './materials'
 import { parkAssetsResource, type ParkAssets, type ParkPiece } from './parkAssets'
+import { creerMatieresJardin, preparerSol, uvBoite } from './jardinMatieres'
+import { useGameStore } from '../stores/gameStore'
 
 /** Un sol d'épaisseur nulle montrerait sa tranche depuis l'horizon. */
 const EPAISSEUR_SOL = 0.4
@@ -50,9 +53,10 @@ export function ParkLayer({ placements }: { placements: Parc }) {
     <group name="parc">
       <mesh geometry={sol} material={herbe} />
       <mesh geometry={allees} material={gravier} />
+      {assets !== null && <Jardin objets={assets.jardin} />}
       {assets !== null &&
         [...parEspece].map(([espece, sujets]) =>
-          (assets.get(espece) ?? []).map((lot, i) => <Instances key={`${espece}:${i}`} piece={lot} sujets={sujets} />))}
+          (assets.especes.get(espece) ?? []).map((lot, i) => <Instances key={`${espece}:${i}`} piece={lot} sujets={sujets} />))}
     </group>
   )
 }
@@ -88,12 +92,53 @@ function Instances({ piece, sujets }: { piece: ParkPiece; sujets: PlantPlacement
     const q = new THREE.Quaternion()
     const haut = new THREE.Vector3(0, 1, 0)
     sujets.forEach((s, i) =>
-      mesh.setMatrixAt(i, m.compose(new THREE.Vector3(s.x, 0, s.z), q.setFromAxisAngle(haut, s.rotation), new THREE.Vector3().setScalar(s.scale))))
+      mesh.setMatrixAt(i, m.compose(new THREE.Vector3(s.x, s.y ?? 0, s.z), q.setFromAxisAngle(haut, s.rotation), new THREE.Vector3().setScalar(s.scale))))
     mesh.instanceMatrix.needsUpdate = true
     // Sinon la sphère englobante est celle d'un arbre à l'origine.
     mesh.computeBoundingSphere()
   }, [sujets])
   return <instancedMesh key={sujets.length} ref={ref} args={[piece.geometry, undefined, sujets.length]} material={piece.material} />
+}
+
+/**
+ * Le décor fixe du jardin, tel que Blender l'a posé dans le repère du plan :
+ * le sol creusé prend la pelouse du parc, l'eau et la cascade leurs matières
+ * animées ; galets, pont et lanterne gardent les leurs.
+ */
+function Jardin({ objets }: { objets: THREE.Object3D[] }) {
+  const matieres = useMemo(() => creerMatieresJardin(), [])
+  useEffect(() => () => matieres.dispose(), [matieres])
+  useFrame(({ clock }) => matieres.animer(clock.elapsedTime, useGameStore.getState().ciel.jour))
+  const herbe = useMatiere('herbe', repetitionMetrique(REGLAGE_MATIERE.herbe.motif))
+  const pierre = useMatiere('beton', repetitionMetrique(REGLAGE_MATIERE.beton.motif), { teinte: '#b9b6ad' })
+  const bois = useMatiere('parquet', repetitionMetrique(REGLAGE_MATIERE.parquet.motif), { teinte: '#6b4a34' })
+
+  /* eslint-disable react-hooks/immutability -- les nœuds du GLB et nos matières, habillés en place */
+  useMemo(() => {
+    herbe.vertexColors = true
+    const par: Record<string, THREE.Material> = { sol: herbe, eau: matieres.eau, cascade: matieres.cascade, granit: pierre, bois }
+    for (const racine of objets) {
+      racine.traverse((o) => {
+        if (!(o instanceof THREE.Mesh)) return
+        const g = o.geometry as THREE.BufferGeometry
+        // Le rôle est lu une fois, sur le nom Blender : ensuite, le matériau a changé de nom.
+        if (o.userData.jardin === undefined) {
+          const nom = (o.material as THREE.Material).name
+          const role = nom.startsWith('Jardin_Sol') ? 'sol' : nom.startsWith('Jardin_Eau') ? 'eau'
+            : nom.startsWith('Jardin_Cascade') ? 'cascade' : nom.startsWith('Jardin_Granit') ? 'granit'
+              : nom.startsWith('Jardin_Bois') ? 'bois' : 'garde'
+          if (role === 'sol' || role === 'eau') preparerSol(g, role === 'eau')
+          if (role === 'granit' || role === 'bois') uvBoite(g)
+          o.userData.jardin = role
+        }
+        const m = par[o.userData.jardin as string]
+        if (m) o.material = m
+      })
+    }
+  }, [objets, matieres, herbe, pierre, bois])
+  /* eslint-enable react-hooks/immutability */
+
+  return <>{objets.map((o) => <primitive key={o.uuid} object={o} />)}</>
 }
 
 /** Sans suspendre : le bâtiment d'abord, les arbres ensuite. */

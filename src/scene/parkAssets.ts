@@ -12,6 +12,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 import type { EspeceParc } from '../plan/park'
+import { mousser } from './jardinMatieres'
 import { centrer } from './propAssets'
 
 export interface ParkPiece {
@@ -19,14 +20,29 @@ export interface ParkPiece {
   material: THREE.Material
 }
 
-export type ParkAssets = ReadonlyMap<EspeceParc, readonly ParkPiece[]>
+export interface ParkAssets {
+  especes: ReadonlyMap<EspeceParc, readonly ParkPiece[]>
+  /** Le décor fixe du jardin (`Jardin_*` de jardin.glb) : sol creusé, eau, pont, lanterne. */
+  jardin: THREE.Object3D[]
+}
 
-/** Les nœuds de chaque essence dans `park-lod.glb` (`GARDES_PARC` de `decimate-plants.py`). */
-const NOEUDS: Record<EspeceParc, string> = {
-  'arbre-01': 'island_tree_01_LOD0',
-  'arbre-02': 'island_tree_02_LOD0',
-  'arbuste-01': 'shrub_01_a',
-  'arbuste-02': 'shrub_03_a',
+/** Les nœuds de chaque essence : `GARDES_PARC` de `decimate-plants.py`, puis `build-jardin.py`. */
+const NOEUDS: Record<EspeceParc, [fichier: string, noeud: string]> = {
+  'arbre-01': ['plants/park-lod.glb', 'island_tree_01_LOD0'],
+  'arbre-02': ['plants/park-lod.glb', 'island_tree_02_LOD0'],
+  'arbuste-01': ['plants/park-lod.glb', 'shrub_01_a'],
+  'arbuste-02': ['plants/park-lod.glb', 'shrub_03_a'],
+  'erable-rouge': ['jardin/jardin.glb', 'src_erable_rouge'],
+  'erable-vert': ['jardin/jardin.glb', 'src_erable_vert'],
+  buis: ['jardin/jardin.glb', 'src_buis'],
+  azalee: ['jardin/jardin.glb', 'src_azalee'],
+  fougere: ['jardin/jardin.glb', 'src_fougere'],
+  petales: ['jardin/jardin.glb', 'src_petales'],
+  'rocher-1': ['jardin/jardin.glb', 'src_rocher_1'],
+  'rocher-2': ['jardin/jardin.glb', 'src_rocher_2'],
+  'rocher-3': ['jardin/jardin.glb', 'src_rocher_3'],
+  'rocher-4': ['jardin/jardin.glb', 'src_rocher_4'],
+  'rocher-5': ['jardin/jardin.glb', 'src_rocher_5'],
 }
 
 let promesse: Promise<ParkAssets> | null = null
@@ -36,7 +52,7 @@ export function parkAssetsResource(base: string = import.meta.env.BASE_URL): Pro
   promesse ??= charger(base).catch((erreur: unknown) => {
     // Le musée reste visitable sans ses arbres : le parc sort en pelouse nue.
     console.error('parc indisponible', erreur)
-    return new Map()
+    return { especes: new Map(), jardin: [] }
   })
   return promesse
 }
@@ -46,15 +62,18 @@ async function charger(base: string): Promise<ParkAssets> {
   const draco = new DRACOLoader()
   draco.setDecoderPath(`${base}draco/`)
   gltf.setDRACOLoader(draco)
-  const modele = await gltf.loadAsync(`${base}assets/plants/park-lod.glb`)
+  const fichiers = [...new Set(Object.values(NOEUDS).map(([f]) => f))]
+  const scenes = new Map(await Promise.all(fichiers.map(async (f) => [f, (await gltf.loadAsync(`${base}assets/${f}`)).scene] as const)))
   draco.dispose()
   const especes = new Map<EspeceParc, readonly ParkPiece[]>()
-  for (const [id, nom] of Object.entries(NOEUDS) as [EspeceParc, string][]) {
-    const noeud = modele.scene.getObjectByName(nom)
-    if (noeud === undefined) console.warn(`park-lod.glb : nœud « ${nom} » introuvable`)
+  for (const [id, [fichier, nom]] of Object.entries(NOEUDS) as [EspeceParc, [string, string]][]) {
+    const noeud = scenes.get(fichier)?.getObjectByName(nom)
+    if (noeud === undefined) console.warn(`${fichier} : nœud « ${nom} » introuvable`)
     else especes.set(id, lotsParMateriau(noeud))
   }
-  return especes
+  for (const [id, lots] of especes) if (id.startsWith('rocher')) for (const l of lots) mousser(l.material)
+  const jardin = scenes.get('jardin/jardin.glb')?.children.filter((o) => o.name.startsWith('Jardin_')) ?? []
+  return { especes, jardin }
 }
 
 /**

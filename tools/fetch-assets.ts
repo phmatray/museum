@@ -113,6 +113,14 @@ const ARBRES = ['island_tree_01', 'island_tree_02', 'jacaranda_tree'] as const
 const ARBUSTES = ['shrub_01', 'shrub_03'] as const
 
 /**
+ * Le JARDIN JAPONAIS (`tools/blender/build-jardin.py`) : des rochers moussus au
+ * bord de l'eau et une fougère sur les berges. Décimés et embarqués dans
+ * `jardin/jardin.glb` ; les érables, les boules taillées et l'eau sont
+ * modélisés par le script lui-même.
+ */
+const JARDIN = ['rock_moss_set_01', 'rock_moss_set_02', 'boulder_01', 'fern_02'] as const
+
+/**
  * Pièces en volume. Cet outil ne les RÉCUPÈRE pas — elles ne sont pas en CC0,
  * `tools/blender/build-sculptures.py` les produit à la main hors CI et le GLB
  * est commité (voir `public/assets/sculptures/SOURCES.md`). Elles sont
@@ -172,6 +180,12 @@ const ARCHITECTURE = [
     source: "`tools/blender/build-chambranle.py`, d'après les portes des salles d'Orsay et du Louvre",
     licence: 'œuvre originale du dépôt',
     usage: 'chambranles moulurés, plinthes et entablements de pierre des portes',
+  },
+  {
+    id: 'jardin',
+    source: "`tools/blender/build-jardin.py`, d'après le jardin japonais de Hasselt",
+    licence: 'œuvre originale du dépôt',
+    usage: 'étang, ruisseau, pont, lanterne, érables du Japon et boules taillées du parc',
   },
 ] as const
 
@@ -314,9 +328,10 @@ async function main() {
   console.log(`  ${(await recupererCiel(CIEL_NUIT)).padEnd(6)} ${CIEL_NUIT.id} ${CIEL_NUIT.largeur} px`)
   journal.push(`| ${CIEL_NUIT.id} | Poly Haven | CC0 | ciel de nuit, réduit en JPG |`)
 
-  const vegetation = [...PLANTES, ...ARBRES, ...ARBUSTES]
+  const vegetation = [...PLANTES, ...ARBRES, ...ARBUSTES, ...JARDIN]
   for (const p of vegetation) {
-    journal.push(`| ${p} | Poly Haven | CC0 | végétation, décimée dans les LOD |`)
+    const usage = (JARDIN as readonly string[]).includes(p) ? 'jardin japonais, décimé dans jardin.glb' : 'végétation, décimée dans les LOD'
+    journal.push(`| ${p} | Poly Haven | CC0 | ${usage} |`)
   }
 
   console.log(`\nPièces en volume (${SCULPTURES.length}) — commitées, hors pipeline CC0`)
@@ -344,6 +359,7 @@ async function main() {
       console.log(`  ${r.padEnd(6)} ${p}`)
     }
     console.log(`\n  Décimation : blender --background --python tools/blender/decimate-plants.py`)
+    console.log(`  Jardin     : blender --background --python tools/blender/build-jardin.py`)
   } else {
     console.log(`\nSources de végétation : IGNORÉES (--sources-vegetation pour les prendre).`)
     console.log(`  Le musée lit les LOD versionnés, pas les sources.`)
@@ -362,8 +378,8 @@ Les **pièces en volume** de \`sculptures/\` n'en font pas partie : ce sont des
 licence sont dans \`sculptures/SOURCES.md\`.
 
 Récupérés par \`node tools/fetch-assets.ts\`, non versionnés — sauf les LOD de
-végétation, le kit de props, la nef et les pièces en volume, qui exigent Blender et
-sont donc commités.
+végétation, le kit de props, la nef, le jardin et les pièces en volume, qui exigent
+Blender et sont donc commités.
 
 | Asset | Source | Licence | Usage |
 |---|---|---|---|
