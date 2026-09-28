@@ -20,10 +20,13 @@ import { parkPlacements } from '../plan/park'
 import { PropsLayer } from './PropsLayer'
 import { CartelLayer } from './CartelLayer'
 import { NefLayer } from './NefLayer'
+import { bandesDuSol, parementDuHall } from '../plan/parement'
+import { creerGranit, creerPierre } from './pierre'
 
 const AUCUNE: Box[] = []
 const SCULPTURES = sculpturePlacements(MUSEE)
 const PARC = parkPlacements(MUSEE)
+const BANDES = bandesDuSol(MUSEE)
 
 export function PlanBuilding() {
   // La baie et les garde-corps sont vitrés, comme les garde-corps de l'ancien atrium.
@@ -64,16 +67,34 @@ function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
   const platre = useMatiere('platre')
   const dalle = useMatiere(matiereDeDalle(level))
   const pierre = useMatiere('marbre')
+  const parement = useMemo(() => parementDuHall(MUSEE, level), [level])
+  // Les balcons sont de pierre, comme la nef qu'ils bordent : pas de parquet vu d'en bas.
+  const dalles = useMemo(() => {
+    const balcons = (MUSEE.levels.find((l) => l.id === level)?.rooms ?? []).filter((r) => r.kind === 'balcony')
+    const estBalcon = (b: Box) => balcons.some((r) => Math.abs(r.x + r.width / 2 - b.x) < 1e-6 && Math.abs(r.z + r.depth / 2 - b.z) < 1e-6)
+    const toutes = de.get('slab') ?? AUCUNE
+    return { balcons: toutes.filter(estBalcon), courantes: toutes.filter((b) => !estBalcon(b)) }
+  }, [de, level])
+  const taille = useMemo(() => creerPierre(), [])
+  const granit = useMemo(() => creerGranit(), [])
+  useEffect(() => () => {
+    taille.map?.dispose()
+    taille.dispose()
+    granit.dispose()
+  }, [taille, granit])
 
   return (
     <>
       <Boites boites={de.get('wall') ?? AUCUNE} material={platre} />
       <Boites boites={de.get('lintel') ?? AUCUNE} material={platre} />
-      <Boites boites={de.get('slab') ?? AUCUNE} material={dalle} />
+      <Boites boites={dalles.courantes} material={dalle} />
+      <Boites boites={dalles.balcons} material={taille} />
       <Boites boites={de.get('landing') ?? AUCUNE} material={pierre} />
       <Boites boites={de.get('step') ?? AUCUNE} material={pierre} />
       <Boites boites={de.get('railing') ?? AUCUNE} material={verre} />
       <Boites boites={de.get('glass') ?? AUCUNE} material={verre} />
+      <Boites boites={parement} material={taille} />
+      {level === 0 && <Boites boites={BANDES} material={granit} />}
       <PlanToiles level={level} />
     </>
   )
