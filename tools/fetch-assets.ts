@@ -76,6 +76,13 @@ const MATIERES = [
   { id: 'Gravel023', role: 'gravier', usage: 'allées et parvis du parc' },
 ] as const
 
+/**
+ * Le ciel du fond de scène : un « pure sky » (sans sol) de Poly Haven. On prend
+ * sa version tonemappée en JPG, pas l'HDR : c'est un fond, pas une lumière, et
+ * réduite à 4096 × 2048 elle pèse un mégaoctet quand l'HDR 2k en pèse cinq.
+ */
+export const CIEL = { id: 'kloofendal_48d_partly_cloudy_puresky', largeur: 4096 }
+
 /** HDRI d'intérieur neutre : il sert au spéculaire, pas à l'éclairage direct. */
 const HDRI = { id: 'brown_photostudio_02', resolution: '2k' }
 
@@ -132,6 +139,19 @@ const POLICES = [
     source: 'Google Fonts (ParaType)',
     licence: 'SIL OFL 1.1',
     usage: 'cartels et noms de salle (<Text> troika/drei)',
+  },
+] as const
+
+/**
+ * Architecture modélisée par le dépôt (`tools/blender/build-nef.py`), commitée
+ * comme le kit de props. Déclarée ici pour que `CREDITS.md` la crédite.
+ */
+const ARCHITECTURE = [
+  {
+    id: 'nef',
+    source: "`tools/blender/build-nef.py`, d'après le musée d'Orsay",
+    licence: 'œuvre originale du dépôt',
+    usage: 'voûte, verrière, horloge et lanternes du hall',
   },
 ] as const
 
@@ -202,6 +222,18 @@ async function recupererHdri(): Promise<string> {
   return telecharger({ url, dest })
 }
 
+async function recupererCiel(): Promise<string> {
+  const dest = join(OUT, 'ciel', `${CIEL.id}.jpg`)
+  if (await existe(dest)) return 'cache'
+  const brut = `${dest}.source`
+  const r = await telecharger({ url: `https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/${CIEL.id}.jpg`, dest: brut })
+  if (r === 'echec') return r
+  const { default: sharp } = await import('sharp')
+  await sharp(brut, { limitInputPixels: false }).resize(CIEL.largeur, CIEL.largeur / 2).jpeg({ quality: 82, mozjpeg: true }).toFile(dest)
+  await rm(brut, { force: true })
+  return 'ok'
+}
+
 async function recupererPlante(id: string): Promise<string> {
   const dest = join(OUT, 'plants', `${id}.gltf`)
   if (await existe(dest)) return 'cache'
@@ -257,6 +289,8 @@ async function main() {
   console.log(`\nHDRI — Poly Haven, CC0`)
   console.log(`  ${(await recupererHdri()).padEnd(6)} ${HDRI.id} ${HDRI.resolution}`)
   journal.push(`| ${HDRI.id} | Poly Haven | CC0 | carte d'environnement, spéculaire |`)
+  console.log(`  ${(await recupererCiel()).padEnd(6)} ${CIEL.id} ${CIEL.largeur} px`)
+  journal.push(`| ${CIEL.id} | Poly Haven | CC0 | ciel du fond de scène, réduit en JPG |`)
 
   const vegetation = [...PLANTES, ...ARBRES, ...ARBUSTES]
   for (const p of vegetation) {
@@ -273,6 +307,12 @@ async function main() {
   for (const p of POLICES) {
     console.log(`  ${'ok'.padEnd(6)} ${p.id.padEnd(20)} ${p.usage}`)
     journal.push(`| ${p.id} | ${p.source} | ${p.licence} | ${p.usage} |`)
+  }
+
+  console.log(`\nArchitecture (${ARCHITECTURE.length}) — commitée, hors pipeline CC0`)
+  for (const a of ARCHITECTURE) {
+    console.log(`  ${'ok'.padEnd(6)} ${a.id.padEnd(20)} ${a.usage}`)
+    journal.push(`| ${a.id} | ${a.source} | ${a.licence} | ${a.usage} |`)
   }
 
   if (SOURCES_VEGETATION) {
@@ -300,7 +340,7 @@ Les **pièces en volume** de \`sculptures/\` n'en font pas partie : ce sont des
 licence sont dans \`sculptures/SOURCES.md\`.
 
 Récupérés par \`node tools/fetch-assets.ts\`, non versionnés — sauf les LOD de
-végétation, le kit de props et les pièces en volume, qui exigent Blender et
+végétation, le kit de props, la nef et les pièces en volume, qui exigent Blender et
 sont donc commités.
 
 | Asset | Source | Licence | Usage |

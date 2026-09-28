@@ -81,3 +81,7 @@ public/assets/fonts/*
 .claude/worktrees/
 .worktrees/
 .claude/decision-events.jsonl
+
+# La nef du hall exige Blender (`tools/blender/build-nef.py`) : commitée, comme le kit de props.
+!public/assets/architecture/
+!public/assets/architecture/nef.glb
