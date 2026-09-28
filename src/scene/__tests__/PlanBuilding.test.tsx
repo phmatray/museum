@@ -27,6 +27,7 @@ import { facade } from '../../plan/facade'
 import { meshLevel, type Box } from '../../plan/mesh'
 import { CIEL } from '../lighting'
 import { useGameStore } from '../../stores/gameStore'
+import { sansBaieBatllo } from '../batllo'
 
 // Ordre exact des <Boites> par niveau dans PlanBuilding.tsx : un InstancedMesh
 // par sorte, toujours dans cet ordre, même vide.
@@ -60,6 +61,8 @@ describe('PlanBuilding', () => {
       const { platre, verre, resille } = plafonds(MUSEE, niveau.id)
       const pierre = [parementDuHall(MUSEE, niveau.id).length, platre.length, verre.length, resille.length, ...(niveau.id === 0 ? [bandesDuSol(MUSEE).length] : [])]
       const comptes = ORDRE_SORTES.map((kind) => boites.filter((b) => b.kind === kind).length)
+      // La baie de la salle d'honneur est vitrée par la fenêtre Batlló (BatlloLayer), pas par une boîte.
+      comptes[ORDRE_SORTES.indexOf('glass')] = sansBaieBatllo(boites.filter((b) => b.kind === 'glass'), niveau.id).length
       // Les dalles des balcons sont à part, en pierre, juste après les dalles courantes.
       const balcons = niveau.rooms.filter((r) => r.kind === 'balcony').length
       comptes.splice(2, 1, comptes[2] - balcons, balcons)

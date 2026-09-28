@@ -37,3 +37,4 @@ sont donc commités.
 | bavette | Meshy, d'après une photo de l'auteur | © tous droits réservés | pièce en volume, salle d'honneur |
 | PT Sans | Google Fonts (ParaType) | SIL OFL 1.1 | cartels et noms de salle (<Text> troika/drei) |
 | nef | `tools/blender/build-nef.py`, d'après le musée d'Orsay | œuvre originale du dépôt | voûte, verrière, horloge et lanternes du hall |
+| batllo | `tools/blender/build-batllo.py`, d'après la Casa Batlló de Gaudí | œuvre originale du dépôt | baie de la salle d'honneur : colonnes en os, chêne ondulé, vitrail de cives |

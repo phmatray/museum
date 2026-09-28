@@ -21,6 +21,8 @@ import { parkPlacements } from '../plan/park'
 import { PropsLayer } from './PropsLayer'
 import { CartelLayer } from './CartelLayer'
 import { NefLayer } from './NefLayer'
+import { BatlloLayer } from './BatlloLayer'
+import { sansBaieBatllo } from './batllo'
 import { TableauDeparts } from './TableauDeparts'
 import { EveilLayer } from './EveilLayer'
 import { ProjecteursLayer } from './ProjecteursLayer'
@@ -48,6 +50,7 @@ export function PlanBuilding() {
       <LumiereDuJour />
       {MUSEE.levels.map((l) => <Niveau key={l.id} level={l.id} verre={verre} />)}
       <NefLayer />
+      <BatlloLayer />
       <TableauDeparts />
       <EveilLayer />
       <ProjecteursLayer />
@@ -92,6 +95,8 @@ function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
     const toutes = de.get('slab') ?? AUCUNE
     return { balcons: toutes.filter(estBalcon), courantes: toutes.filter((b) => !estBalcon(b)) }
   }, [de, level])
+  // La baie de la salle d'honneur est vitrée par la fenêtre Batlló, pas par une boîte.
+  const baies = useMemo(() => sansBaieBatllo(de.get('glass') ?? AUCUNE, level), [de, level])
   const taille = useMemo(() => creerPierre(), [])
   const granit = useMemo(() => creerGranit(), [])
   useEffect(() => () => {
@@ -110,7 +115,7 @@ function Niveau({ level, verre }: { level: number; verre: THREE.Material }) {
       <Boites boites={de.get('step') ?? AUCUNE} material={pierre} />
       <Boites boites={de.get('railing') ?? AUCUNE} material={verre} />
       <Boites boites={de.get('handrail') ?? AUCUNE} material={acier} />
-      <Boites boites={de.get('glass') ?? AUCUNE} material={verre} />
+      <Boites boites={baies} material={verre} />
       <Boites boites={parement} material={taille} />
       <Boites boites={plafond.platre} material={platrePlafond} />
       <Boites boites={plafond.verre} material={lanterneau} />

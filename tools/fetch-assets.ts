@@ -155,6 +155,12 @@ const ARCHITECTURE = [
     licence: 'œuvre originale du dépôt',
     usage: 'voûte, verrière, horloge et lanternes du hall',
   },
+  {
+    id: 'batllo',
+    source: "`tools/blender/build-batllo.py`, d'après la Casa Batlló de Gaudí",
+    licence: 'œuvre originale du dépôt',
+    usage: "baie de la salle d'honneur : colonnes en os, chêne ondulé, vitrail de cives",
+  },
 ] as const
 
 interface Telechargement {
