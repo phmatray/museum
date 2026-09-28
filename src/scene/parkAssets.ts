@@ -26,12 +26,11 @@ export interface ParkAssets {
   jardin: THREE.Object3D[]
 }
 
-/** Les nœuds de chaque essence : `GARDES_PARC` de `decimate-plants.py`, puis `build-jardin.py`. */
+/**
+ * Les nœuds de chaque essence, tous dans `build-jardin.py`. Les arbres Poly Haven
+ * de `park-lod.glb` ne sont plus plantés : ils ne s'accordaient pas au jardin.
+ */
 const NOEUDS: Record<EspeceParc, [fichier: string, noeud: string]> = {
-  'arbre-01': ['plants/park-lod.glb', 'island_tree_01_LOD0'],
-  'arbre-02': ['plants/park-lod.glb', 'island_tree_02_LOD0'],
-  'arbuste-01': ['plants/park-lod.glb', 'shrub_01_a'],
-  'arbuste-02': ['plants/park-lod.glb', 'shrub_03_a'],
   'erable-rouge': ['jardin/jardin.glb', 'src_erable_rouge'],
   'erable-vert': ['jardin/jardin.glb', 'src_erable_vert'],
   buis: ['jardin/jardin.glb', 'src_buis'],

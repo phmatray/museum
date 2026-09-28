@@ -20,7 +20,6 @@ import { CONTOUR_ETANG, JARDIN, LEVRE, TABLIER, TRACE_RUISSEAU, distanceEtang, p
 import type { Plan, Rect } from './types.ts'
 
 export type EspeceParc =
-  | 'arbre-01' | 'arbre-02' | 'arbuste-01' | 'arbuste-02'
   | 'erable-rouge' | 'erable-vert' | 'buis' | 'azalee' | 'fougere' | 'petales'
   | 'rocher-1' | 'rocher-2' | 'rocher-3' | 'rocher-4' | 'rocher-5'
 
@@ -61,11 +60,11 @@ const RETRAIT_PERIPHERIQUE = 6
 const LARGEUR_PERIPHERIQUE = 3
 const LARGEUR_ACCES = 2.4
 /** Un sujet par maille, quand la maille le permet : des arbres isolés, pas un rideau. */
-const PAS_GRILLE = 11
-/** Les arbustes font la strate basse, et coûtent cinq fois moins. */
-const PART_ARBUSTES = 0.6
+/** Le parc hors jardin : ses bosquets, leur écart minimal, ses sujets isolés. */
+const BOSQUETS = 14
+const ECART_BOSQUETS = 22
+const ISOLES = 18
 const RAYON: Record<EspeceParc, number> = {
-  'arbre-01': 3.2, 'arbre-02': 2.8, 'arbuste-01': 1.1, 'arbuste-02': 0.9,
   'erable-rouge': 3.2, 'erable-vert': 3.2, buis: 0.8, azalee: 0.75, fougere: 0.5, petales: 0,
   'rocher-1': 1.4, 'rocher-2': 1.1, 'rocher-3': 1.0, 'rocher-4': 1.0, 'rocher-5': 0.9,
 }
@@ -245,9 +244,10 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
   for (let x = JARDIN.zones[0].x; x < xMax; x += 7) rideau.push([x, zMax - 3.5])
   for (let z = JARDIN.zones[1].z; z < zMax - 7; z += 7) rideau.push([xMax - 3.5, z])
   for (const [x, z] of rideau) {
-    const espece = alea() < 0.5 ? 'arbre-01' : 'arbre-02'
+    // De grands érables, surtout verts : un fond calme derrière les rouges du jardin.
+    const espece = alea() < 0.3 ? 'erable-rouge' : 'erable-vert'
     const [rx, rz] = [x + (alea() - 0.5) * 3, z + (alea() - 0.5) * 2]
-    if (libre(rx, rz, RAYON[espece] * 0.8, 1.5)) planter(espece, rx, rz, 0.95 + alea() * 0.3)
+    if (libre(rx, rz, RAYON[espece] * 0.8, 1.5)) planter(espece, rx, rz, 1.3 + alea() * 0.35)
   }
 
   // 3. Le jardin : un semis serré à moins de `PRES_DE_L_EAU` de l'eau, érables
@@ -280,22 +280,44 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
     }
   }
 
-  // 4. Le reste du parc, comme avant : une grille perturbée. Près de l'eau, plus
-  //    de grands arbres : l'érable et la boule prennent la place.
-  for (let i = 0; i < Math.floor(terrain.width / PAS_GRILLE); i++) {
-    for (let j = 0; j < Math.floor(terrain.depth / PAS_GRILLE); j++) {
-      const x = terrain.x + (i + 0.5) * PAS_GRILLE + (alea() - 0.5) * PAS_GRILLE * 0.8
-      const z = terrain.z + (j + 0.5) * PAS_GRILLE + (alea() - 0.5) * PAS_GRILLE * 0.8
-      const tirage = alea()
-      const espece: EspeceParc = presDeLEau(x, z, PRES_DE_L_EAU)
-        ? tirage < 0.5 ? (alea() < 0.5 ? 'erable-rouge' : 'erable-vert') : alea() < 0.5 ? 'buis' : 'azalee'
-        : tirage < PART_ARBUSTES * 0.5
-          ? alea() < 0.5 ? 'arbuste-01' : 'arbuste-02'
-          : tirage < PART_ARBUSTES
-            ? alea() < 0.4 ? 'erable-rouge' : alea() < 0.5 ? 'erable-vert' : 'buis'
-            : alea() < 0.5 ? 'arbre-01' : 'arbre-02'
-      if (libre(x, z, RAYON[espece])) planter(espece, x, z)
+  // 4. Le reste du parc, en BOSQUETS plutôt qu'en grille : un parc paysager se
+  //    lit par masses et clairières, pas par sujets alignés (« le parc doit
+  //    sembler organique », Philippe). Chaque bosquet : des érables serrés de
+  //    tailles inégales, plus grands au cœur, et un chapelet de boules et
+  //    d'azalées sur sa lisière ; entre les bosquets, de la pelouse, et quelques
+  //    isolés. Seules les essences du jardin : les arbres Poly Haven d'origine ne
+  //    s'y accordaient pas.
+  const bosquets: [number, number][] = []
+  for (let essai = 0; essai < 400 && bosquets.length < BOSQUETS; essai++) {
+    const [x, z] = [terrain.x + alea() * terrain.width, terrain.z + alea() * terrain.depth]
+    if (dansRect(parvis, x, z, 9) || presDeLEau(x, z, 6)) continue
+    if (bosquets.some(([bx, bz]) => Math.hypot(bx - x, bz - z) < ECART_BOSQUETS)) continue
+    bosquets.push([x, z])
+  }
+  for (const [bx, bz] of bosquets) {
+    // Un bosquet est plutôt rouge ou plutôt vert : des masses de couleur, pas un damier.
+    const rouge = alea() < 0.35
+    const n = 3 + Math.floor(alea() * 5)
+    const etendue = 3 + n * 0.9
+    for (let k = 0; k < n * 3; k++) {
+      const [a, r] = [alea() * Math.PI * 2, Math.sqrt(alea()) * etendue]
+      const [x, z] = [bx + Math.cos(a) * r * 1.3, bz + Math.sin(a) * r]
+      const espece = (alea() < 0.8) === rouge ? 'erable-rouge' : 'erable-vert'
+      const taille = 0.85 + alea() * 0.6 + (1 - r / etendue) * 0.3
+      if (libre(x, z, RAYON[espece] * taille * 0.8, 1.5, 0.55)) planter(espece, x, z, taille)
     }
+    for (let k = 0; k < 10; k++) {
+      const [a, f] = [alea() * Math.PI * 2, (etendue + 2.5) * (0.85 + alea() * 0.3)]
+      const [x, z] = [bx + Math.cos(a) * f * 1.3, bz + Math.sin(a) * f]
+      const espece = alea() < 0.5 ? 'azalee' : 'buis'
+      if (libre(x, z, RAYON[espece], 0.8, 0.8)) planter(espece, x, z, 0.8 + alea() * 0.7)
+    }
+  }
+  for (let k = 0; k < ISOLES; k++) {
+    const [x, z] = [terrain.x + alea() * terrain.width, terrain.z + alea() * terrain.depth]
+    const espece: EspeceParc = alea() < 0.5 ? (alea() < 0.4 ? 'erable-rouge' : 'erable-vert') : alea() < 0.5 ? 'azalee' : 'buis'
+    // Un isolé garde ses distances : c'est ce qui le fait lire comme tel.
+    if (libre(x, z, RAYON[espece] * 1.6, 1.5)) planter(espece, x, z)
   }
 
   // 5. En dernier, pour ne rien empêcher de pousser : des pétales tombés sous
