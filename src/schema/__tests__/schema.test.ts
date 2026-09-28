@@ -97,6 +97,13 @@ describe('données réelles', () => {
     expect(config.clustering.maxClusterSize).toBe(14)
   })
 
+  it('un catalogue d’avant les captures, sans `site`, reste valide (site null)', () => {
+    const [a] = parseCatalogue(catalogueValide([artworkValide()])).artworks
+    expect(a.site).toBeNull()
+    const [b] = parseCatalogue(catalogueValide([artworkValide({ site: 'https://phmatray.github.io/museum/' })])).artworks
+    expect(b.site).toBe('https://phmatray.github.io/museum/')
+  })
+
   it('parse deux fois le catalogue réel à l’identique — aucune source de non-déterminisme', () => {
     expect(JSON.stringify(parseCatalogue(catalogueReel))).toBe(
       JSON.stringify(parseCatalogue(catalogueReel)),

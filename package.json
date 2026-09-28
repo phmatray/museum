@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "fetch": "node tools/fetch-github.ts",
+    "captures": "node tools/build-captures.ts",
     "media": "node tools/build-media.ts",
     "test": "vitest run",
     "test:watch": "vitest",

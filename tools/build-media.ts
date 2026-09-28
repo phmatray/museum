@@ -4,7 +4,9 @@
  *   node tools/build-media.ts [--force]
  *
  * Entrées  : public/data/catalogue.json, curation.json (facultatif),
- *            museum.config.json
+ *            museum.config.json, public/media/captures.json (facultatif,
+ *            `tools/build-captures.ts` : la capture du site ou du README
+ *            remplace alors la carte OpenGraph)
  * Sorties  : public/media/near/<owner>__<name>.webp   (LOD proche, 1024×512)
  *            public/media/atlas-<n>.webp              (LOD lointain, 16×16 tuiles)
  *            public/media/atlas.json                  (AtlasIndex, seule sortie commitée)
@@ -30,6 +32,7 @@ import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
+import { cadrer, type IndexCaptures } from '../src/domain/captures.ts'
 import type { Artwork, AtlasIndex, Catalogue, Curation, MuseumConfig, RepoKey } from '../src/domain/types.ts'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -66,7 +69,7 @@ const PIPELINE_SIG = `v1:${NEAR_W}x${NEAR_H}q${NEAR_QUALITY}:${TILE_W}x${TILE_H}
 
 // ── Cache sur disque ─────────────────────────────────────────────────────
 
-type Source = 'og' | 'custom' | 'fallback'
+type Source = 'og' | 'custom' | 'capture' | 'fallback'
 
 interface CacheFile {
   schemaVersion: 1
@@ -354,6 +357,8 @@ interface Job {
   slug: string
   title: string
   image: string | undefined
+  /** La capture du site ou du README (`build-captures.ts`), et son ancrage de recadrage. */
+  capture: { path: string; ancre: 'haut' | 'centre' } | undefined
   /** Empreinte des entrées : tout ce qui change les pixels produits. */
   fp: string
   nearPath: string
@@ -371,10 +376,23 @@ interface Outcome {
   warning?: string
 }
 
-async function buildJob(art: Artwork, curation: Curation): Promise<Job> {
+async function buildJob(art: Artwork, curation: Curation, captures: IndexCaptures): Promise<Job> {
   const override = curation.repos[art.key] ?? {}
   const title = override.title ?? art.title
   const image = override.image
+  const entree = captures[art.key]
+  const capture =
+    entree?.file && entree.source !== 'og'
+      ? { path: resolve(MEDIA, entree.file), ancre: entree.source === 'site' ? ('haut' as const) : ('centre' as const) }
+      : undefined
+  let captureFp = ''
+  if (capture) {
+    try {
+      captureFp = sha1(await readFile(capture.path))
+    } catch {
+      captureFp = 'introuvable'
+    }
+  }
   // L'empreinte du fichier curé passe par son contenu, pas par sa date : le
   // cache reste valable après un git clone, qui réécrit toutes les mtimes.
   let customFp = ''
@@ -394,6 +412,7 @@ async function buildJob(art: Artwork, curation: Curation): Promise<Job> {
       art.stars,
       image ?? null,
       customFp,
+      captureFp,
     ])
   )
   return {
@@ -401,6 +420,7 @@ async function buildJob(art: Artwork, curation: Curation): Promise<Job> {
     slug: slugify(art.key),
     title,
     image,
+    capture,
     fp,
     nearPath: resolve(NEAR_DIR, `${slugify(art.key)}.webp`),
     tilePath: resolve(TILES_DIR, `${slugify(art.key)}.png`),
@@ -429,6 +449,8 @@ async function processJob(job: Job, cache: CacheFile, force: boolean): Promise<O
     buffer = await readCustom(job.image)
     if (buffer) source = 'custom'
     else warning = `${job.art.key} : image curée introuvable (${job.image}), repli généré`
+  } else if (job.capture && (buffer = await readFile(job.capture.path).catch(() => null))) {
+    source = 'capture'
   } else {
     const fetched = await download(ogUrl(job.art.key, job.art.owner, job.art.name))
     buffer = fetched.buffer
@@ -448,7 +470,7 @@ async function processJob(job: Job, cache: CacheFile, force: boolean): Promise<O
   // un contrôle préalable : seule l'écriture prouve que le visuel existe, et
   // l'invariant « aucun dépôt sans toile » ne tolère pas d'exception qui remonte.
   try {
-    await writeOutputs(buffer, job)
+    await writeOutputs(buffer, job, source === 'capture' ? job.capture : undefined)
   } catch {
     source = 'fallback'
     retry = false
@@ -459,8 +481,26 @@ async function processJob(job: Job, cache: CacheFile, force: boolean): Promise<O
   return { key: job.art.key, fp: job.fp, source, cached: false, retry, warning }
 }
 
+/**
+ * Une capture posée sur la toile 2:1 (`cadrer`) : recadrée si elle est proche du
+ * format — ancrée en haut pour une page web —, sinon entière sur un fond tiré
+ * d'elle-même, floutée et assombrie, plutôt qu'un aplat qui ferait un trou.
+ */
+async function toileDeCapture(buffer: Buffer, ancre: 'haut' | 'centre'): Promise<Buffer> {
+  const { width = 1, height = 1 } = await sharp(buffer, { pages: 1 }).metadata()
+  const cadre = cadrer(width, height, NEAR_W / NEAR_H, ancre)
+  if (cadre.mode === 'recadrer') {
+    const { left, top, width: w, height: h } = cadre
+    return sharp(buffer, { pages: 1 }).extract({ left, top, width: w, height: h }).resize(NEAR_W, NEAR_H, { fit: 'fill' }).png().toBuffer()
+  }
+  const fond = await sharp(buffer, { pages: 1 }).resize(NEAR_W, NEAR_H, { fit: 'cover' }).blur(28).modulate({ brightness: 0.45 }).png().toBuffer()
+  const image = await sharp(buffer, { pages: 1 }).resize(NEAR_W - 64, NEAR_H - 48, { fit: 'inside' }).png().toBuffer()
+  return sharp(fond).composite([{ input: image, gravity: 'centre' }]).png().toBuffer()
+}
+
 /** Les deux LOD, écrits depuis la même source. */
-async function writeOutputs(buffer: Buffer, job: Job): Promise<void> {
+async function writeOutputs(buffer: Buffer, job: Job, capture?: Job['capture']): Promise<void> {
+  if (capture) buffer = await toileDeCapture(buffer, capture.ancre)
   // `cover` garantit le format 2:1 attendu par le domaine, quelle que soit la
   // source — une image curée peut arriver dans n'importe quel rapport.
   await sharp(buffer)
@@ -555,7 +595,8 @@ async function main() {
     `${config.name} — ${artworks.length} dépôts (${catalogue.artworks.length - artworks.length} exclus par la curation)`
   )
 
-  const jobs = await Promise.all(artworks.map((a) => buildJob(a, curation)))
+  const captures = (await readJson<IndexCaptures>(resolve(MEDIA, 'captures.json'))) ?? {}
+  const jobs = await Promise.all(artworks.map((a) => buildJob(a, curation, captures)))
 
   let done = 0
   const outcomes = await pool(jobs, CONCURRENCY, async (job) => {
@@ -618,7 +659,7 @@ async function main() {
   // ── Ménage et cache ────────────────────────────────────────────────────
   const prunedNear = await prune(NEAR_DIR, new Set(jobs.map((j) => `${j.slug}.webp`)))
   const prunedTiles = await prune(TILES_DIR, new Set(jobs.map((j) => `${j.slug}.png`)))
-  const prunedAtlas = await prune(MEDIA, new Set([...atlasNames, 'atlas.json', '.cache.json', 'near', '.tiles']))
+  const prunedAtlas = await prune(MEDIA, new Set([...atlasNames, 'atlas.json', '.cache.json', 'near', '.tiles', 'captures', 'captures.json']))
 
   const nextEntries: CacheFile['entries'] = {}
   for (const o of [...outcomes].sort((a, b) => byKey(a.key, b.key))) {
@@ -663,6 +704,7 @@ async function main() {
     `\n${jobs.length} dépôts traités, aucun sans visuel\n` +
       `  téléchargés (OG) : ${count('og')}\n` +
       `  images curées    : ${count('custom')}\n` +
+      `  captures         : ${count('capture')} (site ou README, build-captures.ts)\n` +
       `  toiles de repli  : ${count('fallback')} (dont ${provisional} provisoire(s), à retenter)\n` +
       `  servis par cache : ${fromCache}${force ? ' (--force : cache ignoré)' : ''}\n` +
       `  atlas            : ${atlasCount} (${composed} recomposé(s)) — ${atlasSizes.join(', ')}\n` +
