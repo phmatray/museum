@@ -31,3 +31,6 @@ export const CARTEL_FONT = `${import.meta.env.BASE_URL}assets/fonts/PTSans-Regul
 
 /** Le romain des titres des vitrines de la salle d'honneur (PT Serif, même fonderie, sous-ensemble latin). */
 export const TITRE_FONT = `${import.meta.env.BASE_URL}assets/fonts/PTSerif-Regular.ttf`
+
+/** La plaque d'un cartel, dessinée pour tous les cartels à la fois par `CartelLayer`. */
+export const PLAQUE = { hauteur: 0.16, epaisseur: 0.01, couleur: '#f4f1ea' }

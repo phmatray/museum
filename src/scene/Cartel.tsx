@@ -6,19 +6,14 @@ import { Suspense } from 'react'
 import { Text } from '@react-three/drei'
 
 import { CARTEL_LARGEUR, type CartelPlacement } from '../plan/cartels'
-import { CARTEL_FONT, THEME_INK } from './cartelStyle'
+import { CARTEL_FONT, PLAQUE, THEME_INK } from './cartelStyle'
 
-const HAUTEUR = 0.16
-const EPAISSEUR = 0.01
+const EPAISSEUR = PLAQUE.epaisseur
 
 export function Cartel({ placement, texte }: { placement: CartelPlacement; texte: string }) {
   return (
     <group position={[placement.x, placement.y, placement.z]} rotation={[0, placement.rotation, 0]}>
-      <mesh position={[0, 0, EPAISSEUR / 2]}>
-        <boxGeometry args={[CARTEL_LARGEUR, HAUTEUR, EPAISSEUR]} />
-        <meshStandardMaterial color="#f4f1ea" roughness={0.9} />
-      </mesh>
-      {/* La plaque d'abord ; le texte quand sa police est là. */}
+      {/* La plaque est dans le lot de `CartelLayer` ; ici, le texte, quand sa police est là. */}
       <Suspense fallback={null}>
         <Text
           font={CARTEL_FONT}
