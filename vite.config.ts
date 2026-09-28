@@ -97,5 +97,9 @@ export default defineConfig({
     // Les worktrees d'agents (.claude/worktrees/) contiennent une copie du dépôt :
     // sans cette exclusion, chaque suite lancée depuis la racine les rejouait.
     exclude: [...configDefaults.exclude, '.claude/**'],
+    // Plusieurs suites balaient tout le terrain ou simulent des heures de marche :
+    // seules, 2 à 4 s ; en parallèle, sous charge, elles dépassaient les 5 s par
+    // défaut une fois sur deux. 30 s les laisse finir sans masquer une boucle folle.
+    testTimeout: 30_000,
   },
 })
