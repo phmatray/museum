@@ -173,7 +173,9 @@ function graphe(plan: Plan) {
   const devant = Math.max(plan.depth, ...OBSTACLES_PORTIQUE.map((o) => o.z + o.depth)) + 0.8
   for (const level of plan.levels)
     for (const o of level.openings)
-      if (o.kind === 'entrance' && o.b === null) lier(`${level.id}:${o.a}`, PARC, [[o.x, o.z - 0.8], [o.x, devant]])
+      // Côté hall, le point de passage est au-delà des battants ouverts de l'entrée
+      // (1,55 m) : plus près, le chemin vers un coin du hall coupait un battant.
+      if (o.kind === 'entrance' && o.b === null) lier(`${level.id}:${o.a}`, PARC, [[o.x, o.z - 2.6], [o.x, o.z - 0.8], [o.x, devant]])
   return g
 }
 

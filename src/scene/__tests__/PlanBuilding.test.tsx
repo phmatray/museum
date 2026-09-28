@@ -88,7 +88,7 @@ describe('PlanBuilding', () => {
     attendus.push(portes(MUSEE).embrasures.length)
     // Puis la façade, après les niveaux : brique, pierre, piliers, vitres, menuiseries.
     const f = facade(MUSEE)
-    attendus.push(f.brique.length, f.pierre.length, f.piliers.length, f.vitres.length, f.menuiseries.length)
+    attendus.push(f.brique.length, f.pierre.length, f.piliers.length, f.vitres.length, f.portes.length, f.menuiseries.length)
 
     expect(meshes).toHaveLength(attendus.length)
     expect(meshes.map((m) => m.count)).toEqual(attendus)

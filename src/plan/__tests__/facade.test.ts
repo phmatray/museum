@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 
-import { facade, OBSTACLES_PORTIQUE } from '../facade'
+import { ENTREE, facade, OBSTACLES_PORTES_ENTREE, OBSTACLES_PORTIQUE } from '../facade'
 import { MUSEE } from '../musee'
 
 it('centre le portique sur l’entrée et laisse sa baie du milieu libre', () => {
@@ -24,4 +24,11 @@ it('habille de brique les quatre façades et pose l’enseigne au-dessus du port
   expect(f.enseigne.y).toBeGreaterThan(7.4)
   expect(f.enseigne.y).toBeLessThan(8.6)
   expect(f.bannieres).toHaveLength(2)
+})
+
+it('ouvre les portes de l’entrée sur l’entrée du plan, sans rétrécir le passage sous 2,80 m', () => {
+  const entree = MUSEE.levels[0].openings.find((o) => o.kind === 'entrance')!
+  expect([ENTREE.x, ENTREE.z, ENTREE.width]).toEqual([entree.x, entree.z, entree.width])
+  const [g, d] = [...OBSTACLES_PORTES_ENTREE].sort((a, b) => a.x - b.x)
+  expect(d.x - (g.x + g.width)).toBeGreaterThan(2.8)
 })
