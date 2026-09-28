@@ -13,6 +13,7 @@
  * liste vide veut dire que le plan est constructible.
  */
 import { isNordSud } from './geometry.ts'
+import { terrainDuParc } from './park.ts'
 import type { Flight, Level, Opening, Plan, Rect, Room } from './types.ts'
 
 /** Seuils, en mètres. */
@@ -105,8 +106,14 @@ export function surfaceAt(plan: Plan, x: number, z: number, elevation: number): 
     if (room) return `${level.id}:${room.id}`
   }
   const landing = plan.landings.find((l) => Math.abs(l.elevation - elevation) < EPS && contains(l, x, z))
-  return landing ? `palier:${landing.id}` : null
+  if (landing) return `palier:${landing.id}`
+  // Dehors, au niveau du sol : le parc, jusqu'au bord du terrain.
+  const dehors = !contains({ x: 0, z: 0, width: plan.width, depth: plan.depth }, x, z)
+  return Math.abs(elevation) < EPS && dehors && contains(terrainDuParc(plan), x, z) ? PARC : null
 }
+
+/** La surface du parc, autour du bâtiment. */
+export const PARC = 'parc:terrain'
 
 /** Tous les nœuds atteignables depuis le point d'apparition. */
 export function reachable(plan: Plan): Set<string> {
