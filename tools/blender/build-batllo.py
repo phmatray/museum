@@ -5,13 +5,16 @@ Blender en headless.
     blender --background --factory-startup --python tools/blender/build-batllo.py
 
 Produit `public/assets/architecture/batllo.glb` : la grande fenêtre de l'étage
-noble du passeig de Gràcia (Gaudí, 1906), transposée dans la baie de 6 m qui
-ouvre la salle d'honneur sur le hall (x 21–27, du plancher +4,80 au plafond
-+9,30, mur en z 11,85–12,15). Deux colonnes de pierre en os, aux genoux
-renflés ; des arcs souples ; une menuiserie de chêne miel aux meneaux ondulés ;
-en bas des vitres claires aux coins ronds et une rangée d'ovales ; en haut un
-bandeau de vitrail en cives bleues, turquoise, vertes, blanches et quelques
-violettes, serties de plomb ; une fleur de bois sculpté au centre.
+noble du passeig de Gràcia (Gaudí, 1906), transposée dans la baie qui ouvre
+tout le mur sud de la salle d'honneur sur le hall (x 16,80–31,20, entre les
+angles arrondis de la salle ; du plancher +4,80 au plafond +9,30, mur en
+z 11,85–12,15). Comme la galerie de la façade : une rangée de six colonnes de
+pierre en os, aux genoux renflés, et sept arcs souples qui montent vers la
+travée du milieu ; une menuiserie de chêne miel aux meneaux ondulés ; en bas
+des vitres claires aux coins ronds et une rangée d'ovales ; en haut, d'un
+tableau à l'autre, un bandeau de vitrail en cives bleues, turquoise, vertes,
+blanches et quelques violettes, serties de plomb ; une fleur de bois sculpté
+au centre.
 
 Même repère que la nef, dont on reprend les outils (`build-nef.py`) : x Blender
 = x du plan, y Blender = −z du plan, z Blender = la hauteur. Les pièces plates
@@ -37,12 +40,15 @@ _spec.loader.exec_module(nef)
 SORTIE = ICI.parents[1] / "public" / "assets" / "architecture" / "batllo.glb"
 
 # ── La baie, lue dans src/plan/musee.ts ───────────────────────────────────
-X0, X1 = 21.0, 27.0          # les tableaux de la baie
+X0, X1 = 16.8, 31.2          # les tableaux de la baie
+CH = 0.15                    # le chambranle déborde d'autant sur le mur, jusqu'aux angles arrondis
 SOL, PLAFOND = 4.8, 9.3      # plancher de l'étage, sous-face de la dalle
 ZM = 12.0                    # l'axe du mur
-COLS = (22.5, 25.5)          # les deux colonnes : trois travées, la grande au milieu
+# Sept travées qui s'élargissent vers le milieu, six colonnes entre elles.
+LARGEURS = (1.9, 2.0, 2.1, 2.4, 2.1, 2.0, 1.9)
+COLS = tuple(X0 + sum(LARGEURS[:k + 1]) for k in range(len(LARGEURS) - 1))
 NAISS = 7.3                  # naissance des arcs, sur les chapiteaux
-FLECHES = (0.42, 0.62, 0.42)
+FLECHES = (0.4, 0.46, 0.52, 0.62, 0.52, 0.46, 0.4)
 BAS = 5.45                   # haut de l'allège aux ovales
 TRAVERSE = 6.45              # la traverse ondulée des vitres claires
 CADRE = 0.14                 # largeur du dormant
@@ -125,26 +131,27 @@ def onduler(poly):
 
 
 def travees():
-    """(bord gauche, bord droit, arc) des trois travées : du tableau ou de la colonne, à l'arc."""
+    """(bord gauche, bord droit, arc) des travées : du tableau ou de la colonne, à l'arc."""
     bornes = (X0, *COLS, X1)
-    for i in range(3):
+    for i in range(len(LARGEURS)):
         xa, xb = bornes[i], bornes[i + 1]
         h0 = X0 + CADRE if i == 0 else xa + 0.1
-        h1 = X1 - CADRE if i == 2 else xb - 0.1
+        h1 = X1 - CADRE if i == len(LARGEURS) - 1 else xb - 0.1
         yield i, xa, xb, h0, h1
 
 
 def vitres_claires():
-    """Les jours de la menuiserie basse : deux étages de vitres sous chaque arc, et l'allège aux ovales."""
+    """Les jours de la menuiserie basse : sous chaque arc deux étages de deux vitres, et l'allège aux ovales."""
     jours = []
     for i, xa, xb, h0, h1 in travees():
         haut = [(min(max(x, h0), h1), y) for x, y in arc(xa, xb, FLECHES[i], retrait=0.07)]
         baie = [(h0, BAS), (h1, BAS), *haut]
         etages = [couper(baie, 1, TRAVERSE - 0.05, True), couper(baie, 1, TRAVERSE + 0.05, False)]
         for e in etages:
-            morceaux = [couper(e, 0, 23.95, True), couper(e, 0, 24.05, False)] if i == 1 else [e]
+            xm = (xa + xb) / 2
+            morceaux = [couper(e, 0, xm - 0.05, True), couper(e, 0, xm + 0.05, False)]
             jours += [onduler(arrondir(m, 0.12)) for m in morceaux]
-        n = 3 if i != 1 else 6
+        n = round((h1 - h0) / 0.45)
         pas = (h1 - h0) / n
         rx = min(0.16, pas / 2 - 0.06)
         for k in range(n):
@@ -154,13 +161,20 @@ def vitres_claires():
 
 
 def bas_du_vitrail(x):
-    return 8.08 + 0.06 * math.cos(2 * math.pi * (x - 24.0) / 3.0)
+    """Le bas du bandeau : haut au-dessus de la clé de chaque arc, il plonge vers les colonnes."""
+    bornes = (X0, *COLS, X1)
+    i = max(k for k in range(len(LARGEURS)) if bornes[k] <= x) if x > X0 else 0
+    xa, xb = bornes[i], bornes[i + 1]
+    return 8.06 + 0.06 * math.cos(2 * math.pi * (x - (xa + xb) / 2) / (xb - xa))
 
 
 def panneaux():
-    """Les trois panneaux du bandeau de vitrail, au bas ondulé, au-dessus des arcs."""
+    """Les panneaux du bandeau de vitrail, un par travée, au bas ondulé, au-dessus des arcs."""
     out = []
-    for g, d in ((X0 + CADRE, COLS[0] - 0.07), (COLS[0] + 0.07, COLS[1] - 0.07), (COLS[1] + 0.07, X1 - CADRE)):
+    bornes = (X0, *COLS, X1)
+    for i in range(len(LARGEURS)):
+        g = X0 + CADRE if i == 0 else bornes[i] + 0.07
+        d = X1 - CADRE if i == len(LARGEURS) - 1 else bornes[i + 1] - 0.07
         bas = [(g + (d - g) * k / 16, bas_du_vitrail(g + (d - g) * k / 16)) for k in range(17)]
         out.append(arrondir([*bas, (d, PLAFOND - 0.16), (g, PLAFOND - 0.16)], 0.16))
     return out
@@ -179,6 +193,11 @@ PALETTE = {
 }
 
 
+def cotes(r):
+    """Les côtés d'une cive : les petites se contentent de moins, le bandeau en compte des centaines."""
+    return 10 if r < 0.05 else 14 if r < 0.1 else 18
+
+
 def vitrail():
     """
     Une grande rose au cœur de chaque panneau, puis des cives de plus en plus
@@ -195,28 +214,29 @@ def vitrail():
         g, d = min(x for x, _ in p), max(x for x, _ in p)
         cx = (g + d) / 2
         cy = (bas_du_vitrail(cx) + PLAFOND - 0.16) / 2
-        R = 0.33 if i == 1 else 0.27
+        milieu = abs(cx - 24.0) < 0.1
+        R = 0.33 if milieu else 0.27
         roses.append((cx, cy, R))
-        # La rose : une couronne bleue au centre, turquoise sur les côtés ; un cœur blanc.
-        couronne = "Batllo_Cive_Bleu" if i == 1 else "Batllo_Cive_Turquoise"
+        # La rose : une couronne bleue au centre, puis violette, turquoise, verte vers les tableaux ; un cœur blanc.
+        couronne = ("Batllo_Cive_Bleu", "Batllo_Cive_Violet", "Batllo_Cive_Turquoise", "Batllo_Cive_Vert")[3 - min(i, len(LARGEURS) - 1 - i)]
         disques[couronne].append([cercle(cx, cy, R, 48), cercle(cx, cy, R * 0.5, 32)])
         disques["Batllo_Cive_Blanc"].append([cercle(cx, cy, R * 0.5, 32)])
         plombs += [(cx, cy, R), (cx, cy, R * 0.5)]
         poses = [(cx, cy, R)]
-        for r in (0.12, 0.085, 0.06, 0.042):
+        for r in (0.12, 0.085, 0.06, 0.042, 0.03):
             pas = r * 0.9
             v = PLAFOND - 0.16
             while v > 7.95:
                 u = g + (tirage.random() * pas)
                 while u < d:
-                    libre = all(math.hypot(u - a, v - b) > r + c + 0.022 for a, b, c in poses)
+                    libre = all(math.hypot(u - a, v - b) > r + c + 0.016 for a, b, c in poses)
                     if libre and all(dedans(q, p) for q in cercle(u, v, r + 0.02, 12)):
                         poses.append((u, v, r))
-                        disques[tirage.choices(noms, poids)[0]].append([cercle(u, v, r, 20)])
+                        disques[tirage.choices(noms, poids)[0]].append([cercle(u, v, r, cotes(r))])
                     u += pas
                 v -= pas
         plombs += poses[1:]
-        fonds.append([p, *(cercle(u, v, r, 48 if r == R else 20) for u, v, r in poses)])
+        fonds.append([p, *(cercle(u, v, r, 48 if r == R else cotes(r)) for u, v, r in poses)])
     return disques, plombs, roses, fonds
 
 
@@ -268,11 +288,17 @@ def menuiserie(chene):
     plaque("Batllo_Menuiserie", [dehors, *vitres_claires(), *panneaux()], chene, ep=BOIS - b, biseau=b)
     # Le chambranle, sur chaque face : un U de chêne aux angles hauts arrondis.
     # Le biseau gonfle le contour : on le dessine d'autant en retrait.
-    u = [(20.84, SOL + b), (X0 - b, SOL + b), (X0 - b, 9.18), (X1 + b, 9.18), (X1 + b, SOL + b),
-         (27.16, SOL + b), (27.16, PLAFOND - b), (20.84, PLAFOND - b)]
+    u = [(X0 - CH + b, SOL + b), (X0 - b, SOL + b), (X0 - b, 9.18), (X1 + b, 9.18), (X1 + b, SOL + b),
+         (X1 + CH - b, SOL + b), (X1 + CH - b, PLAFOND - b), (X0 - CH + b, PLAFOND - b)]
     u = arrondir(u, [0, 0, 0.35, 0.35, 0, 0, 0.04, 0.04])
     for w in (0.19, -0.19):
         plaque("Batllo_Chambranle", [u], chene, ep=0.025, biseau=0.015, w=w)
+    # La doublure de l'embrasure : du chêne sur les tableaux et sous la dalle, plutôt que la pierre du mur.
+    g = nef.Maillage()
+    for x0, x1 in ((X0, X0 + 0.02), (X1 - 0.02, X1)):
+        g.boite(x0, x1, -(ZM + 0.19), -(ZM - 0.19), SOL, PLAFOND, chene)
+    g.boite(X0, X1, -(ZM + 0.19), -(ZM - 0.19), PLAFOND - 0.02, PLAFOND, chene)
+    g.objet("Batllo_Doublure", [chene])
     # La fleur sculptée qui sertit la rose centrale, et deux boutons sur les colonnes.
     _, _, roses, _ = VITRAIL
     cx, cy, R = next(r for r in roses if abs(r[0] - 24.0) < 0.1)
@@ -281,7 +307,7 @@ def menuiserie(chene):
     for w in (0.045, -0.045):
         plaque("Batllo_Fleur", [fleur, cercle(cx, cy, R - 0.005, 48)], chene, ep=0.012, biseau=0.012, w=w)
         for x in COLS:
-            plaque("Batllo_Bouton", [cercle(x, 7.78, 0.08, 24)], chene, ep=0.02, biseau=0.025, w=w * 2.1)
+            plaque("Batllo_Bouton", [cercle(x, 7.78, 0.08, 16)], chene, ep=0.02, biseau=0.025, w=w * 2.1)
 
 
 def vitrages(clair, laiteux, plomb, cives):
@@ -290,7 +316,7 @@ def vitrages(clair, laiteux, plomb, cives):
     plaque("Batllo_Vitrail_Fond", [c for f in fonds for c in f], laiteux)
     for nom, liste in disques.items():
         plaque(nom, [c for d in liste for c in d], cives[nom])
-    plaque("Batllo_Plomb", [cercle(u, v, r, 20 if r < 0.2 else 40) for u, v, r in plombs], plomb, biseau=0.012, pleine=False)
+    plaque("Batllo_Plomb", [cercle(u, v, r, cotes(r) if r < 0.2 else 40) for u, v, r in plombs], plomb, biseau=0.009, pleine=False)
 
 
 # ── La pierre : colonnes en os et arcs ────────────────────────────────────
@@ -337,7 +363,7 @@ def construire():
     for c in list(bpy.data.curves):
         bpy.data.curves.remove(c)
     VITRAIL = vitrail()
-    chene = nef.matiere("Batllo_Chene", (0.68, 0.41, 0.15), 0.5)
+    chene = nef.matiere("Batllo_Chene", (0.58, 0.34, 0.13), 0.5)
     pierre = nef.matiere("Batllo_Pierre", (0.76, 0.72, 0.65), 0.7)
     plomb = nef.matiere("Batllo_Plomb", (0.16, 0.17, 0.18), 0.45, metallique=0.4)
     clair = nef.matiere("Batllo_Verre", (0.90, 0.95, 0.96), 0.08, alpha=0.25, emission=(0.9, 0.96, 1.0), force=0.12)

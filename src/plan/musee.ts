@@ -110,7 +110,7 @@ export const MUSEE: Plan = {
         { kind: 'door', a: 'e-o1', b: 'honneur', x: 16, z: 6, width: 2 },
         { kind: 'door', a: 'honneur', b: 'e-e1', x: 32, z: 6, width: 2 },
         // La salle d'honneur regarde le hall et l'escalier.
-        { kind: 'bay', a: 'honneur', b: null, x: 24, z: 12, width: 6 },
+        { kind: 'bay', a: 'honneur', b: null, x: 24, z: 12, width: 14.4 },
       ],
       // Les bornes des vitrines, devant le mur nord de la salle d'honneur (vitrines.ts).
       obstacles: [...OBSTACLES_BORNES],

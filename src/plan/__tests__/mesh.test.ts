@@ -153,8 +153,9 @@ describe("meshLevel à l'étage noble", () => {
 
   it("vitre la baie de la salle d'honneur au lieu d'un mur", () => {
     const [verre] = etage.filter((b) => b.kind === 'glass')
-    expect(verre).toMatchObject({ x: 24, w: 6 })
-    expect(etage.filter((b) => b.kind === 'wall' && Math.abs(b.z - 12) < 0.5 && b.x - b.w / 2 < 27 && b.x + b.w / 2 > 21)).toEqual([])
+    expect(verre.x).toBe(24)
+    expect(verre.w).toBeCloseTo(14.4)
+    expect(etage.filter((b) => b.kind === 'wall' && Math.abs(b.z - 12) < 0.5 && b.x - b.w / 2 < 31.2 && b.x + b.w / 2 > 16.8)).toEqual([])
   })
 })
 
