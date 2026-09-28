@@ -9,7 +9,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
-import { COLONNES, dureeVolets, ligneEnPalettes, lignesDeDeparts, palettes, voletsA } from '../domain/departs'
+import { COLONNES, dureeVolets, ligneAnnonce, ligneEnPalettes, lignesDeDeparts, palettes, versionsRecentes, voletsA } from '../domain/departs'
 import { useAccrochage } from '../hooks/useAccrochage'
 import { useCatalogue } from '../hooks/useCatalogue'
 import { useGameStore } from '../stores/gameStore'
@@ -20,6 +20,8 @@ const LARGEUR = 8.4
 const LIGNES = 6
 const PAGES = 2
 const PAGE_MS = 12000
+/** Après le dernier coup de cloche, les nouvelles versions restent affichées vingt secondes. */
+const ANNONCE_MS = 20000
 
 const [CW, CH] = [2048, 640]
 const CELLULE = { w: 30, h: 70, pas: 80 }
@@ -27,7 +29,8 @@ const HAUT_LIGNES = 150
 const LARGEUR_LIGNE = COLONNES.depuis + COLONNES.destination + COLONNES.langage + COLONNES.salle + 3
 const MARGE = (CW - LARGEUR_LIGNE * CELLULE.w) / 2
 
-function dessiner(ctx: CanvasRenderingContext2D, lignes: string[]) {
+/** Les `annonces` premières lignes sont des nouvelles versions : toutes en ambre. */
+function dessiner(ctx: CanvasRenderingContext2D, lignes: string[], annonces = 0) {
   ctx.fillStyle = '#101214'
   ctx.fillRect(0, 0, CW, CH)
   ctx.fillStyle = '#f2b705'
@@ -57,7 +60,7 @@ function dessiner(ctx: CanvasRenderingContext2D, lignes: string[]) {
       ctx.fillStyle = '#0a0b0c'
       ctx.fillRect(cx + 1, y + CELLULE.h / 2 - 1, CELLULE.w - 2, 2)
       if (c === ' ') return
-      ctx.fillStyle = i < COLONNES.depuis ? '#f2b705' : '#f4f1e6'
+      ctx.fillStyle = j < annonces || i < COLONNES.depuis ? '#f2b705' : '#f4f1e6'
       ctx.fillText(c, cx + CELLULE.w / 2, y + CELLULE.h / 2 + 2)
     })
   })
@@ -82,19 +85,23 @@ export function TableauDeparts() {
   useEffect(() => () => toile?.texture.dispose(), [toile])
 
   const vide = useMemo(() => Array.from({ length: LIGNES }, () => palettes('', LARGEUR_LIGNE)), [])
-  const etat = useRef({ avant: vide, apres: vide, debut: 0, page: -1, fini: false })
+  const etat = useRef({ avant: vide, apres: vide, debut: 0, page: -2, fini: false, annonces: 0 })
 
   /* eslint-disable react-hooks/immutability -- la texture du canevas, rafraîchie en place */
   useFrame(() => {
     if (toile === null || catalogue === null || salles.size === 0) return
     const maintenant = performance.now()
     const e = etat.current
-    const page = Math.floor(Date.now() / PAGE_MS) % PAGES
+    // Tant que la cloche annonce, la page −1 : les nouvelles versions en tête, les départs dessous.
+    const annonce = useGameStore.getState().annonce
+    const page = annonce !== null && Date.now() - annonce.at < ANNONCE_MS ? -1 : Math.floor(Date.now() / PAGE_MS) % PAGES
     if (page !== e.page) {
       // Une nouvelle page : on part de ce qui est affiché, on vise les lignes suivantes.
-      const lignes = lignesDeDeparts(catalogue.values(), salles, new Date(), LIGNES * PAGES).slice(page * LIGNES, (page + 1) * LIGNES).map(ligneEnPalettes)
+      const nouvelles = page === -1 ? versionsRecentes(catalogue.values(), new Date(), location.search).slice(0, LIGNES).map((a) => ligneAnnonce(a, LARGEUR_LIGNE)) : []
+      const lignes = lignesDeDeparts(catalogue.values(), salles, new Date(), LIGNES * PAGES).slice(Math.max(0, page) * LIGNES, (Math.max(0, page) + 1) * LIGNES).map(ligneEnPalettes)
       e.avant = e.apres
-      e.apres = [...lignes, ...vide].slice(0, LIGNES)
+      e.apres = [...nouvelles, ...lignes, ...vide].slice(0, LIGNES)
+      e.annonces = nouvelles.length
       e.debut = maintenant
       e.page = page
       e.fini = false
@@ -103,7 +110,7 @@ export function TableauDeparts() {
     }
     if (e.fini) return
     const ms = maintenant - e.debut
-    dessiner(toile.ctx, e.apres.map((l, j) => voletsA(e.avant[j], l, ms)))
+    dessiner(toile.ctx, e.apres.map((l, j) => voletsA(e.avant[j], l, ms)), e.annonces)
     toile.texture.needsUpdate = true
     e.fini = ms > dureeVolets(LARGEUR_LIGNE)
   })

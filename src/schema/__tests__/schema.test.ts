@@ -246,6 +246,15 @@ describe('messages d’erreur exploitables', () => {
     expect(message).toContain('champ requis manquant')
   })
 
+  it('la dernière version est facultative, mais valide quand elle est là', () => {
+    const release = { tag: 'v1.2.0', name: 'Printemps', publishedAt: '2026-09-27T10:00:00Z', url: 'https://github.com/phmatray/x/releases/tag/v1.2.0' }
+    expect(parseCatalogue(catalogueValide([artworkValide({ release })])).artworks[0].release).toEqual(release)
+    expect(parseCatalogue(catalogueValide([artworkValide()])).artworks[0].release).toBeUndefined()
+    expect(messageDe(() => parseCatalogue(catalogueValide([artworkValide({ release: { ...release, publishedAt: 'hier' } })])))).toContain(
+      'artworks[0].release.publishedAt',
+    )
+  })
+
   it('date non ISO : donne un exemple de format attendu', () => {
     const message = messageDe(() =>
       parseCatalogue(catalogueValide([artworkValide({ pushedAt: 'hier' })])),

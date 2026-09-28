@@ -37,7 +37,10 @@ interface GameState {
   ciel: Ciel
   /** Le tableau des départs commence à tourner ses palettes (`TableauDeparts`) : leur cliquetis. */
   volets: { at: number; ms: number } | null
-  /** Un nouveau projet vient de paraître : le carillon l'annonce. */
+  /**
+   * Une nouvelle version annoncée par la cloche de la nef, publiée par `Cloche`
+   * à chaque coup : `at` change à chaque annonce, même pour le même dépôt.
+   */
   annonce: { key: string; tag: string; at: number } | null
   setPaused: (paused: boolean) => void
   setCurrentRoomId: (id: string) => void

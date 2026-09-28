@@ -283,6 +283,8 @@ const artworkSchema = z.object({
   pushedAt: z.iso.datetime(),
   license: z.string().nullable(),
   readmeExcerpt: z.string(),
+  // Facultatif : les catalogues d'avant la cloche des versions n'en ont pas.
+  release: z.object({ tag: z.string().min(1), name: z.string(), publishedAt: z.iso.datetime(), url: z.url() }).optional(),
 })
 
 export const catalogueSchema = z
