@@ -1,8 +1,9 @@
 /**
  * Des toiles qui s'éveillent (`plan/eveil.ts`) :
  *
- * - la toile que le visiteur regarde reçoit un projecteur chaud qui s'allume
- *   en fondu, et sa clé est publiée dans le magasin pour la carte à l'écran ;
+ * - la toile que le visiteur regarde reçoit la lumière chaude de SON projecteur
+ *   sur rail (`ProjecteursLayer`), qui s'allume en fondu, et sa clé est publiée
+ *   dans le magasin pour la carte à l'écran ;
  * - chaque toile porte un halo doré selon la fraîcheur de son dernier push.
  *
  * UN seul projecteur, toujours monté, qu'on déplace et qu'on éteint : ajouter
@@ -17,11 +18,10 @@ import { DEFAULT_ASPECT } from '../domain/hanging'
 import { useAccrochage } from '../hooks/useAccrochage'
 import { useCatalogue } from '../hooks/useCatalogue'
 import { eclat, toileRegardee, type Placement } from '../plan/eveil'
+import { MUSEE } from '../plan/musee'
+import { projecteurs } from '../plan/projecteurs'
 import { useGameStore } from '../stores/gameStore'
 
-/** Le projecteur : au plafond, 2,2 m devant le mur, 1,6 m au-dessus de l'axe. */
-const RECUL = 2.2
-const AU_DESSUS = 1.6
 const INTENSITE = 9
 /** Le fondu, en s⁻¹ : allumé en un tiers de seconde. */
 const FONDU = 6
@@ -35,6 +35,8 @@ export function EveilLayer() {
   const visiteur = useGameStore((s) => s.visiteur)
   const placements = useMemo<Placement[]>(() => accrochage?.rooms.flatMap((r) => r.placements) ?? [], [accrochage])
   const regardee = useMemo(() => (visiteur ? toileRegardee(placements, visiteur) : null), [placements, visiteur])
+  // La lumière part du projecteur de la toile, sur son rail (`ProjecteursLayer`).
+  const sources = useMemo(() => new Map((accrochage ? projecteurs(MUSEE, accrochage) : []).map((p) => [p.key, p])), [accrochage])
 
   useEffect(() => {
     if (useGameStore.getState().toile !== (regardee?.key ?? null)) useGameStore.setState({ toile: regardee?.key ?? null })
@@ -44,12 +46,12 @@ export function EveilLayer() {
   const cible = useMemo(() => new THREE.Object3D(), [])
   useEffect(() => {
     const s = spot.current
-    if (s === null || regardee === null) return
-    const [nx, nz] = regardee.normal
-    s.position.set(regardee.x + nx * RECUL, regardee.y + AU_DESSUS, regardee.z + nz * RECUL)
-    cible.position.set(regardee.x, regardee.y, regardee.z)
+    const source = regardee && sources.get(regardee.key)
+    if (s === null || !source) return
+    s.position.set(...source.source)
+    cible.position.set(...source.cible)
     cible.updateMatrixWorld()
-  }, [regardee, cible])
+  }, [regardee, cible, sources])
 
   useFrame((_, dt) => {
     const s = spot.current

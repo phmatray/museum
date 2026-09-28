@@ -23,6 +23,7 @@ import { CartelLayer } from './CartelLayer'
 import { NefLayer } from './NefLayer'
 import { TableauDeparts } from './TableauDeparts'
 import { EveilLayer } from './EveilLayer'
+import { ProjecteursLayer } from './ProjecteursLayer'
 import { ConstellationLayer } from './ConstellationLayer'
 import { FacadeLayer } from './FacadeLayer'
 import { bandesDuSol, parementDuHall } from '../plan/parement'
@@ -49,6 +50,7 @@ export function PlanBuilding() {
       <NefLayer />
       <TableauDeparts />
       <EveilLayer />
+      <ProjecteursLayer />
       <ConstellationLayer />
       {/* Le décor à part : un texte qui attend sa police ne doit pas suspendre les murs. */}
       <FacadeLayer />
