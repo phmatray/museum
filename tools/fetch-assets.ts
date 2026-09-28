@@ -135,6 +135,19 @@ const POLICES = [
   },
 ] as const
 
+/**
+ * Architecture modélisée par le dépôt (`tools/blender/build-nef.py`), commitée
+ * comme le kit de props. Déclarée ici pour que `CREDITS.md` la crédite.
+ */
+const ARCHITECTURE = [
+  {
+    id: 'nef',
+    source: "`tools/blender/build-nef.py`, d'après le musée d'Orsay",
+    licence: 'œuvre originale du dépôt',
+    usage: 'voûte, verrière, horloge et lanternes du hall',
+  },
+] as const
+
 interface Telechargement {
   url: string
   dest: string
@@ -275,6 +288,12 @@ async function main() {
     journal.push(`| ${p.id} | ${p.source} | ${p.licence} | ${p.usage} |`)
   }
 
+  console.log(`\nArchitecture (${ARCHITECTURE.length}) — commitée, hors pipeline CC0`)
+  for (const a of ARCHITECTURE) {
+    console.log(`  ${'ok'.padEnd(6)} ${a.id.padEnd(20)} ${a.usage}`)
+    journal.push(`| ${a.id} | ${a.source} | ${a.licence} | ${a.usage} |`)
+  }
+
   if (SOURCES_VEGETATION) {
     console.log(`\nSources de végétation (${vegetation.length}) — Poly Haven, CC0 — 330 Mo`)
     for (const p of vegetation) {
@@ -300,7 +319,7 @@ Les **pièces en volume** de \`sculptures/\` n'en font pas partie : ce sont des
 licence sont dans \`sculptures/SOURCES.md\`.
 
 Récupérés par \`node tools/fetch-assets.ts\`, non versionnés — sauf les LOD de
-végétation, le kit de props et les pièces en volume, qui exigent Blender et
+végétation, le kit de props, la nef et les pièces en volume, qui exigent Blender et
 sont donc commités.
 
 | Asset | Source | Licence | Usage |

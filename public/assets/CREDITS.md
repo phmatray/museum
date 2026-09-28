@@ -9,7 +9,7 @@ Les **pièces en volume** de `sculptures/` n'en font pas partie : ce sont des
 licence sont dans `sculptures/SOURCES.md`.
 
 Récupérés par `node tools/fetch-assets.ts`, non versionnés — sauf les LOD de
-végétation, le kit de props et les pièces en volume, qui exigent Blender et
+végétation, le kit de props, la nef et les pièces en volume, qui exigent Blender et
 sont donc commités.
 
 | Asset | Source | Licence | Usage |
@@ -34,3 +34,4 @@ sont donc commités.
 | shrub_03 | Poly Haven | CC0 | végétation, décimée dans les LOD |
 | bavette | Meshy, d'après une photo de l'auteur | © tous droits réservés | pièce en volume, salle d'honneur |
 | PT Sans | Google Fonts (ParaType) | SIL OFL 1.1 | cartels et noms de salle (<Text> troika/drei) |
+| nef | `tools/blender/build-nef.py`, d'après le musée d'Orsay | œuvre originale du dépôt | voûte, verrière, horloge et lanternes du hall |
