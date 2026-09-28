@@ -21,6 +21,7 @@
  */
 import { OBSTACLES_PORTIQUE } from './facade.ts'
 import { OBSTACLES_JARDIN } from './jardin.ts'
+import { OBSTACLES_BORNES } from './vitrines.ts'
 import type { Plan } from './types.ts'
 
 const STOREY = 4.8
@@ -111,7 +112,8 @@ export const MUSEE: Plan = {
         // La salle d'honneur regarde le hall et l'escalier.
         { kind: 'bay', a: 'honneur', b: null, x: 24, z: 12, width: 6 },
       ],
-      obstacles: [],
+      // Les bornes des vitrines, devant le mur nord de la salle d'honneur (vitrines.ts).
+      obstacles: [...OBSTACLES_BORNES],
     },
   ],
 }

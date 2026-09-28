@@ -16,8 +16,10 @@ import { useGameStore } from '../stores/gameStore'
 export function CarteOeuvre() {
   const toile = useGameStore((s) => s.toile)
   const paused = useGameStore((s) => s.paused)
+  // Devant une borne, c'est elle qui parle (`BorneOeuvre`).
+  const borne = useGameStore((s) => s.borne)
   const catalogue = useCatalogue()
-  const oeuvre = toile === null ? undefined : catalogue?.get(toile)
+  const oeuvre = toile === null || borne !== null ? undefined : catalogue?.get(toile)
 
   useEffect(() => {
     if (oeuvre === undefined || paused) return

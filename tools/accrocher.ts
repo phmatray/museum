@@ -30,6 +30,7 @@ registerHooks({
 const { MUSEE } = await import('../src/plan/musee.ts')
 const { assignRooms, hangPlan } = await import('../src/plan/hang.ts')
 const { filtrerExclus } = await import('../src/plan/curation-filter.ts')
+const { choisirVitrines } = await import('../src/plan/vitrines.ts')
 const { parseCatalogue, parseCuration, EMPTY_CURATION } = await import('../src/schema/index.ts')
 
 const CURATION_PATH = resolve(ROOT, 'curation.json')
@@ -39,7 +40,9 @@ async function main(): Promise<void> {
   // `curation.json` est facultatif — même lecture optionnelle que `tools/build-media.ts`.
   const curation = existsSync(CURATION_PATH) ? parseCuration(JSON.parse(await readFile(CURATION_PATH, 'utf8'))) : EMPTY_CURATION
   const artworks = filtrerExclus(catalogue.artworks, curation)
-  const accrochage = hangPlan(MUSEE, assignRooms(MUSEE, artworks), catalogue.generatedAt)
+  // Les trois meilleurs projets des propriétaires vont aux vitrines de la salle d'honneur.
+  const reservees = new Set(choisirVitrines(artworks, catalogue.owners).map((a) => a.key))
+  const accrochage = hangPlan(MUSEE, assignRooms(MUSEE, artworks, reservees), catalogue.generatedAt, reservees)
   const out = resolve(ROOT, 'public/data/accrochage.json')
   await writeFile(out, `${JSON.stringify(accrochage, null, 2)}\n`)
   const toiles = accrochage.rooms.reduce((n, r) => n + r.placements.length, 0)

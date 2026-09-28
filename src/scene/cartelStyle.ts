@@ -28,3 +28,6 @@ export const THEME_INK: Record<ThemeId, string> = {
  * `SculptureLayer`) : un chemin écrit une fois plutôt que trois.
  */
 export const CARTEL_FONT = `${import.meta.env.BASE_URL}assets/fonts/PTSans-Regular.ttf`
+
+/** Le romain des titres des vitrines de la salle d'honneur (PT Serif, même fonderie, sous-ensemble latin). */
+export const TITRE_FONT = `${import.meta.env.BASE_URL}assets/fonts/PTSerif-Regular.ttf`

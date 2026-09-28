@@ -14,6 +14,7 @@ import { useAccrochage } from '../hooks/useAccrochage'
 import { atlasResource, type AtlasTextures } from '../io/arrayTexture'
 import { MUSEE } from '../plan/musee'
 import { INT as DEMI_MUR } from '../plan/svg'
+import { SALLE_VITRINES } from '../plan/vitrines'
 import { CanvasInstances, FrameInstances } from './ArtworkLayer'
 import { CARTEL_FONT, THEME_INK } from './cartelStyle'
 import { computePoses } from './planToilesGeometry'
@@ -55,7 +56,8 @@ export function PlanToiles({ level }: { level: number }) {
       {niveau !== undefined &&
         salles.map((salle) => {
           const room = niveau.rooms.find((r) => r.id === salle.id)
-          if (room === undefined) return null
+          // Le mur nord de la salle d'honneur porte les vitrines : pas de nom par-dessus.
+          if (room === undefined || room.id === SALLE_VITRINES) return null
           // Sur le mur nord de la salle, face au sud : au-dessus des portes.
           return (
             <Text

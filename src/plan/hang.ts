@@ -18,6 +18,7 @@ import { edges } from './geometry.ts'
 import { capacity, NORMES } from './rules.ts'
 import { INT as DEMI_MUR } from './svg.ts'
 import type { Level, Plan, Room } from './types.ts'
+import { SALLE_VITRINES } from './vitrines.ts'
 
 export interface Salle {
   /** Nom du thème ; le nom de travail du plan n'est qu'un repli. */
@@ -40,6 +41,21 @@ export function exposedRooms(plan: Plan): { room: Room; level: Level }[] {
     level.rooms.filter((r) => r.kind === 'gallery' || r.kind === 'honneur').map((room) => ({ room, level })))
 }
 
+/** L'arête nord d'une salle dans `edges()` : le mur des vitrines de la salle d'honneur. */
+const MUR_NORD = 0
+
+/**
+ * La capacité d'une salle, moins le mur nord de la salle d'honneur quand il
+ * porte les vitrines : ses toiles ne peuvent plus y aller.
+ */
+function capaciteAccrochable(room: Room, level: Level, avecVitrines: boolean): number {
+  const cap = capacity(room, level)
+  if (!avecVitrines || room.id !== SALLE_VITRINES) return cap
+  // Arrondi par excès : mieux vaut une toile de moins en salle d'honneur qu'une
+  // toile que `hangRoom` ne saurait poser (la baie et les portes mangent les autres murs).
+  return Math.max(0, cap - Math.ceil((room.width - 2 * NORMES.angle) / NORMES.pasAccrochage))
+}
+
 /** L'aile d'une salle sur son niveau, lue dans son id : `r-o2` → `r-o`, `e-e1` → `e-e`. */
 const aile = (id: string) => id.replace(/\d+$/, '')
 
@@ -47,11 +63,13 @@ const aile = (id: string) => id.replace(/\d+$/, '')
  * Répartit la collection : les plus étoilés en salle d'honneur, le reste en
  * autant de thèmes que de galeries. La carte suit l'ordre du plan.
  */
-export function assignRooms(plan: Plan, artworks: Artwork[]): Map<string, Salle> {
-  const salles: Exposee[] = exposedRooms(plan).map((e) => ({ ...e, cap: capacity(e.room, e.level) }))
+export function assignRooms(plan: Plan, artworks: Artwork[], reservees: ReadonlySet<RepoKey> = new Set()): Map<string, Salle> {
+  const avecVitrines = reservees.size > 0
+  const salles: Exposee[] = exposedRooms(plan).map((e) => ({ ...e, cap: capaciteAccrochable(e.room, e.level, avecVitrines) }))
   const out = new Map<string, Salle>(salles.map(({ room }) => [room.id, { name: room.name, artworks: [] }]))
 
-  let reste = [...artworks].sort(parEtoiles)
+  // Les projets des vitrines (vitrines.ts) ne s'accrochent pas : ils ont leur mur.
+  let reste = artworks.filter((a) => !reservees.has(a.key)).sort(parEtoiles)
   for (const { room, cap } of salles.filter((s) => s.room.kind === 'honneur')) {
     out.get(room.id)!.artworks = reste.slice(0, cap)
     reste = reste.slice(cap)
@@ -172,8 +190,9 @@ function murs(room: Room, level: Level, hauteur: number): Wall[] {
  * Accroche chaque salle sur ses murs avec `hangRoom`. `generatedAt` vient du
  * catalogue, jamais de l'horloge : même catalogue, même fichier.
  */
-export function hangPlan(plan: Plan, salles: Map<string, Salle>, generatedAt: string): Accrochage {
+export function hangPlan(plan: Plan, salles: Map<string, Salle>, generatedAt: string, reservees: ReadonlySet<RepoKey> = new Set()): Accrochage {
   const hauteur = plan.storey - plan.slab
+  const avecVitrines = reservees.size > 0
   const rooms = exposedRooms(plan).map(({ room, level }) => {
     const salle = salles.get(room.id) ?? { name: room.name, artworks: [] }
     const domaine: SalleDomaine = {
@@ -182,7 +201,7 @@ export function hangPlan(plan: Plan, salles: Map<string, Salle>, generatedAt: st
       side: 'north',
       footprint: { x: room.x, z: room.z, width: room.width, depth: room.depth },
       theme: 'classic',
-      walls: murs(room, level, hauteur),
+      walls: murs(room, level, hauteur).filter((_, i) => !(avecVitrines && room.id === SALLE_VITRINES && i === MUR_NORD)),
       topics: [],
       keys: salle.artworks.map((a) => a.key),
     }

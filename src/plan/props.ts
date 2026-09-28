@@ -16,6 +16,7 @@
  * ses plantes tant que son thème ne change pas.
  */
 import { exposedRooms } from './hang.ts'
+import { SALLE_VITRINES } from './vitrines.ts'
 import type { Level, Opening, Plan, Rect } from './types.ts'
 
 export type PropId = 'jardiniere' | 'plante-01' | 'plante-02' | 'plante-03' | 'plante-04'
@@ -94,6 +95,8 @@ export function propPlacements(plan: Plan, rooms: readonly { id: string; name: s
     return [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].flatMap(([x, z]): PropPlacement[] => {
       const e = ESPECES[Math.floor(alea() * ESPECES.length)]
       const scale = e.echelle[0] + alea() * (e.echelle[1] - e.echelle[0])
+      // Les angles du mur des vitrines : les panneaux y vont presque jusqu'aux murs.
+      if (room.id === SALLE_VITRINES && z === z0) return []
       const base = { roomId: room.id, level: level.id, x, z }
       // Un angle trop près d'une porte reste vide : une salle un peu nue plutôt qu'un passage encombré.
       const rayon = Math.max(PROP_RAYON[e.id] * scale, e.autoportante ? 0 : PROP_RAYON.jardiniere)

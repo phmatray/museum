@@ -4,21 +4,32 @@
     {
       "id": "r-o1",
       "level": 0,
-      "name": "Typescript / Tauri",
+      "name": "Typescript / Blockchain",
       "placements": [
         {
-          "key": "Atypical-Consulting/FlowForge",
-          "x": 8,
+          "key": "phmatray/museum",
+          "x": 5.705,
           "y": 1.55,
           "z": 0.15,
           "normal": [
             0,
             1
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/github-toolkit",
+          "key": "Atypical-Consulting/ts-blockchain",
+          "x": 10.1,
+          "y": 1.55,
+          "z": 0.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 2.089
+        },
+        {
+          "key": "Atypical-Consulting/.github",
           "x": 3.775,
           "y": 1.55,
           "z": 12.85,
@@ -29,7 +40,7 @@
           "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/og-engine",
+          "key": "Atypical-Consulting/github-toolkit",
           "x": 12.225,
           "y": 1.55,
           "z": 12.85,
@@ -40,7 +51,7 @@
           "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/.github",
+          "key": "Atypical-Consulting/FlowForge",
           "x": 0.15,
           "y": 1.55,
           "z": 6.5,
@@ -48,10 +59,10 @@
             1,
             0
           ],
-          "width": 1.7
+          "width": 1.851
         },
         {
-          "key": "phmatray/museum",
+          "key": "phmatray/.github",
           "x": 15.85,
           "y": 1.55,
           "z": 2.775,
@@ -62,7 +73,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/.github",
+          "key": "Atypical-Consulting/og-engine",
           "x": 15.85,
           "y": 1.55,
           "z": 9.725,
@@ -450,11 +461,55 @@
     {
       "id": "r-e1",
       "level": 0,
-      "name": "Exceptions / Nft",
+      "name": "Music / Nuget",
       "placements": [
         {
           "key": "phmatray/PipeException",
-          "x": 37.749,
+          "x": 34.777,
+          "y": 1.55,
+          "z": 0.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/music-dotnet",
+          "x": 37.329,
+          "y": 1.55,
+          "z": 0.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "phmatray/MasterCommander",
+          "x": 40.075,
+          "y": 1.55,
+          "z": 0.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 2.089
+        },
+        {
+          "key": "phmatray/Metatrader5-Docker",
+          "x": 42.747,
+          "y": 1.55,
+          "z": 0.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "stephaneweg/MusicTracker",
+          "x": 45.223,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -465,17 +520,6 @@
         },
         {
           "key": "phmatray/CCross.ThrowIf",
-          "x": 42.1,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 2.001
-        },
-        {
-          "key": "phmatray/CCrossHelper",
           "x": 35.775,
           "y": 1.55,
           "z": 12.85,
@@ -483,10 +527,10 @@
             0,
             -1
           ],
-          "width": 1.851
+          "width": 2.001
         },
         {
-          "key": "phmatray/dotnet-toolbelt",
+          "key": "Atypical-Consulting/NFT",
           "x": 44.225,
           "y": 1.55,
           "z": 12.85,
@@ -494,10 +538,10 @@
             0,
             -1
           ],
-          "width": 1.851
+          "width": 1.939
         },
         {
-          "key": "phmatray/Monads",
+          "key": "phmatray/dotnet-toolbelt",
           "x": 32.15,
           "y": 1.55,
           "z": 2.775,
@@ -505,10 +549,10 @@
             1,
             0
           ],
-          "width": 1.7
+          "width": 1.851
         },
         {
-          "key": "phmatray/CentralisedPackageConverter",
+          "key": "phmatray/CCrossHelper",
           "x": 32.15,
           "y": 1.55,
           "z": 9.725,
@@ -516,18 +560,51 @@
             1,
             0
           ],
-          "width": 1.7
+          "width": 1.851
         },
         {
-          "key": "Atypical-Consulting/NFT",
+          "key": "phmatray/trading-lab",
           "x": 47.85,
           "y": 1.55,
-          "z": 6.5,
+          "z": 2.71,
           "normal": [
             -1,
             0
           ],
-          "width": 1.939
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/CentralisedPackageConverter",
+          "x": 47.85,
+          "y": 1.55,
+          "z": 5.12,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/MusicTheory",
+          "x": 47.85,
+          "y": 1.55,
+          "z": 7.705,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 2.049
+        },
+        {
+          "key": "phmatray/Monads",
+          "x": 47.85,
+          "y": 1.55,
+          "z": 10.29,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.7
         }
       ]
     },
@@ -1045,62 +1122,7 @@
       "name": "Salle d'honneur",
       "placements": [
         {
-          "key": "Atypical-Consulting/SalesPitch",
-          "x": 18.678,
-          "y": 6.35,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.587
-        },
-        {
-          "key": "phmatray/TaLibStandard",
-          "x": 21.184,
-          "y": 6.35,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.955
-        },
-        {
           "key": "ivanpaulovich/clean-architecture-manga",
-          "x": 24.063,
-          "y": 6.35,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 2.333
-        },
-        {
-          "key": "phmatray/FormCraft",
-          "x": 26.911,
-          "y": 6.35,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.893
-        },
-        {
-          "key": "phmatray/MasterCommander",
-          "x": 29.354,
-          "y": 6.35,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.523
-        },
-        {
-          "key": "Atypical-Consulting/VirtualFileSystem",
           "x": 18.775,
           "y": 6.35,
           "z": 11.85,
@@ -1108,7 +1130,7 @@
             0,
             -1
           ],
-          "width": 2.034
+          "width": 1.89
         },
         {
           "key": "phmatray/aspire-app-with-n8n",
@@ -1144,7 +1166,7 @@
           "width": 1.853
         },
         {
-          "key": "phmatray/webassembly-demo",
+          "key": "Atypical-Consulting/SalesPitch",
           "x": 31.85,
           "y": 6.35,
           "z": 2.775,
@@ -1152,10 +1174,10 @@
             -1,
             0
           ],
-          "width": 1.936
+          "width": 1.959
         },
         {
-          "key": "Atypical-Consulting/ts-blockchain",
+          "key": "phmatray/webassembly-demo",
           "x": 31.85,
           "y": 6.35,
           "z": 9.225,
@@ -1163,7 +1185,7 @@
             -1,
             0
           ],
-          "width": 1.88
+          "width": 1.936
         }
       ]
     },
@@ -1265,54 +1287,21 @@
     {
       "id": "e-e2",
       "level": 1,
-      "name": "Music / Mql5",
+      "name": "Doji / Hackathon",
       "placements": [
         {
+          "key": "phmatray/hackathon-backend",
+          "x": 35.775,
+          "y": 6.35,
+          "z": 13.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.7
+        },
+        {
           "key": "phmatray/IFAPME-OMD",
-          "x": 35.775,
-          "y": 6.35,
-          "z": 13.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/Metatrader5-Docker",
-          "x": 44.225,
-          "y": 6.35,
-          "z": 13.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/trading-lab",
-          "x": 35.775,
-          "y": 6.35,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "stephaneweg/MusicTracker",
-          "x": 44.225,
-          "y": 6.35,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/music-dotnet",
           "x": 32.15,
           "y": 6.35,
           "z": 18.175,
@@ -1320,10 +1309,10 @@
             1,
             0
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "phmatray/MusicTheory",
+          "key": "phmatray/doji",
           "x": 47.85,
           "y": 6.35,
           "z": 20,
@@ -1331,45 +1320,23 @@
             -1,
             0
           ],
-          "width": 2.049
+          "width": 1.851
         }
       ]
     },
     {
       "id": "e-e3",
       "level": 1,
-      "name": "Doji / Hackathon",
+      "name": "Shell / Dots",
       "placements": [
         {
-          "key": "phmatray/hackathon-backend",
-          "x": 35.775,
-          "y": 6.35,
-          "z": 27.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/doji",
+          "key": "phmatray/dots-2.0",
           "x": 40,
           "y": 6.35,
           "z": 39.85,
           "normal": [
             0,
             -1
-          ],
-          "width": 1.851
-        },
-        {
-          "key": "phmatray/dots-2.0",
-          "x": 47.85,
-          "y": 6.35,
-          "z": 33.5,
-          "normal": [
-            -1,
-            0
           ],
           "width": 1.851
         }

@@ -40,8 +40,11 @@ Blender et sont donc commités.
 | fern_02 | Poly Haven | CC0 | jardin japonais, décimé dans jardin.glb |
 | bavette | Meshy, d'après une photo de l'auteur | © tous droits réservés | pièce en volume, salle d'honneur |
 | PT Sans | Google Fonts (ParaType) | SIL OFL 1.1 | cartels et noms de salle (<Text> troika/drei) |
+| PT Serif | Google Fonts (ParaType), sous-ensemble latin | SIL OFL 1.1 | titres des vitrines de la salle d'honneur et de leur borne |
 | nef | `tools/blender/build-nef.py`, d'après le musée d'Orsay | œuvre originale du dépôt | voûte, verrière, horloge et lanternes du hall |
 | batllo | `tools/blender/build-batllo.py`, d'après la Casa Batlló de Gaudí | œuvre originale du dépôt | baie de la salle d'honneur : colonnes en os, chêne ondulé, vitrail de cives |
 | escalier | `tools/blender/build-escalier.py`, d'après le Grand Escalier de l'Opéra Garnier | œuvre originale du dépôt | l'escalier impérial de marbre : volées, bulbes du départ, limons et palier |
 | chambranle | `tools/blender/build-chambranle.py`, d'après les portes des salles d'Orsay et du Louvre | œuvre originale du dépôt | chambranles moulurés, plinthes et entablements de pierre des portes |
 | jardin | `tools/blender/build-jardin.py`, d'après le jardin japonais de Hasselt | œuvre originale du dépôt | étang, ruisseau, pont, lanterne, érables du Japon et boules taillées du parc |
+| salle-honneur | `tools/blender/build-salle-honneur.py`, d'après l'étage noble de la Casa Batlló de Gaudí | œuvre originale du dépôt | salle d'honneur : voûte en tourbillon, lampe-soleil, pilastres en os, lambris et portes de chêne, parquet |
+| vitrines | `tools/blender/build-vitrines.py`, d'après les panneaux du musée Cernuschi | œuvre originale du dépôt | vitrines de la salle d'honneur : panneau bordeaux, cadre doré sculpté, borne interactive |

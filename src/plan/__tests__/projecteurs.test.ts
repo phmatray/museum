@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { Accrochage } from '../hang'
 import { MUSEE } from '../musee'
+import { VOUTE } from '../plafonds'
 import { projecteurs, rails, RECUL } from '../projecteurs'
 
 const accrochage = JSON.parse(readFileSync('public/data/accrochage.json', 'utf8')) as Accrochage
@@ -14,9 +15,12 @@ describe('projecteurs', () => {
 
   it('pose un projecteur par toile, au plafond de son étage, sur le cadre de plâtre', () => {
     expect(tous).toHaveLength(toiles.length)
+    const salle = (key: string) => accrochage.rooms.find((r) => r.placements.some((p) => p.key === key))!.id
     for (const pr of tous) {
       const t = toiles.find((t) => t.key === pr.key)!
-      expect(pr.y).toBeCloseTo((t.level === 0 ? 0 : 4.8) + 4.8 - 0.3 - 0.02, 6)
+      // En salle d'honneur, sous la corniche de la voûte, au-dessus de sa gorge.
+      const plafond = salle(pr.key) === VOUTE.salle ? VOUTE.gorge : -0.02
+      expect(pr.y).toBeCloseTo((t.level === 0 ? 0 : 4.8) + 4.8 - 0.3 + plafond, 6)
       expect(Math.hypot(pr.x - t.x, pr.z - t.z)).toBeCloseTo(RECUL, 6)
     }
   })
