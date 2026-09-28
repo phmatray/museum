@@ -65,6 +65,15 @@ export const OBSTACLES_PORTIQUE: Rect[] = (() => {
   return pleins.map(([x0, x1]) => ({ x: x0, z, width: x1 - x0, depth: P.saillie }))
 })()
 
+/** L'entrée du plan (`musee.ts` : x 24, z 40, 3,20 m) ; un test vérifie qu'elle n'a pas bougé. */
+export const ENTREE = { x: 24, z: 40, width: 3.2 }
+/** Les deux battants ouverts : sur leur montant côté mur (x), de la façade (z1) vers le hall (z0). */
+const BATTANTS = [ENTREE.x - ENTREE.width / 2 + 0.06, ENTREE.x + ENTREE.width / 2 - 0.06].map((x) => {
+  const z1 = ENTREE.z - EXT + 0.02
+  return { x, z0: z1 - (ENTREE.width / 2 - 0.05), z1 }
+})
+export const OBSTACLES_PORTES_ENTREE: Rect[] = BATTANTS.map((b) => ({ x: b.x - 0.05, z: b.z0, width: 0.1, depth: b.z1 - b.z0 }))
+
 export interface Facade {
   /** Le parement de brique des murs de façade et le parapet. */
   brique: Box[]
@@ -74,6 +83,8 @@ export interface Facade {
   piliers: Box[]
   /** Le verre sombre des baies du portique. */
   vitres: Box[]
+  /** Le verre clair des portes de l'entrée. */
+  portes: Box[]
   /** Montants et traverses de métal. */
   menuiseries: Box[]
   /** Où poser le nom du musée : le centre de la face avant du linteau du portique. */
@@ -87,7 +98,7 @@ export interface Facade {
 export function facade(plan: Plan): Facade {
   const [W, D] = [plan.width, plan.depth]
   const haut = plan.levels.length * plan.storey - plan.slab
-  const out: Facade = { brique: [], pierre: [], piliers: [], vitres: [], menuiseries: [], enseigne: { x: 0, y: 0, z: 0 }, bannieres: [], mats: [] }
+  const out: Facade = { brique: [], pierre: [], piliers: [], vitres: [], portes: [], menuiseries: [], enseigne: { x: 0, y: 0, z: 0 }, bannieres: [], mats: [] }
 
   // La brique : une peau sur la face extérieure de chaque mur ou linteau de façade.
   for (const level of plan.levels)
@@ -141,28 +152,27 @@ export function facade(plan: Plan): Facade {
   // linteau avance de 1,35 m et cachait les lettres dès qu'on approchait, et du
   // bronze sur la brique sombre ne se lisait pas.
   // Les portes de l'entrée : deux battants vitrés à cadre de bronze, grands ouverts
-  // vers le hall, rabattus à 90° contre l'intérieur des tableaux de la baie. Un
-  // musée sans porte n'existe pas (remarque de Philippe). Ouverts, ils ne gênent
-  // pas le passage : la marche ne connaît que les murs du plan.
-  const entree = plan.levels[0].openings.find((o) => o.kind === 'entrance')
-  if (entree) {
-    const battant = entree.width / 2 - 0.05
-    const [zf, zo] = [entree.z - EXT + 0.02, entree.z - EXT + 0.02 - battant]
-    for (const xg of [entree.x - entree.width / 2 + 0.06, entree.x + entree.width / 2 - 0.06]) {
-      const [a0, a1] = [xg - 0.025, xg + 0.025]
-      out.vitres.push(pave(a0 + 0.01, a1 - 0.01, 0.1, PORTE_H - 0.1, zo + 0.06, zf - 0.06, 'glass'))
-      // Montants, traverses haute et basse, et la barre de tirage.
-      out.menuiseries.push(
-        pave(a0, a1, 0, PORTE_H, zf - 0.06, zf),
-        pave(a0, a1, 0, PORTE_H, zo, zo + 0.06),
-        pave(a0, a1, PORTE_H - 0.1, PORTE_H, zo, zf),
-        pave(a0, a1, 0, 0.18, zo, zf),
-        pave(a0 - 0.05, a1 + 0.05, 0.9, 1.9, zo + 0.12, zo + 0.15),
-      )
-    }
-    // Le seuil de pierre, dans l'épaisseur du mur.
-    out.pierre.push(pave(entree.x - entree.width / 2, entree.x + entree.width / 2, 0, 0.02, entree.z - EXT, entree.z + EXT))
+  // vers le hall, rabattus à 90°. Un musée sans porte n'existe pas (remarque de
+  // Philippe). Verre clair (`portes`), trois paumelles de bronze par battant côté
+  // mur ; les battants sont des obstacles (`OBSTACLES_PORTES_ENTREE`) : on ne les
+  // traverse plus, ni le visiteur ni Bavette.
+  for (const b of BATTANTS) {
+    const [a0, a1, zo, zf] = [b.x - 0.025, b.x + 0.025, b.z0, b.z1]
+    out.portes.push(pave(a0 + 0.012, a1 - 0.012, 0.18, PORTE_H - 0.1, zo + 0.06, zf - 0.06, 'glass'))
+    out.menuiseries.push(
+      pave(a0, a1, 0, PORTE_H, zf - 0.06, zf),
+      pave(a0, a1, 0, PORTE_H, zo, zo + 0.06),
+      pave(a0, a1, PORTE_H - 0.1, PORTE_H, zo, zf),
+      pave(a0, a1, 0, 0.18, zo, zf),
+      // La barre de tirage, sur les deux faces.
+      pave(a0 - 0.05, a0 - 0.02, 0.9, 1.9, zo + 0.1, zo + 0.13),
+      pave(a1 + 0.02, a1 + 0.05, 0.9, 1.9, zo + 0.1, zo + 0.13),
+    )
+    // Les paumelles : trois nœuds de bronze sur le montant côté mur.
+    for (const y of [0.3, 1.2, 2.1]) out.menuiseries.push(pave(a0 - 0.01, a1 + 0.01, y, y + 0.12, zf - 0.02, zf + 0.02))
   }
+  // Le seuil de pierre, dans l'épaisseur du mur.
+  out.pierre.push(pave(ENTREE.x - ENTREE.width / 2, ENTREE.x + ENTREE.width / 2, 0, 0.02, ENTREE.z - EXT, ENTREE.z + EXT))
 
   out.enseigne = { x: (P.x0 + P.x1) / 2, y: P.haut - LINTEAU / 2, z: P.facade + P.saillie + 0.01 }
   out.bannieres = [P.x0 - 4.5, P.x1 + 4.5].map((x) => ({ x, y: 5.2, z: D + EXT + PEAU + 0.12, w: 3, h: 7 }))

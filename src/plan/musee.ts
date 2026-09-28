@@ -19,7 +19,7 @@
  * l'ancien bâtiment. 15 contremarches de 16 cm par volée, giron de 32 cm :
  * 2h + g = 0,64 m, au milieu de la fourchette de Blondel.
  */
-import { OBSTACLES_PORTIQUE } from './facade.ts'
+import { OBSTACLES_PORTES_ENTREE, OBSTACLES_PORTIQUE } from './facade.ts'
 import { OBSTACLES_JARDIN } from './jardin.ts'
 import { obstaclesDuMobilier } from './mobilier.ts'
 import { OBSTACLES_BORNES } from './vitrines.ts'
@@ -77,6 +77,7 @@ export const MUSEE: Plan = {
         { x: 29, z: 15.5, width: 3, depth: 4.5 },
         // Dehors, les piliers et jambages du portique d'entrée (facade.ts).
         ...OBSTACLES_PORTIQUE,
+        ...OBSTACLES_PORTES_ENTREE,
         // Dehors encore, l'étang et le ruisseau du jardin, sauf le tablier du pont (jardin.ts).
         ...OBSTACLES_JARDIN,
         // Les bancs, la banque d'accueil, et dehors les bancs du jardin (mobilier.ts).

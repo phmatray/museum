@@ -16,6 +16,7 @@ import { MUSEE } from '../plan/musee'
 import { CARTEL_FONT } from './cartelStyle'
 import { useMatiere } from './materials'
 import { Boites } from './PlanBuilding'
+import { creerVitrage } from '../builders/glazing'
 import { creerBrique, creerCannelure, creerGranit, creerPierre } from './pierre'
 
 const FACADE = facade(MUSEE)
@@ -32,6 +33,8 @@ export function FacadeLayer() {
       cannelure: creerCannelure(),
       metal: creerGranit(),
       vitre: new THREE.MeshStandardMaterial({ color: '#1f2b31', metalness: 0.6, roughness: 0.12 }),
+      // Le verre des portes : clair, on voit le hall au travers.
+      clair: creerVitrage(),
     }),
     [],
   )
@@ -46,6 +49,7 @@ export function FacadeLayer() {
       <Boites boites={FACADE.pierre} material={mats.pierre} />
       <Boites boites={FACADE.piliers} material={mats.cannelure} />
       <Boites boites={FACADE.vitres} material={mats.vitre} />
+      <Boites boites={FACADE.portes} material={mats.clair} />
       <Boites boites={FACADE.menuiseries} material={mats.metal} />
       <Suspense fallback={null}>
         <Text
