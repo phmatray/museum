@@ -42,7 +42,7 @@ public/assets/plants/*
 !public/assets/plants/plants-lod.glb
 
 # QUATRIÈME exception, même raison que les trois précédentes : produite par
-# `tools/blender/build-sculptures.py`, et la CI n'a pas Blender.
+# `tools/blender/build-bavette-anime.py`, et la CI n'a pas Blender.
 #
 # Différence avec les trois autres, et elle compte : leur SOURCE se retélécharge
 # (`node tools/fetch-assets.ts`), celle-ci non — c'est un fichier personnel de
@@ -50,7 +50,7 @@ public/assets/plants/*
 # conditionnelle, et `SOURCES.md` dit de quoi.
 !public/assets/sculptures/
 public/assets/sculptures/*
-!public/assets/sculptures/bavette.glb
+!public/assets/sculptures/bavette-anime.glb
 !public/assets/sculptures/SOURCES.md
 
 # CINQUIÈME exception, raison différente cette fois : la police des cartels

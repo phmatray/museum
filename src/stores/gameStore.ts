@@ -29,6 +29,10 @@ interface GameState {
   toile: string | null
   /** Le dépôt de la borne que le visiteur consulte, en salle d'honneur, publié par `VitrinesLayer`. */
   borne: string | null
+  /** Le visiteur regarde Bavette de près : `CarteBavette` s'ouvre. Publié par `BavetteLayer`. */
+  bavetteRegarde: boolean
+  /** Où se promène Bavette, pour la minimap : publié quelques fois par seconde. */
+  bavette: { x: number; z: number; level: number } | null
   /** Le soleil du musée maintenant (ou à l'heure de `?heure=`), tenu à jour par `CycleSolaire`. */
   ciel: Ciel
   setPaused: (paused: boolean) => void
@@ -48,6 +52,8 @@ export const useGameStore = create<GameState>((set) => ({
   tourEtape: 0,
   toile: null,
   borne: null,
+  bavetteRegarde: false,
+  bavette: null,
   ciel: cielDuMoment(),
   setPaused: (paused) => set({ paused }),
   setCurrentRoomId: (id) => set({ currentRoomId: id }),
