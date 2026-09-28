@@ -29,8 +29,8 @@ export const NORMES = {
   /** Formule de Blondel : 2h + g. */
   blondel: [0.6, 0.66],
   emmarchement: 1.4,
-  /** Accrochage : une œuvre tous les 2,60 m de mur, un mètre libre dans chaque angle. */
-  pasAccrochage: 2.6,
+  /** Accrochage : une œuvre tous les 3,00 m de mur (des toiles de 1,70 m et plus), un mètre libre dans chaque angle. */
+  pasAccrochage: 3.0,
   angle: 1,
   /** Dégagement de part et d'autre d'une ouverture, où l'on n'accroche pas. */
   dégagement: 0.6,
