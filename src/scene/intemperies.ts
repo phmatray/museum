@@ -1,0 +1,322 @@
+/**
+ * Le temps et la saison, portés par les matières du musée : un jeu
+ * d'uniformes PARTAGÉS (le même objet `{ value }` greffé dans chaque shader),
+ * que `MeteoLayer` règle une fois par image, et les greffes `onBeforeCompile`
+ * qui les lisent — le sol mouillé ou enneigé, les érables qui rougissent et se
+ * dénudent, les azalées qui fleurissent, les ronds de pluie sur l'étang, les
+ * filets d'eau sur la verrière. Aucune texture, aucun appel de dessin de plus.
+ *
+ * Toutes les greffes CHAÎNENT sur un `onBeforeCompile` déjà posé (le rebond de
+ * `materials.ts`, la mousse des rochers) au lieu de l'écraser.
+ */
+import * as THREE from 'three'
+
+export const INTEMPERIES = {
+  uTemps: { value: 0 },
+  /** La pluie qui tombe (0..1), lissée. */
+  uPluie: { value: 0 },
+  /** Le sol mouillé : monte avec la pluie, sèche lentement. */
+  uMouille: { value: 0 },
+  /** La neige tenue au sol, sur les toits et les houppiers. */
+  uEnneige: { value: 0 },
+  /** Vent, m/s. */
+  uVent: { value: 2 },
+  uNuages: { value: 0 },
+  uBrume: { value: 0 },
+  /** La couleur de la brume et du ciel couvert, à l'heure qu'il est. */
+  uBrumeCouleur: { value: new THREE.Color('#aab2b8') },
+  /** L'éclair : un flash bref, 0 le reste du temps. */
+  uEclair: { value: 0 },
+  uFeuillage: { value: 0 },
+  uChute: { value: 0 },
+  uFloraison: { value: 0 },
+  uTendre: { value: 0 },
+  uFeuillesSol: { value: 0 },
+  uJaune: { value: 0 },
+  uTerne: { value: 0 },
+}
+
+type Shader = THREE.WebGLProgramParametersWithUniforms
+
+const UNIFORMES = Object.entries(INTEMPERIES)
+  .map(([k, u]) => `uniform ${u.value instanceof THREE.Color ? 'vec3' : 'float'} ${k};`)
+  .join('\n')
+
+/** Commun aux deux étages : les uniformes, un bruit de valeur, « dans le musée ». */
+const COMMUN = /* glsl */ `
+${UNIFORMES}
+float iHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float iBruit(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(iHash(i), iHash(i + vec2(1, 0)), u.x), mix(iHash(i + vec2(0, 1)), iHash(i + vec2(1, 1)), u.x), u.y);
+}
+// Sous les toits du musée (emprise 0–48 × 0–40, toits vers 9,5 m) : ni pluie ni neige.
+float iInterieur(vec3 p) { return step(-0.2, p.x) * step(p.x, 48.2) * step(-0.2, p.z) * step(p.z, 40.2) * step(p.y, 9.3); }
+`
+
+/**
+ * Pose une greffe par-dessus celles déjà là. La clé de cache précédente est lue
+ * MAINTENANT : la clé par défaut de three est le source de `onBeforeCompile`,
+ * qui sera bientôt notre enveloppe, la même pour tous.
+ */
+function greffer(m: THREE.Material, cle: string, greffe: (s: Shader) => void): void {
+  if ((m.userData.intemperies as string[] | undefined)?.includes(cle)) return
+  const avant = m.onBeforeCompile.bind(m)
+  const cleAvant = m.customProgramCacheKey()
+  m.onBeforeCompile = (s, r) => {
+    avant(s, r)
+    greffe(s)
+  }
+  m.customProgramCacheKey = () => `${cleAvant}|${cle}`
+  m.userData.intemperies = [...((m.userData.intemperies as string[] | undefined) ?? []), cle]
+  m.needsUpdate = true
+}
+
+/** Les uniformes partagés, la position et la normale au MONDE (instances comprises). */
+function avecMonde(s: Shader): void {
+  Object.assign(s.uniforms, INTEMPERIES)
+  if (s.vertexShader.includes('varying vec3 vMonde;')) return
+  s.vertexShader = s.vertexShader
+    .replace('#include <common>', `#include <common>\n${COMMUN}\nvarying vec3 vMonde;\nvarying float vHaut;`)
+    .replace(
+      '#include <project_vertex>',
+      `#include <project_vertex>
+  {
+    vec4 iP = vec4(transformed, 1.0);
+    vec3 iN = objectNormal;
+    #ifdef USE_INSTANCING
+      iP = instanceMatrix * iP;
+      iN = mat3(instanceMatrix) * iN;
+    #endif
+    vMonde = (modelMatrix * iP).xyz;
+    vHaut = normalize(mat3(modelMatrix) * iN).y;
+  }`,
+    )
+  s.fragmentShader = s.fragmentShader.replace('#include <common>', `#include <common>\n${COMMUN}\nvarying vec3 vMonde;\nvarying float vHaut;`)
+}
+
+/**
+ * Le dehors sous le temps qu'il fait : mouillé (plus sombre, plus lisse, donc
+ * luisant), puis couvert de neige par plaques sur les faces tournées vers le
+ * ciel. `pelouse` y ajoute la saison de l'herbe : jaunie fin d'été, terne l'hiver.
+ */
+export function intemperer(m: THREE.Material, { pelouse = false } = {}): void {
+  greffer(m, pelouse ? 'intemperies:pelouse' : 'intemperies', (s) => {
+    avecMonde(s)
+    s.fragmentShader = s.fragmentShader.replace(
+      '#include <normal_fragment_maps>',
+      `#include <normal_fragment_maps>
+  {
+    float iDehors = 1.0 - iInterieur(vMonde);
+    ${pelouse ? `
+    float iL = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.3, 1.12, 0.5), uJaune * 0.55);
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(iL) * vec3(1.1, 1.0, 0.72), uTerne * 0.5) * (1.0 - 0.1 * uTerne);` : ''}
+    float iM = uMouille * iDehors;
+    diffuseColor.rgb *= 1.0 - 0.38 * iM;
+    float iSol = smoothstep(0.2, 0.75, vHaut);
+    float iB = iBruit(vMonde.xz * 1.1) * 0.65 + iBruit(vMonde.xz * 4.7) * 0.35;
+    float iNeige = smoothstep(0.38, 0.62, uEnneige * iDehors * iSol + (iB - 0.5) * 0.55);
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.88, 0.9, 0.95), iNeige);
+    #ifdef STANDARD
+      roughnessFactor = mix(roughnessFactor, 0.1 + 0.25 * roughnessFactor, iM * iSol);
+      roughnessFactor = mix(roughnessFactor, 0.8, iNeige);
+      metalnessFactor *= 1.0 - iNeige;
+    #endif
+  }`,
+    )
+  })
+}
+
+/**
+ * Un attribut par sommet `aCarte` = (centre de sa carte, aléa de la carte) :
+ * les cartes de feuillage sont des composantes connexes (4 sommets, 2
+ * triangles), retrouvées par union-find sur l'index. De quoi faire tomber,
+ * rougir et repousser chaque grappe à son heure.
+ */
+export function cartesDeFeuillage(g: THREE.BufferGeometry): void {
+  const p = g.getAttribute('position')
+  const parent = Array.from({ length: p.count }, (_, i) => i)
+  const racine = (i: number): number => (parent[i] === i ? i : (parent[i] = racine(parent[i])))
+  const index = g.getIndex()
+  const n = index === null ? p.count : index.count
+  const at = (k: number) => (index === null ? k : index.getX(k))
+  for (let k = 0; k < n; k += 3) {
+    const [a, b, c] = [racine(at(k)), racine(at(k + 1)), racine(at(k + 2))]
+    parent[b] = a
+    parent[racine(c)] = a
+  }
+  const somme = new Map<number, [number, number, number, number]>()
+  for (let i = 0; i < p.count; i++) {
+    const r = racine(i)
+    const s = somme.get(r) ?? [0, 0, 0, 0]
+    somme.set(r, [s[0] + p.getX(i), s[1] + p.getY(i), s[2] + p.getZ(i), s[3] + 1])
+  }
+  const carte = new Float32Array(p.count * 4)
+  for (let i = 0; i < p.count; i++) {
+    const r = racine(i)
+    const [x, y, z, k] = somme.get(r)!
+    // Un aléa stable par carte, tiré de son centre.
+    const alea = Math.abs(Math.sin(x * 12.9898 + y * 78.233 + z * 37.719) * 43758.5453) % 1
+    carte.set([x / k, y / k, z / k, alea], 4 * i)
+  }
+  g.setAttribute('aCarte', new THREE.BufferAttribute(carte, 4))
+}
+
+/**
+ * Le feuillage d'un érable au fil de l'année. Chaque carte tombe à son tour
+ * (repliée sur son centre) quand `uChute` passe son aléa, et repousse de même
+ * au printemps ; elle tourne à l'orange ou au rouge avec `uFeuillage` ; un
+ * érable vert sur trois fleurit, pâle, au printemps. Le vent balance le houppier.
+ * La géométrie doit porter `aCarte` (`cartesDeFeuillage`).
+ */
+export function saisonnerErable(m: THREE.Material, rouge: boolean): void {
+  greffer(m, `saison:erable:${rouge ? 'rouge' : 'vert'}`, (s) => {
+    avecMonde(s)
+    s.vertexShader = s.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec4 aCarte;\nvarying vec2 vCarte;\nvarying float vNu;')
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+  {
+    float iArbre = 0.5;
+    #ifdef USE_INSTANCING
+      iArbre = iHash(floor(instanceMatrix[3].xz * 3.0));
+    #endif
+    float iTombe = smoothstep(aCarte.w * 0.85, aCarte.w * 0.85 + 0.15, uChute * 1.08 + (iArbre - 0.5) * 0.12);
+    transformed = mix(transformed, aCarte.xyz, iTombe);
+    float iAmp = (0.01 + 0.012 * uVent) * clamp(transformed.y / 4.5, 0.0, 1.0);
+    transformed.x += sin(uTemps * 1.7 + aCarte.x * 2.3 + iArbre * 20.0) * iAmp;
+    transformed.z += cos(uTemps * 1.3 + aCarte.z * 2.1 + iArbre * 11.0) * iAmp;
+    vCarte = vec2(aCarte.w, iArbre);
+    // Brunie en tombant.
+    vNu = iTombe;
+  }`,
+      )
+    s.fragmentShader = s.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vCarte;\nvarying float vNu;')
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+  {
+    float iL = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+    float iTourne = smoothstep(vCarte.x * 0.7, vCarte.x * 0.7 + 0.25, uFeuillage * 1.05 + (vCarte.y - 0.5) * 0.3);
+    float iTon = fract(vCarte.x * 5.1 + vCarte.y);
+    ${rouge
+      ? `// Les pourpres s'embrasent : cramoisi et écarlate.
+    vec3 iAutomne = mix(vec3(0.55, 0.03, 0.02), vec3(0.8, 0.12, 0.02), iTon) * (0.8 + 1.4 * iL);
+    diffuseColor.rgb = mix(diffuseColor.rgb, iAutomne, iTourne);`
+      : `// Les verts passent à l'orange, au rouge, quelques-uns au jaune d'or.
+    vec3 iAutomne = iTon < 0.45 ? vec3(0.75, 0.2, 0.015) : (iTon < 0.8 ? vec3(0.55, 0.045, 0.015) : vec3(0.78, 0.46, 0.02));
+    diffuseColor.rgb = mix(diffuseColor.rgb, iAutomne * (0.6 + 0.7 * iL), iTourne);
+    // Le vert tendre des jeunes feuilles.
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.2, 1.3, 0.7) + vec3(0.03, 0.05, 0.0), uTendre * (1.0 - iTourne));`}
+    ${rouge ? '' : `// Au printemps, un érable vert sur trois se pique de grappes pâles, rosées.
+    float iFleur = step(0.66, vCarte.y) * step(vCarte.x, 0.22) * uFloraison;
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.93, 0.74, 0.8) * (0.5 + 0.9 * iL), iFleur * 0.75);`}
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.3, 0.16, 0.06) * (0.5 + iL), smoothstep(0.05, 0.6, vNu));
+  }`,
+      )
+  })
+}
+
+/** L'azalée n'est rose qu'en saison : hors floraison, ses fleurs redeviennent feuilles. */
+export function saisonnerAzalee(m: THREE.Material): void {
+  greffer(m, 'saison:azalee', (s) => {
+    avecMonde(s)
+    s.fragmentShader = s.fragmentShader.replace(
+      '#include <map_fragment>',
+      `#include <map_fragment>
+  {
+    float iRose = smoothstep(0.06, 0.22, diffuseColor.r - diffuseColor.g);
+    vec3 iFeuille = vec3(0.14, 0.27, 0.07) * (0.8 + 0.5 * fract(diffuseColor.b * 31.0));
+    diffuseColor.rgb = mix(diffuseColor.rgb, iFeuille, iRose * (1.0 - uFloraison));
+  }`,
+    )
+  })
+}
+
+/** Les pétales tombés n'existent qu'en saison : repliés sur leur pied le reste de l'année. */
+export function saisonnerPetales(m: THREE.Material): void {
+  greffer(m, 'saison:petales', (s) => {
+    avecMonde(s)
+    s.vertexShader = s.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed *= smoothstep(0.0, 0.4, uFloraison);')
+  })
+}
+
+/**
+ * Les ronds de pluie sur l'étang : une grille de gouttes (deux couches
+ * décalées), chacune un anneau qui s'élargit et s'éteint ; sa pente penche la
+ * normale. Rien n'est calculé par temps sec.
+ */
+export function rider(m: THREE.Material): void {
+  greffer(m, 'intemperies:ronds', (s) => {
+    avecMonde(s)
+    s.fragmentShader = s.fragmentShader.replace(
+      '#include <normal_fragment_maps>',
+      `#include <normal_fragment_maps>
+  if (uPluie > 0.01) {
+    vec2 iG = vec2(0.0);
+    for (int k = 0; k < 2; k++) {
+      vec2 q = vMonde.xz * 2.4 + float(k) * vec2(0.37, 0.71);
+      vec2 c = floor(q);
+      for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) {
+        vec2 o = c + vec2(float(i), float(j));
+        float h = iHash(o + float(k) * 17.0);
+        // Pas toutes les cellules à la fois : la pluie fine n'allume que les plus pressées.
+        if (h > uPluie * 1.3) continue;
+        float t = fract(uTemps * (0.55 + 0.4 * h) + h * 9.1);
+        vec2 centre = o + 0.2 + 0.6 * vec2(h, iHash(o * 1.7 + 3.1));
+        vec2 v = q - centre;
+        float d = length(v);
+        float r = t * 0.75;
+        float anneau = exp(-pow((d - r) / 0.05, 2.0)) * (1.0 - t) * (1.0 - t);
+        iG += v / max(d, 1e-3) * anneau * cos((d - r) * 60.0);
+      }
+    }
+    normal = normalize(normal + (viewMatrix * vec4(iG.x, 0.0, iG.y, 0.0)).xyz * 0.9 * min(1.0, uPluie * 2.0));
+  }`,
+    )
+  })
+}
+
+/**
+ * Les filets de pluie sur un verre : des rigoles qui descendent la pente de la
+ * vitre (la verrière, le pignon), serpentent un peu, et des gouttes posées.
+ * Le sens de la pente est lu sur la normale : la même greffe vaut pour un
+ * vitrage incliné ou d'aplomb.
+ */
+export function ruisseler(m: THREE.Material): void {
+  greffer(m, 'intemperies:filets', (s) => {
+    avecMonde(s)
+    s.fragmentShader = s.fragmentShader.replace(
+      '#include <normal_fragment_maps>',
+      `#include <normal_fragment_maps>
+  float iFilet = 0.0;
+  if (uPluie > 0.01) {
+    vec3 nW = normalize((vec4(normal, 0.0) * viewMatrix).xyz);
+    vec3 amont = vec3(0.0, 1.0, 0.0) - nW * nW.y;
+    float lg = length(amont);
+    if (lg > 0.05) {
+      amont /= lg;
+      vec3 cote = normalize(cross(nW, amont));
+      float u = dot(vMonde, cote) * 7.0;
+      float v = dot(vMonde, amont);
+      float col = floor(u);
+      float h = iHash(vec2(col, 3.7));
+      float fu = fract(u) - 0.5 + 0.18 * sin(v * 4.0 + h * 30.0);
+      float ligne = smoothstep(0.1, 0.02, abs(fu)) * step(0.45 - 0.4 * uPluie, h);
+      float coule = pow(fract(v * (0.5 + h) + uTemps * (0.5 + 0.7 * h) + h * 13.0), 6.0);
+      vec2 g = vec2(u * 1.3, v * 9.0);
+      float goutte = smoothstep(0.35, 0.15, length(fract(g) - 0.5)) * step(0.82 - 0.2 * uPluie, iHash(floor(g)));
+      iFilet = clamp(ligne * (0.35 + 0.65 * coule) + goutte * 0.7, 0.0, 1.0) * min(1.0, uPluie * 1.8);
+      // Vue du dessous, contre le ciel clair, l'eau qui coule se lit plus sombre que le verre.
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.19, 0.22), iFilet * 0.8);
+      diffuseColor.a = min(1.0, diffuseColor.a + iFilet * 0.45);
+      normal = normalize(normal + (viewMatrix * vec4(cote * fu * 0.6 * ligne, 0.0)).xyz);
+    }
+  }`,
+    ).replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance *= 1.0 - 0.8 * iFilet;')
+  })
+}

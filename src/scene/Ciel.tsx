@@ -15,6 +15,7 @@ import * as THREE from 'three'
 
 import { directionDuSoleil } from '../domain/soleil'
 import { useGameStore } from '../stores/gameStore'
+import { INTEMPERIES } from './intemperies'
 import { AMBIANCE, CIEL, SOLEIL } from './lighting'
 
 const JOUR = 'assets/ciel/kloofendal_48d_partly_cloudy_puresky.jpg'
@@ -35,6 +36,8 @@ const FRAGMENTS = /* glsl */ `
   uniform float jour;
   uniform float crepuscule;
   uniform float charge;
+  uniform float uNuages, uBrume, uEclair;
+  uniform vec3 uBrumeCouleur;
   varying vec3 vDir;
   void main() {
     vec3 d = normalize(vDir);
@@ -42,6 +45,13 @@ const FRAGMENTS = /* glsl */ `
     vec3 c = mix(texture2D(nuitTex, uv).rgb, texture2D(jourTex, uv).rgb, jour);
     // L'or du crépuscule, fort à l'horizon, nul au zénith.
     c *= mix(vec3(1.0), vec3(1.25, 0.72, 0.45), crepuscule * 0.75 * (1.0 - smoothstep(0.0, 0.6, abs(d.y))));
+    // Couvert : le bleu s'éteint en gris, les nuages de la photo restent en relief.
+    float l = dot(c, vec3(0.3, 0.59, 0.11));
+    vec3 couvert = uBrumeCouleur * (0.8 + 0.2 * smoothstep(0.3, 1.0, l / max(0.1, jour)) + 0.08 * d.y);
+    c = mix(c, couvert, uNuages * 0.95);
+    // Le brouillard mange l'horizon d'abord.
+    c = mix(c, uBrumeCouleur, uBrume * (1.0 - 0.55 * smoothstep(0.0, 0.7, d.y)));
+    c += uEclair * vec3(0.75, 0.8, 1.0);
     gl_FragColor = vec4(c, charge);
     #include <colorspace_fragment>
   }
@@ -56,7 +66,11 @@ export function Ciel() {
       new THREE.ShaderMaterial({
         vertexShader: SOMMETS,
         fragmentShader: FRAGMENTS,
-        uniforms: { jourTex: { value: null }, nuitTex: { value: null }, jour: { value: 1 }, crepuscule: { value: 0 }, charge: { value: 0 } },
+        uniforms: {
+          jourTex: { value: null }, nuitTex: { value: null }, jour: { value: 1 }, crepuscule: { value: 0 }, charge: { value: 0 },
+          // Le temps qu'il fait (`MeteoLayer`), partagé : réglé une fois par image, pour tout le monde.
+          uNuages: INTEMPERIES.uNuages, uBrume: INTEMPERIES.uBrume, uEclair: INTEMPERIES.uEclair, uBrumeCouleur: INTEMPERIES.uBrumeCouleur,
+        },
         side: THREE.BackSide,
         depthWrite: false,
         transparent: true,
@@ -123,11 +137,13 @@ const AMBIANCE_NUIT = { ciel: new THREE.Color('#8a7358'), intensite: 0.8 }
  */
 export function LumiereDuJour() {
   const { jour, crepuscule, elevation, azimut } = useGameStore((s) => s.ciel)
+  // Sous un ciel couvert ou dans le brouillard, le soleil ne porte plus d'ombre franche : il s'efface.
+  const voile = useGameStore((s) => Math.min(0.85, s.meteo.nuages * 0.75 + s.meteo.brouillard * 0.4))
   const soleil = useMemo(() => {
     const d = elevation > 0 ? directionDuSoleil({ elevation, azimut }) : directionDuSoleil({ elevation: 35, azimut: (azimut + 180) % 360 })
     const couleur = LUNE.couleur.clone().lerp(new THREE.Color(SOLEIL.couleur).lerp(OR_BAS, crepuscule), jour)
-    return { position: [24 + d[0] * 60, d[1] * 60, 20 + d[2] * 60] as [number, number, number], couleur, intensite: SOLEIL.intensite * jour + LUNE.intensite * (1 - jour) }
-  }, [jour, crepuscule, elevation, azimut])
+    return { position: [24 + d[0] * 60, d[1] * 60, 20 + d[2] * 60] as [number, number, number], couleur, intensite: (SOLEIL.intensite * jour + LUNE.intensite * (1 - jour)) * (1 - voile) }
+  }, [jour, crepuscule, elevation, azimut, voile])
   const ciel = useMemo(() => AMBIANCE_NUIT.ciel.clone().lerp(new THREE.Color(AMBIANCE.ciel), jour), [jour])
   return (
     <>

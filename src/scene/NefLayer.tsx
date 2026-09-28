@@ -16,6 +16,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 import { useGameStore } from '../stores/gameStore'
 import { anglesHorloge } from './horloge'
+import { ruisseler } from './intemperies'
 
 export function NefLayer() {
   const [nef, setNef] = useState<THREE.Object3D | null>(null)
@@ -41,6 +42,8 @@ export function NefLayer() {
         // l'horloge et les pannes selon l'ordre de tri.
         scene.traverse((o) => {
           if (o instanceof THREE.Mesh && (o.material as THREE.Material).transparent) (o.material as THREE.Material).depthWrite = false
+          // Et la pluie y ruisselle, sur la verrière comme sur le pignon.
+          if (o instanceof THREE.Mesh && (o.material as THREE.Material).name === 'Nef_Verre') ruisseler(o.material as THREE.Material)
         })
         if (vivant) setNef(scene)
       })

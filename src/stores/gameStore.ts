@@ -1,6 +1,8 @@
 import { create } from 'zustand'
 
 import config from '../../museum.config.json'
+import { CLAIR, meteoDemandee, type Meteo } from '../domain/meteo'
+import { saisonA, type Saison } from '../domain/saisons'
 import { cielA, heureDemandee, type Ciel } from '../domain/soleil'
 import type { Museum } from '../domain/types'
 import type { Walker } from '../plan/walk'
@@ -42,6 +44,10 @@ interface GameState {
    * à chaque coup : `at` change à chaque annonce, même pour le même dépôt.
    */
   annonce: { key: string; tag: string; at: number } | null
+  /** Le temps qu'il fait à Bruxelles (Open-Meteo), ou celui de `?meteo=`, tenu à jour par `MeteoLayer`. */
+  meteo: Meteo
+  /** La saison du jardin, au jour de l'année ou à celle de `?saison=`. */
+  saison: Saison
   setPaused: (paused: boolean) => void
   setCurrentRoomId: (id: string) => void
   setTourActive: (active: boolean) => void
@@ -64,6 +70,8 @@ export const useGameStore = create<GameState>((set) => ({
   ciel: cielDuMoment(),
   volets: null,
   annonce: null,
+  meteo: (typeof location === 'undefined' ? null : meteoDemandee(location.search)) ?? CLAIR,
+  saison: saisonA(new Date(), typeof location === 'undefined' ? '' : location.search),
   setPaused: (paused) => set({ paused }),
   setCurrentRoomId: (id) => set({ currentRoomId: id }),
   setTourActive: (active) => set({ tourActive: active }),

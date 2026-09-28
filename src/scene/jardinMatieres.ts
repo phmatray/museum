@@ -8,6 +8,8 @@
  */
 import * as THREE from 'three'
 
+import { rider } from './intemperies'
+
 /** Des vaguelettes : une somme de sinus à fréquences ENTIÈRES, donc une tuile sans raccord. */
 function carteDeVaguelettes(n = 128): THREE.DataTexture {
   const ondes = [[3, 1, 0.9, 0.3], [1, 4, 0.7, 1.7], [5, -3, 0.35, 2.9], [-2, 7, 0.25, 0.8], [8, 5, 0.15, 4.1]]
@@ -86,6 +88,8 @@ export function creerMatieresJardin(): MatieresJardin {
       )
   }
   eau.customProgramCacheKey = () => 'jardin:eau'
+  // Et les ronds de la pluie sur l'étang.
+  rider(eau)
 
   const filets = carteDeFilets()
   const cascade = new THREE.MeshStandardMaterial({

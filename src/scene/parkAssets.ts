@@ -12,6 +12,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 import type { EspeceParc } from '../plan/park'
+import { cartesDeFeuillage, intemperer, saisonnerAzalee, saisonnerErable, saisonnerPetales } from './intemperies'
 import { mousser } from './jardinMatieres'
 import { centrer } from './propAssets'
 
@@ -71,6 +72,18 @@ async function charger(base: string): Promise<ParkAssets> {
     else especes.set(id, lotsParMateriau(noeud))
   }
   for (const [id, lots] of especes) if (id.startsWith('rocher')) for (const l of lots) mousser(l.material)
+  // La saison et le temps sur chaque essence (`intemperies.ts`) : après la mousse, qu'ils chaînent.
+  for (const [id, lots] of especes) {
+    for (const l of lots) {
+      const feuilles = l.material.name.startsWith('Jardin_Feuillage') && !l.material.name.includes('Fond')
+      if (id === 'petales') saisonnerPetales(l.material)
+      else if (feuilles && id.startsWith('erable')) {
+        cartesDeFeuillage(l.geometry)
+        saisonnerErable(l.material, id === 'erable-rouge')
+      } else if (feuilles && id === 'azalee') saisonnerAzalee(l.material)
+      if (id !== 'petales') intemperer(l.material)
+    }
+  }
   const jardin = scenes.get('jardin/jardin.glb')?.children.filter((o) => o.name.startsWith('Jardin_')) ?? []
   return { especes, jardin }
 }
