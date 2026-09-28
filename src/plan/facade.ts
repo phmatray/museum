@@ -137,6 +137,6 @@ export function facade(plan: Plan): Facade {
 
   out.enseigne = { x: (P.x0 + P.x1) / 2, y: P.haut + 0.2, z: P.facade + PEAU + 0.01 }
   out.bannieres = [P.x0 - 4.5, P.x1 + 4.5].map((x) => ({ x, y: 5.2, z: D + EXT + PEAU + 0.12, w: 3, h: 7 }))
-  out.mats = [6, 12, 36, 42, 24].map((x) => ({ x, y: haut, z: D - 1.5 }))
+  out.mats = [6, 12, 36, 42].map((x) => ({ x, y: haut, z: D - 1.5 }))
   return out
 }
