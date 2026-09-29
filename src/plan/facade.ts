@@ -77,6 +77,23 @@ const BATTANTS = [ENTREE.x - ENTREE.width / 2 + 0.06, ENTREE.x + ENTREE.width / 
 })
 export const OBSTACLES_PORTES_ENTREE: Rect[] = BATTANTS.map((b) => ({ x: b.x - 0.05, z: b.z0, width: 0.1, depth: b.z1 - b.z0 }))
 
+/**
+ * Le nom d'un dépôt en lignes courtes, pour le titre d'une bannière : coupé
+ * aux tirets et aux majuscules (`TaLibStandard` → `TaLib` / `Standard`), des
+ * lignes d'au plus `max` signes. Sur une seule ligne, un nom de treize lettres
+ * tombait à 38 cm de corps : illisible depuis le jardin.
+ */
+export function lignesDeBanniere(nom: string, max = 9): string[] {
+  const mots = nom.match(/[^A-Z_-]*(?:[A-Z]+(?![a-z])|[A-Z][^A-Z_-]*)?[_-]?/g)?.filter(Boolean) ?? [nom]
+  const lignes: string[] = []
+  for (const m of mots) {
+    const l = lignes.length - 1
+    if (l >= 0 && lignes[l].length + m.length <= max) lignes[l] += m
+    else lignes.push(m)
+  }
+  return lignes
+}
+
 export interface Facade {
   /** Le parement de brique des murs de façade et le parapet. */
   brique: Box[]
@@ -96,6 +113,86 @@ export interface Facade {
   bannieres: { x: number; y: number; z: number; w: number; h: number }[]
   /** Les mâts des drapeaux, sur le toit, au pied de chaque mât. */
   mats: { x: number; y: number; z: number }[]
+}
+
+/** Le soubassement de pierre, sa saillie ; la corniche sous le parapet ; le bandeau au droit du plancher. */
+const SOCLE = { h: 0.7, saillie: 0.16 }
+const CORNICHE = { h: 0.38, saillie: 0.22 }
+const BANDEAU_ETAGE = { saillie: 0.06 }
+/** Les pilastres de brique, au droit des murs de refend, et aux angles. */
+const PILASTRE = { l: 0.9, saillie: 0.12 }
+/** Une fenêtre aveugle : baie de pierre de 1,4 × 2,4 m, chambranle de 15 cm, appui saillant. */
+const AVEUGLE = { l: 1.4, h: 2.4, cadre: 0.15, saillie: 0.05, allege: 1.3 }
+
+/**
+ * La modénature des façades : ce qui fait d'une boîte de brique un bâtiment.
+ * Un soubassement de pierre et une corniche sur TOUT le pourtour, un bandeau
+ * au droit du plancher de l'étage, des pilastres aux angles et au droit des
+ * murs de refend, et, entre eux, sur les trois façades sans portique, des
+ * fenêtres aveugles à chambranle de pierre — des galeries n'ont pas de
+ * fenêtres, un palais de musée en dessine quand même. Côtés, fond : c'étaient
+ * trois murs nus, le portique s'arrêtant net à l'angle.
+ *
+ * Tout va dans les boîtes de brique et de pierre de la façade : pas un appel
+ * de dessin de plus.
+ */
+function modenature(plan: Plan, haut: number, out: Facade): void {
+  const [W, D] = [plan.width, plan.depth]
+  const f = EXT + PEAU
+  // Chaque façade : son axe (le long de x ou de z), sa cote, le sens du dehors, ses refends.
+  const refendsX = [...new Set(plan.levels[0].rooms.flatMap((r) => [r.x, r.x + r.width]))].filter((x) => x > 0 && x < W)
+  const refendsZ = [...new Set(plan.levels[0].rooms.filter((r) => r.x === 0).flatMap((r) => [r.z, r.z + r.depth]))].filter((z) => z > 0 && z < D)
+  const faces = [
+    { long: 'x', cote: -f, dehors: -1, refends: refendsX, sud: false },
+    { long: 'x', cote: D + f, dehors: 1, refends: refendsX, sud: true },
+    { long: 'z', cote: -f, dehors: -1, refends: refendsZ, sud: false },
+    { long: 'z', cote: W + f, dehors: 1, refends: refendsZ, sud: false },
+  ] as const
+  const niveaux = plan.levels.map((l) => l.elevation)
+  for (const face of faces) {
+    const L = face.long === 'x' ? W : D
+    /** Une boîte posée contre la façade : `a`–`b` le long du mur, `y0`–`y1`, de la face jusqu'à `saillie`. */
+    const contre = (a: number, b: number, y0: number, y1: number, saillie: number): Box => {
+      const [p, q] = face.dehors > 0 ? [face.cote, face.cote + saillie] : [face.cote - saillie, face.cote]
+      return face.long === 'x' ? pave(a, b, y0, y1, p, q) : pave(p, q, y0, y1, a, b)
+    }
+    // Au sud, le portique occupe le milieu : le socle et le bandeau s'arrêtent à ses jambages.
+    const pleins: [number, number][] = face.sud ? [[-f, P.x0], [P.x1, L + f]] : [[-f, L + f]]
+    // Aux angles, les façades nord et sud prennent le retour : les boîtes des deux
+    // autres s'arrêtent à la brique, sans face commune qui scintillerait.
+    const retour = (s: number) => (face.long === 'x' ? s : 0)
+    for (const [a, b] of pleins) {
+      out.pierre.push(contre(a - retour(SOCLE.saillie), b + retour(SOCLE.saillie), 0, SOCLE.h, SOCLE.saillie))
+      for (const e of niveaux.filter((e) => e > 0)) out.pierre.push(contre(a, b, e - plan.slab, e, BANDEAU_ETAGE.saillie))
+    }
+    out.pierre.push(contre(-f - retour(CORNICHE.saillie), L + f + retour(CORNICHE.saillie), haut - CORNICHE.h, haut, CORNICHE.saillie))
+    // Les pilastres : aux deux angles, et au droit des refends (sauf derrière le portique).
+    const r = retour(PILASTRE.saillie)
+    const axes: [number, number][] = [[-f - r, -f + PILASTRE.l], [L + f - PILASTRE.l, L + f + r],
+      ...face.refends.filter((u) => !face.sud || u < P.x0 || u > P.x1).map((u): [number, number] => [u - PILASTRE.l / 2, u + PILASTRE.l / 2])]
+    for (const [a, b] of axes) out.brique.push(contre(a, b, SOCLE.h, haut - CORNICHE.h, PILASTRE.saillie))
+    if (face.sud) continue
+    // Les fenêtres aveugles : trois par travée et par niveau, entre les pilastres.
+    const bornes = [0, ...face.refends, L]
+    for (let t = 0; t + 1 < bornes.length; t++) {
+      const [u0, u1] = [bornes[t] + PILASTRE.l, bornes[t + 1] - PILASTRE.l]
+      for (let k = 0; k < 3; k++) {
+        const c = u0 + ((k + 0.5) * (u1 - u0)) / 3
+        const [a, b] = [c - AVEUGLE.l / 2, c + AVEUGLE.l / 2]
+        for (const e of niveaux) {
+          const [y0, y1] = [e + AVEUGLE.allege, e + AVEUGLE.allege + AVEUGLE.h]
+          const k2 = AVEUGLE.cadre
+          out.pierre.push(
+            contre(a - k2, a, y0, y1, AVEUGLE.saillie),
+            contre(b, b + k2, y0, y1, AVEUGLE.saillie),
+            contre(a - k2, b + k2, y1, y1 + k2 * 1.4, AVEUGLE.saillie + 0.02),
+            // L'appui, plus saillant que le chambranle : il porte la pluie loin du mur.
+            contre(a - k2 - 0.08, b + k2 + 0.08, y0 - 0.12, y0, AVEUGLE.saillie + 0.07),
+          )
+        }
+      }
+    }
+  }
 }
 
 export function facade(plan: Plan): Facade {
@@ -128,6 +225,8 @@ export function facade(plan: Plan): Facade {
     out.brique.push(pave(x0, x1, haut, haut + PARAPET, z0, z1))
     out.pierre.push(pave(x0 - 0.04, x1 + 0.04, haut + PARAPET, haut + PARAPET + COUVERTINE, z0 - 0.04, z1 + 0.04))
   }
+
+  modenature(plan, haut, out)
 
   // Le portique.
   const [zf, zs] = [P.facade + PEAU, P.facade + P.saillie]

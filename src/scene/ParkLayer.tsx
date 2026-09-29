@@ -14,7 +14,9 @@ import type { Allee, Parc, PlantPlacement, EspeceParc } from '../plan/park'
 import { hauteurDuParc, masqueDuRelief } from '../plan/relief'
 import type { Rect } from '../plan/types'
 import { REGLAGE_MATIERE, repetitionMetrique, useCartes, useMatiere } from './materials'
-import { creerPierre } from './pierre'
+import { creerBrique, creerPierre } from './pierre'
+import { enceinte } from '../plan/enceinte'
+import { Boites } from './PlanBuilding'
 import { parkAssetsResource, type ParkAssets, type ParkPiece } from './parkAssets'
 import { creerMatieresJardin, preparerSol, uvBoite } from './jardinMatieres'
 import { brinsDeGazon, carteDuSol, matiereGazon, type ReglageGazon } from './gazon'
@@ -55,6 +57,8 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   useMemo(() => intemperer(gravier), [gravier])
 
   const sol = useMemo(() => pelouse(placements), [placements])
+  const campagne = useMemo(() => dehors(placements.terrain), [placements])
+  useEffect(() => () => campagne.dispose(), [campagne])
   // Le parvis est dallé de la pierre du hall, comme le seuil d'un vrai musée ; le
   // gravier est pour les allées du jardin.
   // Le dallage 1 cm au-dessus du gravier : à la même cote, les allées qui le
@@ -66,9 +70,7 @@ export function ParkLayer({ placements }: { placements: Parc }) {
     dallage.map?.dispose()
     dallage.dispose()
   }, [parvis, dallage])
-  const allees = useMemo(() => dalles([
-    ...placements.allees.map(allee),
-  ]), [placements])
+  const allees = useMemo(() => dalles(chaines(placements.allees).map(ruban)), [placements])
   useEffect(() => () => {
     sol.dispose()
     allees.dispose()
@@ -84,6 +86,8 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   return (
     <group name="parc">
       <mesh geometry={sol} material={herbe} />
+      <mesh geometry={campagne} material={herbe} />
+      <Enceinte parc={placements} />
       <mesh geometry={parvis} material={dallage} />
       <mesh geometry={allees} material={gravier} />
       <Gazon parc={placements} />
@@ -94,6 +98,69 @@ export function ParkLayer({ placements }: { placements: Parc }) {
           (assets.especes.get(espece) ?? []).map((lot, i) => <Instances key={`${espece}:${i}`} piece={lot} sujets={sujets} />))}
     </group>
   )
+}
+
+/** Le mur d'enceinte (`plan/enceinte.ts`) : brique et pierre du musée, grilles de fer. Trois appels de dessin. */
+function Enceinte({ parc }: { parc: Parc }) {
+  const mur = useMemo(() => enceinte(parc.terrain, parc.allees), [parc])
+  const mats = useMemo(() => {
+    const m = { brique: creerBrique(), pierre: creerPierre(), fer: new THREE.MeshStandardMaterial({ color: '#1c1e1d', metalness: 0.7, roughness: 0.45 }) }
+    for (const k of ['brique', 'pierre'] as const) intemperer(m[k])
+    return m
+  }, [])
+  useEffect(() => () => Object.values(mats).forEach((m) => { m.map?.dispose(); m.dispose() }), [mats])
+  return (
+    <>
+      <Boites boites={mur.brique} material={mats.brique} />
+      <Boites boites={mur.pierre} material={mats.pierre} />
+      <Boites boites={mur.fer} material={mats.fer} />
+    </>
+  )
+}
+
+/** Les pas de la campagne, du mur vers l'horizon : serrés près du mur, lâches au loin (en mètres, cumulés). */
+const AU_DELA = [2, 5, 9, 14, 20, 28, 38, 52, 70, 95, 130, 180, 250, 340, 460]
+
+/**
+ * La campagne, derrière le mur : le relief du parc continue, puis s'aplanit vers
+ * l'horizon. Sans elle, du haut d'une butte, on voyait par-dessus le mur le
+ * bord du monde : rien sous le ciel. Une grille à pas croissants, percée du
+ * terrain (la pelouse du parc y est), qui pâlit au loin comme dans l'air réel.
+ */
+function dehors(terrain: Rect): THREE.BufferGeometry {
+  const axe = (a0: number, a1: number) => {
+    const n = Math.round((a1 - a0) / 8)
+    return [...AU_DELA.map((d) => a0 - d).reverse(), ...Array.from({ length: n + 1 }, (_, i) => a0 + ((a1 - a0) * i) / n), ...AU_DELA.map((d) => a1 + d)]
+  }
+  const [xs, zs] = [axe(terrain.x, terrain.x + terrain.width), axe(terrain.z, terrain.z + terrain.depth)]
+  const pos: number[] = []
+  const couleur: number[] = []
+  const index: number[] = []
+  // Au-delà de 1 : la brume ÉCLAIRCIT et bleuit le vert au loin (la teinte multiplie la carte).
+  const brume = new THREE.Color(1.5, 1.5, 1.95)
+  for (const z of zs) {
+    for (const x of xs) {
+      const d = Math.hypot(Math.max(terrain.x - x, 0, x - terrain.x - terrain.width), Math.max(terrain.z - z, 0, z - terrain.z - terrain.depth))
+      pos.push(x, hauteurDuParc(x, z) * (1 - THREE.MathUtils.smoothstep(d, 20, 200)), z)
+      const c = new THREE.Color(0.95, 0.97, 0.93).lerp(brume, THREE.MathUtils.smoothstep(d, 40, 460))
+      couleur.push(c.r, c.g, c.b)
+    }
+  }
+  const nx = xs.length
+  const interieur = (x: number, z: number) => x > terrain.x && x < terrain.x + terrain.width && z > terrain.z && z < terrain.z + terrain.depth
+  for (let j = 0; j + 1 < zs.length; j++)
+    for (let i = 0; i + 1 < nx; i++) {
+      if (interieur((xs[i] + xs[i + 1]) / 2, (zs[j] + zs[j + 1]) / 2)) continue
+      const v = j * nx + i
+      index.push(v, v + nx, v + 1, v + 1, v + nx, v + nx + 1)
+    }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('color', new THREE.Float32BufferAttribute(couleur, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(pos.flatMap((c, i) => (i % 3 === 1 ? [] : [c])), 2))
+  g.setIndex(index)
+  g.computeVertexNormals()
+  return g
 }
 
 /** Les brins d'herbe, repliés autour de la caméra (`gazon.ts`). */
@@ -161,24 +228,67 @@ function pelouse(parc: Parc): THREE.BufferGeometry {
   return g
 }
 
-/** Une allée drapée sur le relief : une bande subdivisée au mètre, rallongée d'une largeur en tout. */
-function allee(a: Allee): THREE.BufferGeometry {
-  const [dx, dz] = [a.b.x - a.a.x, a.b.z - a.a.z]
-  const l = Math.hypot(dx, dz)
-  const [ux, uz] = [dx / l, dz / l]
-  const n = Math.max(1, Math.ceil(l + a.largeur))
+/**
+ * Les allées bout à bout (l'arrivée de l'une est le départ de la suivante, même
+ * largeur) : une allée qui serpente, la boucle de ceinture. Dessinées une à une,
+ * chaque bande rallongée à ses bouts, leurs coins carrés dépassaient au dehors
+ * des virages et mordaient la pelouse : des bords en dents de scie.
+ */
+function chaines(allees: Allee[]): Allee[][] {
+  const out: Allee[][] = []
+  for (const a of allees) {
+    const c = out[out.length - 1]
+    const d = c?.[c.length - 1]
+    if (d && d.largeur === a.largeur && Math.hypot(d.b.x - a.a.x, d.b.z - a.a.z) < 1e-6) c.push(a)
+    else out.push([a])
+  }
+  return out
+}
+
+/**
+ * Un ruban d'allée drapé sur le relief : les bords sont joints en onglet à
+ * chaque coude, et la bande est subdivisée au mètre pour suivre la pelouse.
+ * Une chaîne ouverte est rallongée d'une demi-largeur à ses bouts (elle se
+ * glisse sous l'allée qu'elle rejoint) ; une boucle se referme sur elle-même.
+ */
+function ruban(chaine: Allee[]): THREE.BufferGeometry {
+  const w = chaine[0].largeur / 2
+  const pts = [chaine[0].a, ...chaine.map((s) => s.b)].map((p) => ({ ...p }))
+  const fermee = Math.hypot(pts[0].x - pts[pts.length - 1].x, pts[0].z - pts[pts.length - 1].z) < 1e-6
+  const dir = (a: { x: number; z: number }, b: { x: number; z: number }) => {
+    const l = Math.hypot(b.x - a.x, b.z - a.z) || 1
+    return { x: (b.x - a.x) / l, z: (b.z - a.z) / l }
+  }
+  const n = pts.length
+  if (!fermee) {
+    const [d0, d1] = [dir(pts[0], pts[1]), dir(pts[n - 2], pts[n - 1])]
+    pts[0] = { x: pts[0].x - d0.x * w, z: pts[0].z - d0.z * w }
+    pts[n - 1] = { x: pts[n - 1].x + d1.x * w, z: pts[n - 1].z + d1.z * w }
+  }
+  // Les deux bords à chaque sommet : la normale moyenne, allongée pour garder la largeur (onglet).
+  const bords = pts.map((p, i) => {
+    const avant = i > 0 ? dir(pts[i - 1], p) : fermee ? dir(pts[n - 2], p) : null
+    const apres = i < n - 1 ? dir(p, pts[i + 1]) : fermee ? dir(pts[0], pts[1]) : null
+    const [a, b] = [avant ?? apres!, apres ?? avant!]
+    const t = dir({ x: 0, z: 0 }, { x: a.x + b.x, z: a.z + b.z })
+    const k = w / Math.max(0.5, t.x * a.x + t.z * a.z)
+    return [{ x: p.x + t.z * k, z: p.z - t.x * k }, { x: p.x - t.z * k, z: p.z + t.x * k }]
+  })
   const pos: number[] = []
   const index: number[] = []
-  for (let i = 0; i <= n; i++) {
-    const s = -a.largeur / 2 + ((l + a.largeur) * i) / n
-    for (let j = 0; j < 3; j++) {
-      const t = ((j - 1) * a.largeur) / 2
-      const [x, z] = [a.a.x + ux * s - uz * t, a.a.z + uz * s + ux * t]
-      pos.push(x, hauteurDuParc(x, z) + RELIEF_ALLEE, z)
-      if (i > 0 && j > 0) {
-        const k = 3 * i + j
-        index.push(k - 4, k - 3, k - 1, k - 1, k - 3, k)
+  let rang = 0
+  for (let i = 0; i + 1 < n; i++) {
+    const [[g0, d0], [g1, d1]] = [bords[i], bords[i + 1]]
+    const m = Math.max(1, Math.ceil(Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].z - pts[i].z)))
+    for (let k = i === 0 ? 0 : 1; k <= m; k++) {
+      const u = k / m
+      const [g, d] = [{ x: g0.x + (g1.x - g0.x) * u, z: g0.z + (g1.z - g0.z) * u }, { x: d0.x + (d1.x - d0.x) * u, z: d0.z + (d1.z - d0.z) * u }]
+      for (const [x, z] of [[g.x, g.z], [(g.x + d.x) / 2, (g.z + d.z) / 2], [d.x, d.z]]) pos.push(x, hauteurDuParc(x, z) + RELIEF_ALLEE, z)
+      if (rang > 0) for (const j of [1, 2]) {
+        const q = 3 * rang + j
+        index.push(q - 4, q - 3, q - 1, q - 1, q - 3, q)
       }
+      rang++
     }
   }
   const g = new THREE.BufferGeometry()
@@ -235,11 +345,11 @@ function Instances({ piece, sujets }: { piece: ParkPiece; sujets: PlantPlacement
 function Jardin({ objets, herbe }: { objets: THREE.Object3D[]; herbe: THREE.Material }) {
   const matieres = useMemo(() => creerMatieresJardin(), [])
   useEffect(() => () => matieres.dispose(), [matieres])
-  useFrame(({ clock }) => matieres.animer(clock.elapsedTime, useGameStore.getState().ciel.jour))
   const pierre = useMatiere('beton', repetitionMetrique(REGLAGE_MATIERE.beton.motif), { teinte: '#b9b6ad' })
   const bois = useMatiere('parquet', repetitionMetrique(REGLAGE_MATIERE.parquet.motif), { teinte: '#6b4a34' })
 
-  useMemo(() => {
+  const lueurs = useMemo(() => {
+    const lueurs = new Set<THREE.MeshStandardMaterial>()
     for (const m of [pierre, bois]) intemperer(m)
     const par: Record<string, THREE.Material> = { sol: herbe, eau: matieres.eau, cascade: matieres.cascade, granit: pierre, bois }
     for (const racine of objets) {
@@ -258,9 +368,19 @@ function Jardin({ objets, herbe }: { objets: THREE.Object3D[]; herbe: THREE.Mate
         }
         const m = par[o.userData.jardin as string]
         if (m) o.material = m
+        else if (o.material instanceof THREE.MeshStandardMaterial && o.material.name.startsWith('Jardin_Lueur')) lueurs.add(o.material)
       })
     }
+    for (const l of lueurs) l.userData.eclat ??= l.emissiveIntensity
+    return [...lueurs]
   }, [objets, matieres, herbe, pierre, bois])
+  // Le foyer de la lanterne ne brûle qu'au crépuscule et la nuit : à 14 h, il
+  // luisait en plein soleil comme une ampoule oubliée.
+  useFrame(({ clock }) => {
+    const jour = useGameStore.getState().ciel.jour
+    matieres.animer(clock.elapsedTime, jour)
+    for (const l of lueurs) l.emissiveIntensity = (l.userData.eclat as number) * (1 - THREE.MathUtils.smoothstep(jour, 0.15, 0.6))
+  })
 
   return <>{objets.map((o) => <primitive key={o.uuid} object={o} />)}</>
 }

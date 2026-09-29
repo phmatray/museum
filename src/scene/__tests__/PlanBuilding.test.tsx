@@ -39,6 +39,8 @@ import { MUSEE } from '../../plan/musee'
 import { bandesDuSol, parementDuHall, peintureDesSalles, plinthes } from '../../plan/parement'
 import { plafonds } from '../../plan/plafonds'
 import { facade } from '../../plan/facade'
+import { enceinte } from '../../plan/enceinte'
+import { parkPlacements } from '../../plan/park'
 import { portes } from '../../plan/portes'
 import { boitesDesCimaises } from '../../plan/cimaises'
 import { meshLevel, type Box } from '../../plan/mesh'
@@ -98,6 +100,10 @@ describe('PlanBuilding', () => {
     // Puis la façade, après les niveaux : brique, pierre, piliers, vitres, menuiseries.
     const f = facade(MUSEE)
     attendus.push(f.brique.length, f.pierre.length, f.piliers.length, f.vitres.length, f.portes.length, f.menuiseries.length)
+    // Puis le mur d'enceinte du parc (ParkLayer) : brique, pierre, grilles.
+    const parc = parkPlacements(MUSEE)
+    const mur = enceinte(parc.terrain, parc.allees)
+    attendus.push(mur.brique.length, mur.pierre.length, mur.fer.length)
 
     expect(meshes).toHaveLength(attendus.length)
     expect(meshes.map((m) => m.count)).toEqual(attendus)

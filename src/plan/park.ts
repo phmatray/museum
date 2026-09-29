@@ -153,15 +153,11 @@ function tracerAllees(parvis: Rect, terrain: Rect): Allee[] {
   const [z0, z1] = [parvis.z - RETRAIT_PERIPHERIQUE, parvis.z + parvis.depth + RETRAIT_PERIPHERIQUE]
   const coins = [{ x: x0, z: z0 }, { x: x1, z: z0 }, { x: x1, z: z1 }, { x: x0, z: z1 }]
   const [cx, cz] = [parvis.x + parvis.width / 2, parvis.z + parvis.depth / 2]
-  // Chaque accès rejoint le PARVIS, pas seulement le chemin de ceinture : sans ce
-  // raccord, il fallait traverser une bande de gazon pour entrer au musée.
-  const [px0, px1, pz0, pz1] = [parvis.x, parvis.x + parvis.width, parvis.z, parvis.z + parvis.depth]
-  const raccords: Allee[] = [
-    { a: { x: cx, z: pz1 }, b: { x: cx, z: z1 }, largeur: LARGEUR_ACCES },
-    { a: { x: cx, z: pz0 }, b: { x: cx, z: z0 }, largeur: LARGEUR_ACCES },
-    { a: { x: px0, z: cz }, b: { x: x0, z: cz }, largeur: LARGEUR_ACCES },
-    { a: { x: px1, z: cz }, b: { x: x1, z: cz }, largeur: LARGEUR_ACCES },
-  ]
+  // Seule l'entrée (au sud) est reliée au PARVIS : sans ce raccord, il fallait
+  // traverser une bande de gazon pour entrer au musée. Les trois autres accès
+  // s'arrêtent au chemin de ceinture, qui fait le tour : ils filaient droit
+  // dans un mur aveugle, sans porte (audit du jardin).
+  const raccords: Allee[] = [{ a: { x: cx, z: parvis.z + parvis.depth }, b: { x: cx, z: z1 }, largeur: LARGEUR_ACCES }]
   return [
     ...raccords,
     ...coins.map((a, i) => ({ a, b: coins[(i + 1) % 4], largeur: LARGEUR_PERIPHERIQUE })),
@@ -340,6 +336,32 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
     const [x, z] = [p.x + (alea() - 0.5) * 1.5, p.z + (alea() - 0.5) * 1.5]
     if (!presDeLEau(x, z, 1.6) && !surUneAllee(allees, x, z, 1.3) && !dansRect(parvis, x, z, 1.3)) planter('petales', x, z, 0.8 + alea() * 0.6)
   }
+
+  // 6. Le long du mur d'enceinte (`enceinte.ts`), là où le rideau du jardin
+  //    ne va pas (ouest, nord, et le sud-ouest), une ligne de grands érables :
+  //    au-dessus du mur, une lisière, pas un ciel nu. Leur propre tirage, en
+  //    dernier : le reste du parc ne bouge pas d'un arbre.
+  const lisiere = generateur(`${graine}:lisiere`)
+  const bord = 5
+  const pieds: [number, number][] = []
+  for (let x = terrain.x + bord; x < xMax - bord; x += 8) pieds.push([x, terrain.z + bord])
+  for (let z = terrain.z + bord + 8; z < zMax - bord; z += 8) pieds.push([terrain.x + bord, z])
+  for (let x = terrain.x + bord + 8; x < JARDIN.zones[0].x; x += 8) pieds.push([x, zMax - bord])
+  for (let z = terrain.z + bord + 8; z < JARDIN.zones[1].z; z += 8) pieds.push([xMax - bord, z])
+  for (const [x, z] of pieds) {
+    const espece = lisiere() < 0.3 ? 'erable-rouge' : 'erable-vert'
+    const [rx, rz] = [x + (lisiere() - 0.5) * 3, z + (lisiere() - 0.5) * 3]
+    if (libre(rx, rz, RAYON[espece] * 0.8, 1.5, 0.6)) planter(espece, rx, rz, 1.2 + lisiere() * 0.35)
+  }
+
+  // 7. La source du ruisseau : l'eau naissait d'un bout carré dans la pelouse,
+  //    à quatre mètres du mur. Un gros rocher la couvre, deux autres la tiennent :
+  //    le ruisseau sourd d'entre les pierres. En dernier, comme la lisière.
+  const [[sx, sz, sw], [tx, tz]] = TRACE_RUISSEAU
+  const ls = Math.hypot(tx - sx, tz - sz)
+  const [vx, vz] = [(tx - sx) / ls, (tz - sz) / ls]
+  planter('rocher-1', sx - vx * 0.5, sz - vz * 0.5, 0.95, -0.25)
+  for (const s of [-1, 1]) planter(s < 0 ? 'rocher-3' : 'rocher-5', sx + vx * 0.7 - vz * s * (sw / 2 + 0.5), sz + vz * 0.7 + vx * s * (sw / 2 + 0.5), 0.6, -0.15)
 
   // La pelouse s'arrête où commence le sol creusé du jardin (build-jardin.py).
   const sol = JARDIN.zones.reduce((rs, zone) => rs.flatMap((r) => couronne(r, zone)), couronne(terrain, parvis))

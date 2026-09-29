@@ -386,6 +386,11 @@ export async function fetchCatalogue(owners: string[], token: string | null, rea
       const { nodes, pageInfo } = owner.repositories
       for (const r of nodes) {
         const a = toArtwork(r)
+        // `repositories` d'une personne liste aussi les dépôts où elle n'est que
+        // COLLABORATRICE (ownerAffiliations par défaut) : c'est ainsi que
+        // `ivanpaulovich/clean-architecture-manga` entrait au musée. Seuls les
+        // dépôts des propriétaires sont « mes projets ».
+        if (!owners.includes(a.owner)) continue
         const md = r.readme?.text ?? r.readmeLower?.text
         if (readmes && md) readmes.set(a.key, md)
         // Un dépôt peut apparaître deux fois si l'on liste à la fois un

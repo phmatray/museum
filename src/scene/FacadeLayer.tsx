@@ -9,11 +9,11 @@ import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 
 import config from '../../museum.config.json'
-import { useAccrochage } from '../hooks/useAccrochage'
+import { useVitrines } from '../hooks/useCatalogue'
 import { useGameStore } from '../stores/gameStore'
-import { facade } from '../plan/facade'
+import { facade, lignesDeBanniere } from '../plan/facade'
 import { MUSEE } from '../plan/musee'
-import { CARTEL_FONT } from './cartelStyle'
+import { CARTEL_FONT, TITRE_FONT } from './cartelStyle'
 import { useMatiere } from './materials'
 import { Boites } from './PlanBuilding'
 import { creerVitrage } from '../builders/glazing'
@@ -75,41 +75,84 @@ export function FacadeLayer() {
   )
 }
 
-/** Les deux premières œuvres de la salle d'honneur : les dépôts les plus étoilés. */
+/** Le fond de chaque bannière : deux teintes profondes qui tranchent sur la brique rouge. */
+const FONDS_BANNIERE = ['#15304f', '#0c4841']
+const CREME = '#f3ead8'
+const OR = '#d8b060'
+
+/**
+ * Les deux bannières annoncent les deux premières vitrines de la salle
+ * d'honneur (`plan/vitrines.ts`) : les dépôts les plus étoilés DES PROPRIÉTAIRES,
+ * jamais un fork ni le dépôt d'un tiers. Elles lisaient les deux premières
+ * toiles accrochées, et la plus étoilée était celle d'un autre
+ * (`ivanpaulovich/clean-architecture-manga`, où Philippe n'est que
+ * collaborateur) — en gris pâle de 16 cm sur du blanc, illisible du jardin.
+ * Comme une vraie bannière de musée : un aplat franc, le titre en grand.
+ */
 function Bannieres() {
-  const accrochage = useAccrochage()
-  const cles = accrochage?.rooms.find((r) => r.id === 'honneur')?.placements.slice(0, 2).map((p) => p.key) ?? []
+  const vitrines = useVitrines()
+  // Une encre ÉCLAIRÉE : le matériau par défaut du texte ignore la lumière, et
+  // les lettres luisaient la nuit sur une toile éteinte.
+  const encre = useMemo(() => new THREE.MeshStandardMaterial({ roughness: 0.9 }), [])
+  useEffect(() => () => encre.dispose(), [encre])
   return (
     <>
       {FACADE.bannieres.map((b, i) => {
-        const cle = cles[i]
-        if (!cle) return null
-        const [proprietaire, nom] = cle.split('/')
+        const oeuvre = vitrines?.[i]
+        if (!oeuvre) return null
+        const lignes = lignesDeBanniere(oeuvre.name)
+        // Le corps suit la plus longue ligne (0,52 em par signe), plafonné à 78 cm.
+        const corps = Math.min(0.78, (b.w - 0.5) / (Math.max(...lignes.map((l) => l.length)) * 0.52))
+        const chiffres = [`${oeuvre.stars} étoiles`, oeuvre.language].filter(Boolean).join('  ·  ')
+        const texte = { font: CARTEL_FONT, anchorX: 'center', anchorY: 'middle', material: encre } as const
         return (
-          <group key={cle} position={[b.x, b.y, b.z]}>
+          <group key={oeuvre.key} position={[b.x, b.y, b.z]}>
             <mesh>
               <planeGeometry args={[b.w, b.h]} />
-              <meshStandardMaterial color="#f4f1ea" roughness={0.9} side={THREE.DoubleSide} />
+              <meshStandardMaterial color={FONDS_BANNIERE[i % FONDS_BANNIERE.length]} roughness={0.95} side={THREE.DoubleSide} />
             </mesh>
-            <mesh position={[0, b.h / 2 + 0.03, 0.02]}>
-              <boxGeometry args={[b.w + 0.2, 0.05, 0.05]} />
-              <meshStandardMaterial color="#2b2a28" metalness={0.6} roughness={0.4} />
-            </mesh>
-            <Text font={CARTEL_FONT} position={[0, b.h / 2 - 0.35, 0.01]} fontSize={0.16} letterSpacing={0.1} color="#6a6158" anchorX="center" anchorY="top">
+            {/* La hampe en haut, la barre de lest en bas. */}
+            {[b.h / 2 + 0.03, -b.h / 2 - 0.03].map((y) => (
+              <mesh key={y} position={[0, y, 0.02]}>
+                <boxGeometry args={[b.w + 0.2, 0.05, 0.05]} />
+                <meshStandardMaterial color="#2b2a28" metalness={0.6} roughness={0.4} />
+              </mesh>
+            ))}
+            {[b.h / 2 - 0.72, -b.h / 2 + 0.62].map((y) => (
+              <mesh key={y} position={[0, y, 0.005]}>
+                <planeGeometry args={[b.w - 0.6, 0.03]} />
+                <meshStandardMaterial color={OR} roughness={0.6} metalness={0.3} />
+              </mesh>
+            ))}
+            <Text {...texte} position={[0, b.h / 2 - 0.42, 0.01]} fontSize={0.2} letterSpacing={0.18} color={CREME}>
+              {config.name.toUpperCase()}
+            </Text>
+            <Text {...texte} position={[0, b.h / 2 - 1.0, 0.01]} fontSize={0.19} letterSpacing={0.14} color={OR}>
               SALLE D’HONNEUR
             </Text>
-            {/* Le nom tient sur une ligne : la taille suit sa longueur (0,55 em par signe). */}
-            <Text font={CARTEL_FONT} position={[0, 0.4, 0.01]} fontSize={Math.min(0.42, (b.w - 0.3) / (nom.length * 0.55))} color="#1c1a18" anchorX="center" anchorY="middle">
-              {nom}
+            <Text {...texte} font={TITRE_FONT} position={[0, 0.75, 0.01]} fontSize={corps} lineHeight={1.02} textAlign="center" color={CREME} outlineWidth={corps * 0.02} outlineColor={CREME}>
+              {lignes.join('\n')}
             </Text>
-            <Text font={CARTEL_FONT} position={[0, -b.h / 2 + 0.45, 0.01]} fontSize={0.15} maxWidth={b.w - 0.3} textAlign="center" color="#946a22" anchorX="center" anchorY="bottom">
-              {proprietaire}
+            <Text {...texte} position={[0, -1.25, 0.01]} fontSize={0.24} letterSpacing={0.06} color={OR}>
+              {chiffres}
+            </Text>
+            <Text {...texte} position={[0, -2.1, 0.01]} fontSize={0.15} lineHeight={1.3} maxWidth={b.w - 0.6} textAlign="center" color={CREME} fillOpacity={0.85}>
+              {resume(oeuvre.description)}
+            </Text>
+            <Text {...texte} position={[0, -b.h / 2 + 0.36, 0.01]} fontSize={0.18} letterSpacing={0.1} color={CREME}>
+              {oeuvre.owner}
             </Text>
           </group>
         )
       })}
     </>
   )
+}
+
+/** La première phrase de la description, coupée au mot vers 90 signes : trois lignes au plus. */
+function resume(texte: string): string {
+  const phrase = texte.replace(/\s+/g, ' ').trim().split(/(?<=[.!?])\s|\s[—–-]\s/)[0].replace(/[.:;,]$/, '')
+  return phrase.length <= 90 ? phrase : `${phrase.slice(0, phrase.lastIndexOf(' ', 88))}…`
 }
 
 /** Un mât et son drapeau, ondulé une fois pour toutes : une toile au vent, pas une planche. */
