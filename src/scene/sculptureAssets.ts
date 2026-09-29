@@ -24,7 +24,7 @@ const cache = new Map<string, Promise<SculptureAssets>>()
  * matériaux de la scène (et une recompilation), pour trois objets.
  */
 const PROJECTEURS = {
-  cle: { direction: new THREE.Vector3(-0.45, 0.8, 0.9).normalize(), couleur: new THREE.Color('#fff0d8').multiplyScalar(2.2) },
+  cle: { direction: new THREE.Vector3(-0.45, 0.8, 0.9).normalize(), couleur: new THREE.Color('#fff0d8').multiplyScalar(3.2) },
   contre: { direction: new THREE.Vector3(0.35, 0.75, -0.8).normalize(), couleur: new THREE.Color('#ffe6c0').multiplyScalar(3.2) },
 }
 /** Les reflets de la salle sur le bronze : plus francs que sur le reste. */

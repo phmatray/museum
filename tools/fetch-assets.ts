@@ -153,7 +153,7 @@ const SCULPTURES = [
   {
     id: 'arborescence',
     source:
-      'Meshy (généré par IA, texte → 3D, textures PBR), prompt : « Abstract modernist museum sculpture in cast bronze: a stylised tree whose trunk splits into branches at right angles like a directory tree hierarchy, each branch ending in a small flat rectangular tablet shaped like a closed folder… », retexturé « highly polished warm golden bronze… » ; `tools/blender/build-sculptures.py`',
+      'Meshy (généré par IA) : image Nano Banana Pro puis image → 3D (textures PBR), prompt : « Product photograph of a single museum-grade abstract bronze sculpture… polished warm golden bronze… dark brown-green patina in the recesses… a stylised tree whose trunk branches strictly at right angles into a hierarchy like a file directory tree, each branch ending in a small flat bronze tablet shaped like a closed folder with a tab » ; `tools/blender/build-sculptures.py`',
     licence: '© tous droits réservés',
     usage: "sculpture de la vitrine VirtualFileSystem, salle d'honneur",
   },

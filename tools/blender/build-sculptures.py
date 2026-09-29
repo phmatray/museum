@@ -66,9 +66,10 @@ PIECES = {
     # Les pièces des vitrines de la salle d'honneur (`plan/sculptures.ts`) : Meshy
     # (texte → 3D, ou Nano Banana → image → 3D), bronze poli et patiné. 15 000
     # triangles, cartes 1024 (`meshy/REGLES`).
-    "chandelles": {"triangles": 15_000, "textures": 1024, "hauteur": 1.0, "front_yaw": 0.0},
-    "formulaire": {"triangles": 15_000, "textures": 1024, "hauteur": 1.1, "front_yaw": 45.0},
-    "arborescence": {"triangles": 15_000, "textures": 1024, "hauteur": 1.2, "front_yaw": 0.0},
+    "chandelles": {"triangles": 15_000, "textures": 1024, "hauteur": 1.3, "front_yaw": 0.0,
+                   "poli": {"metal": 0.95, "rugosite": 0.55, "couleur": (1.0, 0.8, 0.52)}},
+    "formulaire": {"triangles": 15_000, "textures": 1024, "hauteur": 1.4, "front_yaw": 45.0},
+    "arborescence": {"triangles": 15_000, "textures": 1024, "hauteur": 1.4, "front_yaw": 45.0},
 }
 
 # En dessous, décimer abîme plus qu'il n'allège : un maillage déjà économe n'a
@@ -110,6 +111,50 @@ def redimensionner_textures(cote: int) -> None:
         facteur = cote / max(avant)
         img.scale(max(1, int(avant[0] * facteur)), max(1, int(avant[1] * facteur)))
         print(f"SCULPT_TEX {img.name:22} {avant[0]}×{avant[1]} -> {img.size[0]}×{img.size[1]}")
+
+
+def polir(metal: float, rugosite: float, couleur: tuple = (1.0, 1.0, 1.0)) -> None:
+    """
+    Repolit un bronze trop mat, À LA SOURCE, dans les cartes exportées.
+
+    L'image → 3D rend la couleur de la photo mais devine mal la matière : les
+    « Chandelles » sortaient à demi métalliques (bleu moyen 0,47 dans la carte
+    métal-rugosité glTF), si bien qu'elles se lisaient comme du carton. Un
+    bronze poli est un métal : `metal` relève le canal bleu à ce plancher,
+    `rugosite` multiplie le vert, `couleur` teinte la couleur de base, canal par canal (un reflet de
+    métal prend la teinte de sa couleur : grise, elle délave le doré en carton).
+    """
+    for mat in bpy.data.materials:
+        if not mat.node_tree:
+            continue
+        bsdf = next((n for n in mat.node_tree.nodes if n.type == "BSDF_PRINCIPLED"), None)
+        if bsdf is None:
+            continue
+
+        def image_de(entree):
+            pile = list(entree.links)
+            while pile:
+                noeud = pile.pop().from_node
+                if noeud.type == "TEX_IMAGE":
+                    return noeud.image
+                pile += [lien for e in noeud.inputs for lien in e.links]
+            return None
+
+        carte = image_de(bsdf.inputs["Metallic"])
+        if carte is not None:
+            px = list(carte.pixels)
+            px[1::4] = [v * rugosite for v in px[1::4]]
+            px[2::4] = [max(v, metal) for v in px[2::4]]
+            carte.pixels = px
+            carte.update()
+            print(f"SCULPT_POLI {carte.name} métal ≥ {metal}, rugosité × {rugosite}")
+        base = image_de(bsdf.inputs["Base Color"])
+        if base is not None and couleur != (1.0, 1.0, 1.0):
+            px = list(base.pixels)
+            for c in range(3):
+                px[c::4] = [v * couleur[c] for v in px[c::4]]
+            base.pixels = px
+            base.update()
 
 
 def construire(identifiant: str, source: Path) -> None:
@@ -178,6 +223,8 @@ def construire(identifiant: str, source: Path) -> None:
     bpy.context.view_layer.update()
 
     redimensionner_textures(reglage["textures"])
+    if "poli" in reglage:
+        polir(**reglage["poli"])
 
     SORTIE.mkdir(parents=True, exist_ok=True)
     fichier = SORTIE / f"{identifiant}.glb"

@@ -170,16 +170,16 @@ export const OBSTACLES_BORNES: Rect[] = VITRINES.map(({ borne }) => ({
 /**
  * Le socle de la sculpture d'une vitrine (`sculptures.ts`) : au milieu, devant
  * le panneau, côté salle — la pièce maîtresse de l'exposition, qu'on voit en
- * entrant. Un peu à gauche de l'axe : la borne garde la droite et 65 cm de
+ * entrant. Un peu à gauche de l'axe : la borne garde la droite et 60 cm de
  * jeu. Derrière, 1,70 m pour lire le panneau ; devant, plus de 5 m jusqu'aux
  * bancs. `largeur` × `profondeur` borne l'emprise de tout socle déclaré.
  */
-export const SOCLE = { u: -0.25, recul: 2.1, largeur: 0.8, profondeur: 0.6 }
+export const SOCLE = { u: -0.35, recul: 2.1, largeur: 1.1, profondeur: 0.6 }
 
 /**
  * Chaque emplacement est un obstacle, qu'une pièce y soit exposée ou non : le
  * plan est figé, les projets des vitrines ne se connaissent qu'au chargement du
- * catalogue. ponytail: un emplacement vide reste un bloc invisible de 80 × 60 cm
+ * catalogue. ponytail: un emplacement vide reste un bloc invisible de 110 × 60 cm
  * devant sa vitrine ; des obstacles dynamiques de la marche s'il gêne un jour.
  */
 export const OBSTACLES_SOCLES: Rect[] = VITRINES.map((v) => ({

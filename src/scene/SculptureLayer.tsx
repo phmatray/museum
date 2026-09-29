@@ -7,6 +7,7 @@
  */
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import { Text } from '@react-three/drei'
+import * as THREE from 'three'
 
 import { useVitrines } from '../hooks/useCatalogue'
 import { sculpturesDesVitrines, type SculpturePlacement } from '../plan/sculptures'
@@ -24,6 +25,7 @@ export function SculptureLayer({ placements: niches }: { placements: SculpturePl
   const assets = useSculptureAssets(cle)
   // Un socle de pierre claire, comme au Louvre : il porte la pièce sans lui disputer le regard.
   const pierre = useMatiere('beton', repetitionMetrique(REGLAGE_MATIERE.beton.motif), { teinte: '#e2dccf' })
+  const halo = useHalo()
 
   return (
     <group name="sculptures">
@@ -35,6 +37,17 @@ export function SculptureLayer({ placements: niches }: { placements: SculpturePl
               <boxGeometry args={[p.plinth.width, p.plinth.height, p.plinth.depth]} />
             </mesh>
             {objet !== undefined && <primitive object={objet} position={[0, p.plinth.height, 0]} />}
+            {/* La flaque du projecteur : au sol, un peu en avant, et le long de la face du socle. */}
+            {halo && (
+              <>
+                <mesh position={[0, HALO.sol, HALO.avance]} rotation={[-Math.PI / 2, 0, 0]} material={halo.sol}>
+                  <planeGeometry args={[HALO.diametre, HALO.diametre]} />
+                </mesh>
+                <mesh position={[0, p.plinth.height / 2, p.plinth.depth / 2 + 0.002]} material={halo.face}>
+                  <planeGeometry args={[p.plinth.width, p.plinth.height]} />
+                </mesh>
+              </>
+            )}
             {/* Le cartel, une plaque crème en haut de la face avant du socle —
                 celle des vitrines. Sa propre attente : la police ne retient ni
                 le socle ni la pièce. */}
@@ -62,6 +75,57 @@ export function SculptureLayer({ placements: niches }: { placements: SculpturePl
       })}
     </group>
   )
+}
+
+/**
+ * La lumière d'un projecteur qu'on ne voit pas, là où elle tombe : une flaque
+ * chaude au sol et un dégradé sur la face du socle, en mélange additif. Le
+ * vrai éclairage de la pièce est greffé sur son shader (`sculptureAssets.ts`) ;
+ * ceci dit, de l'autre bout de la salle, qu'elle est sous un projecteur. Deux
+ * maillages par pièce, deux matériaux partagés, aucune lumière de three.
+ */
+const HALO = { diametre: 2.6, avance: 0.25, sol: 0.03, couleur: '#ffd9a0', opacite: { sol: 0.32, face: 0.12 } }
+
+function degrade(dessiner: (ctx: CanvasRenderingContext2D, n: number) => CanvasGradient): THREE.Texture | null {
+  const c = document.createElement('canvas')
+  c.width = c.height = 128
+  const ctx = c.getContext('2d')
+  if (ctx === null) return null // jsdom
+  ctx.fillStyle = dessiner(ctx, 128)
+  ctx.fillRect(0, 0, 128, 128)
+  return new THREE.CanvasTexture(c)
+}
+
+function useHalo(): { sol: THREE.Material; face: THREE.Material } | null {
+  const halo = useMemo(() => {
+    const rond = degrade((ctx, n) => {
+      const g = ctx.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2)
+      g.addColorStop(0, '#fff')
+      g.addColorStop(0.45, '#8a8a8a')
+      g.addColorStop(1, '#000')
+      return g
+    })
+    const haut = degrade((ctx, n) => {
+      const g = ctx.createLinearGradient(0, 0, 0, n)
+      g.addColorStop(0, '#fff')
+      g.addColorStop(1, '#000')
+      return g
+    })
+    if (rond === null || haut === null) return null
+    const materiau = (map: THREE.Texture, opacity: number) =>
+      new THREE.MeshBasicMaterial({ map, color: HALO.couleur, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false })
+    return { sol: materiau(rond, HALO.opacite.sol), face: materiau(haut, HALO.opacite.face) }
+  }, [])
+  useEffect(
+    () => () => {
+      for (const m of halo ? [halo.sol, halo.face] : []) {
+        ;(m as THREE.MeshBasicMaterial).map?.dispose()
+        m.dispose()
+      }
+    },
+    [halo],
+  )
+  return halo
 }
 
 /** Sans suspendre : le bâtiment apparaît d'abord, la pièce ensuite. */

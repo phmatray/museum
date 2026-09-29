@@ -103,12 +103,12 @@ describe('sculpturesDesVitrines', () => {
     }
   })
 
-  it('tient chaque pièce à l’échelle d’un bronze de musée : 0,8 à 1,4 m, 1,6 à 2,2 m socle compris', () => {
+  it('tient chaque pièce à l’échelle d’un bronze de musée : 0,8 à 1,5 m, 1,6 à 2,4 m socle compris', () => {
     for (const p of pieces) {
       expect(p.height).toBeGreaterThanOrEqual(0.8)
-      expect(p.height).toBeLessThanOrEqual(1.4)
+      expect(p.height).toBeLessThanOrEqual(1.5)
       expect(p.height + p.plinth.height).toBeGreaterThanOrEqual(1.6)
-      expect(p.height + p.plinth.height).toBeLessThanOrEqual(2.2)
+      expect(p.height + p.plinth.height).toBeLessThanOrEqual(2.4)
     }
   })
 
