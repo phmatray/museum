@@ -20,6 +20,7 @@ import { creerMatieresJardin, preparerSol, uvBoite } from './jardinMatieres'
 import { brinsDeGazon, carteDuSol, matiereGazon, type ReglageGazon } from './gazon'
 import { useGameStore } from '../stores/gameStore'
 import { presDeLEau } from '../plan/jardin'
+import { PARC } from '../plan/visibilite'
 import { INTEMPERIES, intemperer } from './intemperies'
 
 /** Le bord du terrain descend d'autant : du bout du monde, pas une feuille de papier. */
@@ -109,7 +110,7 @@ function Gazon({ parc }: { parc: Parc }) {
   useFrame(({ camera, clock }) => {
     for (const l of lots) l.animer(camera.position.x, camera.position.z, clock.elapsedTime)
   })
-  return <>{lots.map((l, i) => <mesh key={i} geometry={l.geometrie} material={l.material} frustumCulled={false} />)}</>
+  return <>{lots.map((l, i) => <mesh key={i} geometry={l.geometrie} material={l.material} frustumCulled={false} userData={{ zone: PARC }} />)}</>
 }
 
 /**

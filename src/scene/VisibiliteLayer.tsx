@@ -94,7 +94,10 @@ function appliquer(scene: THREE.Scene, vues: Set<Zone> | null, cle: string) {
     const m = o as THREE.Mesh
     if (!m.isMesh && !(o as THREE.Points).isPoints && !(o as THREE.Line).isLine) return
     const g = m.geometry
-    if (g === undefined) return
+    // Une zone déclarée (`userData.zone`, l'herbe qui suit le visiteur) prime sur la boîte.
+    if (typeof m.userData.zone === 'string') return montrer(m, vu([m.userData.zone]))
+    // Hors du tri par le cône de vue (le ciel, la pluie) : sa boîte ne dit pas où il est.
+    if (g === undefined || !m.frustumCulled) return
     if (g.boundingBox === null) g.computeBoundingBox()
     if ((m as THREE.InstancedMesh).isInstancedMesh) {
       instances(m as THREE.InstancedMesh, vu, cle, (partages.get(g) ?? 0) > 1)
