@@ -125,8 +125,11 @@ export function CompteurLayer() {
       e.a = prochain.a
       e.debut = t
     }
+    // Une rotation finie ne se redessine plus — mais seulement une fois la face
+    // d'arrivée posée : s'arrêter sur la dernière image d'animation laissait un
+    // tambour entre deux chiffres, voire sur ses tirets.
+    if (fini.current === e.debut) return
     const ecoule = calme ? Infinity : t - e.debut
-    if (fini.current === e.debut && ecoule > dureeDuCompteur(e.de, e.a)) return
     for (let i = 0; i < TAILLE; i++) {
       const face = faceDuTambour(e.de[i], e.a[i], ecoule)
       // La face k est à u = (k + ½)/FACES, à cet angle sous l'avant du tambour : on l'y ramène.
@@ -135,7 +138,7 @@ export function CompteurLayer() {
       mesh.setMatrixAt(i, m.mat)
     }
     mesh.instanceMatrix.needsUpdate = true
-    fini.current = e.debut
+    if (ecoule >= dureeDuCompteur(e.de, e.a)) fini.current = e.debut
   })
 
   if (faces === null) return null // jsdom
