@@ -1,0 +1,12 @@
+{
+  "name": "Atypical Museum",
+  "short_name": "Museum",
+  "icons": [
+    { "src": "favicon.svg", "type": "image/svg+xml", "sizes": "any" },
+    { "src": "apple-touch-icon.png", "type": "image/png", "sizes": "180x180" }
+  ],
+  "start_url": ".",
+  "display": "fullscreen",
+  "background_color": "#1c2530",
+  "theme_color": "#1c2530"
+}
