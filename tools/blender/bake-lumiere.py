@@ -219,8 +219,8 @@ for nom, racine in racines.items():
 
 # La lampe-soleil de la salle d'honneur.
 lampe = bpy.data.lights.new("Lampe", "POINT")
-lampe.energy = 400
-lampe.color = srgb("#ffd6a0")
+lampe.energy = 280  # modérée : la lampe éclaire déjà en temps réel, la cuisson ne fait que ses rebonds
+lampe.color = srgb("#fff0dc")  # moins saturée qu’en scène : les murs restent crème de jour
 lampe.shadow_soft_size = 0.4
 ob = bpy.data.objects.new("Lampe", lampe)
 ob.location = b3(*LAMPE)
