@@ -82,13 +82,13 @@
 
   <nav class="sommaire" aria-label="Parcourir le journal">
     <div class="onglets" role="tablist" aria-label="Thèmes">
-      <button type="button" role="tab" data-cat="tout" aria-selected="true">Tout <span class="nb">73</span></button>
+      <button type="button" role="tab" data-cat="tout" aria-selected="true">Tout <span class="nb">81</span></button>
       <button type="button" role="tab" data-cat="hall" aria-selected="false">Hall & architecture <span class="nb">21</span></button>
       <button type="button" role="tab" data-cat="galeries" aria-selected="false">Galeries & œuvres <span class="nb">22</span></button>
       <button type="button" role="tab" data-cat="jardin" aria-selected="false">Jardin & dehors <span class="nb">8</span></button>
-      <button type="button" role="tab" data-cat="bavette" aria-selected="false">Bavette & faune <span class="nb">7</span></button>
+      <button type="button" role="tab" data-cat="bavette" aria-selected="false">Bavette & faune <span class="nb">10</span></button>
       <button type="button" role="tab" data-cat="ambiance" aria-selected="false">Lumière, ciel & sons <span class="nb">11</span></button>
-      <button type="button" role="tab" data-cat="site" aria-selected="false">Site & outils <span class="nb">4</span></button>
+      <button type="button" role="tab" data-cat="site" aria-selected="false">Site & outils <span class="nb">9</span></button>
       <button type="button" role="tab" data-cat="idees" aria-selected="false">Pistes &amp; idées <span class="nb">4</span></button>
     </div>
     <details class="index">
@@ -96,6 +96,79 @@
       <ol class="liste"></ol>
     </details>
   </nav>
+
+  <section class="etape" data-cat="site" aria-labelledby="t-82">
+    <div class="entete"><h2 id="t-82">82. On peut sauter</h2><span class="statut fait">en ligne · PR #162</span></div>
+    <div class="texte">
+      <p>La seule frustration d’un de tes amis : on ne pouvait pas sauter. La barre d’espace lance maintenant un saut de 45 cm, 0,6 s en l’air, seulement depuis le sol. Le saut ne soulève que le regard : on ne franchit toujours ni mur ni garde-corps. Vérifié dans le moteur : l’œil passe de 1,62 à 2,08 m, puis retombe.</p>
+    </div>
+  </section>
+
+  <section class="etape" data-cat="bavette" aria-labelledby="t-81">
+    <div class="entete"><h2 id="t-81">81. Bavette fait la sieste sur un banc</h2><span class="statut fait">en ligne · PR #161</span></div>
+    <div class="texte">
+      <p>De temps en temps, trois à cinq fois toutes les deux heures, Bavette choisit un banc libre près de lui, dans le hall, une galerie ou le jardin. Il saute dessus, tourne une fois et se roule en boule comme sur ta photo, la queue ramenée autour de lui. Il dort deux à six minutes : il respire, une oreille frémit. Puis il s’étire et redescend.</p>
+      <p>Il ne monte jamais si tu te tiens à moins de 1,30 m du banc. Le saut est calé sur la hauteur exacte de chaque assise, et un test vérifie sur deux heures qu’il ne traverse jamais un banc.</p>
+    </div>
+    <figure><img src="img/81-sieste.jpg" width="1280" height="800" alt="Bavette roulé en boule à côté de la photo de référence, la séquence du saut, puis endormi sur un banc du hall et du jardin."><figcaption>La pose et ta photo, le saut, puis la sieste dans le hall et au jardin la nuit.</figcaption></figure>
+  </section>
+
+  <section class="etape" data-cat="site" aria-labelledby="t-80">
+    <div class="entete"><h2 id="t-80">80. Le compteur de visiteurs compte enfin</h2><span class="statut fait">en ligne · PR #160</span></div>
+    <div class="texte">
+      <p>Le compteur affichait 000001. Le service de comptage, lui, en était déjà à 158 visites. La cause : le site gardait le chiffre du premier chargement dans la session du navigateur, et le ressortait ensuite tel quel. Un onglet ouvert le jour où le compteur valait 1 restait donc figé à 1.</p>
+      <p>Maintenant, le premier chargement compte la visite, et les suivants relisent le vrai total sans recompter. Un test reproduit exactement ton cas.</p>
+    </div>
+    <figure><img src="img/80-compteur.jpg" width="1280" height="815" alt="Le compteur de l’entrée bloqué sur 000001."><figcaption>Avant la correction : 000001, alors que le service comptait 158 visites.</figcaption></figure>
+  </section>
+
+  <section class="etape" data-cat="bavette" aria-labelledby="t-79">
+    <div class="entete"><h2 id="t-79">79. Un bébé hérisson au jardin</h2><span class="statut fait">en ligne · PR #159</span></div>
+    <div class="texte">
+      <p>D’après ta photo et ta vidéo : un bébé hérisson de 16 cm, aux piquants sombres à pointe crème. Il trottine sur la pelouse autour de l’étang, s’arrête pour renifler, et se roule en boule quand on s’approche à moins d’un mètre et demi. Il sort surtout la nuit et hiberne en hiver. L’herbe se couche autour de lui pour qu’on le voie.</p>
+    </div>
+    <figure><img src="img/79-herisson.jpg" width="1280" height="320" alt="La photo du hérisson, puis le hérisson du musée en train de renifler et de marcher dans l’herbe."><figcaption>Ta photo, puis le hérisson du musée qui renifle et qui marche.</figcaption></figure>
+  </section>
+
+  <section class="etape" data-cat="site" aria-labelledby="t-78">
+    <div class="entete"><h2 id="t-78">78. La passe performances</h2><span class="statut fait">en ligne · PR #155 à #158</span></div>
+    <div class="texte">
+      <p>Un audit a d’abord mesuré le moteur sur huit points de vue. Puis quatre chantiers ont tourné en parallèle, avec une règle : optimiser sans rien retirer.</p>
+      <ul>
+        <li><strong>Les ombres</strong> ne sont plus recalculées à chaque image, seulement quand quelque chose bouge. Hall vu du balcon : 10,0 → 4,4 ms par image. Salle d’honneur : 6,4 → 3,8 ms. Jardin : 5,0 → 2,6 ms. Façade : 11,1 → 5,1 ms.</li>
+        <li><strong>La première visite</strong> s’ouvre en 12 s au lieu de 43 à 50 s : les shaders se compilent sans bloquer, et il y en a 107 au lieu de 270.</li>
+        <li><strong>Les textes</strong> de l’atelier et des vitrines sont dessinés en lots : 424 appels de dessin au lieu de 688 dans la galerie voisine.</li>
+        <li><strong>Le parc</strong> : l’herbe n’est plus dessinée dans la nef, et les érables lointains utilisent une version allégée, identique à l’œil. 13 à 25 % de triangles en moins.</li>
+        <li><strong>La mémoire graphique</strong> baisse de près de 100 Mo, et la résolution ne baisse que si la machine ne suit plus.</li>
+      </ul>
+    </div>
+    <figure><img src="img/78-perf.jpg" width="1280" height="800" alt="Le hall vu du balcon et le jardin, avant et après, visuellement identiques."><figcaption>Même image avant et après ; seul le temps de calcul change.</figcaption></figure>
+  </section>
+
+  <section class="etape" data-cat="site" aria-labelledby="t-77">
+    <div class="entete"><h2 id="t-77">77. Un index et des onglets dans ce journal</h2><span class="statut fait">en ligne · PR #154</span></div>
+    <div class="texte">
+      <p>Le journal a maintenant des onglets par thème, en haut de la page, et un index des étapes, repliable. L’onglet choisi est mémorisé d’une visite à l’autre.</p>
+    </div>
+    <figure><img src="img/77-journal.jpg" width="1280" height="441" alt="Le journal avec sa rangée d’onglets et son index ouvert."><figcaption>L’index ouvert, puis l’onglet Bavette & faune.</figcaption></figure>
+  </section>
+
+  <section class="etape" data-cat="site" aria-labelledby="t-76">
+    <div class="entete"><h2 id="t-76">76. La carte se zoome au doigt</h2><span class="statut fait">en ligne · PR #153</span></div>
+    <div class="texte">
+      <p>Sur téléphone, le petit plan était illisible. Un toucher l’ouvre maintenant en plein écran. On l’agrandit à deux doigts jusqu’à six fois, et on le fait glisser d’un doigt. Sur ordinateur : la molette, le double-clic et Échap.</p>
+    </div>
+    <figure><img src="img/76-carte.jpg" width="1280" height="908" alt="Trois écrans de téléphone : la visite avec le petit plan, le plan ouvert en plein écran, puis agrandi sur le hall."><figcaption>Sur un iPhone : la visite, le plan ouvert, puis zoomé.</figcaption></figure>
+  </section>
+
+  <section class="etape" data-cat="bavette" aria-labelledby="t-75">
+    <div class="entete"><h2 id="t-75">75. Bavette retrouve les proportions de la vidéo</h2><span class="statut fait">en ligne · PR #152</span></div>
+    <div class="texte">
+      <p>Tu avais raison : il n’avait plus ses proportions. À l’étape 74, je l’avais abaissé, dans le mauvais sens. En réalité, il marchait accroupi : 25 cm au garrot en marchant au lieu de 30.</p>
+      <p>En mesurant six images de profil de ta vidéo, il marche maintenant à 29,4 cm, la tête portée au-dessus du dos. Ses rapports de proportions sont à 5 % de la vidéo. Et d’après tes nouvelles vidéos et ta photo, son pelage est redevenu surtout blanc, tigré sur la tête, le dos et la queue.</p>
+    </div>
+    <figure><img src="img/75-bavette.jpg" width="1280" height="576" alt="En haut, quatre images de la vidéo ; au milieu, l’ancien modèle accroupi ; en bas, le nouveau, plus haut et plus blanc."><figcaption>La vidéo, puis avant, puis après, aux mêmes moments du pas.</figcaption></figure>
+  </section>
 
   <section class="etape" data-cat="bavette" aria-labelledby="t-74">
     <div class="entete"><h2 id="t-74">74. Bavette sans pli, un peu plus près du sol</h2><span class="statut fait">en ligne · PR #150</span></div>
@@ -557,7 +630,7 @@
     <div class="texte">
       <p>J’ai mesuré sa marche image par image dans ta vidéo : un cycle de 0,93 s, un pas de 40 cm, 0,43 m/s, les pattes dans l’ordre arrière gauche, avant gauche, arrière droite, avant droite, la tête basse au ras du dos et la queue basse. Son animation est refaite sur ces mesures, sans que les pattes glissent. Assis, sa queue s’enroule autour de ses pattes.</p>
       <p>Sa taille était déjà juste : 30 cm au garrot, 47 cm du nez à la queue. S’il paraît petit, c’est l’angle de la caméra, très large (75°), qui éloigne tout. Je l’ai rendu un peu plus trapu, comme sur la vidéo.</p>
-      <p class="note">Encore imparfait : un pli de peau entre le ventre et la patte arrière quand elle est tendue en fin de pas, et un corps un peu plus haut sur pattes que le vrai Bavette. <strong>Corrigé à l’étape 74.</strong></p>
+      <p class="note">Encore imparfait : un pli de peau entre le ventre et la patte arrière quand elle est tendue en fin de pas, et un corps un peu plus haut sur pattes que le vrai Bavette. <strong>Corrigé aux étapes 74 et 75.</strong></p>
     </div>
     <figure><img src="img/34-marche.jpg" width="2000" height="600" alt="En haut quatre images de la vidéo de Bavette qui marche, en bas le rendu 3D aux mêmes phases."><figcaption>En haut ta vidéo, en bas l’animation aux mêmes instants.</figcaption></figure>
   </section>
@@ -799,7 +872,7 @@
   </section>
 
   <section class="etape" data-cat="bavette" aria-labelledby="t-22">
-    <div class="entete"><h2 id="t-22">22. Bavette, remodelée d’après ta photo</h2><span class="statut fait">en ligne · PR #89</span></div>
+    <div class="entete"><h2 id="t-22">22. Bavette, remodelé d’après ta photo</h2><span class="statut fait">en ligne · PR #89</span></div>
     <div class="texte">
       <p>Un nouveau modèle 3D tiré de ta photo (Meshy, 30 crédits utilisés sur les 2 000 autorisés) : Bavette debout, le pelage tigré et blanc, le regard par-dessus l’épaule. Il mesure 65 cm, un peu plus grand que nature, sur son socle dans la niche sous la volée ouest, visible dès l’entrée. Le cartel dit simplement « Bavette ».</p>
     </div>
