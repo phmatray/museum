@@ -6,7 +6,7 @@
  *
  * On le fait défiler à la molette (elle arrive même souris capturée) ou avec
  * Page préc./Page suiv. — les flèches font marcher. Entrée (ou V, ou H) visite
- * le site du projet, E ouvre son code sur GitHub.
+ * le site du projet, E ouvre son dépôt sur GitHub, où l'étoile est à un clic.
  */
 import { useEffect, useMemo, useRef } from 'react'
 
@@ -105,7 +105,7 @@ export function BorneOeuvre() {
           </>
         )}
         <div style={{ fontSize: 13, color: '#d4c3a2', fontVariantNumeric: 'tabular-nums' }}>
-          ★ {oeuvre.stars.toLocaleString('fr-FR')} · ⑂ {oeuvre.forks.toLocaleString('fr-FR')} · poussé {ilYA(oeuvre.pushedAt, new Date())}
+          ⑂ {oeuvre.forks.toLocaleString('fr-FR')} · poussé {ilYA(oeuvre.pushedAt, new Date())}
         </div>
       </header>
       <div ref={defile} style={{ flex: 1, overflowY: 'auto', padding: '4px 28px 18px', borderTop: '1px solid rgba(241,228,198,0.15)', scrollbarColor: `${OR} transparent` }}>
@@ -124,7 +124,16 @@ export function BorneOeuvre() {
       </div>
       <footer style={{ padding: '10px 28px 14px', display: 'flex', flexWrap: 'wrap', gap: '6px 18px', alignItems: 'center', fontSize: 13, borderTop: '1px solid rgba(241,228,198,0.15)' }}>
         {site && <span style={{ color: OR, fontWeight: 600 }}><Touche>Entrée</Touche> visiter le site</span>}
-        <span><Touche>E</Touche> voir le code sur GitHub</span>
+        <a
+          href={oeuvre.url}
+          target="_blank"
+          rel="noopener"
+          title="Ouvre le dépôt sur GitHub : le bouton Star y est à un clic"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 10px', borderRadius: 4, border: `1px solid ${OR}`, background: 'rgba(224,176,96,0.12)', color: CREME, fontWeight: 600, textDecoration: 'none' }}
+        >
+          <Touche>E</Touche> ★ Mettre une étoile
+          <span style={{ fontWeight: 400, color: '#d4c3a2', fontVariantNumeric: 'tabular-nums' }}>{oeuvre.stars.toLocaleString('fr-FR')}</span>
+        </a>
         <span style={{ color: '#c9b690' }}>molette ou <Touche>Pg↓</Touche> pour lire la suite</span>
       </footer>
     </aside>
