@@ -18,6 +18,7 @@ import { directionDuSoleil } from '../domain/soleil'
 import { useGameStore } from '../stores/gameStore'
 import { INTEMPERIES } from './intemperies'
 import { AMBIANCE, CIEL, SOLEIL } from './lighting'
+import { LUEURS } from './lueurs'
 
 const JOUR = 'assets/ciel/kloofendal_48d_partly_cloudy_puresky.jpg'
 const NUIT = 'assets/ciel/rogland_clear_night.jpg'
@@ -129,10 +130,12 @@ const OR_BAS = new THREE.Color('#ffb070')
  * chaudes : une ambiance bleu lune baignait les salles comme si elles étaient
  * fermées et éteintes. Le bleu de la nuit vient de la lune (directionnelle) et
  * du ciel, pas de l'ambiance. 1,1 et non plus 0,8 : les sondes de reflets
- * n'éclairent plus le diffus (voir `AMBIANCE`) ; galeries et parc retrouvent
- * leur clarté d'avant, la nef la nuit reste un peu plus sombre (−18 %).
+ * n'éclairent plus le diffus (voir `AMBIANCE`) ; les galeries retrouvent leur
+ * clarté d'avant. La nef a sa lueur propre, le parc garde son 0,8 (`lueurs.ts`).
  */
 const AMBIANCE_NUIT = { ciel: new THREE.Color('#8a7358'), intensite: 1.1 }
+/** Dehors, la nuit, l'ambiance reste celle d'avant (0,8) : le parc n'avait rien perdu (`lueurs.ts`). */
+const DEHORS_NUIT = 0.8 / AMBIANCE_NUIT.intensite
 
 /**
  * La boîte d'ombre du soleil : un carré de `2 × OMBRE.demi` mètres vu du soleil,
@@ -166,6 +169,9 @@ export function LumiereDuJour() {
     return { d, couleur, intensite: (SOLEIL.intensite * jour + LUNE.intensite * (1 - jour)) * (1 - voile) }
   }, [jour, crepuscule, elevation, azimut, voile])
   const ciel = useMemo(() => AMBIANCE_NUIT.ciel.clone().lerp(new THREE.Color(AMBIANCE.ciel), jour), [jour])
+  useEffect(() => {
+    LUEURS.w = DEHORS_NUIT + (1 - DEHORS_NUIT) * jour
+  }, [jour])
 
   const lumiere = useRef<THREE.DirectionalLight>(null)
   useLayoutEffect(() => {

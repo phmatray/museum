@@ -17,6 +17,10 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { useGameStore } from '../stores/gameStore'
 import { anglesHorloge } from './horloge'
 import { ruisseler } from './intemperies'
+import { LUEURS } from './lueurs'
+
+/** La lueur des lanternes sur le hall, la nuit (`lueurs.ts`) : réglée à l'écran contre l'ancienne nef. */
+const LUEUR = { couleur: new THREE.Color('#ffc27a'), force: 0.5 }
 
 export function NefLayer() {
   const [nef, setNef] = useState<THREE.Object3D | null>(null)
@@ -68,5 +72,9 @@ export function NefLayer() {
       } else if (m.name === 'Nef_Opale') m.emissiveIntensity = 3 + 3 * (1 - jour)
     })
   }, [nef, jour])
+  useEffect(() => {
+    const k = LUEUR.force * (1 - jour)
+    Object.assign(LUEURS, { x: LUEUR.couleur.r * k, y: LUEUR.couleur.g * k, z: LUEUR.couleur.b * k })
+  }, [jour])
   return nef === null ? null : <primitive object={nef} />
 }
