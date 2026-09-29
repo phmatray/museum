@@ -11,6 +11,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 import { CONTOUR_ETANG, TRACE_RUISSEAU, JARDIN } from '../plan/jardin'
@@ -18,9 +20,12 @@ import { SURFACE, avancerKoi, distanceEtang, koiInitiaux, type Koi } from '../pl
 import { MUSEE } from '../plan/musee'
 import { avancerOiseaux, oiseauxInitiaux, perchoirs, type Oiseau, type Perchoir, type Point3 } from '../plan/oiseaux'
 import { generateur, parkPlacements } from '../plan/park'
-import { hauteurDuParc } from '../plan/relief'
+import { hauteurDuParc, solDuParc } from '../plan/relief'
+import { PARC as ZONE_PARC } from '../plan/visibilite'
+import { activite, avancerHerisson, herissonInitial, type EtatHerisson, type Herisson as EtatDuHerisson } from '../domain/herisson'
 import type { Saison } from '../domain/saisons'
 import { useGameStore } from '../stores/gameStore'
+import { FOULE } from './gazon'
 import { parkAssetsResource } from './parkAssets'
 
 const PARC = parkPlacements(MUSEE)
@@ -30,7 +35,10 @@ const VARIETE = { kohaku: 0, ogon: 1, showa: 2 } as const
  * En développement : de quoi figer la faune pour une photo — `figer(true)`
  * arrête le temps des bêtes, `envoler()` fait décoller tous les oiseaux.
  */
-const dev = { gel: false, envol: false, oiseaux: [] as Oiseau[], perchoirs: [] as Perchoir[], carpes: [] as Koi[] }
+const dev = {
+  gel: false, envol: false, oiseaux: [] as Oiseau[], perchoirs: [] as Perchoir[], carpes: [] as Koi[],
+  herisson: null as EtatDuHerisson | null, placer: null as Partial<EtatDuHerisson> | null,
+}
 if (import.meta.env.DEV && typeof window !== 'undefined') {
   ;(window as unknown as { __FAUNE__?: unknown }).__FAUNE__ = {
     figer: (gel: boolean) => { dev.gel = gel },
@@ -38,6 +46,11 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
     oiseaux: () => dev.oiseaux,
     perchoirs: () => dev.perchoirs,
     carpes: () => dev.carpes,
+    herisson: () => dev.herisson,
+    /** `placerHerisson(x, z, cap, 'flaire' | 'marche' | 'boule')` : pour une photo. */
+    placerHerisson: (x: number, z: number, cap = 0, etat: EtatHerisson = 'flaire') => {
+      dev.placer = { x, z, cap, etat, t: 3600, rentre: false, boule: etat === 'boule' ? 1 : 0, vitesse: etat === 'marche' ? 0.13 : 0, but: [x + Math.cos(cap) * 50, z + Math.sin(cap) * 50] }
+    },
   }
 }
 
@@ -47,6 +60,7 @@ export function FauneLayer() {
       <Carpes />
       <Oiseaux />
       <Lucioles />
+      <Herisson />
     </group>
   )
 }
@@ -565,4 +579,165 @@ function Lucioles() {
   })
   /* eslint-enable react-hooks/immutability */
   return <points ref={points} geometry={geometrie} material={matiere} frustumCulled={false} />
+}
+
+// ── Le hérisson ───────────────────────────────────────────────────────────
+
+/**
+ * Le bébé hérisson (`domain/herisson.ts` décide où il va) : un seul maillage
+ * Meshy aux piquants modelés (`tools/blender/build-herisson.py`), le nez vers
+ * +x, les pieds à 0. Ses trois gestes se font dans le vertex shader, sans
+ * squelette ni cible de morphose à télécharger — `uGeste` :
+ * - x `boule` : le corps enroulé autour d'un axe transversal, le dos dehors,
+ *   la tête et la croupe rentrées dessous (0 à 1) ;
+ * - y `tete` : la tête qui tourne autour du cou, levée (> 0) ou au sol (< 0) ;
+ * - z `pas` : les pattes en diagonale, avant gauche et arrière droite d'un
+ *   côté, les deux autres de l'autre (−1 à 1, au rythme du trot).
+ * Le dandinement et le rebond du corps, eux, sont dans sa matrice.
+ */
+function matiereHerisson(m: THREE.MeshStandardMaterial, g: THREE.BufferGeometry, geste: { value: THREE.Vector4 }): void {
+  g.computeBoundingBox()
+  const [x0, x1, h] = [g.boundingBox!.min.x, g.boundingBox!.max.x, g.boundingBox!.max.y]
+  const xc = (x0 + x1) / 2
+  // L'axe du corps fait 1,7 demi-tour ; `r` va de 12 mm (le ventre) à 12 mm + 0,6 h (le dos).
+  const neutre = (x1 - x0) / (1.7 * Math.PI)
+  // Le dessous de la boule (la tête et la croupe rentrées), pour la poser au sol.
+  const p = g.getAttribute('position')
+  let dessous = 0
+  for (let i = 0; i < p.count; i++) dessous = Math.min(dessous, Math.cos((p.getX(i) - xc) / neutre) * (0.012 + 0.6 * Math.max(0, p.getY(i))))
+  const f = (v: number) => v.toFixed(5)
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.uGeste = geste
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>
+        uniform vec4 uGeste;
+        vec2 tourne(vec2 v, float a) { return vec2(v.x * cos(a) - v.y * sin(a), v.x * sin(a) + v.y * cos(a)); }`)
+      .replace('#include <beginnormal_vertex>', `
+        vec3 objectNormal = normal;
+        vec3 pH = position;
+        // Les pattes, sous 2,2 cm : ±9 mm en diagonale.
+        float jambe = 1.0 - smoothstep(0.004, 0.022, pH.y);
+        pH.x += 0.009 * uGeste.z * jambe * sign(1e-5 - pH.z) * sign(pH.x - ${f(xc - 0.01)});
+        // La tête, devant le cou : 18° au plus.
+        vec2 cou = vec2(${f(x1 - 0.055)}, ${f(0.42 * h)});
+        float a = 0.314 * uGeste.y * smoothstep(cou.x - 0.012, cou.x + 0.018, pH.x);
+        pH.xy = cou + tourne(pH.xy - cou, a);
+        objectNormal.xy = tourne(objectNormal.xy, a);
+        // La boule.
+        float t = (pH.x - ${f(xc)}) / ${f(neutre)};
+        float r = 0.012 + max(pH.y, 0.0) * 0.6;
+        vec3 roule = vec3(sin(t) * r, cos(t) * r - (${f(dessous)}), pH.z * 1.05);
+        vec3 nRoule = vec3(objectNormal.x * cos(t) + objectNormal.y * sin(t), -objectNormal.x * sin(t) + objectNormal.y * cos(t), objectNormal.z);
+        pH = mix(pH, roule, uGeste.x);
+        objectNormal = normalize(mix(objectNormal, nRoule, uGeste.x));`)
+      .replace('#include <begin_vertex>', 'vec3 transformed = pH;')
+    // La texture de Meshy est terne : sur la photo, la pointe crème des piquants tranche
+    // sur leur base brun-noir, et le poil du visage est gris-brun. On éclaircit le clair.
+    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `#include <map_fragment>
+        float lumH = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+        diffuseColor.rgb *= vec3(1.06, 1.0, 0.88) * (1.0 + 1.7 * smoothstep(0.07, 0.3, lumH));`)
+  }
+  m.customProgramCacheKey = () => 'faune:herisson'
+}
+
+let herissonPromis: Promise<THREE.Mesh | null> | null = null
+function useHerisson(): THREE.Mesh | null {
+  const [mesh, setMesh] = useState<THREE.Mesh | null>(null)
+  useEffect(() => {
+    let vivant = true
+    herissonPromis ??= (async () => {
+      const base = import.meta.env.BASE_URL
+      const draco = new DRACOLoader()
+      draco.setDecoderPath(`${base}draco/`)
+      const gltf = await new GLTFLoader().setDRACOLoader(draco).loadAsync(`${base}assets/faune/herisson.glb`)
+      draco.dispose()
+      let m: THREE.Mesh | null = null
+      gltf.scene.traverse((o) => { if ((o as THREE.Mesh).isMesh) m = o as THREE.Mesh })
+      return m
+    })().catch((e: unknown) => {
+      console.warn('hérisson indisponible', e)
+      return null
+    })
+    void herissonPromis.then((m) => vivant && setMesh(m))
+    return () => { vivant = false }
+  }, [])
+  return mesh
+}
+
+/** L'envie de sortir, maintenant : la nuit, pas l'hiver (il hiberne quand la pelouse s'éteint). */
+function envieDuHerisson(): number {
+  const { ciel, saison } = useGameStore.getState()
+  return activite(ciel.jour, saison.pelouse.terne > 0.5)
+}
+
+/** Une graine par session : il n'est pas deux fois au même endroit. */
+const GRAINE_HERISSON = Math.floor(Math.random() * 2 ** 31)
+
+function Herisson() {
+  const mesh = useHerisson()
+  return mesh && <HerissonVivant modele={mesh} />
+}
+
+function HerissonVivant({ modele }: { modele: THREE.Mesh }) {
+  const etat = useRef<EtatDuHerisson>(herissonInitial(envieDuHerisson(), GRAINE_HERISSON))
+  const corps = useRef<THREE.Group>(null)
+  const horloge = useRef({ pas: 0, flair: 0 })
+  const geste = useMemo(() => ({ value: new THREE.Vector4() }), [])
+  useEffect(() => {
+    /* eslint-disable react-hooks/immutability */
+    matiereHerisson(modele.material as THREE.MeshStandardMaterial, modele.geometry, geste)
+    ;(modele.material as THREE.Material).needsUpdate = true
+    // Roulé, il déborde de sa boîte au repos : on ne le coupe pas au bord de l'écran.
+    modele.frustumCulled = false
+    modele.userData.zone = ZONE_PARC
+    /* eslint-enable react-hooks/immutability */
+  }, [modele, geste])
+
+  useFrame(({ camera }, delta) => {
+    const g = corps.current
+    if (!g) return
+    const dt = dev.gel ? 0 : Math.min(delta, 0.1)
+    if (dev.placer) {
+      etat.current = { ...etat.current, ...dev.placer }
+      dev.placer = null
+    }
+    const sol = hauteurDuParc(camera.position.x, camera.position.z)
+    const visiteur = camera.position.y - sol < 3 ? { x: camera.position.x, z: camera.position.z } : null
+    // Figé pour une photo : il garde la pose qu'on lui a donnée, même sous le nez de l'objectif.
+    const h = (etat.current = dev.gel ? etat.current : avancerHerisson(etat.current, dt, visiteur, envieDuHerisson()))
+    dev.herisson = h
+    g.visible = h.etat !== 'nid'
+    // L'herbe se couche sous lui (sinon elle le noie) ; au nid, plus rien.
+    FOULE.value.set(h.x, h.z, g.visible ? 0.3 : 0)
+    if (!g.visible) return
+
+    // Le trot : quatre à cinq foulées par seconde à son pas, des pattes de deux centimètres.
+    const c = horloge.current
+    c.pas += dt * h.vitesse * (2 * Math.PI / 0.028)
+    c.flair += dt
+    const marche = Math.min(1, h.vitesse / 0.08)
+    const roule = THREE.MathUtils.smoothstep(h.boule, 0, 1)
+    const deroule = 1 - roule
+    // Il flaire : le museau monte et descend vite, par salves, la tête plus basse entre deux.
+    const flaire = h.etat === 'flaire' ? 1 : 0.3 * marche
+    const salve = 0.5 + 0.5 * Math.sin(c.flair * 1.3)
+    const tete = flaire * (0.35 * Math.sin(c.flair * 17) * salve - 0.3 + 0.4 * Math.sin(c.flair * 0.7))
+    geste.value.set(roule, tete * deroule, Math.sin(c.pas) * marche * deroule, 0)
+
+    // Posé sur la pente, le nez vers son cap.
+    const [x, z, cap] = [h.x, h.z, h.cap]
+    const [ax, az] = [Math.cos(cap) * 0.07, Math.sin(cap) * 0.07]
+    const tangage = Math.atan2(solDuParc(x + ax, z + az) - solDuParc(x - ax, z - az), 0.14)
+    const devers = Math.atan2(solDuParc(x - az, z + ax) - solDuParc(x + az, z - ax), 0.14)
+    const dandine = 0.07 * Math.sin(c.pas) * marche * deroule
+    const bond = 0.0025 * Math.abs(Math.sin(c.pas)) * marche * deroule
+    g.position.set(x, solDuParc(x, z) + bond, z)
+    E.set(devers + dandine, -cap, tangage, 'YXZ')
+    g.quaternion.setFromEuler(E)
+  })
+  return (
+    <group ref={corps}>
+      <primitive object={modele} />
+    </group>
+  )
 }

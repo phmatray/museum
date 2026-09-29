@@ -251,6 +251,13 @@ const ARCHITECTURE = [
     licence: 'généré pour le dépôt (conditions de Meshy)',
     usage: "cordon de velours des vitrines, chaise du gardien, table de livres, extincteurs, abri à vélos et ses trois vélos, panneau des horaires, fontaine, caisses de Versailles",
   },
+  {
+    id: 'herisson',
+    source:
+      'Meshy (généré par IA) : image Nano Banana Pro puis image → 3D, d’après une photo et une vidéo de Philippe ; prompt : « Studio photograph of a single young European hedgehog (Erinaceus europaeus), baby about 15 cm long, walking, seen from a three-quarter side view… dense spines on the back and flanks: each spine dark brown-black with a distinct cream-white tip… grey-brown soft furry face and belly, a fringe of fur skirt hiding the short legs… long pointed dark snout with a wet black nose, small shiny black eyes » ; mis à l’échelle, pattes tassées et allégé (visage intact) par `tools/blender/build-herisson.py`',
+    licence: 'généré pour le dépôt (conditions de Meshy)',
+    usage: 'le bébé hérisson du jardin japonais',
+  },
 ] as const
 
 interface Telechargement {
