@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react'
+import { useEffect, useState, type ComponentType } from 'react'
 import { PointerLockOverlay, TourExitButton } from './components/PointerLockOverlay'
 import { MobileControlsOverlay } from './components/MobileControls'
 import { useIsMobile } from './hooks/useIsMobile'
@@ -9,8 +9,25 @@ import { CarteBavette } from './components/CarteBavette'
 import { GuidedTour } from './components/GuidedTour'
 import { BoutonSon } from './components/BoutonSon'
 
-// La 3D (three, R3F, la scène) est un morceau à part : l'accueil s'affiche sans l'attendre.
-const Musee3D = lazy(() => import('./Musee3D'))
+// La 3D (three, R3F, la scène) est un morceau à part : l'accueil s'affiche sans
+// l'attendre. Ses fichiers se téléchargent dès le HTML (`modulepreload`, voir
+// vite.config.ts) ; on ne les ÉVALUE qu'une fois l'accueil peint. Montée par un
+// effet plutôt que par `lazy` + `Suspense` : React retarde de 300 ms la
+// révélation d'un `Suspense` qui a montré son repli, la première image aussi.
+function Musee3DPlusTard() {
+  const [Musee3D, setMusee3D] = useState<ComponentType | null>(null)
+  useEffect(() => {
+    let vivant = true
+    const image = requestAnimationFrame(() => {
+      void import('./Musee3D').then((m) => vivant && setMusee3D(() => m.default))
+    })
+    return () => {
+      vivant = false
+      cancelAnimationFrame(image)
+    }
+  }, [])
+  return Musee3D === null ? null : <Musee3D />
+}
 
 /**
  * Le musée publié est le bâtiment du plan (#17), sans Rapier : `plan/walk.ts`
@@ -30,9 +47,7 @@ export default function App() {
       <BorneOeuvre />
       <CarteBavette />
       <BoutonSon />
-      <Suspense fallback={null}>
-        <Musee3D />
-      </Suspense>
+      <Musee3DPlusTard />
     </>
   )
 }
