@@ -140,7 +140,7 @@ const SCULPTURES = [
   {
     id: 'chandelles',
     source:
-      'Meshy (généré par IA) : image Nano Banana Pro puis image → 3D (textures PBR), prompt : « Product photograph of a single museum-grade abstract bronze sculpture… polished warm golden bronze… dark brown-green patina in the recesses… five candlestick-chart candles standing in a row, each a vertical rectangular bronze block with a thin rod wick above and below it… set at progressively higher positions from left to right like an upward market trend » ; `tools/blender/build-sculptures.py`',
+      'Meshy (généré par IA) : image Nano Banana Pro puis image → 3D (textures PBR), prompt : « Product photograph of a single museum-grade abstract bronze sculpture… clean, smooth, uniformly polished warm golden bronze… no mottling, no streaks, no marbling… Solid, heavy, cast-metal volumes… five candlestick-chart candles standing in a row on one long thick solid rectangular bronze base, each candle a chunky solid bronze column of square cross-section, as deep as it is wide, with a sturdy round rod wick above and below it… set at progressively higher positions from left to right like an upward market trend… slightly staggered in depth » ; `tools/blender/build-sculptures.py`',
     licence: '© tous droits réservés',
     usage: "sculpture de la vitrine TaLibStandard, salle d'honneur",
   },
