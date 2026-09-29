@@ -26,6 +26,7 @@ npm run plan:svg             # redraw docs/plan/niveau-*.svg from the plan
 node tools/fetch-assets.ts   # CC0 PBR materials/HDRI/sky (gitignored) + regenerates public/assets/CREDITS.md
 npm run bake                 # bake the lightmap atlas in headless Blender (~10 min) -> public/assets/lumiere/atlas.webp
 blender --background --python tools/blender/build-<x>.py   # rebuild one committed GLB
+node tools/compresser-glb.ts [file.glb]                     # embedded GLB textures -> KTX2 (run after any rebuild of a textured GLB)
 ```
 
 Node runs the `tools/*.ts` scripts directly (type stripping, Node ≥ 22). Tests exclude `.claude/**` (agent
@@ -60,7 +61,10 @@ only re-theme rooms (`domain/clustering.ts`) and re-hang paintings (`plan/hang.t
 against the committed `public/data/*.json`, never freshly fetched data.
 
 **Blender assets.** `tools/blender/*.py` are deterministic, modelled directly in plan coordinates (Blender x = x,
-y = −z, z = height; glTF export with +Y up). The resulting GLBs are committed because CI has no Blender. Third-party
+y = −z, z = height; glTF export with +Y up). The resulting GLBs are committed because CI has no Blender.
+Textured GLBs (`MODELES` in `tools/compresser-glb.ts`) carry KTX2 textures (`KHR_texture_basisu`, required): after
+re-exporting one, run `node tools/compresser-glb.ts <file>`; any `GLTFLoader` reading them goes through
+`brancherKTX2` (`src/io/textures.ts`). Third-party
 asset credits are declared in the `tools/fetch-assets.ts` manifest and regenerated into `public/assets/CREDITS.md`.
 
 **Runtime systems worth knowing before touching the scene:**

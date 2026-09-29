@@ -28,6 +28,7 @@ import draco3d from 'draco3d'
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import type { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js'
 
 // ── Décodage Draco en thread principal (surface minimale de draco3d) ──────
 
@@ -252,6 +253,11 @@ export async function chargerGLTF(cheminRelatif: string) {
   const tampon = new Uint8Array(octets).buffer as ArrayBuffer
   const loader = new GLTFLoader()
   loader.setDRACOLoader(new DRACOLoader())
+  // Les textures KTX2 (`tools/compresser-glb.ts`) : une texture factice, comme `ImageLoader` plus haut —
+  // seule la géométrie est vérifiée ici, et le transcodeur Basis veut un Worker.
+  loader.setKTX2Loader({
+    load: (_url: string, onLoad: (t: THREE.Texture) => void) => onLoad(new THREE.CompressedTexture([], 1, 1)),
+  } as unknown as KTX2Loader)
   return loader.parseAsync(tampon, '')
 }
 
