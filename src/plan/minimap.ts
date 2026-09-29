@@ -25,3 +25,18 @@ export function projectForMinimap(plan: Plan, w: Walker): MinimapView {
     : null
   return { level: w.level, room, player: { x: w.x * S, y: w.z * S, yaw: w.yaw }, viewBox: cadre(plan) }
 }
+
+/** Le grossissement du plan ouvert, de sa taille d'écran à six fois. */
+const ZOOM_MAX = 6
+
+export interface Cadrage { k: number; x: number; y: number }
+
+/**
+ * Grossit le cadrage d'un facteur autour d'un point de l'écran, qui reste
+ * sous le doigt (ou le curseur) ; le grossissement est borné à [1, ZOOM_MAX].
+ */
+export function zoomer(c: Cadrage, facteur: number, px: number, py: number): Cadrage {
+  const k = Math.min(ZOOM_MAX, Math.max(1, c.k * facteur))
+  const r = k / c.k
+  return { k, x: px - (px - c.x) * r, y: py - (py - c.y) * r }
+}

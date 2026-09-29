@@ -13,9 +13,10 @@
  * fichier.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 
 import { Minimap } from '../Minimap'
+import { zoomer } from '../../plan/minimap'
 import { useAccrochage } from '../../hooks/useAccrochage'
 import { useGameStore } from '../../stores/gameStore'
 import { MUSEE } from '../../plan/musee'
@@ -67,5 +68,27 @@ describe('Minimap', () => {
     render(<Minimap />)
 
     expect(screen.getByText(ROOM.name)).not.toBeNull()
+  })
+
+  it('ouvre le plan en plein écran au toucher, et le referme', () => {
+    mockUseAccrochage.mockReturnValue(ACCROCHAGE)
+    useGameStore.setState({ visiteur: VISITEUR })
+
+    render(<Minimap />)
+    fireEvent.click(screen.getByTitle('Agrandir le plan'))
+    expect(screen.getByRole('dialog')).not.toBeNull()
+    fireEvent.click(screen.getByLabelText('Fermer le plan'))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})
+
+describe('zoomer', () => {
+  it('garde sous le doigt le point pincé, et borne le grossissement', () => {
+    const c = zoomer({ k: 1, x: 10, y: 20 }, 2, 100, 50)
+    // Le point du plan sous (100, 50) avant le zoom y reste après.
+    expect(((100 - c.x) / c.k)).toBeCloseTo((100 - 10) / 1)
+    expect(((50 - c.y) / c.k)).toBeCloseTo((50 - 20) / 1)
+    expect(zoomer(c, 100, 0, 0).k).toBe(6)
+    expect(zoomer(c, 0.01, 0, 0).k).toBe(1)
   })
 })
