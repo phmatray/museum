@@ -113,20 +113,26 @@ def os_du_chat():
 #   vitesse : 0,41 à 0,45 m/s (déplacement sur l'herbe, caméra compensée,
 #     échelle prise sur la longueur museau–base de la queue = 0,47 m) ;
 #   foulée : ≈ 0,40 m, presque une longueur de corps — des pas longs et lents ;
-#   ordre : pas latéral, PG · AG · PD · AD ; l'antérieur décolle ~0,15 cycle
-#     après le postérieur du même côté ;
-#   vol : ~0,20 cycle au postérieur, ~0,27 à l'antérieur (qui se replie haut,
-#     poignet cassé, puis se tend loin devant et se pose presque tendu).
+#   ordre : pas latéral, PG · AG · PD · AD, une pose tous les ~¼ de cycle ;
+#   vol : ~0,27 à l'antérieur (qui se replie haut, poignet cassé, puis se
+#     tend loin devant et se pose presque tendu).
+# Le postérieur, lui, vole 0,45 cycle et non 0,20 comme on l'avait cru : avec
+# un vol si bref, l'appui devait couvrir 32 cm, la patte finissait loin
+# derrière la hanche, tendue et raide, et la peau du ventre s'y déchirait. Un
+# chat pose le pied sous le ventre et le décolle à peine derrière la hanche
+# (appui de 22 cm, avancé de APPUI), jarret haut. L'antérieur décolle alors
+# juste avant que le postérieur ne se pose dans sa trace.
 # D'où, pour chaque patte : (côté, avant ?, décollage dans le cycle, durée du vol).
 PATTES = [
-    ("G", False, 0.00, 0.21), ("G", True, 0.15, 0.27),
-    ("D", False, 0.50, 0.21), ("D", True, 0.65, 0.27),
+    ("G", False, 0.00, 0.45), ("G", True, 0.38, 0.27),
+    ("D", False, 0.50, 0.45), ("D", True, 0.88, 0.27),
 ]
 PERIODE = 28 / FPS      # s ≈ 0,93
 FOULEE = 0.40           # m, un cycle
 VITESSE = FOULEE / PERIODE   # ≈ 0,43 m/s à timeScale 1
 FLEXION = 0.035         # m : il marche bas, le ventre près de l'herbe
-LEVER = {True: 0.065, False: 0.045}
+LEVER = {True: 0.065, False: 0.035}
+APPUI = {True: 0.0, False: -0.018}   # m : milieu de l'appui avancé (−Y) sous le ventre
 OMOPLATE = 0.07         # m : course avant–arrière de l'épaule avec la patte
 # La queue, en angle absolu sous l'horizontale, de la base à la pointe : basse,
 # en courbe douce, la pointe à hauteur de jarret (vidéo : −38° à la base).
@@ -230,9 +236,11 @@ def squelette(corps):
             b.head, b.tail, b.roll = eb[modele].head, eb[modele].tail, eb[modele].roll
             b.use_deform = False
         for pole, genou, sens in ((f"PoleBras_{c}", f"Bras_{c}", 1), (f"PoleCuisse_{c}", f"Cuisse_{c}", -1)):
-            # Le coude plie vers l'arrière (+Y), le genou vers l'avant (−Y).
+            # Le coude plie vers l'arrière (+Y), le genou vers l'avant (−Y) — et
+            # vers le BAS : pied replié sous la hanche, un pôle à hauteur du
+            # genou le faisait monter dans le flanc, au-dessus de la hanche.
             b = eb.new(pole)
-            b.head = eb[genou].tail + Vector((0, sens * 0.25, 0))
+            b.head = eb[genou].tail + Vector((0, sens * 0.25, 0 if sens > 0 else -0.15))
             b.tail = b.head + Vector((0, 0, 0.03))
             b.use_deform = False
     bpy.ops.object.mode_set(mode="OBJECT")
@@ -452,22 +460,28 @@ def patte_en_marche(u, vol, avant):
     `u` : temps depuis le décollage, en part du cycle. Rend (recul le long de la
     course ∈ [−½, ½], hauteur ∈ [0, 1], bascule en degrés).
 
-    Pendant l'appui la patte recule À VITESSE (linéaire : pas de glisse) ; au
-    dernier cinquième le talon se lève, la patte roule sur ses doigts. En vol,
-    comme dans la vidéo : l'antérieur se replie haut, poignet cassé, puis se
-    tend loin devant et se pose presque tendu ; le postérieur, plus bref, se
-    replie moins.
+    Pendant l'appui la patte recule À VITESSE (linéaire : pas de glisse) ; le
+    talon se lève ensuite (au dernier cinquième devant, dès la mi-appui
+    derrière), la patte roule sur ses doigts. En vol, comme dans la vidéo :
+    l'antérieur se replie haut, poignet cassé, puis se tend loin devant et se
+    pose presque tendu ; le postérieur casse le jarret sitôt décollé, le pied
+    revient sous lui, passe bas sous le ventre et ne se déplie qu'à la pose.
     """
+    # Le talon postérieur se lève dès le milieu de l'appui : le jarret monte et
+    # avance au-dessus des doigts, la patte ne traîne pas tendue derrière.
+    talon = 34 if avant else 32
     if u >= vol:
         s = (u - vol) / (1 - vol)
-        return -0.5 + s, 0.0, (34 if avant else 26) * lisse((s - 0.8) / 0.2)
+        return -0.5 + s, 0.0, talon * (lisse((s - 0.8) / 0.2) if avant else lisse((s - 0.45) / 0.55))
     s = u / vol
     recul = 0.5 - lisse(min(1.0, s / 0.92))
     hauteur = math.sin(math.pi * min(1.0, s ** (0.7 if avant else 0.85) / 0.97))
     if avant:
         bascule = 34 + 50 * math.sin(math.pi * min(1.0, s / 0.6)) * (s < 0.6) - 34 * lisse((s - 0.45) / 0.5)
     else:
-        bascule = 26 + 22 * math.sin(math.pi * min(1.0, s / 0.6)) * (s < 0.6) - 26 * lisse((s - 0.45) / 0.5)
+        # Le jarret se replie aussitôt décollé : le pied revient sous lui,
+        # doigts vers l'avant, et le jarret reste derrière la hanche.
+        bascule = talon * (1 - lisse(s / 0.3)) - 12 * math.sin(math.pi * s)
     return recul, max(0.0, hauteur), bascule
 
 
@@ -543,28 +557,29 @@ def marche(arm, t):
     """
     pose = arm.pose.bones
     # Deux petits creux par cycle, juste après la pose de chaque antérieur.
-    deplacer(pose["Bassin"], (0, 0, -FLEXION - 0.004 * math.cos(4 * math.pi * (t - 0.47))))
-    # La hanche du postérieur en vol s'abaisse (gauche vers t = 0,1), et pivote un peu.
-    tourner(pose["Bassin"], (0, 1, 0), 3.0 * math.cos(2 * math.pi * (t - 0.10)))
-    tourner(pose["Bassin"], (0, 0, 1), 2.0 * math.sin(2 * math.pi * (t - 0.10)))
-    tourner(pose["Dos"], (0, 1, 0), -3.0 * math.cos(2 * math.pi * (t - 0.10)))
-    tourner(pose["Dos"], (0, 0, 1), -2.0 * math.sin(2 * math.pi * (t - 0.10)))
-    # Les épaules, à leur tour, avec l'antérieur (gauche en vol vers t = 0,28) ;
+    deplacer(pose["Bassin"], (0, 0, -FLEXION - 0.004 * math.cos(4 * math.pi * (t - 0.70))))
+    # La hanche du postérieur en vol s'abaisse (gauche vers t = 0,22), celle qui
+    # porte monte, et le bassin pivote un peu.
+    tourner(pose["Bassin"], (0, 1, 0), 4.0 * math.cos(2 * math.pi * (t - 0.22)))
+    tourner(pose["Bassin"], (0, 0, 1), 2.0 * math.sin(2 * math.pi * (t - 0.22)))
+    tourner(pose["Dos"], (0, 1, 0), -4.0 * math.cos(2 * math.pi * (t - 0.22)))
+    tourner(pose["Dos"], (0, 0, 1), -2.0 * math.sin(2 * math.pi * (t - 0.22)))
+    # Les épaules, à leur tour, avec l'antérieur (gauche en vol vers t = 0,51) ;
     # le garrot un rien plus bas que les hanches.
     tourner(pose["Poitrine"], (1, 0, 0), 2)
-    tourner(pose["Poitrine"], (0, 1, 0), 2.5 * math.cos(2 * math.pi * (t - 0.28)))
-    tourner(pose["Poitrine"], (0, 0, 1), -1.5 * math.sin(2 * math.pi * (t - 0.28)))
+    tourner(pose["Poitrine"], (0, 1, 0), 2.5 * math.cos(2 * math.pi * (t - 0.51)))
+    tourner(pose["Poitrine"], (0, 0, 1), -1.5 * math.sin(2 * math.pi * (t - 0.51)))
     # La tête basse, dans l'axe, qui compense le roulis et hoche à peine.
     tourner(pose["Cou"], (1, 0, 0), 18)
-    tourner(pose["Cou"], (0, 1, 0), -2.5 * math.cos(2 * math.pi * (t - 0.28)))
-    tourner(pose["Cou"], (0, 0, 1), 1.5 * math.sin(2 * math.pi * (t - 0.28)))
-    tourner(pose["Tete"], (1, 0, 0), -10 + 1.5 * math.cos(4 * math.pi * (t - 0.47)))
+    tourner(pose["Cou"], (0, 1, 0), -2.5 * math.cos(2 * math.pi * (t - 0.51)))
+    tourner(pose["Cou"], (0, 0, 1), 1.5 * math.sin(2 * math.pi * (t - 0.51)))
+    tourner(pose["Tete"], (1, 0, 0), -10 + 1.5 * math.cos(4 * math.pi * (t - 0.70)))
     for c, avant, decolle, vol in PATTES:
         u = (t - decolle) % 1.0
         recul, hauteur, bascule = patte_en_marche(u, vol, avant)
         course = VITESSE * (1 - vol) * PERIODE
         bout = arm.data.bones[f"{'Main' if avant else 'Pied'}_{c}"].tail_local.copy()
-        pointe = bout + Vector((0, recul * course, hauteur * LEVER[avant]))
+        pointe = bout + Vector((0, recul * course + APPUI[avant], hauteur * LEVER[avant]))
         placer_ctrl(arm, f"Ctrl{'Main' if avant else 'Pied'}_{c}", pointe, bascule)
         if avant:
             # L'omoplate roule : elle suit la patte d'avant en arrière — c'est
