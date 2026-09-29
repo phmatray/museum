@@ -40,6 +40,7 @@ import { ConstellationLayer } from './ConstellationLayer'
 import { FacadeLayer } from './FacadeLayer'
 import { OmbresLayer } from './OmbresLayer'
 import { bandesDuSol, parementDuHall, peintureDesSalles, plinthes } from '../plan/parement'
+import { VisibiliteLayer } from './VisibiliteLayer'
 import { plafonds } from '../plan/plafonds'
 import { creerGranit, creerPierre } from './pierre'
 import { LumiereLayer } from './LumiereLayer'
@@ -83,6 +84,7 @@ export function PlanBuilding() {
       <MeteoLayer />
       <OmbresLayer />
       <FauneLayer />
+      <VisibiliteLayer />
       {/* Le décor à part : un texte qui attend sa police ne doit pas suspendre les murs. */}
       <FacadeLayer />
       <Suspense fallback={null}>
