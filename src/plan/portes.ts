@@ -11,7 +11,9 @@
  * part et d'autre de la baie ; seule la doublure de l'embrasure (2 cm) empiète
  * sur l'ouverture, et la marche (`walk.ts`) ne lit que le plan.
  *
- * La salle d'honneur et ses deux portes sont laissées telles quelles.
+ * Côté salle d'honneur, ses deux portes sont laissées telles quelles : la voûte
+ * Batlló a ses propres baies. Leur face côté galerie est encadrée comme les
+ * autres — sans quoi c'étaient les deux seules portes de galerie en simple trou.
  * Pur : ni three ni React.
  */
 import type { Box } from './mesh.ts'
@@ -71,14 +73,15 @@ export function portes(plan: Plan): Portes {
     const salle = (id: string | null) => level.rooms.find((r) => r.id === id)
     for (const o of level.openings) {
       if (o.kind !== 'door' && o.kind !== 'entrance') continue
-      if ([salle(o.a), salle(o.b)].some((r) => r?.kind === 'honneur')) continue
-      habiller(plan, level.elevation, level.id, o, salle(o.a)!, salle(o.b), out)
+      const honneur = [salle(o.a), salle(o.b)].find((r) => r?.kind === 'honneur')
+      habiller(plan, level.elevation, level.id, o, salle(o.a)!, salle(o.b), out, honneur)
     }
   }
   return out
 }
 
-function habiller(plan: Plan, y: number, levelId: number, o: Opening, a: Room, b: Room | undefined, out: Portes) {
+/** `sauf` : la salle dont la face reste nue, et l'embrasure avec (la salle d'honneur). */
+function habiller(plan: Plan, y: number, levelId: number, o: Opening, a: Room, b: Room | undefined, out: Portes, sauf?: Room) {
   // Une ouverture est centrée sur une arête de sa salle : sur x = cte si c'est l'ouest ou l'est.
   const vertical = Math.abs(o.x - a.x) < EPS || Math.abs(o.x - a.x - a.width) < EPS
   const at = vertical ? o.x : o.z
@@ -95,7 +98,7 @@ function habiller(plan: Plan, y: number, levelId: number, o: Opening, a: Room, b
     { sens: -versA, salle: b, face: at - versA * (perimetre ? EXT : INT + (nef(b) ? PEAU : 0)) },
   ]
   for (const { sens, salle, face } of faces) {
-    if (salle === undefined) continue // l'entrée : dehors, c'est le portique (facade.ts)
+    if (salle === undefined || salle === sauf) continue // l'entrée : dehors, c'est le portique (facade.ts)
     const [nx, nz] = point(0, sens)
     const lacet = Math.atan2(nx, nz)
     const poser = (nom: NomPiece, u = c): Piece => {
@@ -117,6 +120,7 @@ function habiller(plan: Plan, y: number, levelId: number, o: Opening, a: Room, b
     }
   }
 
+  if (sauf) return
   // L'embrasure : deux joues et une sous-face de pierre, d'une face finie à l'autre.
   const [v0, v1] = [Math.min(faces[0].face, faces[1].face), Math.max(faces[0].face, faces[1].face)]
   const pave = (u0: number, u1: number, y0: number, y1: number): Box => {
