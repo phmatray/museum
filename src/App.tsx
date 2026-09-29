@@ -9,6 +9,7 @@ import { CarteBavette } from './components/CarteBavette'
 import { GuidedTour } from './components/GuidedTour'
 import { BoutonSon } from './components/BoutonSon'
 import { EcranChargement } from './components/EcranChargement'
+import { MessagePartage } from './components/Partage'
 
 // La 3D (three, R3F, la scène) est un morceau à part : l'accueil s'affiche sans
 // l'attendre. Ses fichiers se téléchargent dès le HTML (`modulepreload`, voir
@@ -48,6 +49,7 @@ export default function App() {
       <BorneOeuvre />
       <CarteBavette />
       <BoutonSon />
+      <MessagePartage />
       <Musee3DPlusTard />
       <EcranChargement />
     </>

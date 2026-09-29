@@ -6,7 +6,8 @@
  *
  * On le fait défiler à la molette (elle arrive même souris capturée) ou avec
  * Page préc./Page suiv. — les flèches font marcher. Entrée (ou V, ou H) visite
- * le site du projet, E ouvre son dépôt sur GitHub, où l'étoile est à un clic.
+ * le site du projet, E ouvre son dépôt sur GitHub, où l'étoile est à un clic,
+ * P partage le lien qui ouvre le musée devant la vitrine (`partager.ts`).
  */
 import { useEffect, useMemo, useRef } from 'react'
 
@@ -15,6 +16,7 @@ import { useCapture, useCatalogue, useReadme } from '../hooks/useCatalogue'
 import { ilYA } from '../plan/eveil'
 import { readmeEnBlocs } from '../plan/vitrines'
 import { useGameStore } from '../stores/gameStore'
+import { partager } from './partager'
 
 const CREME = '#f1e4c6'
 const OR = '#e0b060'
@@ -43,6 +45,7 @@ export function BorneOeuvre() {
     const touche = (e: KeyboardEvent) => {
       if (e.repeat) return
       if (e.code === 'KeyE') window.open(oeuvre.url, '_blank', 'noopener')
+      else if (e.code === 'KeyP' && catalogue) partager(oeuvre.key, oeuvre.name, [...catalogue.keys()])
       else if (site && ['Enter', 'NumpadEnter', 'KeyV', 'KeyH'].includes(e.code)) window.open(site, '_blank', 'noopener')
       else if (e.code === 'PageDown' || e.code === 'PageUp') {
         const d = defile.current
@@ -57,7 +60,7 @@ export function BorneOeuvre() {
       window.removeEventListener('keydown', touche)
       window.removeEventListener('wheel', molette)
     }
-  }, [oeuvre, paused, site])
+  }, [oeuvre, paused, site, catalogue])
 
   if (oeuvre === undefined || paused) return null
   const parts = partsDeLangages(oeuvre.languages)
@@ -134,6 +137,14 @@ export function BorneOeuvre() {
           <Touche>E</Touche> ★ Mettre une étoile
           <span style={{ fontWeight: 400, color: '#d4c3a2', fontVariantNumeric: 'tabular-nums' }}>{oeuvre.stars.toLocaleString('fr-FR')}</span>
         </a>
+        <button
+          type="button"
+          onClick={() => catalogue && partager(oeuvre.key, oeuvre.name, [...catalogue.keys()])}
+          title="Un lien qui ouvre le musée devant cette vitrine"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 10px', borderRadius: 4, border: '1px solid rgba(241,228,198,0.35)', background: 'transparent', color: CREME, font: 'inherit', cursor: 'pointer' }}
+        >
+          <Touche>P</Touche> Partager ce tableau
+        </button>
         <span style={{ color: '#c9b690' }}>molette ou <Touche>Pg↓</Touche> pour lire la suite</span>
       </footer>
     </aside>

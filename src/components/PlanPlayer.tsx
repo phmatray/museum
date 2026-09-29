@@ -9,7 +9,12 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
+import config from '../../museum.config.json'
+import { projetDemande, resoudre } from '../domain/lien'
 import { PAS_FIXE, VITESSE_VISITE, cadencer } from '../domain/locomotion'
+import { useAccrochage } from '../hooks/useAccrochage'
+import { useVitrines } from '../hooks/useCatalogue'
+import { arriveeDevant, cibleDe } from '../plan/arrivee'
 import { MUSEE } from '../plan/musee'
 import { surfaceAt } from '../plan/rules'
 import { VISITE as ITINERAIRE, avancer, capVers, type Curseur } from '../plan/tour'
@@ -80,6 +85,30 @@ export function PlanPlayer() {
     camera.rotation.set(0, 0, 0)
     camera.position.set(w.x, w.y + HAUTEUR_OEIL, w.z)
   }, [camera])
+  /* eslint-enable react-hooks/immutability */
+
+  // Le rendez-vous de l'adresse (`?p=FormCraft`, `domain/lien.ts`) : dès
+  // l'accrochage et les vitrines lus — avant la fin du chargement, qui les
+  // attend —, le visiteur est posé devant la toile, tourné vers elle. Une fois.
+  const accrochage = useAccrochage()
+  const vitrines = useVitrines()
+  /* eslint-disable react-hooks/immutability */
+  useEffect(() => {
+    const demande = projetDemande(location.search, location.hash)
+    if (demande === null || accrochage === null || vitrines === null || useGameStore.getState().rendezVous) return
+    const enVitrine = vitrines.map((a) => a.key)
+    const cle = resoudre(demande, [...accrochage.rooms.flatMap((r) => r.placements.map((p) => p.key)), ...enVitrine], config.owners)
+    const cible = cle === null ? null : cibleDe(cle, accrochage, enVitrine)
+    const arrivee = cible === null ? null : arriveeDevant(MUSEE, cible)
+    useGameStore.setState({ rendezVous: { demande, cle: arrivee ? cle : null } })
+    if (!arrivee) return
+    const { pitch, ...w } = arrivee
+    walker.current = w
+    camera.rotation.order = 'YXZ'
+    camera.rotation.set(pitch, w.yaw, 0)
+    camera.position.set(w.x, w.y + HAUTEUR_OEIL, w.z)
+    useGameStore.setState({ visiteur: w })
+  }, [accrochage, vitrines, camera])
   /* eslint-enable react-hooks/immutability */
 
   // Chaque visite repart du point d'apparition, où commence son itinéraire :

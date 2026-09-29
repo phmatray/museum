@@ -6,6 +6,8 @@ export function PointerLockOverlay() {
   const paused = useGameStore((s) => s.paused)
   const setPaused = useGameStore((s) => s.setPaused)
   const setTourActive = useGameStore((s) => s.setTourActive)
+  // Venu par un lien vers une toile (`?p=`) : on le lui dit, ou on s'excuse.
+  const rdv = useGameStore((s) => s.rendezVous)
 
   const handleClick = () => {
     const canvas = document.querySelector('canvas')
@@ -53,6 +55,16 @@ export function PointerLockOverlay() {
       onClick={handleClick}
     >
       <h1 style={{ fontSize: '2rem', margin: 0, fontFamily: "Georgia, 'Times New Roman', serif", fontWeight: 400, letterSpacing: '0.06em' }}>{config.name}</h1>
+      {rdv?.cle && (
+        <p style={{ fontSize: '1.35rem', margin: 0, fontFamily: "Georgia, 'Times New Roman', serif" }}>
+          Vous êtes attendu devant <strong style={{ color: '#e0b060', fontWeight: 400 }}>{rdv.cle.slice(rdv.cle.indexOf('/') + 1)}</strong>
+        </p>
+      )}
+      {rdv && rdv.cle === null && (
+        <p style={{ fontSize: '1rem', margin: 0, opacity: 0.85, maxWidth: '36rem', textAlign: 'center', textWrap: 'balance', padding: '0 1rem' }}>
+          « {rdv.demande} » n’est pas exposé ici — la visite commence à l’entrée.
+        </p>
+      )}
       <p style={{ fontSize: '1.2rem', opacity: 0.8 }}>Cliquer pour entrer</p>
       <p style={{ fontSize: '0.9rem', opacity: 0.6 }}>
         ZQSD (WASD) ou flèches pour marcher · souris pour regarder · Échap pour la pause

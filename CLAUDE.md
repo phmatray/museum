@@ -82,5 +82,7 @@ asset credits are declared in the `tools/fetch-assets.ts` manifest and regenerat
 - Dev-only hooks for headless captures and debugging: `window.__PLAN__` (walker, camera, `gl`, `scene`),
   `window.__BAVETTE__`, `window.__FAUNE__`, `window.__TOUT_VOIR__` (disable culling).
 - URL parameters force live state for screenshots: `?heure=HH:MM`, `?meteo=clair|pluie|neige|brouillard|orage`,
-  `?saison=printemps|ete|automne|hiver`, `?ombres=0`, `?annonce=1`.
+  `?saison=printemps|ete|automne|hiver`, `?ombres=0`, `?annonce=1`. `?p=<repo>` (or `?projet=owner/repo`, `#repo`) opens
+  the museum in front of that painting (`domain/lien.ts`, `plan/arrivee.ts`); the build writes `dist/p/<repo>/` share
+  pages with per-project OpenGraph tags (`tools/pages-partage.ts`).
 - `docs/journal/index.html` is the illustrated development journal (French), one numbered step per shipped change.

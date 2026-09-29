@@ -5,7 +5,8 @@
  * site ou son README), description, langages, étoiles, dernier push. Entrée (ou
  * V) visite le site quand il y en a un — c'est ce qui parle au public —, E
  * ouvre le dépôt sur GitHub, où l'étoile est à un clic : sans serveur, le musée
- * ne peut pas la poser lui-même (il faudrait l'OAuth du visiteur). Hors
+ * ne peut pas la poser lui-même (il faudrait l'OAuth du visiteur). P partage
+ * le tableau : un lien qui ouvre le musée devant lui (`partager.ts`). Hors
  * de la 3D : un texte de 14 px se lit, un texte posé sur un mur à trois mètres
  * beaucoup moins, et il n'y a pas la place entre deux toiles.
  */
@@ -15,6 +16,7 @@ import { couleurDeLangage, partsDeLangages } from '../domain/langages'
 import { useCapture, useCatalogue } from '../hooks/useCatalogue'
 import { ilYA } from '../plan/eveil'
 import { useGameStore } from '../stores/gameStore'
+import { partager } from './partager'
 
 const Touche = ({ children }: { children: string }) => (
   <kbd style={{ border: '1px solid rgba(255,255,255,0.4)', borderBottomWidth: 2, borderRadius: 4, padding: '0 6px', font: '600 12px system-ui' }}>{children}</kbd>
@@ -34,11 +36,12 @@ export function CarteOeuvre() {
     const touche = (e: KeyboardEvent) => {
       if (e.repeat) return
       if (e.code === 'KeyE') window.open(oeuvre.url, '_blank', 'noopener')
+      else if (e.code === 'KeyP' && catalogue) partager(oeuvre.key, oeuvre.name, [...catalogue.keys()])
       else if (oeuvre.site && (e.code === 'Enter' || e.code === 'NumpadEnter' || e.code === 'KeyV')) window.open(oeuvre.site, '_blank', 'noopener')
     }
     window.addEventListener('keydown', touche)
     return () => window.removeEventListener('keydown', touche)
-  }, [oeuvre, paused])
+  }, [oeuvre, paused, catalogue])
 
   if (oeuvre === undefined || paused) return null
   const parts = partsDeLangages(oeuvre.languages)
@@ -100,6 +103,14 @@ export function CarteOeuvre() {
           <Touche>E</Touche> ★ Mettre une étoile
           <span style={{ fontWeight: 400, color: '#c9c2b4', fontVariantNumeric: 'tabular-nums' }}>{oeuvre.stars.toLocaleString('fr-FR')}</span>
         </a>
+        <button
+          type="button"
+          onClick={() => catalogue && partager(oeuvre.key, oeuvre.name, [...catalogue.keys()])}
+          title="Un lien qui ouvre le musée devant ce tableau"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.25)', background: 'transparent', color: '#f3efe6', font: 'inherit', cursor: 'pointer' }}
+        >
+          <Touche>P</Touche> Partager ce tableau
+        </button>
       </div>
     </aside>
   )
