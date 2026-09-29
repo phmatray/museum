@@ -66,8 +66,15 @@ PIECES = {
     # Les pièces des vitrines de la salle d'honneur (`plan/sculptures.ts`) : Meshy
     # (texte → 3D, ou Nano Banana → image → 3D), bronze poli et patiné. 15 000
     # triangles, cartes 1024 (`meshy/REGLES`).
-    "chandelles": {"triangles": 15_000, "textures": 1024, "hauteur": 1.3, "front_yaw": 0.0,
-                   "poli": {"metal": 0.95, "rugosite": 0.55, "couleur": (1.0, 0.8, 0.52)}},
+    #
+    # « Chandelles » fait exception, et c'est un chiffre REGARDÉ : ses grandes
+    # faces planes de bronze poli trahissent la moindre décimation — à 15 000
+    # comme à 25 000, le collapse y laisse des plis de papier froissé (transfert
+    # des normales du maillage plein ou fonte des faces coplanaires n'y
+    # changent rien) ; à 40 310, la source entière, elles sont nettes. Le GLB
+    # Draco pèse moins que l'ancien à 15 000. Source vue de dos : demi-tour.
+    "chandelles": {"triangles": 45_000, "textures": 1024, "hauteur": 1.3, "front_yaw": 180.0, "sans_normale": True,
+                   "poli": {"metal": 0.95, "rugosite": 0.85}},
     "formulaire": {"triangles": 15_000, "textures": 1024, "hauteur": 1.4, "front_yaw": 45.0},
     "arborescence": {"triangles": 15_000, "textures": 1024, "hauteur": 1.4, "front_yaw": 45.0},
 }
@@ -225,6 +232,13 @@ def construire(identifiant: str, source: Path) -> None:
     redimensionner_textures(reglage["textures"])
     if "poli" in reglage:
         polir(**reglage["poli"])
+    if reglage.get("sans_normale"):
+        # La carte de normales cuite par l'image → 3D froisse les grandes faces
+        # planes comme du papier : un bronze coulé et poli n'a pas ce relief.
+        for mat in bpy.data.materials:
+            for n in (mat.node_tree.nodes if mat.node_tree else []):
+                if n.type == "NORMAL_MAP":
+                    mat.node_tree.nodes.remove(n)
 
     SORTIE.mkdir(parents=True, exist_ok=True)
     fichier = SORTIE / f"{identifiant}.glb"
