@@ -22,6 +22,7 @@ import { BLOC_SORTIE, sorties } from '../plan/signaletique'
 import { useGameStore } from '../stores/gameStore'
 import { canevasEnMetres } from './canevas'
 import { creerMatieresJardin } from './jardinMatieres'
+import { recherche, useCalme } from '../stores/reglagesStore'
 
 export function AccessoiresLayer() {
   return (
@@ -165,7 +166,7 @@ const EMAIL = { largeur: 1.22, hauteur: 0.66, centre: 0.96, devant: 0.05 }
 function Horaires() {
   const panneaux = useMemo(() => MOBILIER.filter((m) => m.piece === 'PanneauHoraires'), [])
   const texture = useMemo(() => {
-    const quand = (typeof location === 'undefined' ? null : heureDemandee(location.search, new Date())) ?? new Date()
+    const quand = heureDemandee(recherche(), new Date()) ?? new Date()
     const lignes = lignesDesHoraires(quand, config.location.latitude, config.location.longitude)
     const { largeur: l, hauteur: h } = EMAIL
     return canevasEnMetres(l, h, 900, (ctx) => {
@@ -226,7 +227,7 @@ function Fontaines() {
     m.emissive.set('#000000')
     return m
   }, [matieres])
-  const calme = useMemo(() => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches, [])
+  const calme = useCalme()
   useEffect(() => () => {
     matieres.dispose()
     voile.dispose()

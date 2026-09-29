@@ -23,6 +23,7 @@ import { useGameStore } from '../stores/gameStore'
 import { ATELIERS, disposerCoupe, MUR_ATELIER, PLAQUE, RECUL_PLAQUES, SALLE_ATELIERS, SOCLE_ATELIER, type Coupe } from '../plan/ateliers'
 import { CARTEL_FONT, TITRE_FONT } from './cartelStyle'
 import { teinteDeLot, useLotDeTextes } from './lotDeTextes'
+import { useCalme } from '../stores/reglagesStore'
 
 /** La teinte de chaque couche, du socle aux tests : cuivre, or, paille, puis un bleu-vert et un vert sauge. */
 const TEINTES: Record<string, string> = {
@@ -245,7 +246,7 @@ function Fils({ exposes }: { exposes: Expose[] }) {
   }, [exposes])
   useEffect(() => () => geometrie?.dispose(), [geometrie])
 
-  const calme = useMemo(() => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches, [])
+  const calme = useCalme()
   const materiau = useMemo(
     () =>
       new THREE.ShaderMaterial({

@@ -15,6 +15,7 @@ import * as THREE from 'three'
 import { suivre } from '../stores/chargementStore'
 import { canevasEnMetres } from './canevas'
 import { COTE, dateDuJour, semainesDuLundi, indexDuJour, moisDeLaMosaique, panneau, tesselles, texteDePlaque, type Contributions } from '../plan/mosaique'
+import { useCalme } from '../stores/reglagesStore'
 
 /** Du marbre crème au bronze : niveau 0 à 4. */
 // Un jour sans activité est une pierre grise, nettement à part de l'or le plus pâle.
@@ -124,7 +125,7 @@ export function MosaiqueLayer() {
   }, [mosaique, calmes, dores])
 
   // La tesselle du jour respire doucement, sauf si le visiteur a demandé moins de mouvement.
-  const calme = useMemo(() => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches, [])
+  const calme = useCalme()
   const eclat = useMemo(() => new THREE.Color('#fff4d0'), [])
   const tmp = useMemo(() => new THREE.Color(), [])
   useFrame(({ clock }) => {

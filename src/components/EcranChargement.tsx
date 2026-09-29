@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react'
 import config from '../../museum.config.json'
 import { avancer, marquerPret, useChargement } from '../stores/chargementStore'
 import { useGameStore } from '../stores/gameStore'
+import { mouvementReduit } from '../stores/reglagesStore'
 
 const OR = '#d1a54a'
 const CREME = '#f5eedc'
@@ -33,7 +34,6 @@ function totalAttendu(): number {
   }
 }
 
-const mouvementReduit = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 
 export function EcranChargement() {
   const { faits, total, etape } = useChargement()

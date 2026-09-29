@@ -29,6 +29,7 @@ import { MUSEE } from '../plan/musee'
 import { forceDesRayons, nefDuPlan, vitres } from '../plan/rayons'
 import { useGameStore } from '../stores/gameStore'
 import { SOLEIL } from './lighting'
+import { useCalme } from '../stores/reglagesStore'
 
 const NEF = nefDuPlan(MUSEE)
 const VITRES = vitres(NEF)
@@ -280,7 +281,7 @@ function poussieres(): THREE.BufferGeometry {
 export function RayonsLayer() {
   const { elevation, azimut, jour } = useGameStore((s) => s.ciel)
   const meteo = useGameStore((s) => s.meteo)
-  const calme = useMemo(() => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches, [])
+  const calme = useCalme()
   const force = forceDesRayons({ elevation, azimut, jour }, meteo)
   const soleil = useMemo(() => new THREE.Vector3(...directionDuSoleil({ elevation: Math.max(elevation, 12), azimut })), [elevation, azimut])
   const geometrie = useMemo(() => prismes(soleil), [soleil])

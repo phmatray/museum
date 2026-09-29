@@ -18,6 +18,7 @@ import { JARDIN, distanceEtang } from '../plan/jardin'
 import { suivre } from '../stores/chargementStore'
 import { useGameStore } from '../stores/gameStore'
 import { INTEMPERIES } from './intemperies'
+import { recherche, useCalme, useReglages } from '../stores/reglagesStore'
 
 const QUART_D_HEURE = 15 * 60 * 1000
 const BRUME_JOUR = new THREE.Color('#b4bcc2')
@@ -32,7 +33,7 @@ export function MeteoLayer() {
   const scene = useThree((s) => s.scene)
   const flash = useRef<THREE.AmbientLight>(null)
   const eclair = useRef({ prochain: 3, debut: -10 })
-  const calme = useMemo(() => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches, [])
+  const calme = useCalme()
   const brume = useMemo(() => new THREE.FogExp2(BRUME_JOUR.clone(), 0), [])
 
   /* eslint-disable react-hooks/immutability -- les uniformes et la brume sont l'état de la scène three */
@@ -104,10 +105,20 @@ export function MeteoLayer() {
   )
 }
 
-/** Le relevé d'Open-Meteo, au chargement et tous les quarts d'heure ; rien si l'adresse force le temps. */
+/**
+ * Le relevé d'Open-Meteo, au chargement et tous les quarts d'heure ; rien si
+ * l'adresse (ou les réglages) force le temps. Changer de réglage relance :
+ * le temps forcé tombe tout de suite, « Réel » relève aussitôt.
+ */
 function useReleve() {
+  const reglee = useReglages((s) => s.meteo)
   useEffect(() => {
-    if (import.meta.env.MODE === 'test' || meteoDemandee(location.search) !== null) return
+    const forcee = meteoDemandee(recherche())
+    if (forcee !== null) {
+      useGameStore.setState({ meteo: forcee })
+      return
+    }
+    if (import.meta.env.MODE === 'test') return
     const controle = new AbortController()
     const relever = () =>
       fetch(urlOpenMeteo(config.location.latitude, config.location.longitude), { signal: controle.signal })
@@ -122,7 +133,7 @@ function useReleve() {
       clearInterval(id)
       controle.abort()
     }
-  }, [])
+  }, [reglee])
 }
 
 const SOMMETS_CHUTE = /* glsl */ `

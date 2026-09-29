@@ -10,6 +10,7 @@ import { create } from 'zustand'
 
 import { MUSEE } from '../plan/musee'
 import { parkPlacements, type Parc } from '../plan/park'
+import { useReglages } from '../stores/reglagesStore'
 import { Moteur } from './moteur'
 
 const CLE = 'museum:son'
@@ -40,7 +41,12 @@ export const moteurCourant = () => moteur
  */
 export function eveillerSon(): Moteur | null {
   if (typeof AudioContext === 'undefined') return null
-  moteur ??= new Moteur(new AudioContext({ latencyHint: 'playback' }), parcSonore().plantations.filter((p) => p.espece.startsWith('erable')))
+  if (moteur === null) {
+    moteur = new Moteur(new AudioContext({ latencyHint: 'playback' }), parcSonore().plantations.filter((p) => p.espece.startsWith('erable')))
+    const m = moteur
+    m.volume(useReglages.getState().volume)
+    useReglages.subscribe((r, avant) => r.volume !== avant.volume && m.volume(r.volume))
+  }
   void moteur.ctx.resume().catch(() => {})
   return moteur
 }
