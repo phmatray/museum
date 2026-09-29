@@ -4,7 +4,8 @@
  * Elle s'ouvre quand `EveilLayer` publie une toile : la capture du projet (son
  * site ou son README), description, langages, étoiles, dernier push. Entrée (ou
  * V) visite le site quand il y en a un — c'est ce qui parle au public —, E
- * ouvre le code sur GitHub. Hors
+ * ouvre le dépôt sur GitHub, où l'étoile est à un clic : sans serveur, le musée
+ * ne peut pas la poser lui-même (il faudrait l'OAuth du visiteur). Hors
  * de la 3D : un texte de 14 px se lit, un texte posé sur un mur à trois mètres
  * beaucoup moins, et il n'y a pas la place entre deux toiles.
  */
@@ -81,7 +82,7 @@ export function CarteOeuvre() {
         </>
       )}
       <div style={{ fontSize: 13, color: '#c9c2b4', fontVariantNumeric: 'tabular-nums' }}>
-        ★ {oeuvre.stars.toLocaleString('fr-FR')} · ⑂ {oeuvre.forks.toLocaleString('fr-FR')} · poussé {ilYA(oeuvre.pushedAt, new Date())}
+        ⑂ {oeuvre.forks.toLocaleString('fr-FR')} · poussé {ilYA(oeuvre.pushedAt, new Date())}
       </div>
       <div style={{ marginTop: 10, fontSize: 13, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 16px' }}>
         {oeuvre.site && (
@@ -89,9 +90,16 @@ export function CarteOeuvre() {
             <Touche>Entrée</Touche> visiter le site
           </span>
         )}
-        <span style={{ color: oeuvre.site ? '#c9c2b4' : undefined }}>
-          <Touche>E</Touche> voir le code sur GitHub
-        </span>
+        <a
+          href={oeuvre.url}
+          target="_blank"
+          rel="noopener"
+          title="Ouvre le dépôt sur GitHub : le bouton Star y est à un clic"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(255,214,150,0.45)', background: 'rgba(224,176,96,0.14)', color: '#ffd796', fontWeight: 600, textDecoration: 'none' }}
+        >
+          <Touche>E</Touche> ★ Mettre une étoile
+          <span style={{ fontWeight: 400, color: '#c9c2b4', fontVariantNumeric: 'tabular-nums' }}>{oeuvre.stars.toLocaleString('fr-FR')}</span>
+        </a>
       </div>
     </aside>
   )
