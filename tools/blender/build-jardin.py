@@ -650,14 +650,15 @@ def courbe(p0, direction, longueur, montee, rng, n=4):
     return pts
 
 
-def brindilles(g, rng, nuages, ecorce):
+def brindilles(g, rng, nuages, ecorce, loin=False):
     """
     Le chevelu d'un érable nu : de chaque bout de branche (le cœur d'un nuage de
     feuilles) partent des rameaux fins, en éventail, presque à plat et relevés
     du bout, qui se fourchent encore une fois. Ils remplissent le nuage : l'hiver,
     l'érable garde sa silhouette en étages, en dentelle au lieu de feuilles.
     L'été ils disparaissent dans le feuillage. Prismes à trois pans, même écorce :
-    aucun appel de dessin de plus.
+    aucun appel de dessin de plus. `loin` : sans les fourches, trop fines
+    pour couvrir un pixel au-delà de 35 m ; les tirages restent les mêmes.
     """
     for c, R in nuages:
         dehors = math.atan2(c[1], c[0]) if c[0] * c[0] + c[1] * c[1] > 0.04 else rng.uniform(0, 2 * math.pi)
@@ -675,16 +676,22 @@ def brindilles(g, rng, nuages, ecorce):
             for k, s, l in ((1, cote, (0.22, 0.38)), (2, -cote, (0.22, 0.38)), (2, cote, (0.1, 0.2))):
                 a2 = a + s * rng.uniform(0.25, 1.0)
                 fin = courbe(r[k], (math.cos(a2), math.sin(a2), h + rng.uniform(0.0, 0.25)), R * rng.uniform(*l), 0.15, rng, n=1)
-                tube(g, fin, [0.006, 0.003], ecorce, n=3)
+                if not loin:
+                    tube(g, fin, [0.006, 0.003], ecorce, n=3)
 
 
-def erable(nom, tuile, graine, ecorce, feuilles):
+def erable(nom, tuile, graine, ecorce, feuilles, loin=False):
     """
     Un érable du Japon (Acer palmatum) : un tronc court qui se divise bas en
     charpentières obliques, des rameaux qui partent à l'horizontale, et le
     feuillage en ÉTAGES — des nuages larges et peu épais, superposés, entre
     lesquels on devine les branches. ~4,5 m de haut, 6 m d'envergure : plus
     large que haut, comme dans tous les jardins japonais.
+
+    `loin` : le même arbre, pour le voir de loin (`build-erables-loin.py`) —
+    mêmes tirages, donc mêmes branches et mêmes nuages ; une carte de feuillage
+    sur deux, de surface double (la couverture ne change pas), et des rameaux
+    fins sans leurs fourches.
     """
     rng = random.Random(graine)
     g = Maillage()
@@ -714,7 +721,9 @@ def erable(nom, tuile, graine, ecorce, feuilles):
     rng_nu = random.Random(graine * 7 + 1)
     fleche = courbe(tronc[-1], (0.02, 0.0, 1.0), haut + 0.3 - tronc[-1][2], 1.0, rng_nu, n=3)
     tube(g, fleche, [0.07, 0.05, 0.035, 0.02], ecorce, n=5)
-    brindilles(g, rng_nu, nuages, ecorce)
+    brindilles(g, rng_nu, nuages, ecorce, loin)
+    rebut = Maillage()
+    n_carte = 0
     centre = [sum(p[k] for p, _ in nuages) / len(nuages) for k in range(3)]
     for c, R in nuages:
         for _ in range(int(60 * R * R) + 10):
@@ -728,7 +737,9 @@ def erable(nom, tuile, graine, ecorce, feuilles):
             # Éclairées comme un volume : la normale fuit le centre du houppier et
             # celui du nuage — le dessous d'un étage reste dans l'ombre du dessus.
             eclairage = tuple(0.45 * (p[k] - centre[k]) / 3 + 0.55 * (ox, oy, oz * 1.6)[k] + (0.15 if k == 2 else 0) for k in range(3))
-            carte(g, rng, p, n_geo, rng.uniform(0.36, 0.54), feuilles, tuile, eclairage)
+            garder = not loin or n_carte % 2 == 0
+            n_carte += 1
+            carte(g if garder else rebut, rng, p, n_geo, rng.uniform(0.36, 0.54) * (math.sqrt(2) if loin else 1), feuilles, tuile, eclairage)
     o = g.objet(nom)
     # Dessiné à 3,4 m, porté à 4,5 m : la taille d'un vieil érable de jardin.
     o.data.transform(Matrix.Scale(1.3, 4))

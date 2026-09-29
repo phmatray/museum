@@ -9,7 +9,7 @@ import { CONTOUR_ETANG } from '../../plan/jardin'
 import { MUSEE } from '../../plan/musee'
 import { parkPlacements } from '../../plan/park'
 import { hauteurDuParc } from '../../plan/relief'
-import { carteDuSol } from '../gazon'
+import { carteDuSol, champDeVue, parcellesDeGazon, uneEnVue } from '../gazon'
 
 const parc = parkPlacements(MUSEE)
 const carte = carteDuSol(parc)
@@ -38,5 +38,32 @@ describe('carteDuSol', () => {
   it('pas dans l’étang', () => {
     const [cx, cz] = CONTOUR_ETANG.reduce(([a, b], [x, z]) => [a + x / CONTOUR_ETANG.length, b + z / CONTOUR_ETANG.length], [0, 0])
     expect(lire(cx, cz)[1]).toBe(0)
+  })
+})
+
+/** Le visiteur en (x, z), les yeux à 1,6 m, tourné vers `cap` (0 : le nord, π : le sud). */
+function regard(x: number, z: number, cap: number): THREE.Frustum {
+  const camera = new THREE.PerspectiveCamera(75, 1.6, 0.1, 1000)
+  camera.position.set(x, 1.6, z)
+  camera.rotation.set(0, cap, 0)
+  return champDeVue(camera)
+}
+
+describe('parcellesDeGazon et uneEnVue', () => {
+  const parcelles = parcellesDeGazon(carte, 0.5)
+  const [proche, loin] = [10, 31]
+  it('bornent l’herbe, pas le musée', () => {
+    expect(parcelles.some((b) => b.containsPoint(new THREE.Vector3(-25.2, hauteurDuParc(-25.2, 60.2) + 0.1, 60.2)))).toBe(true)
+    expect(parcelles.some((b) => b.containsPoint(new THREE.Vector3(24, 0.1, 20)))).toBe(false)
+  })
+  it('écartent le semis proche dans la nef, où qu’on regarde', () => {
+    for (const cap of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) expect(uneEnVue(parcelles, regard(24, 25, cap), { x: 24, z: 25, rayon: proche })).toBe(false)
+  })
+  it('à l’entrée : l’herbe du parvis devant soi, pas dans le dos', () => {
+    expect(uneEnVue(parcelles, regard(24, 38.4, Math.PI), { x: 24, z: 38.4, rayon: loin })).toBe(true)
+    expect(uneEnVue(parcelles, regard(24, 38.4, 0), { x: 24, z: 38.4, rayon: proche })).toBe(false)
+  })
+  it('dans le parc, toujours', () => {
+    for (const cap of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) expect(uneEnVue(parcelles, regard(-25, 60, cap), { x: -25, z: 60, rayon: proche })).toBe(true)
   })
 })

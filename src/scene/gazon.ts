@@ -13,6 +13,11 @@
  * (`hauteurDuParc`) et où l'herbe a le droit de pousser — ni sur le parvis, ni
  * dans une allée, ni dans l'eau, ni au pied d'un tronc. Le vent la couche en
  * vagues ; la lumière du jour (Lambert, sans reflet) l'assombrit la nuit.
+ *
+ * Replié autour de la caméra, le semis est toujours « autour » d'elle : aucune
+ * sphère englobante ne l'écarterait du rendu. Ce sont les parcelles d'herbe
+ * (`parcellesDeGazon`) qu'on confronte au cône de vue : de la nef, face au
+ * nord, on ne fait plus pousser 160 000 brins derrière soi.
  */
 import * as THREE from 'three'
 
@@ -114,6 +119,57 @@ export function carteDuSol(parc: Parc): CarteDuSol {
   texture.minFilter = texture.magFilter = THREE.LinearFilter
   texture.needsUpdate = true
   return { texture, cadre: new THREE.Vector4(terrain.x, terrain.z, terrain.width, terrain.depth) }
+}
+
+/**
+ * Où pousse l'herbe, en boîtes de `cote` mètres lues sur la carte : de sa cote
+ * la plus basse à la plus haute plus `dessus` (les brins, penchés). Le semis
+ * suit la caméra, sa sphère englobante l'entoure toujours : c'est à ces boîtes
+ * qu'on demande s'il y a du gazon dans le champ (`uneEnVue`).
+ */
+export function parcellesDeGazon({ texture, cadre }: CarteDuSol, dessus: number, cote = 4): THREE.Box3[] {
+  const { data, width, height } = texture.image as { data: Uint16Array; width: number; height: number }
+  const n = Math.round(cote / TEXEL)
+  const boites: THREE.Box3[] = []
+  for (let j0 = 0; j0 < height; j0 += n) {
+    for (let i0 = 0; i0 < width; i0 += n) {
+      let [bas, haut] = [Infinity, -Infinity]
+      for (let j = j0; j < Math.min(j0 + n, height); j++) {
+        for (let i = i0; i < Math.min(i0 + n, width); i++) {
+          const k = (j * width + i) * 4
+          if (data[k + 1] === 0) continue
+          const h = THREE.DataUtils.fromHalfFloat(data[k])
+          ;[bas, haut] = [Math.min(bas, h), Math.max(haut, h)]
+        }
+      }
+      if (bas > haut) continue
+      // Un demi-mètre de marge : un brin penche, le filtrage déborde d'un texel.
+      const [x, z] = [cadre.x + i0 * TEXEL, cadre.y + j0 * TEXEL]
+      boites.push(new THREE.Box3(new THREE.Vector3(x - 0.5, bas - 0.1, z - 0.5), new THREE.Vector3(x + cote + 0.5, haut + dessus, z + cote + 0.5)))
+    }
+  }
+  return boites
+}
+
+const vueProjetee = new THREE.Matrix4()
+
+/**
+ * Le cône de vue de `camera` à l'instant, élargi de `marge` mètres : un
+ * `useFrame` peut passer avant celui qui tourne la caméra — l'image qui suit
+ * ne doit rien découvrir qu'on aurait écarté.
+ */
+export function champDeVue(camera: THREE.Camera, cone = new THREE.Frustum(), marge = 1): THREE.Frustum {
+  camera.updateMatrixWorld()
+  cone.setFromProjectionMatrix(vueProjetee.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse))
+  for (const p of cone.planes) p.constant += marge
+  return cone
+}
+
+/** L'une des `boites` est-elle dans le `cone` — parmi celles du carré de demi-côté `rayon` autour de (x, z), s'il est donné ? */
+export function uneEnVue(boites: readonly THREE.Box3[], cone: THREE.Frustum, autour?: { x: number; z: number; rayon: number }): boolean {
+  return boites.some((b) =>
+    (autour === undefined || (b.max.x > autour.x - autour.rayon && b.min.x < autour.x + autour.rayon && b.max.z > autour.z - autour.rayon && b.min.z < autour.z + autour.rayon)) &&
+    cone.intersectsBox(b))
 }
 
 /** FNV-1a puis mulberry32, comme `park.ts` : le même gazon à chaque chargement. */

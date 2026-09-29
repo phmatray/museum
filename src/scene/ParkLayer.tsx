@@ -5,7 +5,7 @@
  * posée sur le relief, les allées drapées dessus, les brins d'herbe
  * (`gazon.ts`) et un lot d'instances par essence et par matériau.
  */
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
@@ -20,8 +20,9 @@ import { Boites } from './PlanBuilding'
 import { AlleesDuParc } from './AlleesDuParc'
 import { parkAssetsResource, type ParkAssets, type ParkPiece } from './parkAssets'
 import { creerMatieresJardin, preparerSol, uvBoite } from './jardinMatieres'
-import { brinsDeGazon, carteDuSol, matiereGazon, type ReglageGazon } from './gazon'
+import { brinsDeGazon, carteDuSol, champDeVue, matiereGazon, parcellesDeGazon, uneEnVue, type ReglageGazon } from './gazon'
 import { useGameStore } from '../stores/gameStore'
+import { useChargement } from '../stores/chargementStore'
 import { presDeLEau } from '../plan/jardin'
 import { PARC } from '../plan/visibilite'
 import { INTEMPERIES, intemperer } from './intemperies'
@@ -77,7 +78,9 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   const parEspece = useMemo(() => {
     const par = new Map<EspeceParc, PlantPlacement[]>()
     for (const p of placements.plantations) par.set(p.espece, [...(par.get(p.espece) ?? []), p])
-    return par
+    // Les érables — 7 000 triangles chacun, les trois quarts de ceux du parc — par
+    // parcelle ; buis, azalées, fougères et rochers, légers, en un lot par essence.
+    return new Map([...par].map(([espece, sujets]) => [espece, espece.startsWith('erable') ? parParcelle(sujets, placements.terrain) : [sujets]]))
   }, [placements])
 
   return (
@@ -91,8 +94,9 @@ export function ParkLayer({ placements }: { placements: Parc }) {
       <FeuillesMortes parc={placements} />
       {assets !== null && <Jardin objets={assets.jardin} herbe={herbe} />}
       {assets !== null &&
-        [...parEspece].map(([espece, sujets]) =>
-          (assets.especes.get(espece) ?? []).map((lot, i) => <Instances key={`${espece}:${i}`} piece={lot} sujets={sujets} />))}
+        [...parEspece].map(([espece, parcelles]) =>
+          (assets.especes.get(espece) ?? []).map((lot, i) =>
+            parcelles.map((sujets, k) => <Instances key={`${espece}:${i}:${k}`} piece={lot} sujets={sujets} />)))}
     </group>
   )
 }
@@ -160,10 +164,20 @@ function dehors(terrain: Rect): THREE.BufferGeometry {
   return g
 }
 
+/**
+ * Écarter du rendu ce qui n'est pas dans le champ, seulement une fois le musée
+ * prêt : la compilation anticipée (`chargement.tsx`) ne voit que le visible, et
+ * un programme compilé au premier regard, c'est un à-coup.
+ */
+const pret = () => useChargement.getState().etape === 'pret'
+
 /** Les brins d'herbe, repliés autour de la caméra (`gazon.ts`). */
 function Gazon({ parc }: { parc: Parc }) {
   const sol = useMemo(() => carteDuSol(parc), [parc])
-  const lots = useMemo(() => GAZONS.map((r, i) => ({ geometrie: brinsDeGazon(r, 7 + i), ...matiereGazon(sol, r) })), [sol])
+  const lots = useMemo(() => GAZONS.map((r, i) => ({ geometrie: brinsDeGazon(r, 7 + i), rayon: r.rayon, ...matiereGazon(sol, r) })), [sol])
+  const parcelles = useMemo(() => parcellesDeGazon(sol, Math.max(...GAZONS.map((r) => r.hauteur[1])) + 0.2), [sol])
+  const maillages = useRef<(THREE.Mesh | null)[]>([])
+  const cone = useMemo(() => new THREE.Frustum(), [])
   useEffect(() => () => {
     sol.texture.dispose()
     for (const l of lots) {
@@ -172,9 +186,25 @@ function Gazon({ parc }: { parc: Parc }) {
     }
   }, [sol, lots])
   useFrame(({ camera, clock }) => {
-    for (const l of lots) l.animer(camera.position.x, camera.position.z, clock.elapsedTime)
+    const { x, z } = camera.position
+    champDeVue(camera, cone)
+    const trie = pret()
+    lots.forEach((l, i) => {
+      l.animer(x, z, clock.elapsedTime)
+      const m = maillages.current[i]
+      // Au-delà de `rayon`, plus un brin : seules comptent les parcelles du carré qui l'entoure.
+      if (m) m.visible = !trie || uneEnVue(parcelles, cone, { x, z, rayon: l.rayon })
+    })
   })
-  return <>{lots.map((l, i) => <mesh key={i} geometry={l.geometrie} material={l.material} frustumCulled={false} userData={{ zone: PARC }} />)}</>
+  // `frustumCulled={false}` : leur sphère ne dit rien (voir `parcellesDeGazon`), et
+  // `OmbresLayer` ne fait porter d'ombre qu'à ce que le cône de vue trie.
+  return (
+    <>
+      {lots.map((l, i) => (
+        <mesh key={i} ref={(m) => { maillages.current[i] = m }} geometry={l.geometrie} material={l.material} frustumCulled={false} userData={{ zone: PARC }} />
+      ))}
+    </>
+  )
 }
 
 /**
@@ -278,21 +308,89 @@ function dalles(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
   return fusion ?? new THREE.BufferGeometry()
 }
 
+/**
+ * Les érables par côté du musée — nord, sud (le tiers du terrain de chaque
+ * bout), ouest et est. Un lot d'instances par essence, par matériau ET par
+ * côté : chacun sa sphère englobante, que le cône de vue écarte d'un bloc. Un
+ * lot pour tout le parc avait une sphère grande comme le parc, jamais écartée —
+ * de la nef, face au nord, on dessinait les érables du parvis. Pas plus fin :
+ * l'ombre du soleil couvre tout le parc, chaque lot y coûte un appel de dessin.
+ */
+function parParcelle<T extends { x: number; z: number }>(sujets: readonly T[], terrain: Rect): T[][] {
+  const par = new Map<string, T[]>()
+  for (const s of sujets) {
+    const [u, v] = [(s.x - terrain.x) / terrain.width, (s.z - terrain.z) / terrain.depth]
+    const cote = v < 1 / 3 ? 'nord' : v > 2 / 3 ? 'sud' : u < 0.5 ? 'ouest' : 'est'
+    par.set(cote, [...(par.get(cote) ?? []), s])
+  }
+  return [...par.values()]
+}
+
+/** Au-delà, un érable prend sa géométrie de loin ; il ne reprend la proche qu'en deçà de `LOIN - 3`. */
+const LOIN = 36
+
+/**
+ * Un lot, en deux maillages : les sujets proches avec la géométrie pleine, les
+ * lointains avec celle de loin (`erables-loin.glb`), même matériau — donc même
+ * saison, même vent, même arbre (`iArbre` est tiré de sa matrice). Chaque
+ * sujet passe de l'un à l'autre selon SA distance ; les deux maillages
+ * gardent la sphère de tout le lot.
+ */
 function Instances({ piece, sujets }: { piece: ParkPiece; sujets: PlantPlacement[] }) {
-  const ref = useRef<THREE.InstancedMesh>(null)
-  useEffect(() => {
-    const mesh = ref.current
-    if (mesh === null) return
-    const m = new THREE.Matrix4()
+  const proche = useRef<THREE.InstancedMesh>(null)
+  const lointain = useRef<THREE.InstancedMesh>(null)
+  const loin = useRef<boolean[]>([])
+  const matrices = useMemo(() => {
     const q = new THREE.Quaternion()
     const haut = new THREE.Vector3(0, 1, 0)
-    sujets.forEach((s, i) =>
-      mesh.setMatrixAt(i, m.compose(new THREE.Vector3(s.x, s.y ?? 0, s.z), q.setFromAxisAngle(haut, s.rotation), new THREE.Vector3().setScalar(s.scale))))
-    mesh.instanceMatrix.needsUpdate = true
-    // Sinon la sphère englobante est celle d'un arbre à l'origine.
-    mesh.computeBoundingSphere()
+    return sujets.map((s) =>
+      new THREE.Matrix4().compose(new THREE.Vector3(s.x, s.y ?? 0, s.z), q.setFromAxisAngle(haut, s.rotation), new THREE.Vector3().setScalar(s.scale)))
   }, [sujets])
-  return <instancedMesh key={sujets.length} ref={ref} args={[piece.geometry, undefined, sujets.length]} material={piece.material} />
+  const repartir = useCallback(() => {
+    const n = [0, 0]
+    const maillages = [proche.current, lointain.current]
+    matrices.forEach((m, i) => {
+      const k = loin.current[i] ? 1 : 0
+      maillages[k]?.setMatrixAt(n[k]++, m)
+    })
+    maillages.forEach((mesh, k) => {
+      if (mesh === null) return
+      mesh.count = n[k]
+      mesh.visible = n[k] > 0
+      mesh.instanceMatrix.needsUpdate = true
+    })
+  }, [matrices])
+  useEffect(() => {
+    const [p, l] = [proche.current, lointain.current]
+    if (p === null) return
+    loin.current = matrices.map(() => false)
+    repartir()
+    // Sinon la sphère englobante est celle d'un arbre à l'origine. La géométrie
+    // de loin partage celle de la proche (`parkAssets.ts`) : elle vaut pour les deux.
+    p.computeBoundingSphere()
+    if (l !== null) l.boundingSphere = p.boundingSphere!.clone()
+  }, [matrices, repartir])
+  useFrame(({ camera }) => {
+    if (piece.loin === undefined) return
+    const { x, z } = camera.position
+    let change = false
+    sujets.forEach((s, i) => {
+      const d = Math.hypot(s.x - x, s.z - z)
+      const l = loin.current[i] ? d > LOIN - 3 : d > LOIN
+      change ||= l !== loin.current[i]
+      loin.current[i] = l
+    })
+    if (change) repartir()
+  })
+  // Le tri des salles (`tri.ts`) n'a rien à compacter ici : tout le lot est au parc.
+  return (
+    <>
+      <instancedMesh key={sujets.length} ref={proche} args={[piece.geometry, undefined, sujets.length]} material={piece.material} userData={{ zone: PARC }} />
+      {piece.loin && (
+        <instancedMesh key={`loin:${sujets.length}`} ref={lointain} args={[piece.loin, undefined, sujets.length]} material={piece.material} userData={{ zone: PARC }} />
+      )}
+    </>
+  )
 }
 
 /**
@@ -351,7 +449,15 @@ function Jardin({ objets, herbe }: { objets: THREE.Object3D[]; herbe: THREE.Mate
  * n'en montre qu'une part (`uFeuillesSol`) : chacune tombe et disparaît à son tour.
  */
 function FeuillesMortes({ parc }: { parc: Parc }) {
-  const geometrie = useMemo(() => feuillesMortes(parc), [parc])
+  const { geometrie, boites } = useMemo(() => feuillesMortes(parc), [parc])
+  const maillage = useRef<THREE.Mesh>(null)
+  const cone = useMemo(() => new THREE.Frustum(), [])
+  // Hors de l'automne, toutes repliées : rien à dessiner. Sinon, seulement si
+  // le tapis d'un érable est dans le champ — un seul maillage pour tout le parc,
+  // sa sphère englobante ne l'écarterait jamais.
+  useFrame(({ camera }) => {
+    if (maillage.current) maillage.current.visible = !pret() || (INTEMPERIES.uFeuillesSol.value > 0 && uneEnVue(boites, champDeVue(camera, cone)))
+  })
   const materiau = useMemo(() => {
     const m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })
     // `uFeuillesSol` est déclaré par la greffe d'`intemperer`, posée juste après.
@@ -375,7 +481,8 @@ function FeuillesMortes({ parc }: { parc: Parc }) {
     geometrie.dispose()
     materiau.dispose()
   }, [geometrie, materiau])
-  return <mesh geometry={geometrie} material={materiau} frustumCulled={false} />
+  // Couchées sur le sol, elles ne portent pas d'ombre (`frustumCulled={false}`, `OmbresLayer`).
+  return <mesh ref={maillage} geometry={geometrie} material={materiau} frustumCulled={false} userData={{ zone: PARC }} />
 }
 
 const AUTOMNE = {
@@ -383,7 +490,9 @@ const AUTOMNE = {
   'erable-vert': ['#c8641a', '#d4861c', '#b03a14', '#c9a227', '#7a4a22'].map((c) => new THREE.Color(c)),
 }
 
-function feuillesMortes(parc: Parc): THREE.BufferGeometry {
+/** Le tapis de feuilles, et une boîte par érable qui borne le sien. */
+function feuillesMortes(parc: Parc): { geometrie: THREE.BufferGeometry; boites: THREE.Box3[] } {
+  const boites: THREE.Box3[] = []
   // Le même tirage à chaque chargement (mulberry32, comme `park.ts`).
   let etat = 0x5eed
   const alea = () => {
@@ -398,6 +507,8 @@ function feuillesMortes(parc: Parc): THREE.BufferGeometry {
     if (p.espece !== 'erable-rouge' && p.espece !== 'erable-vert') continue
     const palette = AUTOMNE[p.espece]
     const rayon = 3 * p.scale
+    const boite = new THREE.Box3()
+    boites.push(boite)
     for (let k = 0; k < 320 * p.scale; k++) {
       const [a, r] = [alea() * Math.PI * 2, rayon * Math.sqrt(alea()) * (0.35 + 0.65 * alea())]
       const [x, z] = [p.x + Math.cos(a) * r, p.z + Math.sin(a) * r]
@@ -406,6 +517,7 @@ function feuillesMortes(parc: Parc): THREE.BufferGeometry {
       const [t, l] = [alea() * Math.PI * 2, 0.06 + alea() * 0.05]
       const [c, s] = [Math.cos(t) * l, Math.sin(t) * l]
       const [rang, w] = [pos.length / 3, alea()]
+      boite.expandByPoint(new THREE.Vector3(x, y, z))
       const teinte = palette[Math.floor(alea() * palette.length)].clone().multiplyScalar(0.75 + alea() * 0.4)
       for (const [u, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
         pos.push(x + u * c - v * s, y + (alea() - 0.5) * 0.01, z + u * s + v * c)
@@ -423,7 +535,8 @@ function feuillesMortes(parc: Parc): THREE.BufferGeometry {
   g.setAttribute('color', new THREE.Float32BufferAttribute(couleur, 3))
   g.setAttribute('aFeuille', new THREE.Float32BufferAttribute(feuille, 4))
   g.setIndex(index)
-  return g
+  // Une feuille déborde de son centre de 11 cm au plus.
+  return { geometrie: g, boites: boites.filter((b) => !b.isEmpty()).map((b) => b.expandByScalar(0.15)) }
 }
 
 /** Sans suspendre : le bâtiment d'abord, les arbres ensuite. */
