@@ -167,13 +167,54 @@ describe('posesProches', () => {
   const pose = (id: string, x: number, y: number) => ({ id, centre: new THREE.Vector3(x, y, 0) })
   const oeil = new THREE.Vector3(0, 1.6, 0)
 
-  it('garde les toiles à moins de dix mètres, sur le niveau du regard, les plus proches d’abord', () => {
-    const poses = [pose('loin', 11, 1.55), pose('b', 4, 1.55), pose('etage', 1, 6.35), pose('a', 2, 1.55)]
-    expect(posesProches(poses, oeil).map((p) => p.id)).toEqual(['a', 'b'])
+  const ids = (poses: { id: string }[]) => poses.map((p) => p.id)
+
+  it('prend les toiles à moins de huit mètres, sur le niveau du regard', () => {
+    const poses = [pose('loin', 9, 1.55), pose('b', 4, 1.55), pose('etage', 1, 6.35), pose('a', 2, 1.55)]
+    expect(ids(posesProches(poses, oeil))).toEqual(['a', 'b'])
   })
 
-  it('n’en garde que six, pour ne pas charger toutes les vignettes à la fois', () => {
-    const poses = Array.from({ length: 9 }, (_, i) => pose(`t${i}`, i, 1.55))
-    expect(posesProches(poses, oeil).map((p) => p.id)).toEqual(['t0', 't1', 't2', 't3', 't4', 't5'])
+  it('n’en garde que six, les plus proches, pour ne pas charger toutes les vignettes à la fois', () => {
+    const poses = Array.from({ length: 9 }, (_, i) => pose(`t${i}`, 7 - i * 0.5, 1.55))
+    expect(ids(posesProches(poses, oeil))).toEqual(['t3', 't4', 't5', 't6', 't7', 't8'])
+  })
+
+  it('garde une toile retenue jusqu’à onze mètres : un pas autour des dix ne la fait plus basculer', () => {
+    const poses = [pose('a', 0, 1.55)]
+    const pres = posesProches(poses, new THREE.Vector3(7.9, 1.6, 0))
+    expect(ids(pres)).toEqual(['a'])
+    // Aller-retour autour de dix mètres : l'ensemble ne bouge pas.
+    let vues = pres
+    for (const x of [9.6, 10.4, 9.8, 10.9, 9.5]) {
+      vues = posesProches(poses, new THREE.Vector3(x, 1.6, 0), vues)
+      expect(ids(vues)).toEqual(['a'])
+    }
+    expect(posesProches(poses, new THREE.Vector3(11.2, 1.6, 0), vues)).toEqual([])
+    // Et ne revient qu'à huit mètres.
+    expect(posesProches(poses, new THREE.Vector3(9, 1.6, 0), [])).toEqual([])
+  })
+
+  it('ne cède une place qu’à une toile nettement plus proche', () => {
+    const six = Array.from({ length: 6 }, (_, i) => pose(`t${i}`, 2 + i, 1.55)) // de 2 à 7 m
+    const avant = posesProches(six, oeil)
+    expect(ids(avant)).toEqual(['t0', 't1', 't2', 't3', 't4', 't5'])
+    // Une septième à 6 m : moins de trois mètres plus proche que t5 (7 m), elle attend.
+    const septieme = [...six, pose('n', -6, 1.55)]
+    expect(ids(posesProches(septieme, oeil, avant))).toEqual(ids(avant))
+    // À 3,5 m, elle prend la place de la plus lointaine.
+    const proche = [...six, pose('n', -3.5, 1.55)]
+    expect(ids(posesProches(proche, oeil, avant))).toEqual(['n', 't0', 't1', 't2', 't3', 't4'])
+  })
+
+  it('rend le même ensemble dans le même ordre quand on bouge sans rien croiser', () => {
+    const poses = [pose('a', 2, 1.55), pose('b', -3, 1.55), pose('c', 5, 1.55)]
+    const avant = posesProches(poses, oeil)
+    expect(posesProches(poses, new THREE.Vector3(1.5, 1.6, 0), avant)).toEqual(avant)
+  })
+
+  it('lâche tout en changeant d’étage', () => {
+    const poses = [pose('a', 2, 1.55)]
+    const avant = posesProches(poses, oeil)
+    expect(posesProches(poses, new THREE.Vector3(0, 6.4, 0), avant)).toEqual([])
   })
 })
