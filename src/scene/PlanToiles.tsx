@@ -26,9 +26,11 @@ import { computePoses, posesProches, type Pose } from './planToilesGeometry'
 const HAUTEUR_NOM = 3.1
 /**
  * Plus haut derrière une cimaise qui court devant le mur nord (`cimaises.ts`) :
- * de la banquette, son arête (2,50 m) couperait le nom en deux.
+ * son arête (2,50 m, à 3,9 m du mur) coupait encore en deux, à 3,60 m, le nom
+ * vu de la banquette ou d'un pas devant (l'œil à 1,60 m, à 7-8 m du mur). À
+ * 3,95 m, il se lit dès 7 m, et reste sous les projecteurs (vers 4,20 m).
  */
-const HAUTEUR_NOM_CIMAISE = 3.6
+const HAUTEUR_NOM_CIMAISE = 3.95
 
 export function PlanToiles({ level }: { level: number }) {
   const accrochage = useAccrochage()
