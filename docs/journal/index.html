@@ -67,6 +67,89 @@
     <p class="chapeau">Chaque étape ajoute une capture prise dans le vrai moteur du site, les plus récentes en haut. Chaque étape vérifiée part en ligne sur <a href="https://phmatray.github.io/museum/">phmatray.github.io/museum</a>.</p>
   </header>
 
+  <section class="etape" aria-labelledby="t-56">
+    <div class="entete"><h2 id="t-56">56. Sept bugs dans les galeries — 20 sur 20</h2><span class="statut fait">en ligne · PR #126</span></div>
+    <div class="texte">
+      <p>La chasse est terminée : 20 bugs visuels trouvés, corrigés à leur cause et vérifiés avant/après (7 dehors, 6 dans la nef, 7 dans les galeries).</p>
+      <ol>
+        <li><strong>Les plafonds vitrés restaient allumés la nuit.</strong> Ils suivent maintenant le ciel. À l’étage, sous le toit, ils s’éteignent ; au rez-de-chaussée, sous un plancher, ils deviennent un éclairage électrique tamisé et chaud.</li>
+        <li><strong>Un cartel fantôme sur les cimaises.</strong> Il était bien placé, mais sa plaque crème disparaissait sur le stratifié blanc, et on ne voyait plus que son texte gris qui flottait. Sur une cimaise, le cartel est maintenant sombre à lettres crème.</li>
+        <li><strong>Des tableaux flous de près.</strong> Le moteur n’affichait que la petite vignette. Les six tableaux les plus proches passent maintenant à leur image haute définition.</li>
+        <li><strong>Un rebord blanc en haut des murs, côté nef, dans les galeries de l’étage.</strong> La corniche de la nef traversait le mur et ressortait de 25 cm dans les salles.</li>
+        <li><strong>Les portes de la salle d’honneur étaient des trous nus</strong> vus des galeries. Elles ont maintenant leur chambranle et leurs plinthes.</li>
+        <li><strong>Les noms des salles luisaient dans le noir.</strong> Ils sont maintenant peints sur le mur et s’éteignent avec la salle.</li>
+        <li><strong>Le nom de la galerie du nord était coupé par la cimaise.</strong> Il est remonté à 3,95 m.</li>
+      </ol>
+      <p class="note">Et j’ai refait le calcul de lumière dans Blender, pour que la nouvelle bande de pierre de la nef (étape 55) et la corniche corrigée aient leur éclairage.</p>
+    </div>
+    <figure><img src="img/56-lanterneaux.jpg" width="1280" height="800" alt="En haut la nuit, plafonds éteints à l’étage et tamisés au rez-de-chaussée ; en bas le jour, inchangé."><figcaption>Les plafonds vitrés la nuit (en haut) et le jour (en bas).</figcaption></figure>
+    <figure><img src="img/56-cartel.jpg" width="1280" height="800" alt="Avant : un cartel pâle presque invisible sur la cimaise blanche ; après : un cartel sombre bien lisible."><figcaption>Le cartel d’une cimaise, avant (à gauche) et après.</figcaption></figure>
+    <figure><img src="img/56-nettete.jpg" width="1280" height="800" alt="Avant : un tableau flou ; après : le même tableau net."><figcaption>Un tableau de près, avant (à gauche) et après.</figcaption></figure>
+    <figure><img src="img/56-corniche-avant.jpg" width="1280" height="800" alt="Avant : un rebord blanc qui dépasse en haut du mur."><figcaption>La corniche de la nef qui ressortait dans les galeries (avant).</figcaption></figure>
+    <figure><img src="img/56-corniche-apres.jpg" width="1280" height="800" alt="Après : le haut du mur est net."><figcaption>Après.</figcaption></figure>
+    <figure><img src="img/56-portes.jpg" width="1280" height="800" alt="Les portes de la salle d’honneur avec leur chambranle côté galerie."><figcaption>Les portes de la salle d’honneur, côté galerie.</figcaption></figure>
+    <figure><img src="img/56-titres.jpg" width="1280" height="1200" alt="Les noms de salle de nuit, avant lumineux, après peints."><figcaption>Les noms des salles la nuit.</figcaption></figure>
+    <figure><img src="img/56-nom.jpg" width="1280" height="800" alt="Avant : le nom de la galerie coupé par la cimaise ; après : au-dessus."><figcaption>Le nom de la galerie du nord.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-55">
+    <div class="entete"><h2 id="t-55">55. Six bugs dans la nef et la salle d’honneur</h2><span class="statut fait">en ligne · PR #124</span></div>
+    <div class="texte">
+      <ol>
+        <li><strong>La cloche disparaissait.</strong> Entre deux coups, le calcul de son balancement donnait « pas un nombre », et le moteur ne la dessinait plus. Elle reste maintenant visible au repos.</li>
+        <li><strong>La cloche était mal accrochée.</strong> Elle traversait le cadran et pendait d’un bras qui finissait dans le vide. Elle pend maintenant à un bras de fer scellé dans la console dorée, par un joug et un axe passés dans son anse. Elle se balance autour de cet axe, et son marteau est remis à l’endroit.</li>
+        <li><strong>Des taches de lumière au plafond de la salle d’honneur.</strong> C’étaient les rayons de soleil de la nef, qui passaient à travers le mur nord. Ils restent maintenant dans la nef.</li>
+        <li><strong>La nef noyée de blanc.</strong> Les rayons et la brume étaient trop forts. Ils sont à moins de la moitié, et la voûte et les murs restent lisibles.</li>
+        <li><strong>Une bande de parquet en travers de la pierre</strong>, au-dessus des volées et sous la baie. C’était la tranche du plancher de l’étage ; une bande de pierre la couvre désormais.</li>
+        <li><strong>Un bout de sous-face d’escalier dans le vide</strong>, sous le palier. Il dépassait de 6 cm ; la volée part maintenant du dessous du palier.</li>
+      </ol>
+      <p class="note">À gauche avant, à droite après, sur chaque image.</p>
+    </div>
+    <figure><img src="img/55-cloche.jpg" width="1280" height="400" alt="Avant : seul le bras de fer au-dessus de l’horloge ; après : la cloche est là."><figcaption>La cloche, qui disparaissait entre deux coups.</figcaption></figure>
+    <figure><img src="img/55-accroche.jpg" width="1280" height="400" alt="Avant : la cloche sous un bras qui finit dans le vide ; après : un joug et un anneau sur un axe."><figcaption>Son accroche.</figcaption></figure>
+    <figure><img src="img/55-honneur.jpg" width="1280" height="400" alt="Avant : des trapèzes de lumière au plafond de la salle d’honneur ; après : un plafond uni."><figcaption>Le plafond de la salle d’honneur.</figcaption></figure>
+    <figure><img src="img/55-rayons.jpg" width="1280" height="400" alt="Avant : la nef voilée de blanc ; après : les rayons discrets, les murs lisibles."><figcaption>Les rayons, vus du balcon ouest.</figcaption></figure>
+    <figure><img src="img/55-lisere.jpg" width="1280" height="400" alt="Avant : une bande de parquet sur la pierre ; après : de la pierre continue."><figcaption>La bande de parquet sur la pierre.</figcaption></figure>
+    <figure><img src="img/55-palier.jpg" width="1280" height="400" alt="Avant : un bout de sous-face sous le palier ; après : il a disparu."><figcaption>Sous le palier.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-54">
+    <div class="entete"><h2 id="t-54">54. Sept bugs dehors et au jardin</h2><span class="statut fait">en ligne · PR #123</span></div>
+    <div class="texte">
+      <ol>
+        <li><strong>Bannières de façade illisibles, et pas les tiennes.</strong> Elles montraient <code>clean-architecture-manga</code>, un dépôt d’un autre auteur sur lequel tu es seulement collaborateur. Elles affichent maintenant tes projets de la salle d’honneur, en grand, sur bleu nuit et vert profond. La récupération GitHub écarte désormais les dépôts dont tu n’es pas propriétaire.</li>
+        <li><strong>Des allées qui butaient contre un mur sans porte</strong>, au nord, à l’ouest et à l’est. Elles s’arrêtent maintenant à l’allée qui fait le tour du bâtiment, devant un banc tourné vers le parc.</li>
+        <li><strong>Des façades latérales et arrière nues.</strong> Elles ont maintenant un soubassement de pierre, un bandeau, une corniche, des pilastres et des fenêtres aveugles encadrées de pierre.</li>
+        <li><strong>Le bord du monde visible.</strong> Un mur d’enceinte à chaperon de pierre entoure maintenant le parc, avec une grille en fer forgé au bout de chaque allée, la campagne au-delà et une rangée d’érables.</li>
+        <li><strong>Des allées sinueuses en dents de scie.</strong> Leurs bords sont maintenant d’un seul tenant.</li>
+        <li><strong>La lanterne de pierre allumée en plein jour.</strong> Elle ne s’allume plus qu’au crépuscule.</li>
+        <li><strong>Un ruisseau qui naissait d’un bout carré dans la pelouse.</strong> Il sourd maintenant d’entre des rochers.</li>
+      </ol>
+    </div>
+    <figure><img src="img/54-bannieres.jpg" width="1280" height="400" alt="Avant : bannière blanche au texte gris minuscule ; après : bannière bleu nuit, titre TaLib Standard."><figcaption>Les bannières.</figcaption></figure>
+    <figure><img src="img/54-allees.jpg" width="1280" height="400" alt="Avant : une allée qui bute contre un mur de brique ; après : un banc face au parc."><figcaption>Les allées du côté est.</figcaption></figure>
+    <figure><img src="img/54-facades.jpg" width="1280" height="400" alt="Avant : un mur de brique nu ; après : soubassement, corniche et fenêtres aveugles."><figcaption>L’angle sud-est.</figcaption></figure>
+    <figure><img src="img/54-enceinte.jpg" width="1280" height="400" alt="Avant : une allée qui file vers un horizon vide ; après : un mur d’enceinte et une grille."><figcaption>Au bout du jardin.</figcaption></figure>
+    <figure><img src="img/54-lanterne.jpg" width="1280" height="400" alt="Avant : la lanterne allumée à 14 h ; après : éteinte."><figcaption>La lanterne à 14 h.</figcaption></figure>
+    <figure><img src="img/54-source.jpg" width="1280" height="400" alt="Avant : le ruisseau commence par un bout carré ; après : il sort de sous un rocher."><figcaption>La source du ruisseau.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-53">
+    <div class="entete"><h2 id="t-53">53. Le compteur, la licence, l’image de partage</h2><span class="statut fait">en ligne · PR #121 et #122</span></div>
+    <div class="texte">
+      <p>Le compteur de visiteurs comptait bien (56 visites) ; c’est son animation qui s’arrêtait une image trop tôt. Les tambours restaient entre deux chiffres, voire sur leurs tirets, et ils s’arrêtent maintenant pile sur leur chiffre. Le dépôt est passé sous licence MIT, et tu as installé l’image de partage sur GitHub.</p>
+    </div>
+    <figure><img src="img/53-compteur.jpg" width="1280" height="400" alt="Avant : le dernier tambour entre deux chiffres ; après : 000056 bien aligné."><figcaption>Le compteur, avant et après.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-52">
+    <div class="entete"><h2 id="t-52">52. Le liseré sous les baies cintrées</h2><span class="statut fait">en ligne · PR #120</span></div>
+    <div class="texte">
+      <p>Les deux textures qui se superposaient appartenaient à deux modèles : la corniche de la nef, faite dans Blender, et le parement de pierre du hall, dérivé du plan. Leurs faces tombaient exactement dans le même plan, à 18 cm de l’axe du mur, et la carte graphique n’arrivait pas à choisir laquelle afficher devant. La corniche avance maintenant de 24 cm et passe nettement devant la pierre.</p>
+    </div>
+    <figure><img src="img/52-corniche.jpg" width="1240" height="180" alt="Avant et après : sous les baies, un liseré dentelé à gauche, une corniche nette à droite."><figcaption>À gauche avant, à droite après.</figcaption></figure>
+  </section>
+
   <section class="etape" aria-labelledby="t-51">
     <div class="entete"><h2 id="t-51">51. Les cimaises, avec du recul</h2><span class="statut fait">en ligne · PR #118</span></div>
     <div class="texte">
