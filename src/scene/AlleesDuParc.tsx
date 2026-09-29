@@ -192,10 +192,17 @@ function bande(bords: ReturnType<typeof amenagerAllees>['bordures'], profil: (p:
   return g
 }
 
-/** Le lit de galets : un léger bourrelet entre la bordure et le gazon, qui s'efface le long des dalles. */
+/**
+ * Le lit de galets : un léger bourrelet entre la bordure et le gazon, qui s'efface
+ * le long des dalles. En s'effaçant, il s'ENFONCE sous la pelouse : réduit à
+ * rien mais hors du sol, il se couchait sur la face de la bordure et s'y battait
+ * avec elle (un pointillé sombre au pied de la bordure du parvis).
+ */
 const galets = (bords: ReturnType<typeof amenagerAllees>['bordures']) => bande(bords, (p) => {
   const l = GALETS * p.galets
-  return [[BORDURE.dehors - 0.01, 0.025], [BORDURE.dehors + l * 0.45, 0.035], [BORDURE.dehors + l, 0.008]]
+  const [k, bas] = [Math.min(1, p.galets * 5), -0.03]
+  const h = (y: number) => bas + (y - bas) * k
+  return [[BORDURE.dehors - 0.01, h(0.025)], [BORDURE.dehors + l * 0.45, h(0.035)], [BORDURE.dehors + l, h(0.008)]]
 })
 
 /** Un piquet de bois, fiché dans le sol, la tête chanfreinée. */
