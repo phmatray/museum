@@ -32,8 +32,8 @@ import { SOLEIL } from './lighting'
 
 const NEF = nefDuPlan(MUSEE)
 const VITRES = vitres(NEF)
-/** L'intérieur de la nef, jusqu'à la clé de voûte, un rien en retrait des murs. */
-const MIN = new THREE.Vector3(NEF.x + 0.15, 0.02, NEF.z + 0.15)
+/** L'intérieur de la nef, jusqu'à la clé de voûte, un rien en retrait des murs ; sous le sol, pour que les faisceaux y finissent. */
+const MIN = new THREE.Vector3(NEF.x + 0.15, -0.1, NEF.z + 0.15)
 const MAX = new THREE.Vector3(NEF.x + NEF.width - 0.15, NEF.naissance + NEF.rayon, NEF.z + NEF.depth - 0.15)
 const POUSSIERES = 700
 
@@ -117,13 +117,20 @@ const RAYON_FRAG = /* glsl */ `
     vec2 prisme = inter(inter(tranche(p0.x, pv.x, vVitre.x, vVitre.y), tranche(p0.y, pv.y, vVitre.z, vVitre.w)), tranche(o.y, v.y, 0.0, vY));
     prisme.x = max(prisme.x, 0.0);
     if (prisme.y <= prisme.x) discard;
-    // Le pixel de la face d'entrée, ou de sortie si l'œil est dans le faisceau.
-    float face = prisme.x > 0.01 ? prisme.x : prisme.y;
-    if (abs(ici - face) > 0.05 * max(1.0, face * 0.05)) discard;
-    // Ce qui sort de la nef ne compte pas.
-    vec2 corde = inter(prisme, inter(inter(tranche(o.x, v.x, uMin.x, uMax.x), tranche(o.y, v.y, uMin.y, uMax.y)), tranche(o.z, v.z, uMin.z, uMax.z)));
+    // Ce qui sort de la nef ne compte pas : le prisme, tiré en biais, déborde
+    // des murs (dans la salle d'honneur, les galeries) quand le soleil est bas.
+    vec2 nef = inter(inter(tranche(o.x, v.x, uMin.x, uMax.x), tranche(o.y, v.y, uMin.y, uMax.y)), tranche(o.z, v.z, uMin.z, uMax.z));
+    vec2 corde = inter(prisme, nef);
     float l = corde.y - corde.x;
     if (l <= 0.0) discard;
+    // Le pixel peint est celui de la face d'entrée — ou de sortie si l'œil est
+    // dans le faisceau, ou si l'entrée est hors de la nef : derrière un mur, la
+    // face d'entrée ne serait pas masquée par lui, et le faisceau de la nef
+    // s'afficherait sur le plafond ou le mur d'une salle voisine.
+    bool entree = prisme.x > 0.01 && prisme.x >= nef.x - 0.02;
+    float face = entree ? prisme.x : prisme.y;
+    if (!entree && prisme.y > nef.y + 0.02) discard;
+    if (abs(ici - face) > 0.05 * max(1.0, face * 0.05)) discard;
     vec3 milieu = o + v * (0.5 * (corde.x + corde.y));
     // Naît sous la vitre, s'amenuise vers le sol.
     float trajet = smoothstep(vY, vY - 2.0, milieu.y) * mix(0.45, 1.0, smoothstep(0.0, 8.0, milieu.y));
