@@ -71,6 +71,8 @@ export function creerMatieresJardin(): MatieresJardin {
     normalMap: vaguelettes,
     normalScale: new THREE.Vector2(0.14, 0.14),
     envMapIntensity: 0.45,
+    // Translucide à la verticale : on voit les carpes sous la surface (`FauneLayer`).
+    transparent: true,
   })
   // Le reflet du ciel, au rasant : `scene.environment` est un studio neutre, pas
   // le ciel du parc. Un terme de Fresnel qui tire l'eau vers la couleur du ciel
@@ -84,6 +86,7 @@ export function creerMatieresJardin(): MatieresJardin {
         '#include <opaque_fragment>',
         `float fresnel = pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 5.0);
          outgoingLight = mix(outgoingLight, uCiel, fresnel * 0.6);
+         diffuseColor.a = mix(0.9, 1.0, fresnel);
          #include <opaque_fragment>`,
       )
   }

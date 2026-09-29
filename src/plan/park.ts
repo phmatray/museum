@@ -76,7 +76,7 @@ const PRES_DE_L_EAU = 12
 const ROCHERS = ['rocher-1', 'rocher-2', 'rocher-3', 'rocher-4', 'rocher-5'] as const
 
 /** FNV-1a puis mulberry32 : une graine stable, zéro dépendance. */
-function generateur(texte: string): () => number {
+export function generateur(texte: string): () => number {
   let etat = 0x811c9dc5
   for (let i = 0; i < texte.length; i++) etat = Math.imul(etat ^ texte.charCodeAt(i), 0x01000193)
   etat >>>= 0
