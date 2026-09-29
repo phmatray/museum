@@ -45,11 +45,20 @@ export function SalleHonneurLayer() {
   }, [])
 
   // Le parquet du musée, UV en mètres / 3 posées lame par lame par Blender.
-  const parquet = useMatiere('parquet', [1, 1], { teinte: '#f0c890' })
+  const parquet = useMatiere('parquet', [1, 1])
   const nuit = 1 - useGameStore((s) => s.ciel.jour)
   /* eslint-disable react-hooks/immutability -- matières du GLB, réglées en place */
   useEffect(() => {
     if (salle === null) return
+    // Un chêne naturel, pas un orange : la carte (un noyer, 0,236 / 0,122 / 0,051
+    // en linéaire) multipliée par les teintes chaudes des lames et l'ancien
+    // miel #f0c890 sortait à 17 : 6 : 1 — sous la lampe ambrée, de la brique. On
+    // vise l'albédo que la lumière cuite suppose déjà (`ALBEDO["parquet"]` de
+    // `bake-lumiere.py`, 0,32 / 0,19 / 0,10), un peu plus bas : (0,27, 0,16,
+    // 0,085) une fois divisé par la carte et la teinte moyenne des lames (sans
+    // carte, le temps qu'elle arrive : l'albédo lui-même).
+    if (parquet.map) parquet.color.setRGB(1.2, 1.5, 2.25)
+    else parquet.color.setRGB(0.28, 0.18, 0.115)
     parquet.vertexColors = true
     eclairerMatiere(parquet)
     parquet.needsUpdate = true

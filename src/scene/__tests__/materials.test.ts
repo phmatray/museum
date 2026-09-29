@@ -357,3 +357,25 @@ describe('affectation des matières', () => {
     expect(matiereDeDalle(-1)).toBe('beton')
   })
 })
+
+describe('retoucherCartes', () => {
+  it('décale les lames du parquet en lot et adoucit le terrazzo, sans changer de programme', () => {
+    const lot = (m: THREE.MeshStandardMaterial) => {
+      const shader = { ...shaderJouet(), instancing: true }
+      shader.fragmentShader = shader.fragmentShader.replace('void main() {', 'void main() {\n#include <map_fragment>')
+      m.onBeforeCompile(shader as unknown as THREE.WebGLProgramParametersWithUniforms, null as unknown as THREE.WebGLRenderer)
+      return shader
+    }
+    const parquet = lot(creerMatiere('parquet', null))
+    expect(parquet.fragmentShader).toContain('texRetouche( map, vMapUv )')
+    expect((parquet.uniforms.uDecale as { value: number }).value).toBe(1)
+    const terrazzo = lot(creerMatiere('marbre', null))
+    expect((terrazzo.uniforms.uDecale as { value: number }).value).toBe(0)
+    expect((terrazzo.uniforms.uContraste as { value: number }).value).toBeLessThan(1)
+    // Sans instanciation (le point de Hongrie), aucune tuile ne coupe une lame.
+    const hongrie = creerMatiere('parquet', null)
+    const s = { ...shaderJouet(), fragmentShader: 'void main() {\n#include <map_fragment>\n}' }
+    hongrie.onBeforeCompile(s as unknown as THREE.WebGLProgramParametersWithUniforms, null as unknown as THREE.WebGLRenderer)
+    expect(s.fragmentShader).not.toContain('texRetouche( map')
+  })
+})

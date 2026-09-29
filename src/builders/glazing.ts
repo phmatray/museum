@@ -115,12 +115,18 @@ export function creerVitrage(): THREE.MeshPhysicalMaterial {
 /**
  * Le verre du GARDE-CORPS. Même famille que la vitre, réglé différemment.
  *
- * Une fenêtre a pour métier de disparaître : on la traverse du regard, et si on
- * la remarque c'est qu'elle est sale. Un garde-corps a le métier inverse — il
- * doit se voir, sinon il n'arrête personne et le visiteur lit un vide non
- * protégé. D'où une opacité relevée de 0,16 à 0,26 et une teinte franchement
- * verte : c'est la couleur réelle du feuilleté vu par la tranche, et c'est le
- * signal que l'œil associe au verre de sécurité.
+ * Une fenêtre a pour métier de disparaître ; un garde-corps doit se voir, sinon
+ * le visiteur lit un vide non protégé. Mais un verre laiteux (opacité 0,26,
+ * reflet ×2,2) voilait de gris toute la nef vue des balcons : on regardait
+ * l'atrium à travers une vitre sale. Un vrai feuilleté est CLAIR de face et ne
+ * se remarque que de biais, là où il réfléchit — c'est ainsi que l'œil le
+ * reconnaît. D’où une opacité basse face au regard, qui monte vers 0,7 à
+ * l'incidence rasante (un Fresnel sur la normale de la face) : le panneau
+ * d'en face, vu en enfilade, reste une paroi verte bien lisible ; celui contre
+ * lequel on s'appuie s'efface. La main courante d'acier dessine l'arête.
+ *
+ * `FrontSide` et non `DoubleSide` : le panneau est une BOÎTE, et en double face
+ * ses deux grandes faces se superposaient — deux voiles pour un seul verre.
  *
  * `depthWrite` reste à faux. Le panneau est traversé du regard par tout ce que
  * l'atrium contient — l'escalier, la dalle du bas, les étages d'en face — et
@@ -128,16 +134,28 @@ export function creerVitrage(): THREE.MeshPhysicalMaterial {
  * que le passage au verre était censé rendre visible.
  */
 export function creerVitrageGardeCorps(): THREE.MeshPhysicalMaterial {
-  return new THREE.MeshPhysicalMaterial({
+  const verre = new THREE.MeshPhysicalMaterial({
     color: '#cfe3dd',
     transparent: true,
-    opacity: 0.26,
+    opacity: 0.12,
     roughness: 0.05,
     metalness: 0,
-    side: THREE.DoubleSide,
-    envMapIntensity: 2.2,
+    side: THREE.FrontSide,
+    envMapIntensity: 1.4,
     depthWrite: false,
   })
+  verre.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <opaque_fragment>',
+      `{
+         float cosV = clamp(abs(dot(normalize(normal), normalize(vViewPosition))), 0.0, 1.0);
+         diffuseColor.a = mix(diffuseColor.a, 0.7, pow(1.0 - cosV, 3.0));
+       }
+       #include <opaque_fragment>`,
+    )
+  }
+  verre.customProgramCacheKey = () => 'museum:verre-garde-corps:v1'
+  return verre
 }
 
 /** Concatène des `PlaneGeometry` : mêmes attributs, même ordre, toujours. */
