@@ -40,6 +40,8 @@ import { FacadeLayer } from './FacadeLayer'
 import { bandesDuSol, parementDuHall, peintureDesSalles } from '../plan/parement'
 import { plafonds } from '../plan/plafonds'
 import { creerGranit, creerPierre } from './pierre'
+import { LumiereLayer } from './LumiereLayer'
+import { rangsDeLumiere } from './lumiere'
 
 const AUCUNE: Box[] = []
 const SCULPTURES = sculpturePlacements(MUSEE)
@@ -74,6 +76,7 @@ export function PlanBuilding() {
       <PortesLayer />
       <MobilierLayer />
       <ConstellationLayer />
+      <LumiereLayer />
       <BavetteLayer />
       <MeteoLayer />
       {/* Le décor à part : un texte qui attend sa police ne doit pas suspendre les murs. */}
@@ -196,6 +199,7 @@ export function Boites({ boites, material }: { boites: Box[]; material: THREE.Ma
     // jamais vu, `needsUpdate` ne servant qu'à REenvoyer un buffer déjà connu.
     const tailles = new Float32Array(boites.flatMap((b) => [b.w, b.h, b.d]))
     mesh.geometry.setAttribute('aTailleBoite', new THREE.InstancedBufferAttribute(tailles, 3))
+    mesh.geometry.setAttribute('aLumiere', new THREE.InstancedBufferAttribute(rangsDeLumiere(boites), 1))
   }, [boites])
 
   // `key` : le nombre d'instances est fixé à la construction, il faut remonter

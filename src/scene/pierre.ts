@@ -65,7 +65,10 @@ export function creerPierre(): THREE.MeshStandardMaterial {
 }
 
 export function creerGranit(): THREE.MeshStandardMaterial {
-  return new THREE.MeshStandardMaterial({ color: '#6a6158', roughness: 0.4 })
+  const m = new THREE.MeshStandardMaterial({ color: '#6a6158', roughness: 0.4 })
+  // Sans carte, l'échelle ne change rien ; c'est pour la lumière cuite des bandes du sol.
+  appliquerEchelleInstance(m)
+  return m
 }
 
 /** Un canevas répétable en mètres : `motif` (largeur, hauteur) et `dessin` qui le remplit. */

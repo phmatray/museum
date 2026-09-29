@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "plan:svg": "node tools/plan-svg.ts",
-    "accrocher": "node tools/accrocher.ts"
+    "accrocher": "node tools/accrocher.ts",
+    "bake": "node tools/bake-lumiere.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
