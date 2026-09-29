@@ -1,0 +1,545 @@
+/**
+ * La faune du jardin : les carpes koï de l'étang, les oiseaux des érables, les
+ * lucioles des nuits d'été. Trois appels de dessin (quatre avec les ronds
+ * dans l'eau), aucun fichier à télécharger : tout est modelé ici, en quelques
+ * dizaines de sommets, et animé dans le shader.
+ *
+ * `plan/koi.ts` et `plan/oiseaux.ts` décident où va chaque bête ; ici on ne
+ * fait que les montrer. Rien n'entre dans le musée : l'étang est au sud-est,
+ * les perchoirs sont hors de l'emprise, les lucioles aussi.
+ */
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+
+import { CONTOUR_ETANG, TRACE_RUISSEAU, JARDIN } from '../plan/jardin'
+import { SURFACE, avancerKoi, distanceEtang, koiInitiaux, type Koi } from '../plan/koi'
+import { MUSEE } from '../plan/musee'
+import { avancerOiseaux, oiseauxInitiaux, perchoirs, type Oiseau, type Perchoir, type Point3 } from '../plan/oiseaux'
+import { generateur, parkPlacements } from '../plan/park'
+import { hauteurDuParc } from '../plan/relief'
+import { useGameStore } from '../stores/gameStore'
+import { parkAssetsResource } from './parkAssets'
+
+const PARC = parkPlacements(MUSEE)
+const VARIETE = { kohaku: 0, ogon: 1, showa: 2 } as const
+
+/**
+ * En développement : de quoi figer la faune pour une photo — `figer(true)`
+ * arrête le temps des bêtes, `envoler()` fait décoller tous les oiseaux.
+ */
+const dev = { gel: false, envol: false, oiseaux: [] as Oiseau[], perchoirs: [] as Perchoir[], carpes: [] as Koi[] }
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  ;(window as unknown as { __FAUNE__?: unknown }).__FAUNE__ = {
+    figer: (gel: boolean) => { dev.gel = gel },
+    envoler: () => { dev.envol = true },
+    oiseaux: () => dev.oiseaux,
+    perchoirs: () => dev.perchoirs,
+    carpes: () => dev.carpes,
+  }
+}
+
+export function FauneLayer() {
+  return (
+    <group name="faune">
+      <Carpes />
+      <Oiseaux />
+      <Lucioles />
+    </group>
+  )
+}
+
+// ── Les carpes ────────────────────────────────────────────────────────────
+
+/**
+ * Une carpe d'un mètre de long, le nez vers +x : un corps fuselé en anneaux
+ * elliptiques, une caudale en éventail, deux pectorales et une dorsale.
+ * `aNageoire` vaut 1 sur les nageoires, qui prennent un voile plus clair.
+ */
+function corpsDeCarpe(): THREE.BufferGeometry {
+  const profil: [number, number][] = [[-0.5, 0.012], [-0.4, 0.03], [-0.25, 0.058], [-0.05, 0.1], [0.12, 0.118], [0.28, 0.108], [0.4, 0.078], [0.47, 0.045], [0.5, 0.012]]
+  const n = 10
+  const pos: number[] = []
+  const index: number[] = []
+  profil.forEach(([x, r]) => {
+    for (let j = 0; j < n; j++) {
+      const a = (2 * Math.PI * j) / n
+      // Plus large que haut, le dos rond, le ventre plus plat.
+      pos.push(x, Math.sin(a) * r * (Math.sin(a) > 0 ? 0.8 : 0.55), Math.cos(a) * r * 1.2)
+    }
+  })
+  for (let i = 0; i + 1 < profil.length; i++)
+    for (let j = 0; j < n; j++) {
+      const [a, b, c, d] = [i * n + j, i * n + ((j + 1) % n), (i + 1) * n + j, (i + 1) * n + ((j + 1) % n)]
+      index.push(a, c, b, b, c, d)
+    }
+  const corps = new THREE.BufferGeometry()
+  corps.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  corps.setIndex(index)
+  const nageoires = new THREE.BufferGeometry()
+  const f: number[] = [
+    // La caudale : deux lobes en éventail, verticaux.
+    -0.48, 0, 0, -0.72, 0.13, 0, -0.64, 0, 0,
+    -0.48, 0, 0, -0.64, 0, 0, -0.72, -0.13, 0,
+    // Les pectorales, presque à plat, un peu tombantes.
+    0.2, -0.04, 0.09, 0.08, -0.07, 0.24, 0.02, -0.06, 0.1,
+    0.2, -0.04, -0.09, 0.02, -0.06, -0.1, 0.08, -0.07, -0.24,
+    // La dorsale.
+    0.2, 0.09, 0, -0.18, 0.06, 0, 0.1, 0.16, 0,
+  ]
+  nageoires.setAttribute('position', new THREE.Float32BufferAttribute(f, 3))
+  // Les normales du corps lissées avant de le déplier : une carpe, pas une facette.
+  corps.computeVertexNormals()
+  nageoires.computeVertexNormals()
+  const g = mergeGeometries([corps.toNonIndexed(), nageoires])!
+  const drapeau = new Float32Array(g.getAttribute('position').count)
+  drapeau.fill(1, corps.getIndex()!.count)
+  g.setAttribute('aNageoire', new THREE.BufferAttribute(drapeau, 1))
+  corps.dispose()
+  nageoires.dispose()
+  return g
+}
+
+/**
+ * La nage dans le vertex shader (la queue bat, d'autant plus qu'on s'en
+ * approche), la robe dans le fragment : kohaku blanc taché de rouge, ogon
+ * d'or, showa noir, rouge et blanc. Plus la carpe est profonde, plus l'eau la
+ * voile de vert ; une pointe d'émission la garde lisible sous l'eau sombre.
+ */
+function matiereCarpe(jour: { value: number }): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({ roughness: 0.45, metalness: 0.05, side: THREE.DoubleSide })
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.uJour = jour
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>
+        attribute vec4 aKoi;
+        attribute float aNageoire;
+        varying vec3 vLocal;
+        varying vec4 vKoi;
+        varying float vNageoire;`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        vLocal = position; vKoi = aKoi; vNageoire = aNageoire;
+        float queue = smoothstep(0.35, -0.75, position.x);
+        transformed.z += 0.09 * queue * queue * sin(position.x * 7.0 + aKoi.z)
+          + 0.012 * sin(aKoi.z * 0.5 + position.x * 3.0);
+        // Les pectorales godillent.
+        transformed.y += aNageoire * step(0.0, position.x) * abs(position.z) * 0.25 * sin(aKoi.z * 0.7 + position.z);`)
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+        uniform float uJour;
+        varying vec3 vLocal;
+        varying vec4 vKoi;
+        varying float vNageoire;
+        float taches(vec3 p, float g) {
+          return sin(p.x * 11.0 + g * 31.0) * 0.6 + sin(p.z * 14.0 - p.x * 6.0 + g * 57.0) * 0.45 + sin(p.x * 29.0 + p.z * 9.0 + g * 11.0) * 0.2;
+        }`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        vec3 blanc = vec3(0.93, 0.92, 0.88);
+        vec3 rouge = vec3(0.82, 0.14, 0.05);
+        vec3 noir = vec3(0.03, 0.03, 0.035);
+        vec3 or = vec3(1.0, 0.56, 0.12);
+        float g = vKoi.y;
+        float dos = smoothstep(-0.02, 0.03, vLocal.y);
+        vec3 robe;
+        if (vKoi.x < 0.5) robe = mix(blanc, rouge, dos * smoothstep(-0.12, -0.05, taches(vLocal, g)) * step(-0.44, vLocal.x));
+        else if (vKoi.x < 1.5) robe = or * (0.85 + 0.25 * dos);
+        else {
+          robe = mix(noir, rouge, step(0.25, taches(vLocal, g)) * dos);
+          robe = mix(robe, blanc, step(0.55, taches(vLocal.zyx * 1.3, g + 0.3)) * (1.0 - dos * 0.5));
+        }
+        // Le ventre pâlit, les nageoires sont un voile.
+        robe = mix(robe, blanc * 0.95, (1.0 - dos) * 0.35);
+        robe = mix(robe, mix(robe, vec3(0.95, 0.8, 0.7), 0.45), vNageoire);
+        // L'eau voile ce qui est profond.
+        robe = mix(robe, vec3(0.05, 0.12, 0.08), 0.12 + smoothstep(0.03, 0.65, vKoi.w) * 0.55);
+        diffuseColor.rgb = robe;`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        totalEmissiveRadiance += diffuseColor.rgb * 0.18 * uJour;`)
+  }
+  m.customProgramCacheKey = () => 'faune:carpe'
+  return m
+}
+
+/**
+ * Un rond dans l'eau : un anneau qui s'élargit et s'efface, trois à la fois.
+ * `aRide` : (graine, force).
+ */
+function matiereRides(temps: { value: number }): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    uniforms: { uTemps: temps },
+    transparent: true,
+    depthWrite: false,
+    vertexShader: `
+      attribute vec2 aRide;
+      varying vec2 vUv;
+      varying vec2 vRide;
+      void main() {
+        vUv = uv * 2.0 - 1.0;
+        vRide = aRide;
+        gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      uniform float uTemps;
+      varying vec2 vUv;
+      varying vec2 vRide;
+      void main() {
+        float r = length(vUv);
+        float a = 0.0;
+        for (int i = 0; i < 3; i++) {
+          float f = fract(uTemps * 0.45 + vRide.x + float(i) / 3.0);
+          a += smoothstep(0.045, 0.0, abs(r - f * 0.95)) * (1.0 - f) * (1.0 - f);
+        }
+        if (a * vRide.y < 0.01) discard;
+        gl_FragColor = vec4(vec3(0.8, 0.86, 0.86), a * vRide.y * 0.35);
+      }`,
+  })
+}
+
+const M = new THREE.Matrix4()
+const Q = new THREE.Quaternion()
+const E = new THREE.Euler()
+const P = new THREE.Vector3()
+const S = new THREE.Vector3()
+const HAUT = new THREE.Vector3(0, 1, 0)
+
+function Carpes() {
+  const banc = useRef<Koi[]>(koiInitiaux())
+  const n = banc.current.length
+  const corps = useRef<THREE.InstancedMesh>(null)
+  const rides = useRef<THREE.InstancedMesh>(null)
+  const phases = useRef(new Float32Array(n))
+  const { geometrie, attrKoi, plan, attrRide, jour, temps, matiere, eau } = useMemo(() => {
+    const geometrie = corpsDeCarpe()
+    const attrKoi = new THREE.InstancedBufferAttribute(new Float32Array(n * 4), 4)
+    geometrie.setAttribute('aKoi', attrKoi)
+    const plan = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2)
+    const attrRide = new THREE.InstancedBufferAttribute(new Float32Array(n * 2), 2)
+    plan.setAttribute('aRide', attrRide)
+    const jour = { value: 1 }
+    const temps = { value: 0 }
+    return { geometrie, attrKoi, plan, attrRide, jour, temps, matiere: matiereCarpe(jour), eau: matiereRides(temps) }
+  }, [n])
+  useEffect(() => () => {
+    for (const o of [geometrie, plan, matiere, eau]) o.dispose()
+  }, [geometrie, plan, matiere, eau])
+
+  /* eslint-disable react-hooks/immutability */
+  useFrame(({ camera }, delta) => {
+    const [c, r] = [corps.current, rides.current]
+    if (!c || !r) return
+    const dt = dev.gel ? 0 : Math.min(delta, 0.1)
+    // Le visiteur, c'est la caméra : dehors et à hauteur d'homme.
+    const visiteur = camera.position.y < 3 ? { x: camera.position.x, z: camera.position.z } : null
+    // Loin de l'étang, le banc nage quand même, mais on ne le suit pas à chaque image.
+    const loin = Math.hypot(camera.position.x - 46, camera.position.z - 65) > 60
+    if (!dev.gel && (!loin || Math.random() < 0.1)) banc.current = avancerKoi(banc.current, loin ? 0.1 : dt, visiteur)
+    dev.carpes = banc.current
+    jour.value = useGameStore.getState().ciel.jour
+    temps.value += dt
+    banc.current.forEach((k, i) => {
+      phases.current[i] += dt * (4 + k.vitesse * 22)
+      attrKoi.setXYZW(i, VARIETE[k.variete], k.graine, phases.current[i], k.prof)
+      E.set(0, -k.cap, k.tangage, 'YXZ')
+      c.setMatrixAt(i, M.compose(P.set(k.x, SURFACE - k.prof - 0.1 * k.taille, k.z), Q.setFromEuler(E), S.setScalar(k.taille)))
+      // Le rond, au bout du nez, quand la bouche crève la surface.
+      const nez = k.taille * 0.45
+      const force = THREE.MathUtils.clamp((0.05 - k.prof) / 0.025, 0, 1)
+      attrRide.setXY(i, k.graine, force)
+      r.setMatrixAt(i, M.compose(P.set(k.x + Math.cos(k.cap) * nez, SURFACE + 0.01, k.z + Math.sin(k.cap) * nez), Q.setFromAxisAngle(HAUT, 0), S.setScalar(0.55)))
+    })
+    attrKoi.needsUpdate = true
+    attrRide.needsUpdate = true
+    c.instanceMatrix.needsUpdate = true
+    r.instanceMatrix.needsUpdate = true
+  })
+  /* eslint-enable react-hooks/immutability */
+
+  return (
+    <>
+      <instancedMesh ref={corps} args={[geometrie, undefined, n]} material={matiere} frustumCulled={false} />
+      <instancedMesh ref={rides} args={[plan, undefined, n]} material={eau} frustumCulled={false} renderOrder={2} />
+    </>
+  )
+}
+
+// ── Les oiseaux ───────────────────────────────────────────────────────────
+
+/**
+ * Un passereau de 15 cm, le bec vers −z : corps, tête, bec, queue et deux ailes.
+ * Deux robes par sommet — `color` le moineau, `color2` la mésange bleue — et
+ * `aAile` (−1 gauche, +1 droite) pour que le shader batte des ailes.
+ */
+function corpsDOiseau(): THREE.BufferGeometry {
+  type Partie = 'dos' | 'tete' | 'bec' | 'queue' | 'aile'
+  const robes: Record<Partie, [THREE.ColorRepresentation, THREE.ColorRepresentation, THREE.ColorRepresentation, THREE.ColorRepresentation]> = {
+    // [moineau dessus, moineau dessous, mésange dessus, mésange dessous]
+    dos: ['#6b4a2c', '#b8ad98', '#6f8a3a', '#f0cf3a'],
+    tete: ['#7a7470', '#d8d2c6', '#3b6fc4', '#f4f1ea'],
+    bec: ['#2a2622', '#2a2622', '#1e1e22', '#1e1e22'],
+    queue: ['#4a3422', '#4a3422', '#3d5f9a', '#3d5f9a'],
+    aile: ['#7a5230', '#5a3c22', '#4a72b8', '#3a5a90'],
+  }
+  const parties: [Partie, THREE.BufferGeometry, number][] = [
+    ['dos', new THREE.SphereGeometry(1, 8, 6).scale(0.034, 0.032, 0.056).translate(0, 0.05, 0.005), 0],
+    ['tete', new THREE.SphereGeometry(1, 8, 6).scale(0.026, 0.026, 0.028).translate(0, 0.082, -0.045), 0],
+    ['bec', new THREE.ConeGeometry(0.008, 0.02, 5).rotateX(-Math.PI / 2).translate(0, 0.078, -0.078), 0],
+    ['queue', new THREE.BoxGeometry(0.028, 0.004, 0.06).rotateX(-0.25).translate(0, 0.058, 0.075), 0],
+    ['aile', ala(-1), -1],
+    ['aile', ala(1), 1],
+  ]
+  function ala(cote: number) {
+    const g = new THREE.BufferGeometry()
+    const p = [[0.02, 0.066, -0.025], [0.02, 0.066, 0.035], [0.1, 0.07, 0.03], [0.085, 0.07, -0.01]].map(([x, y, z]) => [x * cote, y, z])
+    g.setAttribute('position', new THREE.Float32BufferAttribute([...p[0], ...p[1], ...p[2], ...p[0], ...p[2], ...p[3]], 3))
+    return g
+  }
+  const c = new THREE.Color()
+  const morceaux = parties.map(([partie, g0, aile]) => {
+    const g = g0.index ? g0.toNonIndexed() : g0
+    g.deleteAttribute('uv')
+    g.deleteAttribute('normal')
+    const p = g.getAttribute('position')
+    const [c1, c2, a] = [new Float32Array(p.count * 3), new Float32Array(p.count * 3), new Float32Array(p.count)]
+    const [mDessus, mDessous, tDessus, tDessous] = robes[partie]
+    for (let i = 0; i < p.count; i++) {
+      const dessous = p.getY(i) < (partie === 'tete' ? 0.078 : 0.047) && partie !== 'aile'
+      c.set(dessous ? mDessous : mDessus).toArray(c1, 3 * i)
+      c.set(dessous ? tDessous : tDessus).toArray(c2, 3 * i)
+      a[i] = aile
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(c1, 3))
+    g.setAttribute('color2', new THREE.BufferAttribute(c2, 3))
+    g.setAttribute('aAile', new THREE.BufferAttribute(a, 1))
+    return g
+  })
+  const g = mergeGeometries(morceaux)!
+  g.computeVertexNormals()
+  for (const m of morceaux) m.dispose()
+  return g
+}
+
+/**
+ * Les ailes battent autour de l'axe du corps, à l'épaule ; repliées, elles
+ * rétrécissent et se couchent sur le flanc. `aVol` : (phase, en vol, espèce, —).
+ */
+function matiereOiseau(): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.85, side: THREE.DoubleSide })
+  m.onBeforeCompile = (shader) => {
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>
+        attribute vec3 color2;
+        attribute float aAile;
+        attribute vec4 aVol;`)
+      .replace('#include <color_vertex>', `#include <color_vertex>
+        vColor.rgb = mix(color, color2, aVol.z);`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        if (aAile != 0.0) {
+          float battement = mix(-1.1, 0.9 * sin(aVol.x), aVol.y);
+          vec2 d = vec2(transformed.x - aAile * 0.02, transformed.y - 0.066);
+          d.x *= mix(0.35, 1.0, aVol.y);
+          float a = battement * aAile;
+          transformed.xy = vec2(aAile * 0.02, 0.066) + vec2(d.x * cos(a) - d.y * sin(a), d.x * sin(a) + d.y * cos(a));
+        }`)
+  }
+  m.customProgramCacheKey = () => 'faune:oiseau'
+  return m
+}
+
+/**
+ * Le BORD du houppier, dans son repère : où un oiseau posé se voit. Dessus,
+ * le feuillage le cache à qui regarde d'en bas ; dedans, partout. Sur chaque
+ * rayon partant du tronc, des rayons tombés du ciel tous les 25 cm cherchent
+ * le dernier qui touche une carte de feuillage : l'oiseau s'y pose, sur la
+ * feuille, en silhouette sur le ciel ou sur l'arbre d'en face.
+ */
+function bordsDuHouppier(g: THREE.BufferGeometry, azimuts = 48): Point3[] {
+  const maillage = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }))
+  const rayon = new THREE.Raycaster()
+  const [haut, bas] = [new THREE.Vector3(), new THREE.Vector3(0, -1, 0)]
+  g.computeBoundingBox()
+  const { max } = g.boundingBox!
+  const out: Point3[] = []
+  for (let a = 0; a < azimuts; a++) {
+    const [c, s] = [Math.cos((2 * Math.PI * a) / azimuts), Math.sin((2 * Math.PI * a) / azimuts)]
+    let bord: Point3 | null = null
+    for (let r = 1; r < 6; r += 0.25) {
+      rayon.set(haut.set(c * r, max.y + 1, s * r), bas)
+      const touche = rayon.intersectObject(maillage)[0]
+      if (touche && touche.point.y > 1.2) bord = [c * r, touche.point.y, s * r]
+    }
+    if (bord) out.push(bord)
+  }
+  ;(maillage.material as THREE.Material).dispose()
+  return out
+}
+
+/** Les perchoirs, une fois les érables chargés : on se pose sur leurs vraies branches. */
+function Oiseaux() {
+  const [ps, setPs] = useState<Perchoir[] | null>(null)
+  useEffect(() => {
+    let vivant = true
+    void parkAssetsResource().then(({ especes }) => {
+      const branches: Record<string, Point3[]> = {}
+      for (const [espece, lots] of especes) {
+        const feuillage = lots.find((l) => l.material.name.startsWith('Jardin_Feuillage'))
+        if (espece.startsWith('erable') && feuillage) branches[espece] = bordsDuHouppier(feuillage.geometry)
+      }
+      if (vivant) setPs(perchoirs(PARC, branches))
+    })
+    return () => { vivant = false }
+  }, [])
+  return ps && <Volee ps={ps} />
+}
+
+function Volee({ ps: PERCHOIRS }: { ps: Perchoir[] }) {
+  const volee = useRef<Oiseau[]>(oiseauxInitiaux(PERCHOIRS, 16))
+  const n = volee.current.length
+  const ref = useRef<THREE.InstancedMesh>(null)
+  const phases = useRef(new Float32Array(n).map((_, i) => i * 2.3))
+  const { geometrie, attr, matiere } = useMemo(() => {
+    const geometrie = corpsDOiseau()
+    const attr = new THREE.InstancedBufferAttribute(new Float32Array(n * 4), 4)
+    geometrie.setAttribute('aVol', attr)
+    return { geometrie, attr, matiere: matiereOiseau() }
+  }, [n])
+  useEffect(() => () => {
+    geometrie.dispose()
+    matiere.dispose()
+  }, [geometrie, matiere])
+
+  /* eslint-disable react-hooks/immutability */
+  useFrame(({ camera }, delta) => {
+    const mesh = ref.current
+    if (!mesh) return
+    // La nuit, ils dorment au creux des arbres : on ne les voit plus.
+    mesh.visible = useGameStore.getState().ciel.jour > 0.15
+    if (!mesh.visible) return
+    const dt = dev.gel ? 0 : Math.min(delta, 0.1)
+    const visiteur = camera.position.y < 3 ? { x: camera.position.x, z: camera.position.z } : null
+    if (dev.envol) {
+      dev.envol = false
+      // Un visiteur fictif sous chaque oiseau : tous décollent.
+      volee.current = volee.current.map((o) => avancerOiseaux([o], PERCHOIRS, 0, { x: o.x, z: o.z }, Math.random)[0])
+    }
+    if (!dev.gel) volee.current = avancerOiseaux(volee.current, PERCHOIRS, dt, visiteur, Math.random)
+    dev.oiseaux = volee.current
+    dev.perchoirs = PERCHOIRS
+    volee.current.forEach((o, i) => {
+      const vol = o.etat === 'vol'
+      phases.current[i] += dt * (vol ? 55 : 0)
+      attr.setXYZW(i, phases.current[i], vol ? 1 : 0, o.espece === 'mesange' ? 1 : 0, 0)
+      // Un saut : une parabole de 6 cm ; un coup de bec : le corps qui plonge.
+      const bond = 0.06 * Math.sin(Math.PI * o.saut)
+      const bec = 0.7 * Math.sin(Math.PI * o.picore)
+      E.set(vol ? 0.15 : -bec, o.cap, 0, 'YXZ')
+      mesh.setMatrixAt(i, M.compose(P.set(o.x, o.y + bond, o.z), Q.setFromEuler(E), S.setScalar(1.15)))
+    })
+    attr.needsUpdate = true
+    mesh.instanceMatrix.needsUpdate = true
+  })
+  /* eslint-enable react-hooks/immutability */
+
+  return <instancedMesh ref={ref} args={[geometrie, undefined, n]} material={matiere} frustumCulled={false} />
+}
+
+// ── Les lucioles ──────────────────────────────────────────────────────────
+
+const NB_LUCIOLES = 300
+
+/** Où elles dansent : sur les berges de l'étang, le long du ruisseau, sous les érables. */
+function nuageDeLucioles(): THREE.BufferGeometry {
+  const alea = generateur('lucioles')
+  const erables = PARC.plantations.filter((p) => p.espece.startsWith('erable') && Math.hypot(p.x - 46, p.z - 50) < 45)
+  const pos: number[] = []
+  const graines: number[] = []
+  while (pos.length < NB_LUCIOLES * 3) {
+    const u = alea()
+    let x: number
+    let z: number
+    if (u < 0.5) {
+      const [a, b] = [CONTOUR_ETANG[Math.floor(alea() * CONTOUR_ETANG.length)], alea() * 3.5 - 1.2]
+      const [cx, cz] = [46, 65]
+      const l = Math.hypot(a[0] - cx, a[1] - cz)
+      ;[x, z] = [a[0] + ((a[0] - cx) / l) * b, a[1] + ((a[1] - cz) / l) * b]
+    } else if (u < 0.72) {
+      const t = TRACE_RUISSEAU[Math.floor(alea() * TRACE_RUISSEAU.length)]
+      ;[x, z] = [t[0] + (alea() - 0.5) * 5, t[1] + (alea() - 0.5) * 5]
+    } else {
+      const e = erables[Math.floor(alea() * erables.length)]
+      const [th, r] = [alea() * 2 * Math.PI, Math.sqrt(alea()) * e.rayon]
+      ;[x, z] = [e.x + Math.cos(th) * r, e.z + Math.sin(th) * r]
+    }
+    // Jamais dans le musée.
+    if (x > -1 && x < 49 && z > -1 && z < 41) continue
+    const sol = distanceEtang(x, z) < 0 ? JARDIN.etang.niveau : hauteurDuParc(x, z)
+    pos.push(x, sol + 0.25 + alea() * 1.5, z)
+    graines.push(alea(), alea(), alea(), alea())
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('aGraine', new THREE.Float32BufferAttribute(graines, 4))
+  return g
+}
+
+/**
+ * Des points additifs, un seul appel de dessin : chaque luciole erre sur une
+ * somme de sinus (un brownien de poche) et s'allume à son rythme — un éclat
+ * d'une demi-seconde, puis le noir. Au-dessus de 1, la lueur passe le seuil
+ * du bloom : un halo, sans éclairer quoi que ce soit.
+ */
+function Lucioles() {
+  const geometrie = useMemo(() => nuageDeLucioles(), [])
+  const uniforms = useMemo(() => ({ uTemps: { value: 0 }, uNuit: { value: 0 }, uEchelle: { value: 400 } }), [])
+  const matiere = useMemo(() => new THREE.ShaderMaterial({
+    uniforms,
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    vertexShader: `
+      uniform float uTemps;
+      uniform float uNuit;
+      uniform float uEchelle;
+      attribute vec4 aGraine;
+      varying float vEclat;
+      void main() {
+        vec4 g = aGraine * 6.2831;
+        float t = uTemps;
+        vec3 p = position + vec3(
+          sin(t * 0.31 + g.x) * 0.9 + sin(t * 0.83 + g.y) * 0.35,
+          sin(t * 0.47 + g.z) * 0.35 + sin(t * 1.1 + g.w) * 0.12,
+          sin(t * 0.37 + g.y) * 0.9 + sin(t * 0.71 + g.z) * 0.35);
+        // Un éclat par cycle de 2 à 5 s, décalé pour chacune.
+        float cycle = 2.0 + aGraine.w * 3.0;
+        float f = fract(t / cycle + aGraine.x);
+        vEclat = uNuit * (smoothstep(0.0, 0.12, f) * smoothstep(0.6, 0.25, f) + 0.1);
+        vec4 mv = modelViewMatrix * vec4(p, 1.0);
+        gl_PointSize = clamp(uEchelle * 0.16 / -mv.z * (0.5 + vEclat), 2.0, 30.0);
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      varying float vEclat;
+      void main() {
+        float r = length(gl_PointCoord - 0.5) * 2.0;
+        float a = (exp(-r * r * 14.0) + 0.35 * exp(-r * r * 3.0)) * vEclat;
+        if (a < 0.003) discard;
+        gl_FragColor = vec4(vec3(1.6, 1.25, 0.45) * a, a);
+      }`,
+  }), [uniforms])
+  useEffect(() => () => {
+    geometrie.dispose()
+    matiere.dispose()
+  }, [geometrie, matiere])
+  const points = useRef<THREE.Points>(null)
+  /* eslint-disable react-hooks/immutability */
+  useFrame(({ gl, size }, delta) => {
+    const jour = useGameStore.getState().ciel.jour
+    // Elles naissent au crépuscule, pleinement là quand la nuit est faite.
+    uniforms.uNuit.value = 1 - THREE.MathUtils.smoothstep(jour, 0.05, 0.3)
+    uniforms.uTemps.value += dev.gel ? 0 : delta
+    uniforms.uEchelle.value = size.height * gl.getPixelRatio()
+    if (points.current) points.current.visible = uniforms.uNuit.value > 0.001
+  })
+  /* eslint-enable react-hooks/immutability */
+  return <points ref={points} geometry={geometrie} material={matiere} frustumCulled={false} />
+}
