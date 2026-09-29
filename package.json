@@ -20,6 +20,8 @@
     "bake": "node tools/bake-lumiere.ts"
   },
   "dependencies": {
+    "@fontsource/marcellus": "^5.3.0",
+    "@fontsource/source-sans-3": "^5.3.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "@react-three/postprocessing": "^3.1.2",
