@@ -31,6 +31,7 @@ const Controls = {
   left: 'left',
   right: 'right',
   hate: 'hate',
+  saut: 'saut',
 } as const
 
 // Codes PHYSIQUES (KeyW…) : ZQSD sur un clavier AZERTY, sans rien configurer.
@@ -48,6 +49,7 @@ const keyMap = [
     va.
   */
   { name: Controls.hate, keys: ['ShiftLeft', 'ShiftRight'] },
+  { name: Controls.saut, keys: ['Space'] },
 ]
 
 const FORCEE = qualiteDemandee(location.search)

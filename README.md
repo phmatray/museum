@@ -64,6 +64,7 @@ A 3D museum you walk through in your browser, inspired by the Musée d'Orsay, wh
 | Move | `W` `A` `S` `D` or the arrow keys | Drag on the left half of the screen (joystick) |
 | Look around | Mouse | Drag on the right half of the screen |
 | Run | Hold `Shift` | — |
+| Jump | `Space` | — |
 | Visit a project's site / open it on GitHub | `Enter` (or `V`) / `E` while looking at a painting | — |
 | Scroll a kiosk's README | `Page Up` / `Page Down` | — |
 | Sound on / off | `M` or the speaker button | The speaker button |
