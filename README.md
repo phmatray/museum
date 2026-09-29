@@ -165,4 +165,4 @@ Then run `fetch`, `media` and `accrocher` again. The building stays the same.
 
 ## License
 
-No open-source licence has been chosen yet: the code is © Philippe Matray, all rights reserved. The third-party assets above keep their own licences.
+The code is released under the [MIT License](LICENSE) © 2026 Philippe Matray. The third-party assets listed above keep their own licences.
