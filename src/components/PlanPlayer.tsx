@@ -40,7 +40,7 @@ const DEPART: Walker = (() => {
 })()
 
 export function PlanPlayer() {
-  const { camera } = useThree()
+  const { camera, gl, scene } = useThree()
   const [, getKeys] = useKeyboardControls()
   const paused = useGameStore((s) => s.paused)
   const tourActive = useGameStore((s) => s.tourActive)
@@ -98,9 +98,9 @@ export function PlanPlayer() {
   useEffect(() => {
     if (!import.meta.env.DEV) return
     const w = window as unknown as { __PLAN__?: unknown }
-    w.__PLAN__ = { camera, walker: () => walker.current, reprendre: () => useGameStore.setState({ paused: false }) }
+    w.__PLAN__ = { camera, gl, scene, walker: () => walker.current, reprendre: () => useGameStore.setState({ paused: false }) }
     return () => { delete w.__PLAN__ }
-  }, [camera])
+  }, [camera, gl, scene])
 
   /* eslint-disable react-hooks/immutability -- la caméra, réglée en place à chaque image */
   useFrame((_, delta) => {

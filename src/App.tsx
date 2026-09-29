@@ -1,10 +1,5 @@
-import { Canvas } from '@react-three/fiber'
-import { KeyboardControls } from '@react-three/drei'
-import { Suspense } from 'react'
-import { PointerLockCamera, PointerLockOverlay, TourExitButton } from './components/PointerLockOverlay'
-import { PlanBuilding } from './scene/PlanBuilding'
-import { PlanPlayer } from './components/PlanPlayer'
-import { PostProcessing } from './scene/PostProcessing'
+import { useEffect, useState, type ComponentType } from 'react'
+import { PointerLockOverlay, TourExitButton } from './components/PointerLockOverlay'
 import { MobileControlsOverlay } from './components/MobileControls'
 import { useIsMobile } from './hooks/useIsMobile'
 import { Minimap } from './components/Minimap'
@@ -14,40 +9,30 @@ import { CarteBavette } from './components/CarteBavette'
 import { GuidedTour } from './components/GuidedTour'
 import { BoutonSon } from './components/BoutonSon'
 
-// Objet constant plutôt qu'`enum` : `erasableSyntaxOnly` interdit les enums,
-// qui émettent du code au lieu de disparaître au strip des types.
-const Controls = {
-  forward: 'forward',
-  backward: 'backward',
-  left: 'left',
-  right: 'right',
-  hate: 'hate',
-} as const
-
-// Codes PHYSIQUES (KeyW…) : ZQSD sur un clavier AZERTY, sans rien configurer.
-const keyMap = [
-  { name: Controls.forward, keys: ['ArrowUp', 'KeyW'] },
-  { name: Controls.backward, keys: ['ArrowDown', 'KeyS'] },
-  { name: Controls.left, keys: ['ArrowLeft', 'KeyA'] },
-  { name: Controls.right, keys: ['ArrowRight', 'KeyD'] },
-  /*
-    La HÂTE, et pourquoi elle existe à côté de la marche normale.
-
-    La marche est réglée à 3,5 m/s (`VITESSE_MARCHE`) — un pas soutenu, qui
-    laisse le temps de regarder. Mais traverser un plateau déjà vu deviendrait
-    long à cette allure : Maj rend les 6 m/s (`VITESSE_HATE`) à qui sait où il
-    va.
-  */
-  { name: Controls.hate, keys: ['ShiftLeft', 'ShiftRight'] },
-]
+// La 3D (three, R3F, la scène) est un morceau à part : l'accueil s'affiche sans
+// l'attendre. Ses fichiers se téléchargent dès le HTML (`modulepreload`, voir
+// vite.config.ts) ; on ne les ÉVALUE qu'une fois l'accueil peint. Montée par un
+// effet plutôt que par `lazy` + `Suspense` : React retarde de 300 ms la
+// révélation d'un `Suspense` qui a montré son repli, la première image aussi.
+function Musee3DPlusTard() {
+  const [Musee3D, setMusee3D] = useState<ComponentType | null>(null)
+  useEffect(() => {
+    let vivant = true
+    const image = requestAnimationFrame(() => {
+      void import('./Musee3D').then((m) => vivant && setMusee3D(() => m.default))
+    })
+    return () => {
+      vivant = false
+      cancelAnimationFrame(image)
+    }
+  }, [])
+  return Musee3D === null ? null : <Musee3D />
+}
 
 /**
  * Le musée publié est le bâtiment du plan (#17), sans Rapier : `plan/walk.ts`
- * fait les collisions, et le visiteur apparaît au sud du hall.
- *
- * `preserveDrawingBuffer` en développement seulement : sans lui, relire le
- * canvas depuis un navigateur piloté rend une image noire ; en production personne ne
- * le relit, et le tampon peut être recyclé.
+ * fait les collisions, et le visiteur apparaît au sud du hall. Le `Canvas` et
+ * les commandes vivent dans `Musee3D`.
  */
 export default function App() {
   const isMobile = useIsMobile()
@@ -62,16 +47,7 @@ export default function App() {
       <BorneOeuvre />
       <CarteBavette />
       <BoutonSon />
-      <KeyboardControls map={keyMap}>
-        <Canvas shadows="percentage" camera={{ fov: 75, near: 0.1, far: 1000 }} gl={{ preserveDrawingBuffer: import.meta.env.DEV }}>
-          <Suspense fallback={null}>
-            <PointerLockCamera />
-            <PlanBuilding />
-            <PlanPlayer />
-            <PostProcessing />
-          </Suspense>
-        </Canvas>
-      </KeyboardControls>
+      <Musee3DPlusTard />
     </>
   )
 }

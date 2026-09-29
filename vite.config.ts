@@ -80,12 +80,68 @@ function upstreamDeprecationFixesRolldown() {
   }
 }
 
+/**
+ * Précharge la 3D dès le HTML. `Musee3D` est un import dynamique : sans ces
+ * liens, le navigateur ne le découvre qu'une fois l'accueil évalué, et la
+ * première image du musée attendait un aller-retour de plus qu'avec un seul
+ * gros fichier. Téléchargés en parallèle de l'accueil, évalués seulement après.
+ */
+function prechargerLa3D() {
+  return {
+    name: 'precharger-la-3d',
+    apply: 'build' as const,
+    transformIndexHtml(html: string, ctx: { bundle?: Record<string, { type: string; name?: string; imports?: string[] }> }) {
+      const bundle = ctx.bundle
+      if (!bundle) return html
+      const entree = Object.keys(bundle).find((f) => bundle[f].type === 'chunk' && bundle[f].name === 'Musee3D')
+      if (!entree) return html
+      const vus = new Set<string>()
+      const visiter = (f: string) => {
+        if (vus.has(f) || !bundle[f]) return
+        vus.add(f)
+        for (const i of bundle[f].imports ?? []) visiter(i)
+      }
+      visiter(entree)
+      return {
+        html,
+        tags: [...vus].filter((f) => !html.includes(f)).map((f) => ({ tag: 'link', attrs: { rel: 'modulepreload', crossorigin: true, href: `${process.env.BASE_PATH ?? '/'}${f}` }, injectTo: 'head' as const })),
+      }
+    },
+  }
+}
+
 export default defineConfig({
   // Sur GitHub Pages le site vit sous /<nom-du-depot>/, pas à la racine du
   // domaine. La CI passe BASE_PATH ; en local on reste à la racine.
   base: process.env.BASE_PATH ?? '/',
-  plugins: [react()],
+  plugins: [react(), prechargerLa3D()],
+  build: {
+    rolldownOptions: {
+      output: {
+        // Des morceaux par bibliothèque, qui changent rarement : le cache du
+        // navigateur les garde d'une publication à l'autre, seul `app` bouge.
+        // L'accueil ne charge que React ; la 3D arrive ensuite (`Musee3D`).
+        codeSplitting: {
+          includeDependenciesRecursively: false,
+          groups: [
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store|zod)[\\/]/, priority: 40 },
+            { name: 'postprocessing', test: /node_modules[\\/](postprocessing|@react-three[\\/]postprocessing|n8ao)[\\/]/, priority: 30 },
+            // Les chargeurs (glTF, Draco, KTX2) à part du cœur de three.
+            { name: 'three-addons', test: /node_modules[\\/]three[\\/]examples[\\/]/, priority: 25 },
+            { name: 'three', test: /node_modules[\\/]three[\\/]/, priority: 20 },
+            { name: 'r3f', test: /node_modules[\\/]/, priority: 10 },
+          ],
+        },
+      },
+    },
+    // three seul pèse ~700 ko minifié (180 ko gzip) et ne se découpe pas : c'est
+    // le plancher de la 3D. Le seuil par défaut (500 ko) avertirait à chaque build.
+    chunkSizeWarningLimit: 800,
+  },
   optimizeDeps: {
+    // Découvert tard, derrière le `lazy` de Musee3D : le serveur de dév le
+    // pré-empaquetait en pleine page et l'import dynamique échouait (504).
+    include: ['three/examples/jsm/loaders/KTX2Loader.js'],
     rolldownOptions: {
       plugins: [upstreamDeprecationFixesRolldown()],
     },
