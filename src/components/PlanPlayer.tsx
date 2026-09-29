@@ -36,6 +36,14 @@ const PAUSE_VISITE = 4
 const TAUX_REGARD = 3.5
 
 /** Le visiteur au point d'apparition, calculé une fois : un plan faux casse à l'import. */
+/** Les touches qui font marcher ou sauter (`Musee3D.tsx`) : pendant la visite guidée, elles la font cesser. */
+const TOUCHES_DE_MARCHE = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'])
+
+/** La visite guidée s'arrête là où l'on est : on continue à pied, sans repasser par l'accueil. */
+function reprendreLaMain() {
+  useGameStore.setState({ tourActive: false, paused: false })
+}
+
 const DEPART: Walker = (() => {
   const { level, x, z } = MUSEE.spawn
   const y = MUSEE.levels.find((l) => l.id === level)?.elevation ?? 0
@@ -123,6 +131,25 @@ export function PlanPlayer() {
     }
   }, [tourActive])
 
+  // Pendant la visite guidée, le visiteur reprend la main dès qu'il bouge : une
+  // touche de marche ou un clic sur la scène arrête la visite là où il se trouve
+  // et verrouille le pointeur (le geste le permet), le joystick aussi (plus bas).
+  useEffect(() => {
+    if (!tourActive) return
+    const toile = gl.domElement
+    const reprendre = () => {
+      Promise.resolve(toile.requestPointerLock?.()).catch(() => {})
+      reprendreLaMain()
+    }
+    const touche = (e: KeyboardEvent) => { if (TOUCHES_DE_MARCHE.has(e.code)) reprendre() }
+    addEventListener('keydown', touche)
+    toile.addEventListener('pointerdown', reprendre)
+    return () => {
+      removeEventListener('keydown', touche)
+      toile.removeEventListener('pointerdown', reprendre)
+    }
+  }, [tourActive, gl])
+
   // En développement seulement : de quoi suivre le visiteur depuis un navigateur
   // piloté (cap, pause, surface sous le pied).
   useEffect(() => {
@@ -139,6 +166,7 @@ export function PlanPlayer() {
     const { pas, reste: r } = cadencer(reste.current, delta)
     reste.current = r
     if (toucher.lookX || toucher.lookY) {
+      if (tourActive) reprendreLaMain()
       camera.rotation.order = 'YXZ'
       camera.rotation.y -= toucher.lookX * SENSIBILITE_TOUCHER
       camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x - toucher.lookY * SENSIBILITE_TOUCHER))
@@ -152,6 +180,8 @@ export function PlanPlayer() {
       yaw: camera.rotation.y,
       hate: t.hate,
     }
+    // Le joystick pendant la visite : même règle que le clavier, on reprend la main.
+    if (tourActive && (toucher.forward || toucher.strafe)) reprendreLaMain()
     let w = walker.current
     for (let i = 0; i < pas; i++) {
       const entree = tourActive ? guider(w, PAS_FIXE) : input
