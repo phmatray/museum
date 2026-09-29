@@ -34,7 +34,7 @@ import type * as THREE from 'three'
 
 import { PlanBuilding } from '../PlanBuilding'
 import { MUSEE } from '../../plan/musee'
-import { bandesDuSol, parementDuHall, peintureDesSalles } from '../../plan/parement'
+import { bandesDuSol, parementDuHall, peintureDesSalles, plinthes } from '../../plan/parement'
 import { plafonds } from '../../plan/plafonds'
 import { facade } from '../../plan/facade'
 import { portes } from '../../plan/portes'
@@ -71,9 +71,10 @@ describe('PlanBuilding', () => {
 
     const attendus = MUSEE.levels.flatMap((niveau) => {
       const boites = meshLevel(MUSEE, niveau.id)
-      // Puis la pierre du hall : son parement, et au rez-de-chaussée les bandes du sol.
+      // Puis la pierre du hall : son parement, les plinthes (hall, salles), et au rez-de-chaussée les bandes du sol.
       const { platre, verre, resille } = plafonds(MUSEE, niveau.id)
-      const pierre = [parementDuHall(MUSEE, niveau.id).length, platre.length, verre.length, resille.length, ...(niveau.id === 0 ? [bandesDuSol(MUSEE).length] : [])]
+      const plinthe = plinthes(MUSEE, niveau.id)
+      const pierre = [parementDuHall(MUSEE, niveau.id).length, plinthe.hall.length, plinthe.salles.length, platre.length, verre.length, resille.length, ...(niveau.id === 0 ? [bandesDuSol(MUSEE).length] : [])]
       const comptes = ORDRE_SORTES.map((kind) => boites.filter((b) => b.kind === kind).length)
       // La baie de la salle d'honneur est vitrée par la fenêtre Batlló (BatlloLayer), pas par une boîte.
       comptes[ORDRE_SORTES.indexOf('glass')] = sansBaieBatllo(boites.filter((b) => b.kind === 'glass'), niveau.id).length

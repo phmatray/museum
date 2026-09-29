@@ -25,6 +25,10 @@ const JOINT = 0.02
 /** La main courante : un méplat d'acier de 5 × 4 cm. */
 const MAIN_L = 0.05
 const MAIN_H = 0.04
+/** La main courante murale : à 7 cm du mur, 90 cm au-dessus des marches, une console tous les 1,20 m. */
+const MAIN_MUR = 0.07
+const MAIN_MUR_H = 0.9
+const CONSOLE = 1.2
 const EPS = 1e-6
 
 /**
@@ -179,6 +183,38 @@ export function meshLevel(plan: Plan, levelId: number): Box[] {
       const [x0, x1, z0, z1] = nordSud ? [f.x, f.x + f.width, de, a] : [de, a, f.z, f.z + f.depth]
       out.push(pave(x0, x1, dessus - h, dessus, z0, z1, 'step'))
       if (dessus - h > f.bottom + EPS) out.push(pave(x0, x1, dessus - h - plan.slab, dessus - h, z0, z1, 'slab'))
+    }
+  }
+  // Côté mur, une volée n'a pas de garde-corps : une main courante scellée au
+  // mur, à 90 cm au-dessus du nez des marches, sur des consoles tous les 1,20 m.
+  const salles = plan.levels.flatMap((l) => l.rooms.filter((r) => r.kind !== 'balcony'))
+  for (const f of volees) {
+    const nordSud = isNordSud(f)
+    const [s, t] = nordSud ? [f.z, f.z + f.depth] : [f.x, f.x + f.width]
+    const cotes = nordSud ? [f.x, f.x + f.width] : [f.z, f.z + f.depth]
+    for (const at of cotes) {
+      // Le côté longe un mur si une salle (pas un balcon) a une arête sur cette droite, en face de la volée.
+      const mur = salles.some((r) => nordSud
+        ? [r.x, r.x + r.width].some((x) => Math.abs(x - at) < EPS) && r.z < t - EPS && r.z + r.depth > s + EPS
+        : [r.z, r.z + r.depth].some((z) => Math.abs(z - at) < EPS) && r.x < t - EPS && r.x + r.width > s + EPS)
+      if (!mur) continue
+      const dedans = at === cotes[0] ? 1 : -1
+      const axe = at + dedans * (INT + MAIN_MUR)
+      const sol = (u: number) => (nordSud ? flightElevation(f, axe, u) : flightElevation(f, u, axe))
+      const pente = (sol(t) - sol(s)) / (t - s)
+      const y = (sol(s) + sol(t)) / 2 + MAIN_MUR_H
+      out.push(nordSud
+        ? { x: axe, y, z: (s + t) / 2, w: MAIN_L, h: MAIN_H, d: t - s, kind: 'handrail', pente }
+        : { x: (s + t) / 2, y, z: axe, w: t - s, h: MAIN_H, d: MAIN_L, kind: 'handrail', pente })
+      const n = Math.ceil((t - s) / CONSOLE)
+      for (let i = 0; i <= n; i++) {
+        const u = s + 0.15 + ((t - s - 0.3) * i) / n
+        const [c, ep] = [at + dedans * (INT + MAIN_MUR / 2), MAIN_MUR]
+        const yc = sol(u) + MAIN_MUR_H - MAIN_H / 2 - 0.02
+        out.push(nordSud
+          ? { x: c, y: yc, z: u, w: ep, h: 0.03, d: 0.02, kind: 'handrail' }
+          : { x: u, y: yc, z: c, w: 0.02, h: 0.03, d: ep, kind: 'handrail' })
+      }
     }
   }
   out.push(...rails)
