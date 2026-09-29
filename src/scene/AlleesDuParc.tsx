@@ -51,7 +51,8 @@ export function AlleesDuParc({ parc, dallage }: { parc: Parc; dallage: THREE.Mat
   const dalle = useMatiere('beton', repetitionMetrique(REGLAGE_MATIERE.beton.motif * 0.35), { teinte: '#aaa69c' })
   // Mouillé sous la pluie, blanc sous la neige (`intemperies.ts`) : greffé sur chaque matière neuve.
   useMemo(() => {
-    for (const m of [gravier, cailloux, pierre, dalle]) intemperer(m)
+    for (const m of [cailloux, pierre, dalle]) intemperer(m)
+    intemperer(gravier, { flaques: true })
     /* eslint-disable react-hooks/immutability -- la matière des dalles lit la patine de leurs sommets */
     dalle.vertexColors = true
     /* eslint-enable react-hooks/immutability */

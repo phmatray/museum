@@ -53,6 +53,28 @@ float iBruit(vec2 p) {
 }
 // Sous les toits du musée (emprise 0–48 × 0–40, toits vers 9,5 m) : ni pluie ni neige.
 float iInterieur(vec3 p) { return step(-0.2, p.x) * step(p.x, 48.2) * step(-0.2, p.z) * step(p.z, 40.2) * step(p.y, 9.3); }
+// Les ronds de pluie sur une eau calme (l'étang, les flaques) : la pente, en xz, à ajouter à la normale.
+vec2 iRonds(vec2 xz) {
+  vec2 iG = vec2(0.0);
+  for (int k = 0; k < 2; k++) {
+    vec2 q = xz * 2.4 + float(k) * vec2(0.37, 0.71);
+    vec2 c = floor(q);
+    for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) {
+      vec2 o = c + vec2(float(i), float(j));
+      float h = iHash(o + float(k) * 17.0);
+      // Pas toutes les cellules à la fois : la pluie fine n'allume que les plus pressées.
+      if (h > uPluie * 1.3) continue;
+      float t = fract(uTemps * (0.55 + 0.4 * h) + h * 9.1);
+      vec2 centre = o + 0.2 + 0.6 * vec2(h, iHash(o * 1.7 + 3.1));
+      vec2 v = q - centre;
+      float d = length(v);
+      float r = t * 0.75;
+      float anneau = exp(-pow((d - r) / 0.05, 2.0)) * (1.0 - t) * (1.0 - t);
+      iG += v / max(d, 1e-3) * anneau * cos((d - r) * 60.0);
+    }
+  }
+  return iG;
+}
 `
 
 /**
@@ -100,13 +122,17 @@ function avecMonde(s: Shader): void {
  * Le dehors sous le temps qu'il fait : mouillé (plus sombre, plus lisse, donc
  * luisant), puis couvert de neige par plaques sur les faces tournées vers le
  * ciel. `pelouse` y ajoute la saison de l'herbe : jaunie fin d'été, terne l'hiver.
+ * `flaques` (les allées, le parvis) : sous une vraie pluie, l'eau s'y amasse en
+ * flaques éparses — un miroir du ciel, sans le relief du sol — qui s'étendent
+ * avec l'averse et sèchent après elle, au pas lent de `uMouille`.
  */
-export function intemperer(m: THREE.Material, { pelouse = false } = {}): void {
-  greffer(m, pelouse ? 'intemperies:pelouse' : 'intemperies', (s) => {
+export function intemperer(m: THREE.Material, { pelouse = false, flaques = false } = {}): void {
+  greffer(m, pelouse ? 'intemperies:pelouse' : flaques ? 'intemperies:flaques' : 'intemperies', (s) => {
     avecMonde(s)
     s.fragmentShader = s.fragmentShader.replace(
       '#include <normal_fragment_maps>',
       `#include <normal_fragment_maps>
+  ${flaques ? 'float iFlaque = 0.0, iFilm = 0.0;' : ''}
   {
     float iDehors = 1.0 - iInterieur(vMonde);
     ${pelouse ? `
@@ -120,12 +146,42 @@ export function intemperer(m: THREE.Material, { pelouse = false } = {}): void {
     float iNeige = smoothstep(0.38, 0.62, uEnneige * iDehors * iSol + (iB - 0.5) * 0.55);
     diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.88, 0.9, 0.95), iNeige);
     #ifdef STANDARD
-      roughnessFactor = mix(roughnessFactor, 0.1 + 0.25 * roughnessFactor, iM * iSol);
+      roughnessFactor = mix(roughnessFactor, 0.1 + 0.25 * roughnessFactor, iM * iSol);${flaques ? `
+      {
+        // La neige fondue (uMouille <= 0,3) ne fait pas de flaques : il faut l'averse.
+        float iEau = smoothstep(0.35, 0.85, iM) * iSol * (1.0 - iNeige);
+        float iF = iBruit(vMonde.xz * 0.9 + 7.3) * 0.6 + iBruit(vMonde.xz * 2.6) * 0.28 + iBruit(vMonde.xz * 9.0) * 0.12;
+        float iSeuil = 0.74 - 0.05 * iEau;
+        iFlaque = smoothstep(iSeuil, iSeuil + 0.015, iF) * iEau;
+        iFilm = iEau * (1.0 - iFlaque);
+        // Le bord imbibé, plus sombre, avant l'eau.
+        float iBord = smoothstep(iSeuil - 0.06, iSeuil, iF) * iEau;
+        diffuseColor.rgb *= (1.0 - 0.2 * iM * iSol) * (1.0 - 0.25 * iBord) * (1.0 - 0.7 * iFlaque);
+        roughnessFactor = mix(roughnessFactor, 0.02, iFlaque);
+        // L'eau est plane : ni joints ni grains, la normale se redresse vers le ciel.
+        normal = normalize(mix(normal, normalize((viewMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz), iFlaque));
+        // Et l'averse y dessine ses ronds, comme sur l'étang.
+        if (iFlaque > 0.01 && uPluie > 0.01) {
+          vec2 iG = iRonds(vMonde.xz) * iFlaque * min(1.0, uPluie * 2.0);
+          normal = normalize(normal + (viewMatrix * vec4(iG.x, 0.0, iG.y, 0.0)).xyz * 0.9);
+        }
+      }` : ''}
       roughnessFactor = mix(roughnessFactor, 0.8, iNeige);
       metalnessFactor *= 1.0 - iNeige;
     #endif
   }`,
     )
+    // Le reflet du ciel couvert (la couleur de la brume, à l'heure qu'il est) :
+    // un miroir dans les flaques, un lustre sur le reste, selon Fresnel.
+    if (flaques)
+      s.fragmentShader = s.fragmentShader.replace(
+        '#include <opaque_fragment>',
+        `{
+    float iFr = 0.02 + 0.98 * pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 5.0);
+    outgoingLight = mix(outgoingLight, uBrumeCouleur * 3.0, iFr * (0.9 * iFlaque + 0.06 * iFilm));
+  }
+  #include <opaque_fragment>`,
+      )
   })
 }
 
@@ -257,24 +313,7 @@ export function rider(m: THREE.Material): void {
       '#include <normal_fragment_maps>',
       `#include <normal_fragment_maps>
   if (uPluie > 0.01) {
-    vec2 iG = vec2(0.0);
-    for (int k = 0; k < 2; k++) {
-      vec2 q = vMonde.xz * 2.4 + float(k) * vec2(0.37, 0.71);
-      vec2 c = floor(q);
-      for (int i = -1; i <= 1; i++) for (int j = -1; j <= 1; j++) {
-        vec2 o = c + vec2(float(i), float(j));
-        float h = iHash(o + float(k) * 17.0);
-        // Pas toutes les cellules à la fois : la pluie fine n'allume que les plus pressées.
-        if (h > uPluie * 1.3) continue;
-        float t = fract(uTemps * (0.55 + 0.4 * h) + h * 9.1);
-        vec2 centre = o + 0.2 + 0.6 * vec2(h, iHash(o * 1.7 + 3.1));
-        vec2 v = q - centre;
-        float d = length(v);
-        float r = t * 0.75;
-        float anneau = exp(-pow((d - r) / 0.05, 2.0)) * (1.0 - t) * (1.0 - t);
-        iG += v / max(d, 1e-3) * anneau * cos((d - r) * 60.0);
-      }
-    }
+    vec2 iG = iRonds(vMonde.xz);
     normal = normalize(normal + (viewMatrix * vec4(iG.x, 0.0, iG.y, 0.0)).xyz * 0.9 * min(1.0, uPluie * 2.0));
   }`,
     )
