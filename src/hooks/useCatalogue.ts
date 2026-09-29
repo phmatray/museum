@@ -7,12 +7,13 @@ import { useEffect, useState } from 'react'
 import type { IndexCaptures } from '../domain/captures'
 import type { Artwork, Catalogue } from '../domain/types'
 import { cheminReadme, choisirVitrines } from '../plan/vitrines'
+import { suivre } from '../stores/chargementStore'
 
 let catalogue: Promise<{ oeuvres: Map<string, Artwork>; vitrines: Artwork[] } | null> | null = null
 
 /** Chargé une fois, sous `BASE_URL`. Sans catalogue, `null` : la visite continue sans. */
 function charger() {
-  catalogue ??= fetch(`${import.meta.env.BASE_URL}data/catalogue.json`)
+  catalogue ??= suivre(fetch(`${import.meta.env.BASE_URL}data/catalogue.json`))
     .then((r) => {
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
       return r.json() as Promise<Catalogue>

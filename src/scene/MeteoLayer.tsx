@@ -15,6 +15,7 @@ import * as THREE from 'three'
 import config from '../../museum.config.json'
 import { meteoDemandee, meteoDuReleve, urlOpenMeteo, type Releve } from '../domain/meteo'
 import { JARDIN, distanceEtang } from '../plan/jardin'
+import { suivre } from '../stores/chargementStore'
 import { useGameStore } from '../stores/gameStore'
 import { INTEMPERIES } from './intemperies'
 
@@ -114,7 +115,8 @@ function useReleve() {
         .then((j) => j.current && useGameStore.setState({ meteo: meteoDuReleve(j.current) }))
         // Hors ligne ou refusé : on garde le temps d'avant (clair au premier chargement).
         .catch((erreur: unknown) => controle.signal.aborted || console.warn('météo indisponible', erreur))
-    void relever()
+    // Le premier relevé fait partie du chargement : la pluie ne doit pas tomber après le rideau.
+    void suivre(relever())
     const id = setInterval(relever, QUART_D_HEURE)
     return () => {
       clearInterval(id)
