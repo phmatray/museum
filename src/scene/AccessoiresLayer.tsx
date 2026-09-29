@@ -72,37 +72,58 @@ function Sorties() {
   const face = useMemo(
     () =>
       canevasEnMetres(l, h, 1200, (ctx) => {
-        ctx.fillStyle = '#0a8a3a'
+        // Le boîtier blanc du luminaire, puis la plaque verte : pas de texte,
+        // le pictogramme ISO 7010 (E001) et sa flèche disent tout, dans toutes les langues.
+        ctx.fillStyle = '#f2f4f1'
         ctx.fillRect(0, 0, l, h)
-        ctx.strokeStyle = ctx.fillStyle = '#ffffff'
-        ctx.lineCap = 'round'
-        ctx.lineWidth = 0.012
-        // Le pictogramme : un homme qui court vers une porte (ISO 7010, E001), à gauche.
-        ctx.strokeRect(0.02, 0.025, 0.07, 0.1)
+        const m = 0.012
+        const [x0, y0, w, hh] = [m, m, l - 2 * m, h - 2 * m]
+        ctx.fillStyle = '#0a8f3c'
+        ctx.fillRect(x0, y0, w, hh)
+        ctx.fillStyle = '#ffffff'
+        // La porte : un cadre blanc, l'embrasure verte, le seuil.
+        const [px, py, pw, ph] = [x0 + 0.018, y0 + 0.014, 0.055, hh - 0.028]
+        ctx.fillRect(px, py, pw, ph)
+        ctx.fillStyle = '#0a8f3c'
+        ctx.fillRect(px + 0.008, py + 0.008, pw - 0.02, ph - 0.008)
+        ctx.fillStyle = '#ffffff'
+        // L'homme qui court, en pleins : tête, tronc penché, bras et jambes en mouvement.
+        const u = hh / 0.126
+        const S = (x: number, y: number): [number, number] => [px + 0.03 + x * u, py + y * u]
         ctx.beginPath()
-        ctx.arc(0.125, 0.04, 0.011, 0, Math.PI * 2)
+        ctx.arc(...S(0.052, 0.018), 0.0095 * u, 0, Math.PI * 2)
         ctx.fill()
+        ctx.lineCap = 'round'
+        ctx.lineJoin = 'round'
+        ctx.strokeStyle = '#ffffff'
+        const trait = (w: number, ...pts: [number, number][]) => {
+          ctx.lineWidth = w * u
+          ctx.beginPath()
+          ctx.moveTo(...S(...pts[0]))
+          for (const q of pts.slice(1)) ctx.lineTo(...S(...q))
+          ctx.stroke()
+        }
+        trait(0.016, [0.046, 0.034], [0.034, 0.066]) // tronc
+        trait(0.01, [0.046, 0.038], [0.064, 0.05], [0.074, 0.04]) // bras avant
+        trait(0.01, [0.044, 0.038], [0.028, 0.046], [0.018, 0.06]) // bras arrière
+        trait(0.012, [0.034, 0.066], [0.056, 0.078], [0.058, 0.1]) // jambe avant
+        trait(0.012, [0.034, 0.066], [0.02, 0.086], [0.002, 0.092]) // jambe arrière
+        // La flèche, vers le bas : la sortie est sous le panneau.
+        const cx = x0 + w * 0.72
+        const [haut, bas, demi] = [y0 + 0.022, y0 + hh - 0.018, 0.022]
+        ctx.fillRect(cx - 0.007, haut, 0.014, bas - haut - 0.018)
         ctx.beginPath()
-        ctx.moveTo(0.118, 0.058)
-        ctx.lineTo(0.108, 0.09)
-        ctx.lineTo(0.092, 0.122)
-        ctx.moveTo(0.108, 0.09)
-        ctx.lineTo(0.128, 0.105)
-        ctx.lineTo(0.13, 0.128)
-        ctx.moveTo(0.118, 0.06)
-        ctx.lineTo(0.098, 0.075)
-        ctx.moveTo(0.118, 0.06)
-        ctx.lineTo(0.14, 0.078)
-        ctx.stroke()
-        ctx.font = '700 0.07px Helvetica, Arial, sans-serif'
-        ctx.textBaseline = 'middle'
-        ctx.fillText('SORTIE', 0.165, h / 2 + 0.003)
+        ctx.moveTo(cx - demi, bas - 0.026)
+        ctx.lineTo(cx + demi, bas - 0.026)
+        ctx.lineTo(cx, bas)
+        ctx.closePath()
+        ctx.fill()
       }),
     [l, h],
   )
   // Éclairé de l'intérieur : sans ombre ni lumière, qu'il fasse jour ou nuit.
   const materiaux = useMemo(() => {
-    const cote = new THREE.MeshBasicMaterial({ color: '#e8ece8' })
+    const cote = new THREE.MeshBasicMaterial({ color: '#dfe3df' })
     return [cote, cote, cote, cote, new THREE.MeshBasicMaterial({ map: face, color: face ? '#ffffff' : '#0a8a3a' }), cote]
   }, [face])
   useEffect(() => () => {
