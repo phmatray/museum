@@ -15,6 +15,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 import { couleurDeLangage, partsDeLangages } from '../domain/langages'
+import { adresseQr, matriceQr, QR_MARGE } from '../domain/qr'
 import type { Artwork } from '../domain/types'
 import { useReadme, useVitrines } from '../hooks/useCatalogue'
 import { nearTextureUrl } from '../io/arrayTexture'
@@ -31,6 +32,8 @@ const ECRAN = { y: 1.086, z: 0.005, inclinaison: (25.81 * Math.PI) / 180, largeu
 const W = 640
 const H = Math.round((W * ECRAN.hauteur) / ECRAN.largeur)
 const BANDEAU = 72
+/** Un module du QR code de l'écran, en pixels du canevas (≈ 2 mm sur la borne). */
+const QR_MODULE = 3
 const COLONNES = { u: -1.8, largeur: 0.88, gouttiere: 0.1, haut: 2.66, corps: 0.056, interligne: 1.4, parLigne: 32, lignes: 24 }
 
 type Pieces = Record<'Panneau' | 'Cadre' | 'Borne', THREE.Object3D>
@@ -256,10 +259,18 @@ function Ecran({ oeuvre, vitrine: v, active }: { oeuvre: Artwork; vitrine: Vitri
       ctx.fillStyle = '#e0b060'
       ctx.font = '600 19px system-ui, sans-serif'
       ctx.fillText(`N° ${v.rang + 1}  ·  ${oeuvre.owner.toUpperCase()}`, 32, 46)
+      // Le QR code du projet, en haut à droite : sur l'écran lumineux, il se scanne de jour comme de nuit.
+      const qr = matriceQr(adresseQr(oeuvre))
+      const cote = (qr.length + 2 * QR_MARGE) * QR_MODULE
+      const [qx, qy] = [W - 32 - cote, 14]
+      ctx.fillStyle = '#f4f1ea'
+      ctx.fillRect(qx, qy, cote, cote)
+      ctx.fillStyle = '#161412'
+      qr.forEach((ligne, l) => ligne.forEach((sombre, c) => sombre && ctx.fillRect(qx + (QR_MARGE + c) * QR_MODULE, qy + (QR_MARGE + l) * QR_MODULE, QR_MODULE, QR_MODULE)))
       ctx.fillStyle = CREME
       ctx.font = '66px Georgia, serif'
-      ctx.fillText(oeuvre.name, 30, 118, W - 60)
-      ctx.fillRect(32, 138, W - 64, 2)
+      ctx.fillText(oeuvre.name, 30, 118, qx - 46)
+      ctx.fillRect(32, 138, qx - 48, 2)
       ctx.fillStyle = '#e6d6b6'
       ctx.font = '23px system-ui, sans-serif'
       lignes(ctx, oeuvre.description ?? '', W - 64, 3).forEach((l, i) => ctx.fillText(l, 32, 178 + i * 31))

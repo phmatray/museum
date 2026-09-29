@@ -6,13 +6,23 @@
  * du visiteur qui regarde le mur, comme dans une salle de musée.
  *
  * `hangPlan` espace les toiles d'au moins 1,40 m de mur libre et laisse un
- * mètre dans chaque angle : un cartel de 30 cm à côté du cadre tient toujours.
+ * mètre dans chaque angle : un cartel de 34 cm à côté du cadre tient toujours.
  */
 import type { Artwork } from '../domain/types.ts'
 import { cimaiseSous } from './cimaises.ts'
 import type { Accrochage } from './hang.ts'
 
-export const CARTEL_LARGEUR = 0.3
+/** 34 cm : 30 pour le texte d'avant, et de quoi loger le QR code à droite. */
+export const CARTEL_LARGEUR = 0.34
+export const CARTEL_HAUTEUR = 0.16
+/**
+ * Le QR code du cartel (`domain/qr.ts`), dans le repère de la plaque (centre,
+ * x vers la droite) : 4 cm marges blanches comprises, calé à droite et centré
+ * en hauteur. Le texte s'arrête avant (`CARTEL_TEXTE`).
+ */
+export const CARTEL_QR = { cote: 0.04, x: CARTEL_LARGEUR / 2 - 0.012 - 0.02, y: 0 }
+/** La colonne du texte : de 2 cm du bord gauche à 1,5 cm du QR code. */
+export const CARTEL_TEXTE = { x: -CARTEL_LARGEUR / 2 + 0.02, largeur: CARTEL_QR.x - CARTEL_QR.cote / 2 - 0.015 - (-CARTEL_LARGEUR / 2 + 0.02) }
 /** Le cadre (6 cm) et 10 cm de blanc avant le cartel. */
 const ECART = 0.16
 /** Sous l'axe de la toile, à hauteur de lecture. */
