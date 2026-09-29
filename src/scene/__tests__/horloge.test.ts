@@ -20,6 +20,8 @@ it('sonne le nombre d’heures du cadran de douze heures', () => {
 
 it('lève le marteau, frappe, puis laisse la cloche vibrer et s’éteindre', () => {
   expect(coupDeCloche(-1)).toEqual({ marteau: 0, cloche: 0 })
+  // Aucun coup encore frappé : le dernier départ est à −∞, l'écart infini.
+  expect(coupDeCloche(Infinity)).toEqual({ marteau: 0, cloche: 0 })
   expect(coupDeCloche(0.3).marteau).toBeLessThan(-0.5)
   expect(Math.abs(coupDeCloche(0.43).marteau)).toBeLessThan(0.01)
   expect(Math.abs(coupDeCloche(0.5).cloche)).toBeGreaterThan(0.02)
