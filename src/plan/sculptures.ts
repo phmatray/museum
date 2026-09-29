@@ -13,9 +13,17 @@
  *
  * Une pièce par niche, dans l'ordre de la config ; au-delà, les pièces restent
  * en réserve.
+ *
+ * ── Ou à côté de la vitrine de son projet ──
+ *
+ * Une pièce qui déclare un `project` accompagne ce projet, comme un musée
+ * associe un objet à une exposition : elle se pose sur le socle de la vitrine
+ * qui l'expose (`vitrines.ts`, `SOCLE`), et nulle part si le projet a quitté
+ * les vitrines.
  */
 import config from '../../museum.config.json'
 import { flightEnds } from './rules.ts'
+import { SALLE, SOCLE, VITRINES } from './vitrines.ts'
 import type { Direction, Plan } from './types.ts'
 
 export interface SculpturePlacement {
@@ -31,6 +39,8 @@ export interface SculpturePlacement {
   height: number
   plinth: { width: number; depth: number; height: number }
   cartel: { author: string; title: string; year: number; medium: string; credit: string }
+  /** Le projet qu'elle accompagne, si elle est posée à côté de sa vitrine. */
+  project?: string
 }
 
 type Sculpture = Omit<SculpturePlacement, 'x' | 'y' | 'z' | 'rotation'> & { facing: string }
@@ -41,7 +51,8 @@ const JEU = 0.2
 /** +Z vers le point cardinal : une rotation θ envoie +Z sur (sin θ, cos θ). */
 const LACET: Record<Direction, number> = { south: 0, east: Math.PI / 2, north: Math.PI, west: -Math.PI / 2 }
 
-export function sculpturePlacements(plan: Plan, sculptures: readonly Sculpture[] = config.sculptures): SculpturePlacement[] {
+export function sculpturePlacements(plan: Plan, toutes: readonly Sculpture[] = config.sculptures): SculpturePlacement[] {
+  const sculptures = toutes.filter((s) => s.project === undefined)
   const rdc = plan.levels.reduce((a, b) => (b.elevation < a.elevation ? b : a))
   // Les niches : une volée qui démarre au-dessus du plancher, dont l'emprise est un obstacle.
   const niches = plan.flights.filter((f) =>
@@ -60,5 +71,19 @@ export function sculpturePlacements(plan: Plan, sculptures: readonly Sculpture[]
       z: nordSud ? tz + vers * recul : tz,
       rotation: LACET[facing as Direction] ?? 0,
     }
+  })
+}
+
+/**
+ * Les pièces des vitrines : `projets[rang]` est la clé du projet de la vitrine
+ * `rang` (`choisirVitrines`). Un projet sans pièce déclarée ne montre rien.
+ */
+export function sculpturesDesVitrines(projets: readonly string[], toutes: readonly Sculpture[] = config.sculptures): SculpturePlacement[] {
+  return projets.flatMap((cle, rang) => {
+    const v = VITRINES[rang]
+    const piece = toutes.find((s) => s.project === cle)
+    if (v === undefined || piece === undefined) return []
+    const { facing, ...s } = piece
+    return [{ ...s, x: v.x + SOCLE.u, y: SALLE.sol, z: v.z + SOCLE.recul, rotation: LACET[facing as Direction] ?? 0 }]
   })
 }

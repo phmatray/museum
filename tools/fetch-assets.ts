@@ -136,6 +136,27 @@ const SCULPTURES = [
     licence: '© tous droits réservés',
     usage: 'le chat Bavette, qui se promène dans le musée et le jardin',
   },
+  {
+    id: 'chandelles',
+    source:
+      'Meshy (généré par IA) : image Nano Banana Pro puis image → 3D (textures PBR), prompt : « Product photograph of a single museum-grade abstract bronze sculpture… polished warm golden bronze… dark brown-green patina in the recesses… five candlestick-chart candles standing in a row, each a vertical rectangular bronze block with a thin rod wick above and below it… set at progressively higher positions from left to right like an upward market trend » ; `tools/blender/build-sculptures.py`',
+    licence: '© tous droits réservés',
+    usage: "sculpture de la vitrine TaLibStandard, salle d'honneur",
+  },
+  {
+    id: 'formulaire',
+    source:
+      'Meshy (généré par IA, texte → 3D, textures PBR), prompt : « Museum-grade abstract bronze sculpture in the style of Naum Gabo and Barbara Hepworth: a graceful vertical composition of thin polished bronze rectangular plates like form input fields, cantilevered around a slender central spine in a gentle rising spiral, with a few small open square frames like checkboxes, one holding a subtle tick mark… » ; `tools/blender/build-sculptures.py`',
+    licence: '© tous droits réservés',
+    usage: "sculpture de la vitrine FormCraft, salle d'honneur",
+  },
+  {
+    id: 'arborescence',
+    source:
+      'Meshy (généré par IA) : image Nano Banana Pro puis image → 3D (textures PBR), prompt : « Product photograph of a single museum-grade abstract bronze sculpture… polished warm golden bronze… dark brown-green patina in the recesses… a stylised tree whose trunk branches strictly at right angles into a hierarchy like a file directory tree, each branch ending in a small flat bronze tablet shaped like a closed folder with a tab » ; `tools/blender/build-sculptures.py`',
+    licence: '© tous droits réservés',
+    usage: "sculpture de la vitrine VirtualFileSystem, salle d'honneur",
+  },
 ] as const
 
 /**

@@ -51,6 +51,10 @@ public/assets/plants/*
 !public/assets/sculptures/
 public/assets/sculptures/*
 !public/assets/sculptures/bavette-anime.glb
+# Les bronzes des vitrines de la salle d'honneur (`build-sculptures.py`), même raison.
+!public/assets/sculptures/chandelles.glb
+!public/assets/sculptures/formulaire.glb
+!public/assets/sculptures/arborescence.glb
 !public/assets/sculptures/SOURCES.md
 
 # CINQUIÈME exception, raison différente cette fois : la police des cartels

@@ -174,6 +174,8 @@ export interface Sculpture {
   plinth: { width: number; depth: number; height: number }
   /** Identifiant de salle. Absent : la salle d'honneur du niveau 0. */
   room?: string
+  /** Le projet qu'elle accompagne : posée à côté de sa vitrine (`plan/sculptures.ts`), absente s'il n'en a plus. */
+  project?: RepoKey
   cartel: SculptureCartel
 }
 
