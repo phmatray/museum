@@ -96,7 +96,7 @@ export interface ChargeurDeTextures {
   fait retomber sur son JPG : le musée ne perd jamais une matière pour ça.
 */
 let ktx2: KTX2Loader | null = null
-/** Au-delà, une carte KTX2 qui ne vient pas cède la place à son JPG. */
+/** Au-delà de ce silence, une carte KTX2 qui ne vient pas cède la place à son JPG. */
 const DELAI_KTX2 = 8000
 let signaler: () => void = () => {}
 const rendu = new Promise<void>((r) => {
@@ -131,7 +131,10 @@ async function chargeurDuSite(): Promise<ChargeurDeTextures> {
         fini = true
         images.load(url, onLoad, onProgress, onError)
       }
-      const delai = setTimeout(repli, DELAI_KTX2)
+      // Le délai compte le SILENCE, pas la durée : une carte qui arrive
+      // lentement (3G) n'est pas en panne, et la doubler de son JPG faisait
+      // télécharger les deux.
+      let delai = setTimeout(repli, DELAI_KTX2)
       compresse.load(
         url.replace(/\.jpg$/, '.ktx2'),
         (t) => {
@@ -140,7 +143,11 @@ async function chargeurDuSite(): Promise<ChargeurDeTextures> {
           fini = true
           onLoad?.(t)
         },
-        undefined,
+        () => {
+          if (fini) return
+          clearTimeout(delai)
+          delai = setTimeout(repli, DELAI_KTX2)
+        },
         () => {
           clearTimeout(delai)
           repli()
