@@ -75,10 +75,15 @@ K = GARROT / (Z_GARROT + 0.5)
 # pattes avant.
 ALLONGE = 1.08
 KY = K * ALLONGE
-# Le tronc garde sa largeur ; le ventre descend à peine entre les pattes (voir
-# `etoffer`), sans toucher aux pattes, à la tête ni à la queue.
+# Le tronc garde sa largeur ; le ventre, lui, descend entre les pattes (voir
+# `etoffer`), sans toucher aux pattes, à la tête ni à la queue. Bavette était
+# « haut sur pattes » à côté de la vidéo : ses pattes n'étaient pas trop
+# longues — le garrot mesure bien 30 cm — mais son tronc trop mince. Baisser
+# le corps en pliant davantage les pattes les cassait en Z (le genou est déjà
+# à ~80° en appui, le tibia du modèle est court) ; un ventre plus profond
+# raccourcit la patte visible sans rien plier.
 LARGEUR = 1.0
-VENTRE = 0.02           # unités source (≈ 0,7 cm) au milieu du ventre
+VENTRE = 0.06           # unités source (≈ 2,2 cm) au milieu du ventre
 
 
 def P(x, y, z):
@@ -137,7 +142,7 @@ PATTES = [
 PERIODE = 28 / FPS      # s ≈ 0,93
 FOULEE = 0.40           # m, un cycle
 VITESSE = FOULEE / PERIODE   # ≈ 0,43 m/s à timeScale 1
-FLEXION = 0.035         # m : il marche bas, le ventre près de l'herbe
+FLEXION = 0.042         # m : il marche bas, le ventre près de l'herbe (au-delà, genou en Z)
 LEVER = {True: 0.065, False: 0.035}
 APPUI = {True: 0.0, False: -0.018}   # m : milieu de l'appui avancé (−Y) sous le ventre
 OMOPLATE = 0.07         # m : course avant–arrière de l'épaule avec la patte
@@ -205,7 +210,7 @@ def etoffer(corps):
         y, z = v.co.y / KY + Y0, v.co.z / K - 0.5
         tronc = cloche(y, -0.70, 0.42) ** 0.5 * max(0.0, min(1.0, (z + 0.22) / 0.12))
         v.co.x *= 1 + (LARGEUR - 1) * tronc
-        ventre = cloche(y, -0.36, 0.14) * max(0.0, min(1.0, (0.20 - z) / 0.30)) * (z > -0.22)
+        ventre = cloche(y, -0.36, 0.14) * max(0.0, min(1.0, (0.20 - z) / 0.30)) * lisse((z + 0.26) / 0.06)
         v.co.z -= VENTRE * K * ventre
     vs = [v.co for v in corps.data.vertices]
     garrot = max(c.z for c in vs if -0.47 <= c.y / KY + Y0 <= -0.39)
@@ -376,13 +381,19 @@ def nettoyer_poids(corps, arm):
         if z < -0.24:
             continue
         # Au-dessus du coude et du genou : 1 près des pattes, 0 au milieu du ventre
-        # (y ∈ [−0,28 ; 0]) et sur la couture médiane (|x| < 0,01), au poitrail
-        # comme entre les cuisses, là où les deux pattes tiraient à la fois. La
-        # couture est étroite : la face interne des pattes doit les suivre.
+        # (y ∈ [−0,28 ; 0]) et sur la couture médiane, au poitrail comme entre
+        # les cuisses, là où les deux pattes tiraient à la fois. Au poitrail la
+        # couture est étroite (|x| < 0,01) : la face interne des bras doit les
+        # suivre. Entre les cuisses, la peau de la source descend presque au
+        # genou : quand une patte part en arrière et l'autre en avant, une
+        # couture étroite cisaillait cette membrane en un pli fripé sous le
+        # ventre (Philippe). Elle s'élargit donc derrière, dès l'aine, et
+        # s'éteint en douceur sur 2,5 cm : le cisaillement s'y répartit.
         haut = lisse((z + 0.24) / 0.08)
         ventre = min(lisse((y + 0.38) / 0.10), lisse((0.0 - y) / 0.08))
-        couture = 1 - lisse((abs(x) - 0.008) / 0.025)
-        garde = 1 - haut * max(ventre, couture * max(lisse((-0.38 - y) / 0.06), lisse((y - 0.08) / 0.06)))
+        poitrail = (1 - lisse((abs(x) - 0.008) / 0.025)) * lisse((-0.38 - y) / 0.06)
+        aine = (1 - lisse((abs(x) - 0.005) / 0.07)) * lisse((y + 0.02) / 0.06)
+        garde = 1 - haut * max(ventre, poitrail, aine)
         if garde >= 1:
             continue
         poids = {groupes[g.group]: g.weight for g in v.groups}
