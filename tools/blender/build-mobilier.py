@@ -40,6 +40,8 @@ try:
 except NameError:
     ROOT = Path(bpy.path.abspath("//")).resolve()
 SORTIE = ROOT / "public" / "assets" / "architecture" / "mobilier.glb"
+# La part des triangles d'un coussin capitonné qu'on garde : voir `coussin`.
+ALLEGEMENT = 0.6
 
 
 # ── Outils ────────────────────────────────────────────────────────────────
@@ -239,7 +241,31 @@ def coussin(L, W, z0, epaisseur, mat, boutons, plis, pas=0.014, arrondi=0.05, bo
         a, b = tourn[k], tourn[(k + 1) % m]
         f.append((b, a, base + k, base + (k + 1) % m))
     f.append(tuple(range(base, base + m))[::-1])
-    return objet("coussin", v, f, mat, lisse=70)
+    o = objet("coussin", v, f, mat, lisse=70)
+    # La grille fine ne sert qu'aux boutons, aux plis et au bord qui roule ; entre eux le dessus
+    # bombe à peine. Une décimation par erreur quadrique y ôte l'essentiel des triangles — sur le
+    # dessus seulement, le bord qui roule et les flancs restent tels quels —, et les normales de la
+    # grille d'origine, recopiées coin par coin, gardent l'ombrage du velours.
+    ref = o.copy()
+    ref.data = o.data.copy()
+    bpy.context.collection.objects.link(ref)
+    dessus = o.vertex_groups.new(name="dessus")
+    dessus.add([s.index for s in o.data.vertices
+                if s.co.z > z0 + 1e-4 and min(L / 2 - abs(s.co.x), W / 2 - abs(s.co.y)) > arrondi * 1.2], 1.0, "REPLACE")
+    dec = o.modifiers.new("Allege", "DECIMATE")
+    dec.ratio = ALLEGEMENT
+    dec.vertex_group = "dessus"
+    appliquer(o)
+    dt = o.modifiers.new("Normales", "DATA_TRANSFER")
+    dt.object = ref
+    dt.use_loop_data = True
+    dt.data_types_loops = {"CUSTOM_NORMAL"}
+    dt.loop_mapping = "POLYINTERP_NEAREST"
+    dt.vertex_group = "dessus"
+    appliquer(o)
+    o.vertex_groups.clear()
+    bpy.data.meshes.remove(ref.data)
+    return o
 
 
 def quinconce(L, W, pas_x, rangs):
