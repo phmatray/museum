@@ -260,8 +260,12 @@ def attique(pierre, fonte, verre):
             g.boite(x0, x1, -(z + ARC_L / 2), -(z - ARC_L / 2), MURS, S, pierre)
         # Saillies comptées depuis l'axe du mur (xm) : le parement du hall arrive à
         # 0,15 + 0,03 = 0,18 m ; une corniche à 0,18 tombait dans son plan (scintillement).
+        # Sous +9,30, le dos d'une corniche reste DANS le mur (0,30, nu à 0,15 de
+        # l'axe) : tiré jusqu'au dos de l'attique (0,40), il sortait de 25 cm sous
+        # le plafond des galeries de l'étage voisines, comme une étagère blanche.
         for h0, h1, saillie in ((MURS - 0.25, MURS, 0.24), (MURS, MURS + 0.12, 0.34), (S - 0.2, S, 0.3)):
-            x0, x1 = sorted((xm - sens * ep, xm + sens * saillie))
+            dos = ep if h0 >= MURS else 0.1
+            x0, x1 = sorted((xm - sens * dos, xm + sens * saillie))
             g.boite(x0, x1, -Z1, -Z0, h0, h1, pierre)
     return g.objet("Nef_Attique", [pierre, fonte], lisse=math.radians(20)), vit.objet("Nef_Baies", [verre])
 
