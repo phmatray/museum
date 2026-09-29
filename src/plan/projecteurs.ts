@@ -3,7 +3,8 @@
  *
  * Le rail court le long de chaque mur accroché, à 1,60 m de lui — sur le cadre
  * de plâtre du plafond, pas sur le verre du lanterneau (`plafonds.ts`, cadre de
- * 2 m). C'est de là que part la lumière de la toile regardée (`EveilLayer`) :
+ * 2 m). Une face de cimaise (`cimaises.ts`) a le sien, à 1,60 m d'elle aussi :
+ * celui-là passe sous le lanterneau, pendu à sa résille. C'est de là que part la lumière de la toile regardée (`EveilLayer`) :
  * elle a enfin une source qu'on voit.
  *
  * Pur : ni three ni React.
@@ -63,13 +64,15 @@ export function projecteurs(plan: Plan, accrochage: Accrochage): Projecteur[] {
   })
 }
 
-/** Un rail par mur accroché, de la première à la dernière toile, 50 cm au-delà. */
+/** Un rail par mur (ou face de cimaise) accroché, de la première à la dernière toile, 50 cm au-delà. */
 export function rails(plan: Plan, accrochage: Accrochage): Box[] {
   return accrochage.rooms.flatMap((r) => {
     const plafond = plafondDe(plan, r.level, r.id)
     const parMur = new Map<string, Accrochage['rooms'][number]['placements']>()
     for (const p of r.placements) {
-      const cle = `${p.normal[0]},${p.normal[1]}`
+      // Un mur par normale ET par plan : les deux faces d'une cimaise, ou une
+      // cimaise parallèle à un mur, ont chacune leur rail (`cimaises.ts`).
+      const cle = `${p.normal[0]},${p.normal[1]},${Math.abs(p.normal[1]) > 0.5 ? p.z : p.x}`
       parMur.set(cle, [...(parMur.get(cle) ?? []), p])
     }
     return [...parMur.values()].map((ps): Box => {

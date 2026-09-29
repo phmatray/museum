@@ -12,6 +12,7 @@
  * `checkPlan` rend la liste des violations, en français, avec leurs cotes. Une
  * liste vide veut dire que le plan est constructible.
  */
+import { cimaisesDe, placesDeFace } from './cimaises.ts'
 import { isNordSud } from './geometry.ts'
 import { terrainDuParc } from './park.ts'
 import type { Flight, Level, Opening, Plan, Rect, Room } from './types.ts'
@@ -61,13 +62,17 @@ function edgeAt(room: Rect, x: number, z: number): { axis: 'x' | 'z'; from: numb
   return null
 }
 
-/** Mur accrochable d'une salle : périmètre, moins les ouvertures et leur dégagement, moins les angles. */
+/**
+ * Mur accrochable d'une salle : périmètre, moins les ouvertures et leur
+ * dégagement, moins les angles ; plus les deux faces de chacune de ses cimaises.
+ */
 export function capacity(room: Room, level: Level): number {
   const perdu = level.openings
     .filter((o) => o.a === room.id || o.b === room.id)
     .reduce((s, o) => s + o.width + 2 * NORMES.dégagement, 0)
   const utile = 2 * (room.width + room.depth) - perdu - 8 * NORMES.angle
-  return Math.max(0, Math.floor(utile / NORMES.pasAccrochage))
+  const cimaises = cimaisesDe(level.id, room.id).reduce((s, c) => s + 2 * placesDeFace(c, NORMES.pasAccrochage), 0)
+  return Math.max(0, Math.floor(utile / NORMES.pasAccrochage)) + cimaises
 }
 
 const exposes = (r: Room) => r.kind === 'gallery' || r.kind === 'honneur'

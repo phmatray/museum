@@ -25,6 +25,7 @@
  *
  * Pur : ni three ni React. Les emprises sont celles des modèles Blender.
  */
+import { cimaisesDe, emprise as empriseCimaise } from './cimaises.ts'
 import { hauteurDuParc } from './relief.ts'
 import type { Rect } from './types.ts'
 
@@ -72,11 +73,14 @@ const dans = (piece: PieceMobilier, surface: string, x: number, z: number, lacet
  */
 const AILES: [string, string, number, number][] = [
   ['r-o1', 'e-o1', 8, 4.7], ['r-o2', 'e-o2', 5.8, 20], ['r-o3', 'e-o3', 8, 35.3],
-  ['r-e1', 'e-e1', 40, 4.7], ['r-e2', 'e-e2', 42.2, 20], ['r-e3', 'e-e3', 40, 35.3],
+  ['r-e2', 'e-e2', 42.2, 20], ['r-e3', 'e-e3', 40, 35.3],
 ]
 
 export const MOBILIER: Meuble[] = [
   ...AILES.flatMap(([rdc, etage, x, z]) => [dans('Banquette', `0:${rdc}`, x, z, SUD), dans('Banquette', `1:${etage}`, x, z, SUD)]),
+  dans('Banquette', '1:e-e1', 40, 4.7, SUD),
+  // Au rez-de-chaussée, Trading & finance a deux cimaises (cimaises.ts) : la banquette va entre elles, face à celle du sud.
+  dans('Banquette', '0:r-e1', 43.8, 6.5, SUD),
   // La galerie du nord, traversée d'ouest en est par z = 6 : la banquette au nord de l'axe.
   dans('Banquette', '0:r-n', 24, 4.7, SUD),
   // La nef : entre le filet de granit (x = 20, 28) et l'allée centrale (22,4–25,6),
@@ -172,9 +176,11 @@ export function contournement(a: Point, b: Point, blocs: Rect[], noeuds: Point[]
   return out
 }
 
-/** Les blocs et les coins du mobilier d'une surface : de quoi le contourner, ou l'ajouter à d'autres blocs. */
+/** Les blocs et les coins du mobilier d'une surface — cimaises comprises : de quoi le contourner, ou l'ajouter à d'autres blocs. */
 export function blocsDuMobilier(surface: string): { blocs: Rect[]; noeuds: Point[] } {
-  const e = MOBILIER.filter((m) => m.surface === surface).map(emprise)
+  const [niveau, salle] = surface.split(':')
+  const cimaises = niveau === 'parc' ? [] : cimaisesDe(Number(niveau), salle).map(empriseCimaise)
+  const e = [...MOBILIER.filter((m) => m.surface === surface).map(emprise), ...cimaises]
   const blocs = e.map((r) => gonfler(r, MARGE))
   // Un coin pris dans un autre meuble ne mène nulle part.
   const noeuds = e.flatMap((r) => coins(gonfler(r, COIN))).filter(([x, z]) => blocs.every((r) => !coupe([x, z], [x, z], r)))

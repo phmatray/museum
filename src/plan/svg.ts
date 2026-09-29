@@ -9,6 +9,7 @@
  * Pur : (plan, niveau) → chaîne. Le même rendu sert au dossier `docs/plan` et
  * pourra servir à la minimap.
  */
+import { MODULE, cimaisesDe } from './cimaises.ts'
 import { guardrails, isNordSud } from './geometry.ts'
 import { capacity } from './rules.ts'
 import type { Plan, Rect } from './types.ts'
@@ -60,6 +61,11 @@ export function renderLevel(plan: Plan, levelId: number): string {
 
   // Obstacles : hachure grise.
   for (const ob of level.obstacles) o.push(rect(ob, `fill="url(#closed)" stroke="${C.ink3}" stroke-width="0.8"`))
+  // Les cimaises (cimaises.ts) : un trait plein, comme une cloison, sur leur emprise hachurée.
+  for (const c of cimaisesDe(level.id)) {
+    const [l, e] = [c.modules * MODULE.largeur, MODULE.epaisseur]
+    o.push(rect(c.axe === 'x' ? { x: c.x - l / 2, z: c.z - e / 2, width: l, depth: e } : { x: c.x - e / 2, z: c.z - l / 2, width: e, depth: l }, `fill="${C.ink}" stroke="${C.ink}" stroke-width="2.5"`))
+  }
 
   // Paliers et volées : pleins s'ils partent de ce niveau, tiretés s'ils passent au-dessus.
   const inLevel = (e: number) => e >= level.elevation - 1e-6 && e < level.elevation + plan.storey - 1e-6

@@ -19,6 +19,7 @@
  * l'ancien bâtiment. 15 contremarches de 16 cm par volée, giron de 32 cm :
  * 2h + g = 0,64 m, au milieu de la fourchette de Blondel.
  */
+import { obstaclesDesCimaises } from './cimaises.ts'
 import { OBSTACLES_PORTES_ENTREE, OBSTACLES_PORTIQUE } from './facade.ts'
 import { OBSTACLES_JARDIN } from './jardin.ts'
 import { obstaclesDuMobilier } from './mobilier.ts'
@@ -82,6 +83,8 @@ export const MUSEE: Plan = {
         ...OBSTACLES_JARDIN,
         // Les bancs, la banque d'accueil, et dehors les bancs du jardin (mobilier.ts).
         ...obstaclesDuMobilier(0),
+        // Les cimaises modulables des galeries les plus chargées (cimaises.ts).
+        ...obstaclesDesCimaises(0),
       ],
     },
     {
@@ -116,8 +119,8 @@ export const MUSEE: Plan = {
         // La salle d'honneur regarde le hall et l'escalier.
         { kind: 'bay', a: 'honneur', b: null, x: 24, z: 12, width: 14.4 },
       ],
-      // Les bornes des vitrines, devant le mur nord de la salle d'honneur (vitrines.ts), et les bancs (mobilier.ts).
-      obstacles: [...OBSTACLES_BORNES, ...obstaclesDuMobilier(1)],
+      // Les bornes des vitrines, devant le mur nord de la salle d'honneur (vitrines.ts), les bancs (mobilier.ts) et les cimaises (cimaises.ts).
+      obstacles: [...OBSTACLES_BORNES, ...obstaclesDuMobilier(1), ...obstaclesDesCimaises(1)],
     },
   ],
 }
