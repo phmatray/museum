@@ -103,3 +103,8 @@ public/assets/lumiere/*
 public/assets/jardin/*
 !public/assets/jardin/jardin.glb
 !public/assets/jardin/erables-loin.glb
+
+# Le hérisson du jardin (Meshy + `tools/blender/build-herisson.py`) : commité, la CI n'a ni Blender ni clé Meshy.
+!public/assets/faune/
+public/assets/faune/*
+!public/assets/faune/herisson.glb
