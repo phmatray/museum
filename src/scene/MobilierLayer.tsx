@@ -1,6 +1,7 @@
 /**
- * Le mobilier (`plan/mobilier.ts`, modèle `mobilier.glb`) : banquettes,
- * bancs de la nef, banque d'accueil, bancs Batlló et bancs du jardin.
+ * Le mobilier (`plan/mobilier.ts`, modèles `mobilier.glb` et `accessoires.glb`) :
+ * banquettes, bancs, banque d'accueil ; cordon, chaise, extincteurs, vélos,
+ * caisses de Versailles, panneau et fontaine.
  *
  * Une pièce est faite de plusieurs maillages — un par matière : chêne,
  * velours, laiton… Chacun devient un lot d'instances, une par meuble posé :
@@ -12,9 +13,34 @@ import * as THREE from 'three'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-import { MOBILIER, type Meuble, type PieceMobilier } from '../plan/mobilier'
+import { MOBILIER, garniture, type Garniture, type PieceMobilier } from '../plan/mobilier'
 
-const PIECES: PieceMobilier[] = ['Banquette', 'BancNef', 'Accueil', 'BancBatllo', 'BancPierre', 'BancJardin']
+/** Les nœuds des deux fichiers : les pièces simples, et les modèles des ensembles (`garniture`). */
+type Modele = Exclude<PieceMobilier, 'Cordon' | 'Velos'> | Garniture['piece']
+const FICHIERS: [string, Modele[]][] = [
+  ['mobilier', ['Banquette', 'BancNef', 'Accueil', 'BancBatllo', 'BancPierre', 'BancJardin']],
+  ['accessoires', ['ChaiseGardien', 'Presentoir', 'Extincteur', 'PanneauHoraires', 'Fontaine', 'Versailles', 'Potelet', 'Velo', 'ArceauVelo']],
+]
+const PIECES = FICHIERS.flatMap(([, p]) => p)
+
+interface Pose {
+  x: number
+  y: number
+  z: number
+  lacet: number
+}
+
+/** Où poser chaque modèle : un meuble à sa place (plus son accroche), un ensemble par ses garnitures. */
+function poses(): Map<Modele, Pose[]> {
+  const out = new Map<Modele, Pose[]>()
+  const ajouter = (nom: Modele, p: Pose) => out.set(nom, [...(out.get(nom) ?? []), p])
+  for (const m of MOBILIER) {
+    if (m.piece === 'Cordon' || m.piece === 'Velos') for (const g of garniture(m)) ajouter(g.piece, { ...g, y: m.y })
+    else ajouter(m.piece, { ...m, y: m.y + (m.accroche ?? 0) })
+  }
+  return out
+}
+const POSES = poses()
 
 /** Un maillage d'une pièce, et sa place dans la pièce. */
 interface Maillage {
@@ -23,42 +49,43 @@ interface Maillage {
   local: THREE.Matrix4
 }
 
-let modele: Promise<Map<PieceMobilier, Maillage[]> | null> | null = null
-function chargerModele(): Promise<Map<PieceMobilier, Maillage[]> | null> {
+let modele: Promise<Map<Modele, Maillage[]> | null> | null = null
+function chargerModele(): Promise<Map<Modele, Maillage[]> | null> {
   const base = import.meta.env.BASE_URL
   modele ??= (async () => {
     const gltf = new GLTFLoader()
     const draco = new DRACOLoader()
     draco.setDecoderPath(`${base}draco/`)
     gltf.setDRACOLoader(draco)
-    try {
-      const { scene } = await gltf.loadAsync(`${base}assets/architecture/mobilier.glb`)
-      scene.updateMatrixWorld(true)
-      const pieces = new Map<PieceMobilier, Maillage[]>()
-      for (const nom of PIECES) {
-        const racine = scene.getObjectByName(nom)
-        if (!racine) continue
-        const inverse = racine.matrixWorld.clone().invert()
-        const maillages: Maillage[] = []
-        racine.traverse((o) => {
-          const m = o as THREE.Mesh
-          if (m.isMesh) maillages.push({ geometry: m.geometry, material: m.material as THREE.Material, local: inverse.clone().multiply(m.matrixWorld) })
-        })
-        pieces.set(nom, maillages)
+    const pieces = new Map<Modele, Maillage[]>()
+    // Un fichier qui manque n'emporte pas l'autre : les bancs sans les accessoires, plutôt que rien.
+    await Promise.all(FICHIERS.map(async ([fichier, noms]) => {
+      try {
+        const { scene } = await gltf.loadAsync(`${base}assets/architecture/${fichier}.glb`)
+        scene.updateMatrixWorld(true)
+        for (const nom of noms) {
+          const racine = scene.getObjectByName(nom)
+          if (!racine) continue
+          const inverse = racine.matrixWorld.clone().invert()
+          const maillages: Maillage[] = []
+          racine.traverse((o) => {
+            const m = o as THREE.Mesh
+            if (m.isMesh) maillages.push({ geometry: m.geometry, material: m.material as THREE.Material, local: inverse.clone().multiply(m.matrixWorld) })
+          })
+          pieces.set(nom, maillages)
+        }
+      } catch (erreur) {
+        console.error(`${fichier} indisponible`, erreur)
       }
-      return pieces
-    } catch (erreur) {
-      console.error('mobilier indisponible', erreur)
-      return null
-    } finally {
-      draco.dispose()
-    }
+    }))
+    draco.dispose()
+    return pieces.size > 0 ? pieces : null
   })()
   return modele
 }
 
 export function MobilierLayer() {
-  const [pieces, setPieces] = useState<Map<PieceMobilier, Maillage[]> | null>(null)
+  const [pieces, setPieces] = useState<Map<Modele, Maillage[]> | null>(null)
   useEffect(() => {
     let vivant = true
     void chargerModele().then((p) => vivant && setPieces(p))
@@ -70,14 +97,14 @@ export function MobilierLayer() {
   return (
     <group name="mobilier">
       {PIECES.flatMap((nom) => {
-        const meubles = MOBILIER.filter((m) => m.piece === nom)
+        const meubles = POSES.get(nom) ?? []
         return (pieces.get(nom) ?? []).map((maillage, i) => <Lot key={`${nom}-${i}`} meubles={meubles} maillage={maillage} />)
       })}
     </group>
   )
 }
 
-function Lot({ meubles, maillage }: { meubles: Meuble[]; maillage: Maillage }) {
+function Lot({ meubles, maillage }: { meubles: Pose[]; maillage: Maillage }) {
   const ref = useRef<THREE.InstancedMesh>(null)
   const matrices = useMemo(() => {
     const q = new THREE.Quaternion()

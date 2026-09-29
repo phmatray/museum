@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { presDeLEau } from '../jardin'
-import { MOBILIER, contourner, coupe, emprise, obstaclesDuMobilier, type Meuble } from '../mobilier'
+import { MOBILIER, contourner, coupe, emprise, garniture, obstaclesDuMobilier, type Meuble } from '../mobilier'
 import { MUSEE } from '../musee'
 import { parkPlacements } from '../park'
 import { lieuxCalmes } from '../promenade'
@@ -69,7 +69,8 @@ describe('MOBILIER', () => {
       const e = emprise(m)
       for (const d of degagements(m.niveau)) expect(touche(e, d), `${nom(m)} devant une porte`).toBe(false)
       for (const f of [...MUSEE.flights, ...MUSEE.landings]) expect(touche(e, gonfler(f, 1)), `${nom(m)} au pied de ${f.id}`).toBe(false)
-      if (m.niveau === 1) for (const b of OBSTACLES_BORNES) expect(touche(e, gonfler(b, 1.5)), `${nom(m)} contre une borne`).toBe(false)
+      // Le cordon, lui, est là pour les vitrines : il passe entre la toile et sa borne.
+      if (m.niveau === 1 && m.piece !== 'Cordon') for (const b of OBSTACLES_BORNES) expect(touche(e, gonfler(b, 1.5)), `${nom(m)} contre une borne`).toBe(false)
     }
   })
 
@@ -98,6 +99,17 @@ describe('MOBILIER', () => {
       for (const [x, z] of coins(gonfler(emprise(m), 1))) expect(presDeLEau(x, z), nom(m)).toBe(false)
       expect(Number.isFinite(m.y)).toBe(true)
     }
+  })
+
+  it('tient les potelets et les vélos dans l’emprise de leur ensemble, le cordon entre la toile et la borne', () => {
+    for (const m of MOBILIER.filter((m) => m.piece === 'Cordon' || m.piece === 'Velos')) {
+      const e = gonfler(emprise(m), 1e-9)
+      const g = garniture(m)
+      expect(g.length, nom(m)).toBeGreaterThan(2)
+      for (const p of g) expect(touche(e, { x: p.x, z: p.z, width: 0, depth: 0 }), `${p.piece} de ${nom(m)}`).toBe(true)
+    }
+    const cordon = emprise(MOBILIER.find((m) => m.piece === 'Cordon')!)
+    for (const b of OBSTACLES_BORNES) expect(cordon.z + cordon.depth).toBeLessThan(b.z - 0.6)
   })
 
   it('fait de chaque emprise un obstacle de son niveau', () => {
