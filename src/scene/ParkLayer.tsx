@@ -345,11 +345,11 @@ function Instances({ piece, sujets }: { piece: ParkPiece; sujets: PlantPlacement
 function Jardin({ objets, herbe }: { objets: THREE.Object3D[]; herbe: THREE.Material }) {
   const matieres = useMemo(() => creerMatieresJardin(), [])
   useEffect(() => () => matieres.dispose(), [matieres])
-  useFrame(({ clock }) => matieres.animer(clock.elapsedTime, useGameStore.getState().ciel.jour))
   const pierre = useMatiere('beton', repetitionMetrique(REGLAGE_MATIERE.beton.motif), { teinte: '#b9b6ad' })
   const bois = useMatiere('parquet', repetitionMetrique(REGLAGE_MATIERE.parquet.motif), { teinte: '#6b4a34' })
 
-  useMemo(() => {
+  const lueurs = useMemo(() => {
+    const lueurs = new Set<THREE.MeshStandardMaterial>()
     for (const m of [pierre, bois]) intemperer(m)
     const par: Record<string, THREE.Material> = { sol: herbe, eau: matieres.eau, cascade: matieres.cascade, granit: pierre, bois }
     for (const racine of objets) {
@@ -368,9 +368,19 @@ function Jardin({ objets, herbe }: { objets: THREE.Object3D[]; herbe: THREE.Mate
         }
         const m = par[o.userData.jardin as string]
         if (m) o.material = m
+        else if (o.material instanceof THREE.MeshStandardMaterial && o.material.name.startsWith('Jardin_Lueur')) lueurs.add(o.material)
       })
     }
+    for (const l of lueurs) l.userData.eclat ??= l.emissiveIntensity
+    return [...lueurs]
   }, [objets, matieres, herbe, pierre, bois])
+  // Le foyer de la lanterne ne brûle qu'au crépuscule et la nuit : à 14 h, il
+  // luisait en plein soleil comme une ampoule oubliée.
+  useFrame(({ clock }) => {
+    const jour = useGameStore.getState().ciel.jour
+    matieres.animer(clock.elapsedTime, jour)
+    for (const l of lueurs) l.emissiveIntensity = (l.userData.eclat as number) * (1 - THREE.MathUtils.smoothstep(jour, 0.15, 0.6))
+  })
 
   return <>{objets.map((o) => <primitive key={o.uuid} object={o} />)}</>
 }
