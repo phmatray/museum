@@ -355,6 +355,8 @@ export interface Amenagement {
   gravier: Surface
   dalles: Surface
   bordures: PointDeBord[][]
+  /** Les bordures arasées : le bord de l'axe dallé où il traverse le gravier (normale vers le gravier). */
+  listels: PointDeBord[][]
   /** Les dalles irrégulières posées dans le gravier, près de l'eau. */
   pierres: Pose[]
   poteaux: Point[]
@@ -450,6 +452,23 @@ export function amenagerAllees(parc: Parc): Amenagement {
     if (courante.length > 1) bordures.push(courante)
   }
 
+  // Où l'axe dallé traverse le gravier : une bordure ARASÉE, au ras des dalles,
+  // qui les sépare du gravier sans barrer le passage ; elle naît et meurt dans
+  // la bordure haute, là où le congé la rejoint.
+  const listels: PointDeBord[][] = []
+  for (const ligne of isolignes(D)) {
+    let courante: PointDeBord[] = []
+    for (const p of affiner(ligne, champ.dalles)) {
+      if (champ.reseau(p.x, p.z) > -0.005 || distanceRect(parvis, p.x, p.z) < 0.05) {
+        if (courante.length > 1) listels.push(courante)
+        courante = []
+        continue
+      }
+      courante.push({ ...p, galets: 0 })
+    }
+    if (courante.length > 1) listels.push(courante)
+  }
+
   // Ce qui occupe déjà le sol : troncs, boules, rochers, bancs, la lanterne, les pas japonais.
   const occupe = semis(2)
   for (const p of parc.plantations) {
@@ -542,5 +561,5 @@ export function amenagerAllees(parc: Parc): Amenagement {
       }
     }
   }
-  return { gravier, dalles, bordures, pierres, poteaux, cordes, touffes, couvreSol }
+  return { gravier, dalles, bordures, listels, pierres, poteaux, cordes, touffes, couvreSol }
 }

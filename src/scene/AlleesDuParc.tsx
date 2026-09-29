@@ -7,6 +7,7 @@
  */
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 import { BORDURE, GALETS, amenagerAllees, type Pose, type Surface } from '../plan/allees'
 import type { Parc } from '../plan/park'
@@ -22,6 +23,14 @@ const PROFIL: [number, number][] = [
   [BORDURE.dedans, -0.05], [BORDURE.dedans, 0.06], [BORDURE.dedans + 0.012, 0.08], [BORDURE.dedans + 0.035, 0.09],
   [BORDURE.dehors - 0.035, 0.09], [BORDURE.dehors - 0.012, 0.08], [BORDURE.dehors, 0.06], [BORDURE.dehors, -0.05],
 ]
+/**
+ * La bordure arasée, là où l'axe dallé traverse le gravier : une pierre de 13 cm,
+ * 1 cm au-dessus des dalles, qui mord sur elles (décalage négatif) et tient le gravier.
+ */
+const ARASE: [number, number][] = [
+  [-0.03, 0], [-0.03, RELIEF_ALLEE + 0.017], [-0.02, RELIEF_ALLEE + 0.02],
+  [0.09, RELIEF_ALLEE + 0.02], [0.1, RELIEF_ALLEE + 0.017], [0.1, -0.03],
+]
 const PIQUET = { haut: 0.62, corde: 0.46 }
 
 export function AlleesDuParc({ parc, dallage }: { parc: Parc; dallage: THREE.Material }) {
@@ -30,7 +39,7 @@ export function AlleesDuParc({ parc, dallage }: { parc: Parc; dallage: THREE.Mat
     gravier: draper(a.gravier, RELIEF_ALLEE),
     // À la cote du parvis (`ParkLayer`), 1 cm au-dessus du gravier qui file dessous.
     dalles: draper(a.dalles, RELIEF_ALLEE + 0.01),
-    bordure: bordure(a.bordures),
+    bordure: mergeGeometries([bande(a.bordures, () => PROFIL), bande(a.listels, () => ARASE)], false),
     galets: galets(a.bordures),
   }), [a])
   useEffect(() => () => Object.values(geos).forEach((g) => g.dispose()), [geos])
@@ -182,8 +191,6 @@ function bande(bords: ReturnType<typeof amenagerAllees>['bordures'], profil: (p:
   g.computeVertexNormals()
   return g
 }
-
-const bordure = (bords: ReturnType<typeof amenagerAllees>['bordures']) => bande(bords, () => PROFIL)
 
 /** Le lit de galets : un léger bourrelet entre la bordure et le gazon, qui s'efface le long des dalles. */
 const galets = (bords: ReturnType<typeof amenagerAllees>['bordures']) => bande(bords, (p) => {

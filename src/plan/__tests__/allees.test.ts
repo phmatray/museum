@@ -99,6 +99,15 @@ describe('allées', () => {
       }
   })
 
+  it('borde l’axe d’une bordure arasée où il traverse le gravier', () => {
+    // Un de chaque côté de l’axe, où il coupe la ceinture.
+    expect(a.listels.length).toBe(2)
+    for (const p of a.listels.flat()) {
+      expect(Math.abs(champ.dalles(p.x, p.z))).toBeLessThan(0.005)
+      expect(champ.reseau(p.x, p.z)).toBeLessThan(0)
+    }
+  })
+
   it('est déterministe', () => {
     expect(amenagerAllees(parc)).toEqual(a)
   })
