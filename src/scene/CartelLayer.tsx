@@ -106,7 +106,8 @@ function QrCodes({ placements, oeuvres }: { placements: CartelPlacement[]; oeuvr
   const ref = useRef<THREE.InstancedMesh>(null)
   const avecCode = useMemo(() => placements.filter((p) => oeuvres.has(p.key)), [placements, oeuvres])
   const [geometrie, materiau] = useMemo(() => {
-    const atlas = atlasQr(avecCode.map((p) => adresseQr(oeuvres.get(p.key)!)))
+    const cles = [...oeuvres.keys()]
+    const atlas = atlasQr(avecCode.map((p) => adresseQr(oeuvres.get(p.key)!, cles)))
     const g = new THREE.PlaneGeometry(CARTEL_QR.cote, CARTEL_QR.cote)
     g.setAttribute('aCase', new THREE.InstancedBufferAttribute(new Float32Array(atlas.uv.flat()), 2))
     const t = new THREE.DataTexture(atlas.pixels, atlas.cote, atlas.cote)

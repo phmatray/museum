@@ -111,10 +111,13 @@ describe('matriceQr', () => {
 describe('adresseQr', () => {
   const a = { key: 'phmatray/museum', url: 'https://github.com/phmatray/museum', site: 'https://phmatray.github.io/museum/' }
   it('mène au dépôt par défaut, au site ou au musée sur demande', () => {
+    const cles = [a.key]
     expect(adresseQr(a)).toBe(a.url)
-    expect(adresseQr(a, 'site')).toBe(a.site)
-    expect(adresseQr({ ...a, site: null }, 'site')).toBe(a.url)
-    expect(adresseQr(a, 'musee')).toBe('https://phmatray.github.io/museum/?p=phmatray%2Fmuseum')
+    expect(adresseQr(a, cles, 'site')).toBe(a.site)
+    expect(adresseQr({ ...a, site: null }, cles, 'site')).toBe(a.url)
+    expect(adresseQr(a, cles, 'musee')).toBe('https://phmatray.github.io/museum/p/museum/')
+    // Deux dépôts du même nom : pas de page de partage, le musée directement.
+    expect(adresseQr(a, [...cles, 'autre/museum'], 'musee')).toBe('https://phmatray.github.io/museum/?p=phmatray/museum')
   })
 })
 
