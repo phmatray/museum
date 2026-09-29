@@ -12,7 +12,8 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
-import { FACES, TAILLE, TIRET, URL_COMPTEUR, chiffres, compterLaVisite, dureeDuCompteur, faceDuTambour } from '../domain/compteur'
+import { FACES, TAILLE, TIRET, chiffres, dureeDuCompteur, faceDuTambour } from '../domain/compteur'
+import { laVisite } from '../io/visite'
 import { canevasEnMetres } from './canevas'
 
 /** Au mur sud du hall (face à z 39,85), entre l'angle et les vantaux de l'entrée (x 22,4). */
@@ -90,15 +91,7 @@ export function CompteurLayer() {
   const suivants = useRef<{ a: number[]; quand: number }[]>([])
   useEffect(() => {
     let vivant = true
-    const session = (() => {
-      try {
-        return sessionStorage
-      } catch {
-        return null
-      }
-    })()
-    // En développement on lit le compteur sans l'incrémenter : les rechargements ne sont pas des visites.
-    void compterLaVisite(session, fetch, import.meta.env.DEV ? URL_COMPTEUR.replace('/hit/', '/get/') : URL_COMPTEUR).then((n) => {
+    void laVisite().then((n) => {
       if (!vivant || n === null) return
       const t = performance.now() / 1000
       suivants.current.push({ a: chiffres(n - 1), quand: t + 0.5 }, { a: chiffres(n), quand: t + 2.5 })
