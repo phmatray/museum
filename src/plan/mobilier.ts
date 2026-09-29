@@ -298,6 +298,9 @@ export function coupe(a: Point, b: Point, r: Rect): boolean {
   return true
 }
 
+/** La visibilité entre coins, par jeu de nœuds : l'appelant repasse les mêmes tableaux (`blocsDuMobilier`). */
+const VISIBILITE = new WeakMap<Point[], Uint8Array>()
+
 /**
  * Le plus court chemin de a à b qui ne coupe aucun bloc, par les nœuds donnés
  * (Dijkstra sur le graphe de visibilité). Rend les points à suivre, b compris ;
@@ -308,9 +311,22 @@ export function contournement(a: Point, b: Point, blocs: Rect[], noeuds: Point[]
   // on en sort : pour le premier pas, seul son cœur arrête. Sans quoi tout
   // chemin coupait ce bloc, et la ligne droite de secours traversait le banc.
   const dedans = (p: Point, r: Rect) => p[0] > r.x && p[0] < r.x + r.width && p[1] > r.z && p[1] < r.z + r.depth
-  const libre = (p: Point, q: Point) => blocs.every((r) => !coupe(p, q, p === a && dedans(a, r) ? gonfler(r, -SORTIE) : r))
-  if (libre(a, b)) return [b]
+  const traverse = (p: Point, q: Point) => !blocs.every((r) => !coupe(p, q, p === a && dedans(a, r) ? gonfler(r, -SORTIE) : r))
+  if (!traverse(a, b)) return [b]
+  // Entre deux coins, la réponse ne change jamais : on la garde, par jeu de
+  // nœuds (0 inconnu, 1 libre, 2 coupé). Sans elle, chaque trajet refaisait
+  // N² × blocs tests, et les 32 lampadaires du parc l'avaient rendu 8 fois plus lent.
+  const m = noeuds.length
+  let vus = VISIBILITE.get(noeuds)
+  if (vus === undefined) VISIBILITE.set(noeuds, (vus = new Uint8Array(m * m)))
+  const cache = vus
   const n = [a, b, ...noeuds]
+  const libre = (i: number, k: number) => {
+    if (i < 2 || k < 2) return !traverse(n[i], n[k])
+    const c = (i - 2) * m + (k - 2)
+    if (cache[c] === 0) cache[c] = cache[(k - 2) * m + (i - 2)] = traverse(n[i], n[k]) ? 2 : 1
+    return cache[c] === 1
+  }
   const dist = n.map(() => Infinity)
   const venu = n.map(() => -1)
   const fait = n.map(() => false)
@@ -321,7 +337,7 @@ export function contournement(a: Point, b: Point, blocs: Rect[], noeuds: Point[]
     if (i < 0 || i === 1) break
     fait[i] = true
     for (let k = 0; k < n.length; k++) {
-      if (fait[k] || !libre(n[i], n[k])) continue
+      if (fait[k] || !libre(i, k)) continue
       const d = dist[i] + Math.hypot(n[k][0] - n[i][0], n[k][1] - n[i][1])
       if (d < dist[k]) [dist[k], venu[k]] = [d, i]
     }
@@ -334,6 +350,13 @@ export function contournement(a: Point, b: Point, blocs: Rect[], noeuds: Point[]
 
 /** Les blocs et les coins du mobilier d'une surface — cimaises comprises : de quoi le contourner, ou l'ajouter à d'autres blocs. */
 export function blocsDuMobilier(surface: string): { blocs: Rect[]; noeuds: Point[] } {
+  let r = BLOCS.get(surface)
+  if (r === undefined) BLOCS.set(surface, (r = calculerBlocs(surface)))
+  return r
+}
+const BLOCS = new Map<string, { blocs: Rect[]; noeuds: Point[] }>()
+
+function calculerBlocs(surface: string): { blocs: Rect[]; noeuds: Point[] } {
   const [niveau, salle] = surface.split(':')
   const cimaises = niveau === 'parc' ? [] : cimaisesDe(Number(niveau), salle).map(empriseCimaise)
   const e = [...MOBILIER.filter((m) => m.surface === surface).map(emprise), ...cimaises]

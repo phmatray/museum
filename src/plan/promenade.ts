@@ -21,7 +21,7 @@ import { ASSISES, DIMENSIONS, MOBILIER, blocsDuMobilier, contournement, contourn
 import type { Parc } from './park.ts'
 import { PARC, PASSABLE, surfaceAt } from './rules.ts'
 import { capVers, chemin, passages } from './tour.ts'
-import type { Plan } from './types.ts'
+import type { Plan, Rect } from './types.ts'
 import { step, type Walker } from './walk.ts'
 
 /**
@@ -366,13 +366,21 @@ function graphe(plan: Plan) {
  * où les bancs du jardin sont des blocs de plus, avec leurs coins.
  */
 function contourner(plan: Plan, a: [number, number], b: [number, number]): [number, number][] {
+  let o = OBSTACLES_DEHORS.get(plan)
+  if (o === undefined) OBSTACLES_DEHORS.set(plan, (o = obstaclesDehors(plan)))
+  return contournement(a, b, o.blocs, o.noeuds)
+}
+/** Mêmes tableaux d'un trajet à l'autre : `contournement` y garde la visibilité entre coins. */
+const OBSTACLES_DEHORS = new WeakMap<Plan, { blocs: Rect[]; noeuds: [number, number][] }>()
+
+function obstaclesDehors(plan: Plan): { blocs: Rect[]; noeuds: [number, number][] } {
   const m = 0.6
   const bati = [{ x: 0, z: 0, width: plan.width, depth: plan.depth }, ...OBSTACLES_PORTIQUE].map((r) => ({ x: r.x - m, z: r.z - m, width: r.width + 2 * m, depth: r.depth + 2 * m }))
   const e = 2.5
   const sud = Math.max(plan.depth, ...OBSTACLES_PORTIQUE.map((o) => o.z + o.depth)) + e
   const bancs = blocsDuMobilier(PARC)
   const angles: [number, number][] = [[-e, -e], [plan.width + e, -e], [plan.width + e, sud], [-e, sud]]
-  return contournement(a, b, [...bati, ...bancs.blocs], [...angles, ...bancs.noeuds])
+  return { blocs: [...bati, ...bancs.blocs], noeuds: [...angles, ...bancs.noeuds] }
 }
 
 /** Les points de passage de la surface `de` jusqu'au lieu, `null` s'il est inatteignable. */
