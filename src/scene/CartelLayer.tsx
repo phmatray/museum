@@ -15,7 +15,9 @@ import { useCatalogue } from '../hooks/useCatalogue'
 import { cartelPlacements, cartelTexte, type CartelPlacement } from '../plan/cartels'
 import { Cartel } from './Cartel'
 import { PLAQUE, PLAQUE_PANNEAU } from './cartelStyle'
-import { CARTEL_LARGEUR } from '../plan/cartels'
+import { CARTEL_LARGEUR, CARTEL_QR } from '../plan/cartels'
+import { adresseQr, atlasQr } from '../domain/qr'
+import type { Artwork } from '../domain/types'
 
 const PORTEE = 6
 /**
@@ -54,6 +56,7 @@ export function CartelLayer() {
     <group name="cartels">
       {/* Les plaques, toutes, toujours : un seul lot, et plus rien ne surgit sur le mur. */}
       <Plaques placements={placements} />
+      <QrCodes placements={placements} oeuvres={oeuvres} />
       {proches.map((p) => {
         const a = oeuvres.get(p.key)
         return a === undefined ? null : <Cartel key={p.key} placement={p} texte={cartelTexte(a)} />
@@ -89,4 +92,60 @@ function Plaques({ placements }: { placements: CartelPlacement[] }) {
     mesh.computeBoundingSphere()
   }, [placements])
   return <instancedMesh key={placements.length} ref={ref} args={[geometrie, undefined, placements.length]} material={materiau} />
+}
+
+/**
+ * Les QR codes de tous les cartels : un atlas (`domain/qr.ts`), un lot
+ * d'instances, un appel de dessin. L'instance `i` lit la case `i` de l'atlas
+ * par un attribut d'instance, que le tri des salles compacte avec la matrice.
+ *
+ * Sans lumière (`MeshBasicMaterial`) : sous l'éclairage chaud du soir ou la
+ * nuit, un code éclairé perdrait son contraste et ne se scannerait plus.
+ */
+function QrCodes({ placements, oeuvres }: { placements: CartelPlacement[]; oeuvres: Map<string, Artwork> }) {
+  const ref = useRef<THREE.InstancedMesh>(null)
+  const avecCode = useMemo(() => placements.filter((p) => oeuvres.has(p.key)), [placements, oeuvres])
+  const [geometrie, materiau] = useMemo(() => {
+    const cles = [...oeuvres.keys()]
+    const atlas = atlasQr(avecCode.map((p) => adresseQr(oeuvres.get(p.key)!, cles)))
+    const g = new THREE.PlaneGeometry(CARTEL_QR.cote, CARTEL_QR.cote)
+    g.setAttribute('aCase', new THREE.InstancedBufferAttribute(new Float32Array(atlas.uv.flat()), 2))
+    const t = new THREE.DataTexture(atlas.pixels, atlas.cote, atlas.cote)
+    t.colorSpace = THREE.SRGBColorSpace
+    // Net de près (un module = un texel), gris uni de loin plutôt qu'un moiré.
+    t.magFilter = THREE.NearestFilter
+    t.minFilter = THREE.LinearMipmapLinearFilter
+    t.generateMipmaps = true
+    t.anisotropy = 4
+    t.needsUpdate = true
+    const m = new THREE.MeshBasicMaterial({ map: t })
+    const echelle = (1 / atlas.colonnes).toFixed(8)
+    m.onBeforeCompile = (shader) => {
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute vec2 aCase;')
+        .replace('#include <uv_vertex>', `#include <uv_vertex>\nvMapUv = vMapUv * ${echelle} + aCase;`)
+    }
+    m.customProgramCacheKey = () => `cartel-qr-${echelle}`
+    return [g, m]
+  }, [avecCode, oeuvres])
+  useEffect(() => () => {
+    geometrie.dispose()
+    materiau.map?.dispose()
+    materiau.dispose()
+  }, [geometrie, materiau])
+  useEffect(() => {
+    const mesh = ref.current
+    if (mesh === null) return
+    const [m, q] = [new THREE.Matrix4(), new THREE.Quaternion()]
+    const [haut, un] = [new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 1, 1)]
+    avecCode.forEach((p, i) => {
+      q.setFromAxisAngle(haut, p.rotation)
+      // Sur la face de la plaque, un demi-millimètre devant, calé à droite.
+      const decale = new THREE.Vector3(CARTEL_QR.x, CARTEL_QR.y, PLAQUE.epaisseur + 0.0005).applyQuaternion(q)
+      mesh.setMatrixAt(i, m.compose(new THREE.Vector3(p.x, p.y, p.z).add(decale), q, un))
+    })
+    mesh.instanceMatrix.needsUpdate = true
+    mesh.computeBoundingSphere()
+  }, [avecCode, geometrie])
+  return <instancedMesh key={geometrie.uuid} ref={ref} args={[geometrie, undefined, avecCode.length]} material={materiau} />
 }

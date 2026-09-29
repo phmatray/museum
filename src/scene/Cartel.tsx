@@ -5,7 +5,7 @@
 import { Suspense } from 'react'
 import { Text } from '@react-three/drei'
 
-import { CARTEL_LARGEUR, type CartelPlacement } from '../plan/cartels'
+import { CARTEL_TEXTE, type CartelPlacement } from '../plan/cartels'
 import { CARTEL_FONT, PLAQUE, PLAQUE_PANNEAU, THEME_INK } from './cartelStyle'
 
 const EPAISSEUR = PLAQUE.epaisseur
@@ -17,13 +17,13 @@ export function Cartel({ placement, texte }: { placement: CartelPlacement; texte
       <Suspense fallback={null}>
         <Text
           font={CARTEL_FONT}
-          position={[-CARTEL_LARGEUR / 2 + 0.02, 0, EPAISSEUR + 0.001]}
+          position={[CARTEL_TEXTE.x, 0, EPAISSEUR + 0.001]}
           fontSize={0.022}
           lineHeight={1.3}
           color={placement.surPanneau ? PLAQUE_PANNEAU.encre : THEME_INK.classic}
           anchorX="left"
           anchorY="middle"
-          maxWidth={CARTEL_LARGEUR - 0.04}
+          maxWidth={CARTEL_TEXTE.largeur}
         >
           {texte}
         </Text>

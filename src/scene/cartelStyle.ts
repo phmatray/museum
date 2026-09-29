@@ -12,6 +12,7 @@
  * change, ce sont deux décisions distinctes.
  */
 import type { ThemeId } from '../domain/types'
+import { CARTEL_HAUTEUR } from '../plan/cartels'
 
 export const THEME_INK: Record<ThemeId, string> = {
   classic: '#2a2620',
@@ -33,7 +34,7 @@ export const CARTEL_FONT = `${import.meta.env.BASE_URL}assets/fonts/PTSans-Regul
 export const TITRE_FONT = `${import.meta.env.BASE_URL}assets/fonts/PTSerif-Regular.ttf`
 
 /** La plaque d'un cartel, dessinée pour tous les cartels à la fois par `CartelLayer`. */
-export const PLAQUE = { hauteur: 0.16, epaisseur: 0.01, couleur: '#f4f1ea' }
+export const PLAQUE = { hauteur: CARTEL_HAUTEUR, epaisseur: 0.01, couleur: '#f4f1ea' }
 
 /** Le cartel d'une toile de cimaise : sombre sur le stratifié blanc, en lettres crème (`CartelPlacement.surPanneau`). */
 export const PLAQUE_PANNEAU = { couleur: '#34302b', encre: '#efe4cc' }
