@@ -111,6 +111,16 @@ export function mixage(lieu: Lieu): Mixage {
   }
 }
 
+/**
+ * La pluie qu'on entend : pleine et claire dehors ; dans la nef, le crépitement
+ * sur la verrière, étouffé ; dans une galerie, un murmure sourd par les
+ * lanterneaux et les murs. `coupure` est la fréquence du passe-bas (Hz).
+ */
+export function pluieEntendue(lieu: Lieu, pluie: number): { gain: number; coupure: number } {
+  const [gain, coupure] = lieu === 'dehors' ? [1, 9000] : lieu === 'nef' ? [0.5, 2200] : [0.22, 700]
+  return { gain: gain * Math.min(1, Math.max(0, pluie)), coupure }
+}
+
 // ── L'horloge et son carillon ─────────────────────────────────────────────
 
 /**

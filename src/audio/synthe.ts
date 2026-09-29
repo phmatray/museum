@@ -426,3 +426,23 @@ export function ronron(ctx: BaseAudioContext, out: AudioNode) {
   }, true)
   return boucle(ctx, out, b)
 }
+
+/**
+ * La pluie : un chuintement de bruit blanc adouci, semé de milliers de gouttes
+ * — de brefs clics filtrés, chacun sa hauteur. Le moteur l'étouffe selon le lieu.
+ */
+export function pluie(ctx: BaseAudioContext, out: AudioNode) {
+  const b = tampon(ctx, 'pluie', 4, 2, (d, _c, sr) => {
+    let lp = 0
+    for (let i = 0; i < d.length; i++) {
+      lp += 0.35 * ((alea() * 2 - 1) - lp)
+      d[i] = lp * 0.12
+    }
+    for (let n = 0; n < 4 * 260; n++) {
+      const i0 = Math.floor(alea() * d.length)
+      const [f0, dur, a] = [entre(1500, 6000), entre(0.002, 0.008), entre(0.03, 0.12)]
+      for (let k = 0; k < dur * sr && i0 + k < d.length; k++) d[i0 + k] += Math.sin((2 * Math.PI * f0 * k) / sr) * a * (1 - k / (dur * sr))
+    }
+  }, true)
+  return boucle(ctx, out, b, alea() * 4)
+}

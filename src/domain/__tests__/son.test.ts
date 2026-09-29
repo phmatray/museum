@@ -5,7 +5,7 @@ import { JARDIN } from '../../plan/jardin'
 import { parkPlacements } from '../../plan/park'
 import { PARC } from '../../plan/rules'
 import {
-  BOURDON, avancerPas, carillonDu, intervallePas, lieuDe, matiereSous, mixage, partitionAnnonce, partitionHeure, volumeRonron,
+  BOURDON, avancerPas, carillonDu, intervallePas, lieuDe, matiereSous, mixage, partitionAnnonce, partitionHeure, pluieEntendue, volumeRonron,
 } from '../son'
 
 const parc = parkPlacements(MUSEE)
@@ -104,5 +104,17 @@ describe('volumeRonron', () => {
     expect(volumeRonron(1.5)).toBe(0)
     expect(volumeRonron(1.2)).toBeGreaterThan(0)
     expect(volumeRonron(0.5)).toBe(1)
+  })
+})
+
+describe('pluieEntendue', () => {
+  it("s'entend du dedans, plus bas et plus sourde que dehors", () => {
+    const [dehors, nef, galerie] = (['dehors', 'nef', 'galerie'] as const).map((l) => pluieEntendue(l, 1))
+    expect(nef.gain).toBeGreaterThan(0)
+    expect(galerie.gain).toBeGreaterThan(0)
+    expect(nef.gain).toBeLessThan(dehors.gain)
+    expect(galerie.coupure).toBeLessThan(nef.coupure)
+    expect(nef.coupure).toBeLessThan(dehors.coupure)
+    expect(pluieEntendue('dehors', 0).gain).toBe(0)
   })
 })

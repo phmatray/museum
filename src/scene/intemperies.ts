@@ -7,7 +7,11 @@
  * filets d'eau sur la verrière. Aucune texture, aucun appel de dessin de plus.
  *
  * Toutes les greffes CHAÎNENT sur un `onBeforeCompile` déjà posé (le rebond de
- * `materials.ts`, la mousse des rochers) au lieu de l'écraser.
+ * `materials.ts`, la mousse des rochers) au lieu de l'écraser. Celles du
+ * fragment se posent juste AVANT `#include <emissivemap_fragment>`, les normales
+ * faites : `retoucherCartes` (materials.ts) remplace `normal_fragment_maps` par
+ * son texte, et une greffe ancrée là disparaissait — les flaques du gravier ne
+ * compilaient plus (`iFlaque` non déclaré), la pierre ne se mouillait pas.
  */
 import * as THREE from 'three'
 
@@ -130,8 +134,8 @@ export function intemperer(m: THREE.Material, { pelouse = false, flaques = false
   greffer(m, pelouse ? 'intemperies:pelouse' : flaques ? 'intemperies:flaques' : 'intemperies', (s) => {
     avecMonde(s)
     s.fragmentShader = s.fragmentShader.replace(
-      '#include <normal_fragment_maps>',
-      `#include <normal_fragment_maps>
+      '#include <emissivemap_fragment>',
+      `
   ${flaques ? 'float iFlaque = 0.0, iFilm = 0.0;' : ''}
   {
     float iDehors = 1.0 - iInterieur(vMonde);
@@ -169,7 +173,8 @@ export function intemperer(m: THREE.Material, { pelouse = false, flaques = false
       roughnessFactor = mix(roughnessFactor, 0.8, iNeige);
       metalnessFactor *= 1.0 - iNeige;
     #endif
-  }`,
+  }
+  #include <emissivemap_fragment>`,
     )
     // Le reflet du ciel couvert (la couleur de la brume, à l'heure qu'il est) :
     // un miroir dans les flaques, un lustre sur le reste, selon Fresnel.
@@ -310,12 +315,13 @@ export function rider(m: THREE.Material): void {
   greffer(m, 'intemperies:ronds', (s) => {
     avecMonde(s)
     s.fragmentShader = s.fragmentShader.replace(
-      '#include <normal_fragment_maps>',
-      `#include <normal_fragment_maps>
+      '#include <emissivemap_fragment>',
+      `
   if (uPluie > 0.01) {
     vec2 iG = iRonds(vMonde.xz);
     normal = normalize(normal + (viewMatrix * vec4(iG.x, 0.0, iG.y, 0.0)).xyz * 0.9 * min(1.0, uPluie * 2.0));
-  }`,
+  }
+  #include <emissivemap_fragment>`,
     )
   })
 }
@@ -324,14 +330,17 @@ export function rider(m: THREE.Material): void {
  * Les filets de pluie sur un verre : des rigoles qui descendent la pente de la
  * vitre (la verrière, le pignon), serpentent un peu, et des gouttes posées.
  * Le sens de la pente est lu sur la normale : la même greffe vaut pour un
- * vitrage incliné ou d'aplomb.
+ * vitrage incliné ou d'aplomb. À plat (les lanterneaux de l'étage), l'eau ne
+ * coule pas : des gouttes s'y écrasent, s'étalent et sèchent, d'autres
+ * tombent — leur ombre sur le dépoli, vue d'en dessous. Et sous l'averse, le
+ * verre luit moins : le ciel derrière est bas.
  */
 export function ruisseler(m: THREE.Material): void {
   greffer(m, 'intemperies:filets', (s) => {
     avecMonde(s)
     s.fragmentShader = s.fragmentShader.replace(
-      '#include <normal_fragment_maps>',
-      `#include <normal_fragment_maps>
+      '#include <emissivemap_fragment>',
+      `
   float iFilet = 0.0;
   if (uPluie > 0.01) {
     vec3 nW = normalize((vec4(normal, 0.0) * viewMatrix).xyz);
@@ -340,22 +349,33 @@ export function ruisseler(m: THREE.Material): void {
     if (lg > 0.05) {
       amont /= lg;
       vec3 cote = normalize(cross(nW, amont));
-      float u = dot(vMonde, cote) * 7.0;
+      float u = dot(vMonde, cote) * 4.0;
       float v = dot(vMonde, amont);
       float col = floor(u);
       float h = iHash(vec2(col, 3.7));
       float fu = fract(u) - 0.5 + 0.18 * sin(v * 4.0 + h * 30.0);
-      float ligne = smoothstep(0.1, 0.02, abs(fu)) * step(0.45 - 0.4 * uPluie, h);
+      float ligne = smoothstep(0.14, 0.04, abs(fu)) * step(0.45 - 0.4 * uPluie, h);
       float coule = pow(fract(v * (0.5 + h) + uTemps * (0.5 + 0.7 * h) + h * 13.0), 6.0);
       vec2 g = vec2(u * 1.3, v * 9.0);
       float goutte = smoothstep(0.35, 0.15, length(fract(g) - 0.5)) * step(0.82 - 0.2 * uPluie, iHash(floor(g)));
       iFilet = clamp(ligne * (0.35 + 0.65 * coule) + goutte * 0.7, 0.0, 1.0) * min(1.0, uPluie * 1.8);
-      // Vue du dessous, contre le ciel clair, l'eau qui coule se lit plus sombre que le verre.
-      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.19, 0.22), iFilet * 0.8);
-      diffuseColor.a = min(1.0, diffuseColor.a + iFilet * 0.45);
       normal = normalize(normal + (viewMatrix * vec4(cote * fu * 0.6 * ligne, 0.0)).xyz);
+    } else {
+      vec2 g = vMonde.xz * 4.0;
+      vec2 c = floor(g);
+      float h = iHash(c + 5.3);
+      // Chaque case reçoit sa goutte à son heure ; elle s'étale un peu en séchant.
+      float t = fract(uTemps * (0.3 + 0.4 * h) + h * 17.0);
+      vec2 o = 0.25 + 0.5 * vec2(h, iHash(c + 7.1));
+      float r = (0.06 + 0.09 * h * h) * (0.8 + 0.4 * t);
+      float goutte = smoothstep(r, r * 0.4, length(fract(g) - o)) * (1.0 - t * t) * step(0.9 - 0.6 * uPluie, iHash(c + 3.3));
+      iFilet = goutte * 0.6 * min(1.0, uPluie * 1.8);
     }
-  }`,
-    ).replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance *= 1.0 - 0.8 * iFilet;')
+    // Vue du dessous, contre le ciel clair, l'eau se lit plus sombre que le verre.
+    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.19, 0.22), iFilet * 0.8);
+    diffuseColor.a = min(1.0, diffuseColor.a + iFilet * 0.45);
+  }
+  #include <emissivemap_fragment>`,
+    ).replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance *= (1.0 - 0.8 * iFilet) * (1.0 - 0.3 * uPluie);')
   })
 }

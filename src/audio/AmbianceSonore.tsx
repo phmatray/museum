@@ -44,7 +44,7 @@ export function AmbianceSonore() {
   useFrame(({ camera }, delta) => {
     const m = moteurCourant()
     if (!m || !actif || paused || m.ctx.state !== 'running') return
-    const { visiteur: w, bavette, ciel } = useGameStore.getState()
+    const { visiteur: w, bavette, ciel, meteo } = useGameStore.getState()
     if (!w) return
     const f = foulee.current
 
@@ -67,6 +67,7 @@ export function AmbianceSonore() {
       lieu: lieuDe(w.surface),
       jour: ciel.jour,
       bavette: bavette && bavette.level === w.level ? [bavette.x, w.y + 0.2, bavette.z] : null,
+      pluie: meteo.pluie,
     })
 
     // L'heure pleine, vérifiée une fois par seconde.
