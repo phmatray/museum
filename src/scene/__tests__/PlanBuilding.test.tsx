@@ -107,9 +107,9 @@ describe('PlanBuilding', () => {
     const parc = parkPlacements(MUSEE)
     const mur = enceinte(parc.terrain, parc.allees)
     attendus.push(mur.brique.length, mur.pierre.length, mur.fer.length)
-    // Puis le décor des allées (AlleesDuParc) : les dalles près de l'eau en trois formes, piquets, cordes, touffes.
+    // Puis le décor des allées (AlleesDuParc) : piquets, cordes, touffes (les dalles près de l'eau sont fusionnées).
     const al = amenagerAllees(parc)
-    attendus.push(...[0, 1, 2].map((v) => al.pierres.filter((_, i) => i % 3 === v).length), al.poteaux.length, al.cordes.length, al.touffes.length + al.couvreSol.length)
+    attendus.push(al.poteaux.length, al.cordes.length, al.touffes.length + al.couvreSol.length)
 
     expect(meshes).toHaveLength(attendus.length)
     expect(meshes.map((m) => m.count)).toEqual(attendus)

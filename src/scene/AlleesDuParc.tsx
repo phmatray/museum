@@ -41,6 +41,7 @@ export function AlleesDuParc({ parc, dallage }: { parc: Parc; dallage: THREE.Mat
     dalles: draper(a.dalles, COTE_DALLAGE),
     bordure: mergeGeometries([bande(a.bordures, () => PROFIL), bande(a.listels, () => ARASE)], false),
     galets: galets(a.bordures),
+    pierres: semisDePierres(a.pierres),
   }), [a])
   useEffect(() => () => Object.values(geos).forEach((g) => g.dispose()), [geos])
 
@@ -48,7 +49,8 @@ export function AlleesDuParc({ parc, dallage }: { parc: Parc; dallage: THREE.Mat
   // Des galets de rivière, sombres : le gravier des allées, en plus gros et en ardoise.
   const cailloux = useMatiere('gravier', repetitionMetrique(REGLAGE_MATIERE.gravier.motif * 2.2), { teinte: '#5b5d5e' })
   const pierre = useMatiere('beton', repetitionMetrique(REGLAGE_MATIERE.beton.motif), { teinte: '#d6d1c6' })
-  const dalle = useMatiere('beton', repetitionMetrique(REGLAGE_MATIERE.beton.motif * 0.35), { teinte: '#aaa69c' })
+  // Un granit patiné (Rock044), UV lues sur le plan : chaque pierre montre son propre morceau de la carte.
+  const dalle = useMatiere('roche', repetitionMetrique(REGLAGE_MATIERE.roche.motif))
   // Mouillé sous la pluie, blanc sous la neige (`intemperies.ts`) : greffé sur chaque matière neuve.
   useMemo(() => {
     for (const m of [cailloux, pierre, dalle]) intemperer(m)
@@ -69,13 +71,10 @@ export function AlleesDuParc({ parc, dallage }: { parc: Parc; dallage: THREE.Mat
     return m
   }, [])
   const formes = useMemo(() => ({ piquet: piquet(), corde: corde(), touffe: touffe() }), [])
-  // Trois formes de dalle : une seule, même tournée et étirée, se reconnaissait d'une pierre à l'autre.
-  const pierres = useMemo(() => [1, 2, 3].map(dalleIrreguliere), [])
   useEffect(() => () => {
     Object.values(decor).forEach((m) => m.dispose())
     Object.values(formes).forEach((g) => g.dispose())
-    pierres.forEach((g) => g.dispose())
-  }, [decor, formes, pierres])
+  }, [decor, formes])
 
   const piquets = useMemo(() => a.poteaux.map((p) => new THREE.Matrix4().makeTranslation(p.x, hauteurDuParc(p.x, p.z), p.z)), [a])
   const cordes = useMemo(() => a.cordes.map(([i, j]) => {
@@ -86,15 +85,6 @@ export function AlleesDuParc({ parc, dallage }: { parc: Parc; dallage: THREE.Mat
     const z = new THREE.Vector3(-x.z, 0, x.x).normalize()
     return new THREE.Matrix4().makeBasis(x, new THREE.Vector3(0, 1, 0), z).setPosition(p.x, y0, p.z)
   }), [a])
-  const dalles = useMemo(() => pierres.map((_, v) => {
-    const lot = a.pierres.filter((_, i) => i % pierres.length === v)
-    // Des pierres de la même carrière, plus ou moins chaudes, plus ou moins claires.
-    const teintes = lot.map((_, i) => {
-      const [t, h] = [0.72 + 0.4 * frac(i * 0.618 + v * 0.3), frac(i * 0.382 + v * 0.7) - 0.5]
-      return new THREE.Color(t * (1 + 0.06 * h), t, t * (1 - 0.08 * h))
-    })
-    return { matrices: poses(lot, RELIEF_ALLEE - 0.012), teintes }
-  }), [a, pierres])
   // Un seul lot : l'herbe du Japon telle quelle, l'ophiopogon teinté d'un vert noir.
   const touffes = useMemo(() => ({
     matrices: poses([...a.touffes, ...a.couvreSol], -0.02),
@@ -107,7 +97,7 @@ export function AlleesDuParc({ parc, dallage }: { parc: Parc; dallage: THREE.Mat
       <mesh geometry={geos.dalles} material={dallage} userData={{ zone: PARC }} />
       <mesh geometry={geos.bordure} material={pierre} userData={{ zone: PARC }} />
       <mesh geometry={geos.galets} material={cailloux} userData={{ zone: PARC }} />
-      {dalles.map((d, v) => <Lot key={v} geometrie={pierres[v]} material={dalle} matrices={d.matrices} teintes={d.teintes} />)}
+      <mesh geometry={geos.pierres} material={dalle} userData={{ zone: PARC }} />
       <Lot geometrie={formes.piquet} material={decor.bois} matrices={piquets} />
       <Lot geometrie={formes.corde} material={decor.corde} matrices={cordes} />
       <Lot geometrie={formes.touffe} material={decor.touffe} matrices={touffes.matrices} teintes={touffes.teintes} />
@@ -219,34 +209,68 @@ function corde(): THREE.BufferGeometry {
   return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.012, 5, false)
 }
 
-/** Une dalle irrégulière, de rayon 1 (l'instance la met à l'échelle), 1,5 cm hors du gravier, bords adoucis. */
-function dalleIrreguliere(graine: number): THREE.BufferGeometry {
-  // Un contour aux bosses douces (deux ondes) plus quelques cassures : une pierre plate, pas un polygone.
-  const n = 16
-  const r = Array.from({ length: n }, (_, i) => {
-    const t = (2 * Math.PI * i) / n
-    return 0.9 + 0.1 * Math.sin(2 * t + graine * 1.7) + 0.07 * Math.sin(3 * t + graine * 2.9) + 0.06 * frac(Math.sin(i * 12.9898 + graine * 78.233) * 43758.5453)
-  })
-  const anneaux: [number, number][] = [[0.9, 0.024], [1, 0.012], [1, -0.03]]
-  const pos: number[] = [0, 0.028, 0]
-  for (const [k, y] of anneaux)
-    for (let i = 0; i < n; i++) {
-      const t = (2 * Math.PI * i) / n
-      pos.push(Math.cos(t) * r[i] * k, y, Math.sin(t) * r[i] * k)
-    }
+/**
+ * Les dalles irrégulières près de l'eau, fusionnées en un seul maillage : une
+ * pierre plate à peine bombée, l'arête abattue en trois rangs, dont le pied
+ * s'enfonce dans le gravier au lieu d'y être posé. Chaque pierre a son contour,
+ * sa teinte et son morceau de granit (UV lues sur le plan, tournées d'un angle
+ * propre) : instanciées sur trois formes, on les reconnaissait d'une pierre à l'autre.
+ */
+function semisDePierres(liste: Pose[]): THREE.BufferGeometry {
+  const n = 20
+  // [rayon relatif, hauteur sur le gravier, patine] du centre vers le bord :
+  // le dessus bombé, l'arête arrondie, puis le pied noyé dans le gravier, verdi.
+  const anneaux: [number, number, number][] = [
+    [0.45, 0.017, 1], [0.8, 0.015, 0.97], [0.92, 0.012, 0.9], [0.975, 0.007, 0.84], [1, -0.001, 0.72], [1.01, -0.03, 0.6],
+  ]
+  const pos: number[] = []
+  const uv: number[] = []
+  const couleur: number[] = []
   const index: number[] = []
-  for (let i = 0; i < n; i++) index.push(0, 1 + ((i + 1) % n), 1 + i)
-  for (let a = 0; a < 2; a++)
-    for (let i = 0; i < n; i++) {
-      const [p, q] = [1 + a * n + i, 1 + a * n + ((i + 1) % n)]
-      index.push(p, q, p + n, q, q + n, p + n)
+  const mousse = new THREE.Color(0.84, 0.9, 0.76)
+  const c = new THREE.Color()
+  const m = new THREE.Color()
+  liste.forEach((p, s) => {
+    const alea = (k: number) => frac(Math.sin(k * 12.9898 + s * 78.233) * 43758.5453)
+    const r = Array.from({ length: n }, (_, i) => {
+      const t = (2 * Math.PI * i) / n
+      return 0.9 + 0.1 * Math.sin(2 * t + alea(1) * 6.3) + 0.07 * Math.sin(3 * t + alea(2) * 6.3) + 0.05 * alea(10 + i)
+    })
+    // Des pierres de la même carrière, plus ou moins chaudes, plus ou moins claires.
+    const [clair, chaud] = [0.78 + 0.32 * alea(3), alea(4) - 0.5]
+    const teinte = new THREE.Color(clair * (1 + 0.07 * chaud), clair, clair * (1 - 0.09 * chaud))
+    m.copy(mousse).multiply(teinte)
+    const [cos, sin] = [Math.cos(p.rotation), Math.sin(p.rotation)]
+    const [tu, ou, ov] = [alea(5) * Math.PI * 2, alea(6) * 50, alea(7) * 50]
+    const [cu, su] = [Math.cos(tu), Math.sin(tu)]
+    const y0 = hauteurDuParc(p.x, p.z) + RELIEF_ALLEE
+    // Le dessus n'est pas plan : un léger voile, propre à chaque pierre.
+    const bosse = (x: number, z: number) => 0.004 * Math.sin(x * 4.1 + alea(8) * 6) * Math.sin(z * 3.7 + alea(9) * 6)
+    const base = pos.length / 3
+    const sommet = (lx: number, lz: number, h: number, patine: number) => {
+      const [x, z] = [p.x + lx * p.sx * cos + lz * p.sz * sin, p.z - lx * p.sx * sin + lz * p.sz * cos]
+      pos.push(x, y0 + h + (h > 0 ? bosse(lx, lz) : 0), z)
+      uv.push(x * cu - z * su + ou, x * su + z * cu + ov)
+      c.copy(teinte).lerp(m, 1 - patine).multiplyScalar(0.65 + 0.35 * patine)
+      couleur.push(c.r, c.g, c.b)
     }
-  // Le cœur de la pierre, clair ; son pourtour, patiné et verdi par la mousse des joints.
-  const couleur = [1, 1, 1, ...anneaux.flatMap((_, a) => Array.from({ length: n }, () => (a === 0 ? [0.86, 0.87, 0.8] : [0.55, 0.6, 0.47])).flat())]
+    sommet(0, 0, 0.018, 1)
+    for (const [k, h, patine] of anneaux)
+      for (let i = 0; i < n; i++) {
+        const t = (2 * Math.PI * i) / n
+        sommet(Math.cos(t) * r[i] * k, Math.sin(t) * r[i] * k, h, patine)
+      }
+    for (let i = 0; i < n; i++) index.push(base, base + 1 + ((i + 1) % n), base + 1 + i)
+    for (let a = 0; a + 1 < anneaux.length; a++)
+      for (let i = 0; i < n; i++) {
+        const [q, w] = [base + 1 + a * n + i, base + 1 + a * n + ((i + 1) % n)]
+        index.push(q, w, q + n, w, w + n, q + n)
+      }
+  })
   const g = new THREE.BufferGeometry()
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
   g.setAttribute('color', new THREE.Float32BufferAttribute(couleur, 3))
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(pos.flatMap((c, i) => (i % 3 === 1 ? [] : [c * 0.4])), 2))
   g.setIndex(index)
   g.computeVertexNormals()
   return g

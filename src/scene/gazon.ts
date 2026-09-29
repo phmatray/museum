@@ -20,7 +20,7 @@ import type { Allee, Parc } from '../plan/park'
 import { surUneAllee } from '../plan/park'
 import { BORDURE, GALETS, champDesAllees } from '../plan/allees'
 import { JARDIN, TABLIER, distanceEtang, distanceRuisseau, presDeLEau } from '../plan/jardin'
-import { hauteurDuParc } from '../plan/relief'
+import { distanceParvis, hauteurDuParc } from '../plan/relief'
 import { INTEMPERIES } from './intemperies'
 import type { Rect } from '../plan/types'
 
@@ -52,7 +52,7 @@ function eauProche(x: number, z: number): number {
 
 /** Le sol nu : hors du terrain, sur le parvis ou le tablier, dans l'eau et ses berges creusées. */
 function solNu(parc: Parc, x: number, z: number): boolean {
-  if (!dansRect(parc.terrain, x, z) || dansRect(parc.parvis, x, z, 0.1) || dansRect(TABLIER, x, z, 0.6)) return true
+  if (!dansRect(parc.terrain, x, z) || distanceParvis(parc.parvis, x, z) < 0.1 || dansRect(TABLIER, x, z, 0.6)) return true
   // L’eau, coûteuse à tester : seulement au jardin, dans une maille à cheval sur la berge.
   if (!JARDIN.zones.some((r) => dansRect(r, x, z, 2))) return false
   const d = eauProche(x, z)

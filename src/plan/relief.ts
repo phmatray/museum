@@ -76,7 +76,22 @@ export const COTE_DALLAGE = 0.04
  * de 4 cm les vélos et les caisses dans le dallage (signalé par Philippe).
  */
 export function solDuParc(x: number, z: number): number {
-  return distanceRect(PARVIS, x, z) === 0 ? COTE_DALLAGE : hauteurDuParc(x, z)
+  return distanceParvis(PARVIS, x, z) <= 0 ? COTE_DALLAGE : hauteurDuParc(x, z)
+}
+
+/**
+ * Le rayon des angles du parvis. Ses quatre coins vifs, seuls angles droits
+ * d'un parc où chaque allée se raccorde d'un congé, se lisaient comme le socle
+ * d'une maquette ; 4 m, entre les congés des allées (2,2 à 3 m) et les angles
+ * de la ceinture (9 m), et assez court pour ne rien ôter devant le musée.
+ */
+export const ARRONDI_PARVIS = 4
+
+/** La distance signée au parvis `r` (négative dedans), ses angles arrondis de `ARRONDI_PARVIS`. */
+export function distanceParvis(r: Rect, x: number, z: number): number {
+  const e = ARRONDI_PARVIS
+  const [dx, dz] = [Math.max(r.x + e - x, x - r.x - r.width + e), Math.max(r.z + e - z, z - r.z - r.depth + e)]
+  return Math.hypot(Math.max(dx, 0), Math.max(dz, 0)) + Math.min(Math.max(dx, dz), 0) - e
 }
 
 /** La cote de la pelouse en (x, z), en mètres : 0 au parvis, jusqu'à ~3,5 m aux confins. */

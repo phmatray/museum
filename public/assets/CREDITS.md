@@ -22,6 +22,7 @@ Blender et sont donc commités.
 | Metal032 | ambientCG | CC0 | mains courantes, cadres |
 | Grass004 | ambientCG | CC0 | pelouse du parc |
 | Gravel023 | ambientCG | CC0 | allées et parvis du parc |
+| Rock044 | ambientCG | CC0 | dalles irrégulières et pas japonais près de l’eau |
 | brown_photostudio_02 | Poly Haven | CC0 | carte d'environnement, spéculaire |
 | kloofendal_48d_partly_cloudy_puresky | Poly Haven | CC0 | ciel du fond de scène, réduit en JPG |
 | rogland_clear_night | Poly Haven | CC0 | ciel de nuit, réduit en JPG |
