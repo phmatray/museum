@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { JARDIN } from '../jardin.ts'
 import { MUSEE } from '../musee.ts'
 import { parkPlacements } from '../park.ts'
-import { hauteurDuParc } from '../relief.ts'
+import { ARRONDI_PARVIS, distanceParvis, hauteurDuParc, solDuParc } from '../relief.ts'
 
 const parc = parkPlacements(MUSEE)
 const { terrain, parvis } = parc
@@ -44,5 +44,21 @@ describe('hauteurDuParc', () => {
     for (const r of plats)
       for (let z = r.z; z <= r.z + r.depth; z += 0.5)
         for (let x = r.x; x <= r.x + r.width; x += 0.5) expect(hauteurDuParc(x, z), `(${x}, ${z})`).toBe(0)
+  })
+})
+
+describe('distanceParvis', () => {
+  const r = { x: 0, z: 0, width: 20, depth: 10 }
+  const e = ARRONDI_PARVIS
+  it('suit les côtés droits et arrondit les angles', () => {
+    expect(distanceParvis(r, 10, -1)).toBeCloseTo(1)
+    expect(distanceParvis(r, 10, 5)).toBeCloseTo(-5)
+    // Le coin vif reste dehors : l'arc passe à e·(√2 − 1) de lui.
+    expect(distanceParvis(r, 0, 0)).toBeCloseTo(e * (Math.SQRT2 - 1))
+    expect(distanceParvis(r, 20 - e * (1 - Math.SQRT1_2), 10 - e * (1 - Math.SQRT1_2))).toBeCloseTo(0)
+  })
+  it('ne pose pas un meuble sur le dallage ôté à l’angle', () => {
+    expect(solDuParc(-4.9, -4.9)).toBe(hauteurDuParc(-4.9, -4.9))
+    expect(solDuParc(24, 44)).toBe(0.04)
   })
 })

@@ -11,7 +11,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 import type { Parc, PlantPlacement, EspeceParc } from '../plan/park'
-import { COTE_DALLAGE, hauteurDuParc, masqueDuRelief } from '../plan/relief'
+import { ARRONDI_PARVIS, COTE_DALLAGE, distanceParvis, hauteurDuParc, masqueDuRelief } from '../plan/relief'
 import type { Rect } from '../plan/types'
 import { REGLAGE_MATIERE, repetitionMetrique, useCartes, useMatiere } from './materials'
 import { creerBrique, creerPierre } from './pierre'
@@ -59,7 +59,7 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   // l'axe de l'entrée avec lui ; le gravier est pour les allées du jardin.
   // Le dallage 1 cm au-dessus du gravier : à la même cote, les allées qui le
   // rejoignent se battaient avec lui (deux textures entremêlées, signalé par Philippe).
-  const parvis = useMemo(() => dalles(placements.dalles.map((r) => pave(r, 0, COTE_DALLAGE))), [placements])
+  const parvis = useMemo(() => dalles(placements.dalles.map((r) => pave(r, placements.parvis, COTE_DALLAGE))), [placements])
   const dallage = useMemo(() => {
     // Mouillé et semé de flaques sous l'averse, comme le gravier qu'il traverse.
     const m = creerPierre()
@@ -199,9 +199,14 @@ function pelouse(parc: Parc): THREE.BufferGeometry {
   }
   const v = (i: number, j: number) => j * (nx + 1) + i
   const dans = (x: number, z: number) => parc.sol.some((r) => x > r.x && x < r.x + r.width && z > r.z && z < r.z + r.depth)
+  // Aux angles arrondis du parvis, la pelouse reprend les mailles que le dallage
+  // découvre ; sous la pierre, elle reste 4 cm plus bas que son dessus.
+  const { parvis: p } = parc
+  const angle = (x: number, z: number) => x > p.x && x < p.x + p.width && z > p.z && z < p.z + p.depth &&
+    [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]].some(([u, w]) => distanceParvis(parc.parvis, x + u * PAS_PELOUSE, z + w * PAS_PELOUSE) > 1e-3)
   for (let j = 0; j < nz; j++)
     for (let i = 0; i < nx; i++)
-      if (dans(terrain.x + (i + 0.5) * PAS_PELOUSE, terrain.z + (j + 0.5) * PAS_PELOUSE))
+      if (dans(terrain.x + (i + 0.5) * PAS_PELOUSE, terrain.z + (j + 0.5) * PAS_PELOUSE) || angle(terrain.x + (i + 0.5) * PAS_PELOUSE, terrain.z + (j + 0.5) * PAS_PELOUSE))
         index.push(v(i, j), v(i, j + 1), v(i + 1, j), v(i + 1, j), v(i, j + 1), v(i + 1, j + 1))
   // La jupe : le tour du terrain, descendu de `EPAISSEUR_SOL`.
   const tour = [
@@ -225,9 +230,35 @@ function pelouse(parc: Parc): THREE.BufferGeometry {
   return g
 }
 
-function pave(r: Rect, y0: number, y1: number): THREE.BufferGeometry {
-  const g = new THREE.BoxGeometry(r.width, y1 - y0, r.depth)
-  g.translate(r.x + r.width / 2, (y0 + y1) / 2, r.z + r.depth / 2)
+/**
+ * Une bande du dallage, de 0 à `haut` : ceux de ses coins qui sont aussi des
+ * coins du parvis s'arrondissent de `ARRONDI_PARVIS`, comme les allées.
+ */
+function pave(r: Rect, parvis: Rect, haut: number): THREE.BufferGeometry {
+  const [x0, x1, z0, z1] = [r.x, r.x + r.width, r.z, r.z + r.depth]
+  const coin = (x: number, z: number) =>
+    (x === parvis.x || x === parvis.x + parvis.width) && (z === parvis.z || z === parvis.z + parvis.depth) ? ARRONDI_PARVIS : 0
+  // Le contour dans le plan (x, −z) : `rotateX(−π/2)` le couche en (x, z), l'extrusion vers le haut.
+  const f = new THREE.Shape()
+  const coins: [number, number, number, number][] = [[x0, z0, 1, 1], [x1, z0, -1, 1], [x1, z1, -1, -1], [x0, z1, 1, -1]]
+  coins.forEach(([x, z, sx, sz], i) => {
+    const e = coin(x, z)
+    const [ax, az] = i % 2 === 0 ? [x, z + sz * e] : [x + sx * e, z]
+    const [bx, bz] = i % 2 === 0 ? [x + sx * e, z] : [x, z + sz * e]
+    if (i === 0) f.moveTo(ax, -az)
+    else f.lineTo(ax, -az)
+    if (e === 0) return
+    // Un arc de cercle, le même que `distanceParvis` : la bordure et le gazon le suivent.
+    const [cx, cz] = [x + sx * e, z + sz * e]
+    const t0 = Math.atan2(az - cz, ax - cx)
+    let dt = Math.atan2(bz - cz, bx - cx) - t0
+    if (dt > Math.PI) dt -= 2 * Math.PI
+    if (dt < -Math.PI) dt += 2 * Math.PI
+    for (let k = 1; k <= 24; k++) f.lineTo(cx + e * Math.cos(t0 + (dt * k) / 24), -(cz + e * Math.sin(t0 + (dt * k) / 24)))
+  })
+  f.closePath()
+  const g = new THREE.ExtrudeGeometry(f, { depth: haut, bevelEnabled: false })
+  g.rotateX(-Math.PI / 2)
   return g
 }
 
@@ -272,7 +303,8 @@ function Instances({ piece, sujets }: { piece: ParkPiece; sujets: PlantPlacement
 function Jardin({ objets, herbe }: { objets: THREE.Object3D[]; herbe: THREE.Material }) {
   const matieres = useMemo(() => creerMatieresJardin(), [])
   useEffect(() => () => matieres.dispose(), [matieres])
-  const pierre = useMatiere('beton', repetitionMetrique(REGLAGE_MATIERE.beton.motif), { teinte: '#b9b6ad' })
+  // Le granit des pas japonais, de la lanterne et des culées : la roche des dalles des allées, pas du béton.
+  const pierre = useMatiere('roche', repetitionMetrique(REGLAGE_MATIERE.roche.motif), { teinte: '#c4c6c2' })
   const bois = useMatiere('parquet', repetitionMetrique(REGLAGE_MATIERE.parquet.motif), { teinte: '#6b4a34' })
 
   const lueurs = useMemo(() => {

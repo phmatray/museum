@@ -57,6 +57,7 @@ export type MatiereId =
   | 'metal'
   | 'herbe'
   | 'gravier'
+  | 'roche'
 
 /** Les trois cartes d'une matière, prêtes à être posées sur un matériau. */
 export interface JeuDeCartes {
@@ -180,6 +181,7 @@ export const SOURCE_AMBIENTCG: Record<MatiereId, string> = {
   metal: 'Metal032',
   herbe: 'Grass004',
   gravier: 'Gravel023',
+  roche: 'Rock044',
 }
 
 /** Les trois URL d'une matière. */

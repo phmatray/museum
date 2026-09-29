@@ -17,6 +17,7 @@
 import { TABLIER, distanceEtang, distanceRuisseau, JARDIN } from './jardin.ts'
 import { MOBILIER, emprise } from './mobilier.ts'
 import { distanceRect, generateur, type Allee, type Parc } from './park.ts'
+import { distanceParvis } from './relief.ts'
 import type { Rect } from './types.ts'
 
 /** Le pas de la grille, en mètres : assez fin pour qu'un congé de 2 m se lise rond. */
@@ -134,7 +135,7 @@ export function champDesAllees(parc: Pick<Parc, 'allees' | 'parvis'>): Champ {
     if (!deja) parChaine(x, z)
     let axe = PLAFOND
     for (let k = 0; k < ch.length; k++) if (pave[k]) axe = Math.min(axe, d[k])
-    return unionArrondie(axe, distanceRect(parc.parvis, x, z), CONGE_PARVIS)
+    return unionArrondie(axe, distanceParvis(parc.parvis, x, z), CONGE_PARVIS)
   }
   return {
     reseau: (x, z) => {
@@ -425,7 +426,7 @@ export function amenagerAllees(parc: Parc): Amenagement {
   })
   const P = R.v.map((_, k) => {
     const p = noeud(k)
-    return distanceRect(parvis, p.x, p.z)
+    return distanceParvis(parvis, p.x, p.z)
   })
   // Le gravier file SOUS la bordure (`BORE`) et SOUS le bord des dalles (`SOUS_DALLES`),
   // les dalles posées 1 cm plus haut : deux sols qui se recouvrent au lieu de se
@@ -459,7 +460,7 @@ export function amenagerAllees(parc: Parc): Amenagement {
   for (const ligne of isolignes(D)) {
     let courante: PointDeBord[] = []
     for (const p of affiner(ligne, champ.dalles)) {
-      if (champ.reseau(p.x, p.z) > -0.005 || distanceRect(parvis, p.x, p.z) < 0.05) {
+      if (champ.reseau(p.x, p.z) > -0.005 || distanceParvis(parvis, p.x, p.z) < 0.05) {
         if (courante.length > 1) listels.push(courante)
         courante = []
         continue

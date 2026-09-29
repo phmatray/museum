@@ -75,6 +75,7 @@ const MATIERES = [
   { id: 'Metal032', role: 'metal', usage: 'mains courantes, cadres' },
   { id: 'Grass004', role: 'herbe', usage: 'pelouse du parc' },
   { id: 'Gravel023', role: 'gravier', usage: 'allées et parvis du parc' },
+  { id: 'Rock044', role: 'roche', usage: 'dalles irrégulières et pas japonais près de l’eau' },
 ] as const
 
 /**

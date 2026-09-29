@@ -10,6 +10,7 @@ import { JARDIN, TABLIER } from '../plan/jardin.ts'
 import type { Parc } from '../plan/park.ts'
 import { surUneAllee } from '../plan/park.ts'
 import { PARC } from '../plan/rules.ts'
+import { distanceParvis } from '../plan/relief.ts'
 
 // ── Les lieux et les sols ─────────────────────────────────────────────────
 
@@ -46,7 +47,7 @@ export function matiereSous(w: { surface: string; x: number; z: number }, parc: 
   if (lieu === 'nef') return 'pierre'
   if (lieu === 'galerie') return 'parquet'
   if (dansRect(TABLIER, w.x, w.z)) return 'bois'
-  if (dansRect(parc.parvis, w.x, w.z)) return 'pierre'
+  if (distanceParvis(parc.parvis, w.x, w.z) <= 0) return 'pierre'
   if (JARDIN.pas.some(([px, pz]) => Math.hypot(w.x - px, w.z - pz) < RAYON_GUE)) return 'pierre'
   if (surUneAllee(parc.allees, w.x, w.z)) return 'gravier'
   return 'herbe'

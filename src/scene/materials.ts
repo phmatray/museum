@@ -242,6 +242,10 @@ export const REGLAGE_MATIERE: Record<MatiereId, ReglageMatiere> = {
   herbe: { gain: 1.1, roughness: 3, metalness: 0, rebond: 0, motif: 6, teinte: '#c8d6a4' },
   // Un gravier de jardin japonais, beige-gris : blanc pur, il éblouissait au soleil.
   gravier: { gain: 0.95, roughness: 1, metalness: 0, rebond: 0, motif: 3.5, teinte: '#d8cfbd' },
+  // Les pierres plates près de l'eau : un granit patiné, lichen compris. Sa tuile
+  // porte des éclats d'une dizaine de centimètres : à 1,6 m, une dalle en montre
+  // un morceau, jamais la répétition. Teinte refroidie : la carte tire au beige.
+  roche: { gain: 1.35, roughness: 1, metalness: 0, rebond: 0, motif: 1.6, teinte: '#d6d8da' },
 }
 
 /**
