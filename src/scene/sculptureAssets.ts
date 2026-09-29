@@ -10,6 +10,8 @@ import * as THREE from 'three'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
+import { brancherKTX2 } from '../io/textures'
+
 /** Les pièces chargées, par nom de fichier. Vide si tout a échoué. */
 export type SculptureAssets = ReadonlyMap<string, THREE.Object3D>
 
@@ -81,7 +83,7 @@ export function sculptureAssetsResource(fichiers: readonly string[], base: strin
 }
 
 async function charger(fichiers: readonly string[], base: string): Promise<SculptureAssets> {
-  const gltf = new GLTFLoader()
+  const gltf = await brancherKTX2(new GLTFLoader())
   const draco = new DRACOLoader()
   draco.setDecoderPath(`${base}draco/`)
   gltf.setDRACOLoader(draco)

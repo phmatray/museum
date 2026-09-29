@@ -11,6 +11,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
+import { brancherKTX2 } from '../io/textures'
 import type { PropId } from '../plan/props'
 
 export interface PropPiece {
@@ -41,7 +42,7 @@ export function propAssetsResource(base: string = import.meta.env.BASE_URL): Pro
 }
 
 async function charger(base: string): Promise<PropAssets> {
-  const gltf = new GLTFLoader()
+  const gltf = await brancherKTX2(new GLTFLoader())
   const draco = new DRACOLoader()
   draco.setDecoderPath(`${base}draco/`)
   gltf.setDRACOLoader(draco)

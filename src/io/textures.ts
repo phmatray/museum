@@ -99,6 +99,8 @@ export interface ChargeurDeTextures {
 let ktx2: KTX2Loader | null = null
 /** Au-delà de ce silence, une carte KTX2 qui ne vient pas cède la place à son JPG. */
 const DELAI_KTX2 = 8000
+/** Un délai qui échoit plus en retard que ça : le fil principal était pris, pas le réseau (ms). */
+const RETARD_KTX2 = 250
 let signaler: () => void = () => {}
 const rendu = new Promise<void>((r) => {
   signaler = r
@@ -114,6 +116,18 @@ export function utiliserKTX2(renderer: THREE.WebGLRenderer): void {
     }
   }
   signaler()
+}
+
+/**
+ * Donne le transcodeur à un `GLTFLoader` : les textures des modèles sont en
+ * KTX2 elles aussi (`tools/compresser-glb.ts`, extension obligatoire
+ * `KHR_texture_basisu`). Un seul transcodeur pour tout le site : ses workers
+ * sont partagés, jamais libérés.
+ */
+export async function brancherKTX2<T extends { setKTX2Loader(l: KTX2Loader): unknown }>(gltf: T): Promise<T> {
+  await Promise.race([rendu, new Promise((r) => setTimeout(r, 4000))])
+  if (ktx2 !== null) gltf.setKTX2Loader(ktx2)
+  return gltf
 }
 
 /** Le chargeur du site : le KTX2 d'abord s'il est branché, le JPG sinon ou en cas d'échec. */
@@ -135,7 +149,15 @@ async function chargeurDuSite(): Promise<ChargeurDeTextures> {
       // Le délai compte le SILENCE, pas la durée : une carte qui arrive
       // lentement (3G) n'est pas en panne, et la doubler de son JPG faisait
       // télécharger les deux.
-      let delai = setTimeout(repli, DELAI_KTX2)
+      // Et un silence où le fil principal était bloqué (les shaders compilés à
+      // froid : des secondes d'affilée) n'en est pas un — les nouvelles du
+      // transcodeur attendaient derrière. Un délai échu très en retard se réarme.
+      let delai: ReturnType<typeof setTimeout>
+      const armer = () => {
+        const echeance = performance.now() + DELAI_KTX2
+        delai = setTimeout(() => (performance.now() - echeance > RETARD_KTX2 ? armer() : repli()), DELAI_KTX2)
+      }
+      armer()
       compresse.load(
         url.replace(/\.jpg$/, '.ktx2'),
         (t) => {
@@ -147,7 +169,7 @@ async function chargeurDuSite(): Promise<ChargeurDeTextures> {
         () => {
           if (fini) return
           clearTimeout(delai)
-          delai = setTimeout(repli, DELAI_KTX2)
+          armer()
         },
         () => {
           clearTimeout(delai)
