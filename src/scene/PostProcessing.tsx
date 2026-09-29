@@ -42,9 +42,68 @@
 import { EffectComposer, N8AO, Bloom, ToneMapping, Vignette, SMAA } from '@react-three/postprocessing'
 import { useThree } from '@react-three/fiber'
 import { useEffect } from 'react'
+import * as THREE from 'three'
 
 import { TONE_EXPOSURE, TONE_MAPPING } from './lighting'
 import { AO, BLOOM, VIGNETTE, toneMappingMode } from './postProcessingSettings'
+
+/** Ce que `alleger` touche de `N8AOPostPass` (n8ao ne publie pas ses types). */
+interface PasseN8AO {
+  renderToScreen: boolean
+  outputTargetInternal: THREE.WebGLRenderTarget
+  copyQuad: { render(gl: THREE.WebGLRenderer): void }
+  transparencyRenderTargetDWFalse?: THREE.WebGLRenderTarget
+  transparencyRenderTargetDWTrue?: THREE.WebGLRenderTarget
+  configureTransparencyTarget(): void
+  render(gl: THREE.WebGLRenderer, entree: THREE.WebGLRenderTarget, sortie: THREE.WebGLRenderTarget, ...reste: unknown[]): void
+  allegee?: true
+}
+
+/**
+ * N8AO au même résultat, pour moins cher. Rien n'est retiré : même occlusion,
+ * même prise en compte des objets transparents (verrière, vitrines, eau).
+ *
+ * 1. Sa passe finale compose dans un tampon plein écran À ELLE, puis le recopie
+ *    dans la sortie du composeur. La copie est exacte (demi-flottant vers
+ *    demi-flottant, pixel pour pixel) : on compose directement dans la sortie.
+ *    Un tampon plein écran de moins (8 Mo à DPR 1, 33 Mo à DPR 2) et une passe
+ *    de moins par image.
+ * 2. Les deux tampons de transparence ne sont lus que par leur ALPHA
+ *    (`texture2D(transparencyDW…, vUv).a`) : 8 bits suffisent à une opacité de
+ *    matériau, pas besoin de demi-flottants. Deux fois moins de mémoire.
+ */
+function alleger(passe: PasseN8AO | null) {
+  if (!passe || passe.allegee) return
+  passe.allegee = true
+
+  const octets = () => {
+    for (const cible of [passe.transparencyRenderTargetDWFalse, passe.transparencyRenderTargetDWTrue]) if (cible) cible.texture.type = THREE.UnsignedByteType
+  }
+  octets()
+  const configurer = passe.configureTransparencyTarget.bind(passe)
+  passe.configureTransparencyTarget = () => {
+    configurer()
+    octets()
+  }
+
+  // Le tampon propre reste en place hors du rendu : `setSize` et `dispose` ne
+  // doivent jamais toucher aux tampons du composeur.
+  const propre = passe.outputTargetInternal
+  const copier = passe.copyQuad.render
+  const rien = () => {}
+  const rendre = passe.render.bind(passe)
+  passe.render = (gl, entree, sortie, ...reste) => {
+    const direct = !passe.renderToScreen && !!sortie
+    passe.outputTargetInternal = direct ? sortie : propre
+    passe.copyQuad.render = direct ? rien : copier
+    try {
+      rendre(gl, entree, sortie, ...reste)
+    } finally {
+      passe.outputTargetInternal = propre
+      passe.copyQuad.render = copier
+    }
+  }
+}
 
 /**
  * La chaîne de post-traitement du musée, montée dans le `Canvas` après le
@@ -75,6 +134,7 @@ export function PostProcessing() {
         scène.
       */}
       <N8AO
+        ref={alleger}
         aoRadius={AO.aoRadius}
         distanceFalloff={AO.distanceFalloff}
         intensity={AO.intensity}
