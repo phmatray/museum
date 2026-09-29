@@ -7,6 +7,7 @@
  */
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 import { BORDURE, GALETS, amenagerAllees, type Pose, type Surface } from '../plan/allees'
 import type { Parc } from '../plan/park'
@@ -22,14 +23,23 @@ const PROFIL: [number, number][] = [
   [BORDURE.dedans, -0.05], [BORDURE.dedans, 0.06], [BORDURE.dedans + 0.012, 0.08], [BORDURE.dedans + 0.035, 0.09],
   [BORDURE.dehors - 0.035, 0.09], [BORDURE.dehors - 0.012, 0.08], [BORDURE.dehors, 0.06], [BORDURE.dehors, -0.05],
 ]
+/**
+ * La bordure arasée, là où l'axe dallé traverse le gravier : une pierre de 13 cm,
+ * 1 cm au-dessus des dalles, qui mord sur elles (décalage négatif) et tient le gravier.
+ */
+const ARASE: [number, number][] = [
+  [-0.03, 0], [-0.03, RELIEF_ALLEE + 0.017], [-0.02, RELIEF_ALLEE + 0.02],
+  [0.09, RELIEF_ALLEE + 0.02], [0.1, RELIEF_ALLEE + 0.017], [0.1, -0.03],
+]
 const PIQUET = { haut: 0.62, corde: 0.46 }
 
 export function AlleesDuParc({ parc, dallage }: { parc: Parc; dallage: THREE.Material }) {
   const a = useMemo(() => amenagerAllees(parc), [parc])
   const geos = useMemo(() => ({
     gravier: draper(a.gravier, RELIEF_ALLEE),
-    dalles: draper(a.dalles, RELIEF_ALLEE),
-    bordure: bordure(a.bordures),
+    // À la cote du parvis (`ParkLayer`), 1 cm au-dessus du gravier qui file dessous.
+    dalles: draper(a.dalles, RELIEF_ALLEE + 0.01),
+    bordure: mergeGeometries([bande(a.bordures, () => PROFIL), bande(a.listels, () => ARASE)], false),
     galets: galets(a.bordures),
   }), [a])
   useEffect(() => () => Object.values(geos).forEach((g) => g.dispose()), [geos])
@@ -182,12 +192,17 @@ function bande(bords: ReturnType<typeof amenagerAllees>['bordures'], profil: (p:
   return g
 }
 
-const bordure = (bords: ReturnType<typeof amenagerAllees>['bordures']) => bande(bords, () => PROFIL)
-
-/** Le lit de galets : un léger bourrelet entre la bordure et le gazon, qui s'efface le long des dalles. */
+/**
+ * Le lit de galets : un léger bourrelet entre la bordure et le gazon, qui s'efface
+ * le long des dalles. En s'effaçant, il s'ENFONCE sous la pelouse : réduit à
+ * rien mais hors du sol, il se couchait sur la face de la bordure et s'y battait
+ * avec elle (un pointillé sombre au pied de la bordure du parvis).
+ */
 const galets = (bords: ReturnType<typeof amenagerAllees>['bordures']) => bande(bords, (p) => {
   const l = GALETS * p.galets
-  return [[BORDURE.dehors - 0.01, 0.025], [BORDURE.dehors + l * 0.45, 0.035], [BORDURE.dehors + l, 0.008]]
+  const [k, bas] = [Math.min(1, p.galets * 5), -0.03]
+  const h = (y: number) => bas + (y - bas) * k
+  return [[BORDURE.dehors - 0.01, h(0.025)], [BORDURE.dehors + l * 0.45, h(0.035)], [BORDURE.dehors + l, h(0.008)]]
 })
 
 /** Un piquet de bois, fiché dans le sol, la tête chanfreinée. */

@@ -62,8 +62,13 @@ const DEBORD_PARVIS = 5
 const RETRAIT_PERIPHERIQUE = 6
 const LARGEUR_PERIPHERIQUE = 3
 const LARGEUR_ACCES = 2.4
-/** L'axe de l'entrée, le plus large : la hiérarchie des allées se lit d'abord à leur largeur. */
-const LARGEUR_AXE = 3.2
+/**
+ * L'axe de l'entrée, le plus large : la hiérarchie des allées se lit d'abord à
+ * leur largeur. Trois dalles du parvis (1,20 m, `scene/pierre.ts`), centrées sur
+ * le portique : ses bords tombent sur les joints, l'appareil du parvis s'y
+ * prolonge en dalles entières et en demi-dalles, sans lanière recoupée au bord.
+ */
+const LARGEUR_AXE = 3.6
 /** Le rayon des angles de la ceinture, et l'écart de ses côtés au parvis, au plus. */
 const ARRONDI = 9
 const ECART_CEINTURE = 1.6

@@ -36,6 +36,12 @@ const PLAFOND = 6
 export const BORDURE = { dedans: -0.04, dehors: 0.11 }
 /** Le lit de galets, au-delà de la bordure. */
 export const GALETS = 0.32
+/** Le gravier file sous la bordure de tant au-delà de son axe, et sous les dalles de tant en deçà de leur bord. */
+const BORE = 0.03
+const SOUS_DALLES = 0.5
+const SUR_PARVIS = 0.3
+/** Le pas de la bordure le long du bord : un congé de 2 m se lit rond, pas en facettes de 50 cm. */
+const PAS_BORDURE = 0.2
 /** Les piquets et leur corde : à moins de tant de l'eau, un tous les tant. */
 const PRES_DE_L_EAU = 4.2
 const PAS_POTEAUX = 2.2
@@ -261,6 +267,72 @@ export function isolignes(g: Grille): Point[][] {
   return lignes
 }
 
+type Champ2D = (x: number, z: number) => number
+type PointNormal = Point & { nx: number; nz: number }
+
+function gradient(f: Champ2D, x: number, z: number): [number, number] {
+  const e = 0.02
+  return [(f(x + e, z) - f(x - e, z)) / (2 * e), (f(x, z + e) - f(x, z - e)) / (2 * e)]
+}
+
+/** Ramène un point sur la ligne du zéro, le long de la pente (Newton). */
+function surLeZero(f: Champ2D, x: number, z: number): Point {
+  for (let k = 0; k < 4; k++) {
+    const v = f(x, z)
+    if (Math.abs(v) < 1e-4) break
+    const [gx, gz] = gradient(f, x, z)
+    const g2 = gx * gx + gz * gz
+    if (g2 < 1e-6) break
+    x -= (v * gx) / g2
+    z -= (v * gz) / g2
+  }
+  return { x, z }
+}
+
+/**
+ * Une ligne du zéro telle que la bordure la suit : les « marching squares » la
+ * tirent en cordes de 50 cm, inégales, que la bordure extrudée rendait en
+ * facettes et en coudes. On la reprend tous les `PAS_BORDURE`, chaque point
+ * ramené sur le vrai bord ; là où le bord a un angle vif (les coins du
+ * parvis, l'intérieur d'un coude), on pose le sommet exact de l'angle, et sa
+ * normale en ONGLET (`n·n₁ = n·n₂ = 1`) : la bordure y tourne d'équerre, sans
+ * chanfrein ni pierre qui se chevauche.
+ */
+export function affiner(ligne: Point[], f: Champ2D): PointNormal[] {
+  const long = [0]
+  for (let i = 1; i < ligne.length; i++) long.push(long[i - 1] + Math.hypot(ligne[i].x - ligne[i - 1].x, ligne[i].z - ligne[i - 1].z))
+  const total = long[long.length - 1]
+  if (total < 1e-6) return []
+  const n = Math.max(1, Math.round(total / PAS_BORDURE))
+  const pts: PointNormal[] = []
+  for (let i = 0, j = 0; i <= n; i++) {
+    const s = (total * i) / n
+    while (j + 2 < long.length && long[j + 1] < s) j++
+    const t = Math.min(1, (s - long[j]) / (long[j + 1] - long[j] || 1))
+    const p = surLeZero(f, ligne[j].x + (ligne[j + 1].x - ligne[j].x) * t, ligne[j].z + (ligne[j + 1].z - ligne[j].z) * t)
+    const q = pts[pts.length - 1]
+    if (q && Math.hypot(p.x - q.x, p.z - q.z) < 0.02 && i < n) continue
+    const [gx, gz] = gradient(f, p.x, p.z)
+    const l = Math.hypot(gx, gz) || 1
+    pts.push({ ...p, nx: gx / l, nz: gz / l })
+  }
+  const out: PointNormal[] = []
+  for (let i = 0; i < pts.length; i++) {
+    const [a, b] = [pts[i], pts[i + 1]]
+    out.push(a)
+    if (!b || a.nx * b.nx + a.nz * b.nz > Math.cos(Math.PI / 6)) continue
+    // L'angle : l'intersection des deux bords, chacun porté par sa normale.
+    const det = a.nx * b.nz - a.nz * b.nx
+    if (Math.abs(det) < 1e-3) continue
+    const [ca, cb] = [a.nx * a.x + a.nz * a.z, b.nx * b.x + b.nz * b.z]
+    const c = { x: (ca * b.nz - cb * a.nz) / det, z: (a.nx * cb - b.nx * ca) / det }
+    if (Math.hypot(c.x - a.x, c.z - a.z) > 2 * PAS_BORDURE || Math.hypot(c.x - b.x, c.z - b.z) > 2 * PAS_BORDURE) continue
+    const k = 1 + a.nx * b.nx + a.nz * b.nz
+    out.push({ ...c, nx: (a.nx + b.nx) / k, nz: (a.nz + b.nz) / k })
+  }
+  return out
+}
+
 // ── L'aménagement ───────────────────────────────────────────────────────────
 
 export interface PointDeBord extends Point {
@@ -283,6 +355,8 @@ export interface Amenagement {
   gravier: Surface
   dalles: Surface
   bordures: PointDeBord[][]
+  /** Les bordures arasées : le bord de l'axe dallé où il traverse le gravier (normale vers le gravier). */
+  listels: PointDeBord[][]
   /** Les dalles irrégulières posées dans le gravier, près de l'eau. */
   pierres: Pose[]
   poteaux: Point[]
@@ -353,26 +427,46 @@ export function amenagerAllees(parc: Parc): Amenagement {
     const p = noeud(k)
     return distanceRect(parvis, p.x, p.z)
   })
-  // Le gravier hors des dalles et du tablier ; les dalles hors du parvis (déjà pavé) et du tablier.
-  const gravier = remplir({ ...R, v: R.v.map((v, k) => Math.max(v, -D.v[k], -T[k])) })
-  const dalles = remplir({ ...R, v: D.v.map((v, k) => Math.max(v, -P[k], -T[k])) })
+  // Le gravier file SOUS la bordure (`BORE`) et SOUS le bord des dalles (`SOUS_DALLES`),
+  // les dalles posées 1 cm plus haut : deux sols qui se recouvrent au lieu de se
+  // partager un bord. Découpés l'un par l'autre, leurs « marching squares »
+  // tranchaient chacun le coin à sa façon, et le gazon passait entre les deux.
+  const gravier = remplir({ ...R, v: R.v.map((v, k) => Math.max(v - BORE, -D.v[k] - SOUS_DALLES, -T[k], -P[k])) })
+  // Les dalles mordent de `SUR_PARVIS` sur le parvis, à sa cote et de sa pierre : coupées
+  // pile sur son bord (le zéro tombait sur une rangée de nœuds), le congé s'y
+  // tranchait en biais et laissait un coin de gazon.
+  const dalles = remplir({ ...R, v: D.v.map((v, k) => Math.max(v, -P[k] - SUR_PARVIS, -T[k])) })
 
   // La bordure suit tout le bord, sauf le long du pont (le tablier a ses poutres).
-  const e = 0.05
   const bordures: PointDeBord[][] = []
   for (const ligne of isolignes(R)) {
     let courante: PointDeBord[] = []
-    for (const p of ligne) {
+    for (const p of affiner(ligne, champ.reseau)) {
       if (distanceRect(TABLIER, p.x, p.z) < 0.35) {
         if (courante.length > 1) bordures.push(courante)
         courante = []
         continue
       }
-      const [gx, gz] = [champ.reseau(p.x + e, p.z) - champ.reseau(p.x - e, p.z), champ.reseau(p.x, p.z + e) - champ.reseau(p.x, p.z - e)]
-      const l = Math.hypot(gx, gz) || 1
-      courante.push({ ...p, nx: gx / l, nz: gz / l, galets: smoothstep(champ.dalles(p.x, p.z), 0.6, 2.5) })
+      courante.push({ ...p, galets: smoothstep(champ.dalles(p.x, p.z), 0.6, 2.5) })
     }
     if (courante.length > 1) bordures.push(courante)
+  }
+
+  // Où l'axe dallé traverse le gravier : une bordure ARASÉE, au ras des dalles,
+  // qui les sépare du gravier sans barrer le passage ; elle naît et meurt dans
+  // la bordure haute, là où le congé la rejoint.
+  const listels: PointDeBord[][] = []
+  for (const ligne of isolignes(D)) {
+    let courante: PointDeBord[] = []
+    for (const p of affiner(ligne, champ.dalles)) {
+      if (champ.reseau(p.x, p.z) > -0.005 || distanceRect(parvis, p.x, p.z) < 0.05) {
+        if (courante.length > 1) listels.push(courante)
+        courante = []
+        continue
+      }
+      courante.push({ ...p, galets: 0 })
+    }
+    if (courante.length > 1) listels.push(courante)
   }
 
   // Ce qui occupe déjà le sol : troncs, boules, rochers, bancs, la lanterne, les pas japonais.
@@ -467,5 +561,5 @@ export function amenagerAllees(parc: Parc): Amenagement {
       }
     }
   }
-  return { gravier, dalles, bordures, pierres, poteaux, cordes, touffes, couvreSol }
+  return { gravier, dalles, bordures, listels, pierres, poteaux, cordes, touffes, couvreSol }
 }

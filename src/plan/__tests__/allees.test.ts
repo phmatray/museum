@@ -70,6 +70,44 @@ describe('allées', () => {
     }
   })
 
+  it('ne laisse aucun jour de gazon entre le gravier et les dalles, là où l’axe traverse la ceinture', () => {
+    const couvre = (s: { xz: number[]; index: number[] }, x: number, z: number) => {
+      for (let i = 0; i < s.index.length; i += 3) {
+        const [a, b, c] = [0, 1, 2].map((k) => [s.xz[2 * s.index[i + k]], s.xz[2 * s.index[i + k] + 1]])
+        const d = (p: number[], q: number[]) => (q[0] - p[0]) * (z - p[1]) - (q[1] - p[1]) * (x - p[0])
+        const [u, v, w] = [d(a, b), d(b, c), d(c, a)]
+        if ((u >= -1e-9 && v >= -1e-9 && w >= -1e-9) || (u <= 1e-9 && v <= 1e-9 && w <= 1e-9)) return true
+      }
+      return false
+    }
+    // Tout ce que borde la bordure (à 4 cm près, sa face intérieure) est pavé ou gravillonné.
+    for (let x = 18; x <= 30; x += 0.1)
+      for (let z = 46; z <= 56; z += 0.1)
+        if (champ.reseau(x, z) < -0.04) expect(couvre(a.gravier, x, z) || couvre(a.dalles, x, z), `${x.toFixed(1)}, ${z.toFixed(1)}`).toBe(true)
+  })
+
+  it('tourne d’équerre aux coins du parvis, et suit le bord pas à pas, à 20 cm (40 au plus, près d’un angle)', () => {
+    const { x, z } = parc.parvis
+    const pres = a.bordures.flat().filter((p) => Math.hypot(p.x - x, p.z - z) < 0.01)
+    expect(pres.length).toBeGreaterThan(0)
+    // La normale en onglet : √2 le long de la bissectrice.
+    expect(Math.hypot(pres[0].nx, pres[0].nz)).toBeCloseTo(Math.SQRT2, 2)
+    for (const l of a.bordures)
+      for (let i = 1; i < l.length; i++) {
+        expect(Math.hypot(l[i].x - l[i - 1].x, l[i].z - l[i - 1].z)).toBeLessThan(0.4)
+        expect(Math.abs(champ.reseau(l[i].x, l[i].z))).toBeLessThan(0.005)
+      }
+  })
+
+  it('borde l’axe d’une bordure arasée où il traverse le gravier', () => {
+    // Un de chaque côté de l’axe, où il coupe la ceinture.
+    expect(a.listels.length).toBe(2)
+    for (const p of a.listels.flat()) {
+      expect(Math.abs(champ.dalles(p.x, p.z))).toBeLessThan(0.005)
+      expect(champ.reseau(p.x, p.z)).toBeLessThan(0)
+    }
+  })
+
   it('est déterministe', () => {
     expect(amenagerAllees(parc)).toEqual(a)
   })
