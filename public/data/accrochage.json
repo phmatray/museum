@@ -91,35 +91,13 @@
       "name": "Claude / Mcp",
       "placements": [
         {
-          "key": "Atypical-Consulting/RoselineMCP",
-          "x": 3.775,
-          "y": 1.55,
-          "z": 13.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.939
-        },
-        {
-          "key": "Atypical-Consulting/claude-legends-review",
-          "x": 12.225,
-          "y": 1.55,
-          "z": 13.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.939
-        },
-        {
           "key": "Atypical-Consulting/ASTral",
           "x": 3.775,
           "y": 1.55,
-          "z": 26.85,
+          "z": 13.15,
           "normal": [
             0,
-            -1
+            1
           ],
           "width": 1.851
         },
@@ -127,6 +105,17 @@
           "key": "phmatray/AutonomousAgent",
           "x": 12.225,
           "y": 1.55,
+          "z": 13.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "phmatray/ClaudeCodeSdkNet",
+          "x": 3.775,
+          "y": 1.55,
           "z": 26.85,
           "normal": [
             0,
@@ -135,43 +124,10 @@
           "width": 1.851
         },
         {
-          "key": "Atypical-Consulting/SalesPitch",
-          "x": 0.15,
-          "y": 1.55,
-          "z": 20,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 2.177
-        },
-        {
-          "key": "Atypical-Consulting/GitHubSkills",
-          "x": 15.85,
-          "y": 1.55,
-          "z": 18.175,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.939
-        },
-        {
-          "key": "phmatray/ClaudeCodeSdkNet",
-          "x": 4.2,
-          "y": 1.55,
-          "z": 17.42,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.851
-        },
-        {
           "key": "Atypical-Consulting/AdrMcp",
-          "x": 4.2,
+          "x": 12.225,
           "y": 1.55,
-          "z": 17.38,
+          "z": 26.85,
           "normal": [
             0,
             -1
@@ -180,25 +136,69 @@
         },
         {
           "key": "Atypical-Consulting/x402-dotnet",
-          "x": 4.2,
+          "x": 0.15,
           "y": 1.55,
-          "z": 22.62,
+          "z": 17.661,
           "normal": [
-            0,
-            1
+            1,
+            0
           ],
           "width": 1.7
         },
         {
-          "key": "phmatray/AIPromptMaster",
-          "x": 4.2,
+          "key": "Atypical-Consulting/SalesPitch",
+          "x": 0.15,
           "y": 1.55,
-          "z": 22.58,
+          "z": 22.1,
           "normal": [
-            0,
-            -1
+            1,
+            0
+          ],
+          "width": 2.177
+        },
+        {
+          "key": "phmatray/AIPromptMaster",
+          "x": 15.85,
+          "y": 1.55,
+          "z": 16.47,
+          "normal": [
+            -1,
+            0
           ],
           "width": 1.7
+        },
+        {
+          "key": "Atypical-Consulting/GitHubSkills",
+          "x": 15.85,
+          "y": 1.55,
+          "z": 19.76,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.939
+        },
+        {
+          "key": "Atypical-Consulting/RoselineMCP",
+          "x": 5.02,
+          "y": 1.55,
+          "z": 20,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.939
+        },
+        {
+          "key": "Atypical-Consulting/claude-legends-review",
+          "x": 4.98,
+          "y": 1.55,
+          "z": 20,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.939
         }
       ]
     },
@@ -281,19 +281,8 @@
       "name": "Game / Webassembly",
       "placements": [
         {
-          "key": "phmatray/java-teaching-materials",
-          "x": 19.29,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/G3.TreasuresMonsters.Java",
-          "x": 22.279,
+          "key": "phmatray/Platformer2D_Brackeys",
+          "x": 20.037,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -304,7 +293,7 @@
         },
         {
           "key": "phmatray/webassembly-demo",
-          "x": 25.495,
+          "x": 24,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -314,8 +303,8 @@
           "width": 2.152
         },
         {
-          "key": "phmatray/Platformer2D_Brackeys",
-          "x": 28.71,
+          "key": "phmatray/java-teaching-materials",
+          "x": 27.963,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -325,19 +314,8 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/Raga",
-          "x": 19.32,
-          "y": 1.55,
-          "z": 11.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/G3.TreasuresMonsters",
-          "x": 22.34,
+          "key": "phmatray/MineSweeper",
+          "x": 20.075,
           "y": 1.55,
           "z": 11.85,
           "normal": [
@@ -348,7 +326,7 @@
         },
         {
           "key": "phmatray/lenia",
-          "x": 25.51,
+          "x": 24,
           "y": 1.55,
           "z": 11.85,
           "normal": [
@@ -358,8 +336,8 @@
           "width": 2.001
         },
         {
-          "key": "phmatray/MineSweeper",
-          "x": 28.68,
+          "key": "phmatray/Raga",
+          "x": 27.925,
           "y": 1.55,
           "z": 11.85,
           "normal": [
@@ -369,40 +347,40 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/lenia-godot",
-          "x": 16.15,
-          "y": 1.55,
-          "z": 2.775,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 2.001
-        },
-        {
-          "key": "phmatray/godot-games",
-          "x": 16.15,
-          "y": 1.55,
-          "z": 9.225,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.851
-        },
-        {
           "key": "Atypical-Consulting/Filament",
-          "x": 31.85,
+          "x": 16.15,
           "y": 1.55,
           "z": 2.775,
           "normal": [
-            -1,
+            1,
             0
           ],
           "width": 1.7
         },
         {
           "key": "Atypical-Consulting/YendorSupport",
+          "x": 16.15,
+          "y": 1.55,
+          "z": 9.225,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/G3.TreasuresMonsters",
+          "x": 31.85,
+          "y": 1.55,
+          "z": 2.775,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/G3.TreasuresMonsters.Java",
           "x": 31.85,
           "y": 1.55,
           "z": 9.225,
@@ -411,6 +389,28 @@
             0
           ],
           "width": 1.7
+        },
+        {
+          "key": "phmatray/lenia-godot",
+          "x": 24,
+          "y": 1.55,
+          "z": 4.12,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 2.001
+        },
+        {
+          "key": "phmatray/godot-games",
+          "x": 24,
+          "y": 1.55,
+          "z": 4.08,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.851
         }
       ]
     },
@@ -431,7 +431,7 @@
           "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/nuke",
+          "key": "Atypical-Consulting/MarkdownInk",
           "x": 38.304,
           "y": 1.55,
           "z": 0.15,
@@ -453,7 +453,7 @@
           "width": 2.089
         },
         {
-          "key": "phmatray/Monads",
+          "key": "Atypical-Consulting/nuke",
           "x": 44.698,
           "y": 1.55,
           "z": 0.15,
@@ -464,7 +464,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/CCross.ThrowIf",
+          "key": "phmatray/BuildSphere",
           "x": 35.775,
           "y": 1.55,
           "z": 12.85,
@@ -472,10 +472,10 @@
             0,
             -1
           ],
-          "width": 2.001
+          "width": 1.851
         },
         {
-          "key": "Atypical-Consulting/NFT",
+          "key": "phmatray/CCrossHelper",
           "x": 44.225,
           "y": 1.55,
           "z": 12.85,
@@ -483,10 +483,10 @@
             0,
             -1
           ],
-          "width": 1.939
+          "width": 1.851
         },
         {
-          "key": "Atypical-Consulting/StaticWGen",
+          "key": "phmatray/music-dotnet",
           "x": 32.15,
           "y": 1.55,
           "z": 2.775,
@@ -494,10 +494,10 @@
             1,
             0
           ],
-          "width": 1.7
+          "width": 1.851
         },
         {
-          "key": "phmatray/BuildSphere",
+          "key": "phmatray/dotnet-toolbelt",
           "x": 32.15,
           "y": 1.55,
           "z": 9.725,
@@ -508,7 +508,7 @@
           "width": 1.851
         },
         {
-          "key": "phmatray/CentralisedPackageConverter",
+          "key": "Atypical-Consulting/StaticWGen",
           "x": 47.85,
           "y": 1.55,
           "z": 3.313,
@@ -541,48 +541,48 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/CCrossHelper",
-          "x": 43.8,
+          "key": "phmatray/Monads",
+          "x": 38.55,
           "y": 1.55,
-          "z": 3.32,
+          "z": 4.22,
           "normal": [
             0,
             1
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "phmatray/dotnet-toolbelt",
-          "x": 43.8,
+          "key": "phmatray/CCross.ThrowIf",
+          "x": 41.3,
           "y": 1.55,
-          "z": 3.28,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.851
-        },
-        {
-          "key": "phmatray/music-dotnet",
-          "x": 43.8,
-          "y": 1.55,
-          "z": 9.72,
+          "z": 4.22,
           "normal": [
             0,
             1
           ],
-          "width": 1.851
+          "width": 2.001
         },
         {
-          "key": "Atypical-Consulting/MarkdownInk",
-          "x": 43.8,
+          "key": "phmatray/CentralisedPackageConverter",
+          "x": 38.57,
           "y": 1.55,
-          "z": 9.68,
+          "z": 4.18,
           "normal": [
             0,
             -1
           ],
           "width": 1.7
+        },
+        {
+          "key": "Atypical-Consulting/NFT",
+          "x": 41.31,
+          "y": 1.55,
+          "z": 4.18,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.939
         }
       ]
     },
@@ -844,7 +844,7 @@
       "name": "Blazor / Blazor Components",
       "placements": [
         {
-          "key": "phmatray/daisyblazor",
+          "key": "phmatray/BlazorPluginComponents",
           "x": 3.775,
           "y": 6.35,
           "z": 13.15,
@@ -852,10 +852,10 @@
             0,
             1
           ],
-          "width": 1.939
+          "width": 1.851
         },
         {
-          "key": "phmatray/BlazorLeaflet",
+          "key": "Atypical-Consulting/blazor-state",
           "x": 12.225,
           "y": 6.35,
           "z": 13.15,
@@ -863,10 +863,10 @@
             0,
             1
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "phmatray/BlazorPluginComponents",
+          "key": "phmatray/BlazorTSInterop",
           "x": 3.775,
           "y": 6.35,
           "z": 26.85,
@@ -874,10 +874,10 @@
             0,
             -1
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/blazor-state",
+          "key": "phmatray/ComputerInfo",
           "x": 12.225,
           "y": 6.35,
           "z": 26.85,
@@ -888,10 +888,10 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/blazor-tailwind-ui",
+          "key": "phmatray/IdxDb",
           "x": 0.15,
           "y": 6.35,
-          "z": 17.749,
+          "z": 16.575,
           "normal": [
             1,
             0
@@ -902,7 +902,7 @@
           "key": "phmatray/BlazorKawaii",
           "x": 0.15,
           "y": 6.35,
-          "z": 22.1,
+          "z": 20,
           "normal": [
             1,
             0
@@ -910,10 +910,32 @@
           "width": 2.001
         },
         {
+          "key": "phmatray/blazor-tailwind-ui",
+          "x": 0.15,
+          "y": 6.35,
+          "z": 23.425,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/blazor-state-experiments",
+          "x": 15.85,
+          "y": 6.35,
+          "z": 16.47,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
           "key": "phmatray/Ducky",
           "x": 15.85,
           "y": 6.35,
-          "z": 18.175,
+          "z": 19.76,
           "normal": [
             -1,
             0
@@ -921,48 +943,26 @@
           "width": 1.939
         },
         {
-          "key": "phmatray/BlazorTSInterop",
-          "x": 4.2,
+          "key": "phmatray/daisyblazor",
+          "x": 5.02,
           "y": 6.35,
-          "z": 17.42,
+          "z": 20,
           "normal": [
-            0,
-            1
+            1,
+            0
           ],
-          "width": 1.7
+          "width": 1.939
         },
         {
-          "key": "phmatray/ComputerInfo",
-          "x": 4.2,
+          "key": "phmatray/BlazorLeaflet",
+          "x": 4.98,
           "y": 6.35,
-          "z": 17.38,
+          "z": 20,
           "normal": [
-            0,
-            -1
+            -1,
+            0
           ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/IdxDb",
-          "x": 4.2,
-          "y": 6.35,
-          "z": 22.62,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/blazor-state-experiments",
-          "x": 4.2,
-          "y": 6.35,
-          "z": 22.58,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
+          "width": 1.851
         }
       ]
     },
@@ -972,7 +972,7 @@
       "name": "Testing / Python",
       "placements": [
         {
-          "key": "phmatray/phmatray",
+          "key": "Atypical-Consulting/readme-forge",
           "x": 3.775,
           "y": 6.35,
           "z": 27.15,
@@ -980,10 +980,10 @@
             0,
             1
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/nugetkeep-releases",
+          "key": "phmatray/AutoTestId",
           "x": 12.225,
           "y": 6.35,
           "z": 27.15,
@@ -994,8 +994,8 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/Metatrader5-Docker",
-          "x": 4.112,
+          "key": "phmatray/trading-lab",
+          "x": 5.825,
           "y": 6.35,
           "z": 39.85,
           "normal": [
@@ -1006,7 +1006,7 @@
         },
         {
           "key": "phmatray/AutoTests",
-          "x": 8,
+          "x": 10.1,
           "y": 6.35,
           "z": 39.85,
           "normal": [
@@ -1014,34 +1014,12 @@
             -1
           ],
           "width": 1.851
-        },
-        {
-          "key": "phmatray/trading-lab",
-          "x": 11.888,
-          "y": 6.35,
-          "z": 39.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/spec-kit-dotnet",
-          "x": 0.15,
-          "y": 6.35,
-          "z": 31.383,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
         },
         {
           "key": "phmatray/jcodemunch-mcp",
           "x": 0.15,
           "y": 6.35,
-          "z": 35.542,
+          "z": 33.5,
           "normal": [
             1,
             0
@@ -1049,7 +1027,7 @@
           "width": 1.851
         },
         {
-          "key": "Atypical-Consulting/readme-forge",
+          "key": "phmatray/Metatrader5-Docker",
           "x": 15.85,
           "y": 6.35,
           "z": 30.175,
@@ -1060,13 +1038,35 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/AutoTestId",
+          "key": "phmatray/spec-kit-dotnet",
           "x": 15.85,
           "y": 6.35,
           "z": 37.325,
           "normal": [
             -1,
             0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/phmatray",
+          "x": 8,
+          "y": 6.35,
+          "z": 35.92,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "Atypical-Consulting/nugetkeep-releases",
+          "x": 8,
+          "y": 6.35,
+          "z": 35.88,
+          "normal": [
+            0,
+            -1
           ],
           "width": 1.7
         }

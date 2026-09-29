@@ -114,6 +114,7 @@ function instances(m: THREE.InstancedMesh, vu: (z: Zone[]) => boolean, cle: stri
     lot = { n, attrs: attrs.map((attr) => ({ attr, copie: attr.array.slice() as Tableau, version: attr.version })), zones, stable: 0, cle: '', compacte: false }
     lots.set(m, lot)
     m.count = n
+    m.computeBoundingSphere()
     montrer(m, true)
     return
   }
@@ -135,6 +136,10 @@ function instances(m: THREE.InstancedMesh, vu: (z: Zone[]) => boolean, cle: stri
     lot.compacte = true
   }
   m.count = garder.length
+  // La sphère englobante suit les instances gardées : calculée sur un lot
+  // compacté (par une couche qui la recalcule après coup), elle oublierait
+  // celles qu'on remet en tête ici, et le cône de vue les écarterait.
+  m.computeBoundingSphere()
   montrer(m, garder.length > 0)
 }
 

@@ -15,13 +15,17 @@
  *
  * ── Où ──
  *
- * Seulement dans les galeries de 16 × 13 ou 14 m qui accrochaient le plus serré,
- * et jamais dans un passage : deux panneaux parallèles de 4 m par salle, à plus
- * de 2 m des murs, hors des lignes de porte à porte et de porte au centre (où
- * mènent la visite et Bavette), la banquette entre les deux. De la porte, on les
- * voit par la tranche, et le mur du fond reste lisible entre eux.
+ * Dans chaque galerie qui accroche serré — plus de six dixièmes de sa capacité
+ * murale, à l'accrochage de juillet 2026 : Trading & finance, la galerie du nord,
+ * Librairies .NET, Parsers & langages et Simulation. Une seule ligne de sept
+ * modules par salle : deux toiles par face, 90 cm de panneau nu à chaque bout.
+ * Elle se tient à plus de 3 m de chaque mur — on recule devant une toile du mur
+ * comme devant une toile du panneau —, à plus de 2 m des portes et de la
+ * banquette, et hors des lignes de porte à porte et de porte au centre, où
+ * mènent la visite et Bavette. Il n'y a donc qu'une place par forme de salle :
+ * dans la bande que ne traverse aucune ligne, parallèle au plus long côté libre.
  *
- * Le plan reste la seule source : les emprises sont des obstacles du niveau
+  * Le plan reste la seule source : les emprises sont des obstacles du niveau
  * (`musee.ts`) que `step()` arrête et que les chemins contournent (`mobilier.ts`).
  *
  * Pur : ni three ni React.
@@ -54,20 +58,25 @@ export interface Cimaise {
 }
 
 /**
- * Deux panneaux parallèles de quatre modules, symétriques autour de l'axe de la
- * banquette, dans la moitié de la salle que ne traverse aucune porte :
- * - Librairies .NET et Parsers & langages (16 × 14, trois portes), la moitié ouest,
- *   de part et d'autre de la banquette ; la porte du hall regarde entre eux ;
- * - Trading & finance (16 × 13, pleine à craquer), la moitié est : de la porte
- *   ouest, on regarde le mur du fond entre les deux.
+ * Une ligne de sept modules par galerie chargée :
+ * - Trading & finance (16 × 13, deux portes, à l'ouest et au sud) et la galerie
+ *   du nord (16 × 12, traversée par z = 6) : d'ouest en est, dans la bande nord
+ *   qu'aucune ligne ne traverse, la face sud le long du chemin ; la banquette
+ *   au sud la regarde ;
+ * - Librairies .NET et Parsers & langages (16 × 14, trois portes qui se croisent
+ *   sur l'axe x = 8) : du nord au sud, dans la moitié ouest, la face est tournée
+ *   vers la porte du hall ;
+ * - Simulation (16 × 13, portes au nord et à l'est) : d'ouest en est, dans la
+ *   bande sud, face nord tournée vers le centre.
  */
-const paire = (niveau: number, salle: string, x: number, axe: number, ecart: number): Cimaise[] =>
-  [axe - ecart / 2, axe + ecart / 2].map((z) => ({ niveau, salle, x, z, axe: 'x', modules: 4 }))
+const ligne = (niveau: number, salle: string, x: number, z: number, axe: 'x' | 'z'): Cimaise => ({ niveau, salle, x, z, axe, modules: 7 })
 
 export const CIMAISES: Cimaise[] = [
-  ...paire(0, 'r-o2', 4.2, 20, 5.2),
-  ...paire(1, 'e-o2', 4.2, 20, 5.2),
-  ...paire(0, 'r-e1', 43.8, 6.5, 6.4),
+  ligne(0, 'r-e1', 40, 4.2, 'x'),
+  ligne(0, 'r-n', 24, 4.1, 'x'),
+  ligne(0, 'r-o2', 5, 20, 'z'),
+  ligne(1, 'e-o2', 5, 20, 'z'),
+  ligne(1, 'e-o3', 8, 35.9, 'x'),
 ]
 
 const longueur = (c: Cimaise) => c.modules * MODULE.largeur
@@ -111,6 +120,10 @@ export const cimaiseSous = (niveau: number, salle: string, x: number, z: number)
 
 /** Ce qu'une face accroche au pas de `pas` mètres, ses bouts laissés libres. */
 export const placesDeFace = (c: Cimaise, pas: number): number => Math.max(0, Math.floor((longueur(c) - 2 * MARGE_BOUT) / pas))
+
+/** Ce qu'accrochent toutes les faces des cimaises d'une salle, au pas de `pas` mètres. */
+export const placesDesCimaises = (niveau: number, salle: string, pas: number): number =>
+  cimaisesDe(niveau, salle).reduce((s, c) => s + 2 * placesDeFace(c, pas), 0)
 
 /** Les boîtes d'un niveau : le stratifié des modules, et l'aluminium des jonctions, de la plinthe et des pieds. */
 export function boitesDesCimaises(plan: Plan, niveau: number): { panneaux: Box[]; alu: Box[] } {
