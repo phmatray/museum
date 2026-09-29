@@ -59,10 +59,10 @@ export interface Cimaise {
 
 /**
  * Une ligne de sept modules par galerie chargée :
- * - Trading & finance (16 × 13, deux portes, à l'ouest et au sud) et la galerie
- *   du nord (16 × 12, traversée par z = 6) : d'ouest en est, dans la bande nord
- *   qu'aucune ligne ne traverse, la face sud le long du chemin ; la banquette
- *   au sud la regarde ;
+ * - Trading & finance (16 × 13, deux portes, à l'ouest et au sud) : d'ouest en
+ *   est, dans la bande nord qu'aucune ligne ne traverse, la face sud le long du
+ *   chemin ; la banquette au sud la regarde. La galerie du nord, en dessous de
+ *   la salle d'honneur, a cédé la sienne aux ateliers en coupe (ateliers.ts) ;
  * - Librairies .NET et Parsers & langages (16 × 14, trois portes qui se croisent
  *   sur l'axe x = 8) : du nord au sud, dans la moitié ouest, la face est tournée
  *   vers la porte du hall ;
@@ -73,7 +73,6 @@ const ligne = (niveau: number, salle: string, x: number, z: number, axe: 'x' | '
 
 export const CIMAISES: Cimaise[] = [
   ligne(0, 'r-e1', 40, 4.2, 'x'),
-  ligne(0, 'r-n', 24, 4.1, 'x'),
   ligne(0, 'r-o2', 5, 20, 'z'),
   ligne(1, 'e-o2', 5, 20, 'z'),
   ligne(1, 'e-o3', 8, 35.9, 'x'),

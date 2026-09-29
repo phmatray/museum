@@ -281,8 +281,19 @@
       "name": "Game / Webassembly",
       "placements": [
         {
-          "key": "phmatray/Platformer2D_Brackeys",
-          "x": 20.037,
+          "key": "phmatray/java-teaching-materials",
+          "x": 19.29,
+          "y": 1.55,
+          "z": 0.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/G3.TreasuresMonsters.Java",
+          "x": 22.279,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -293,7 +304,7 @@
         },
         {
           "key": "phmatray/webassembly-demo",
-          "x": 24,
+          "x": 25.495,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -303,8 +314,8 @@
           "width": 2.152
         },
         {
-          "key": "phmatray/java-teaching-materials",
-          "x": 27.963,
+          "key": "phmatray/Platformer2D_Brackeys",
+          "x": 28.71,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -314,8 +325,19 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/MineSweeper",
-          "x": 20.075,
+          "key": "phmatray/Raga",
+          "x": 19.32,
+          "y": 1.55,
+          "z": 11.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/G3.TreasuresMonsters",
+          "x": 22.34,
           "y": 1.55,
           "z": 11.85,
           "normal": [
@@ -326,7 +348,7 @@
         },
         {
           "key": "phmatray/lenia",
-          "x": 24,
+          "x": 25.51,
           "y": 1.55,
           "z": 11.85,
           "normal": [
@@ -336,8 +358,8 @@
           "width": 2.001
         },
         {
-          "key": "phmatray/Raga",
-          "x": 27.925,
+          "key": "phmatray/MineSweeper",
+          "x": 28.68,
           "y": 1.55,
           "z": 11.85,
           "normal": [
@@ -347,40 +369,40 @@
           "width": 1.7
         },
         {
-          "key": "Atypical-Consulting/Filament",
+          "key": "phmatray/lenia-godot",
           "x": 16.15,
           "y": 1.55,
           "z": 2.775,
           "normal": [
             1,
+            0
+          ],
+          "width": 2.001
+        },
+        {
+          "key": "phmatray/godot-games",
+          "x": 16.15,
+          "y": 1.55,
+          "z": 9.225,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "Atypical-Consulting/Filament",
+          "x": 31.85,
+          "y": 1.55,
+          "z": 2.775,
+          "normal": [
+            -1,
             0
           ],
           "width": 1.7
         },
         {
           "key": "Atypical-Consulting/YendorSupport",
-          "x": 16.15,
-          "y": 1.55,
-          "z": 9.225,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/G3.TreasuresMonsters",
-          "x": 31.85,
-          "y": 1.55,
-          "z": 2.775,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/G3.TreasuresMonsters.Java",
           "x": 31.85,
           "y": 1.55,
           "z": 9.225,
@@ -389,28 +411,6 @@
             0
           ],
           "width": 1.7
-        },
-        {
-          "key": "phmatray/lenia-godot",
-          "x": 24,
-          "y": 1.55,
-          "z": 4.12,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 2.001
-        },
-        {
-          "key": "phmatray/godot-games",
-          "x": 24,
-          "y": 1.55,
-          "z": 4.08,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.851
         }
       ]
     },

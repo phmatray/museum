@@ -1,0 +1,544 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-29T14:21:47.364Z",
+  "ateliers": [
+    {
+      "key": "phmatray/TaLibStandard",
+      "commit": "735789a113b23c884bc6718ca9374bcde6616702",
+      "couches": [
+        {
+          "id": "socle",
+          "nom": "Socle",
+          "role": "Ne dépend d’aucun autre projet",
+          "modules": [
+            {
+              "id": "TechnicalAnalysis.Common",
+              "nom": "Common",
+              "role": "Paquet NuGet",
+              "fichiers": 21,
+              "octets": 54594
+            }
+          ]
+        },
+        {
+          "id": "extensions",
+          "nom": "Extensions",
+          "role": "Bâties sur le socle",
+          "modules": [
+            {
+              "id": "TechnicalAnalysis.Functions",
+              "nom": "Functions",
+              "role": "Paquet NuGet",
+              "fichiers": 298,
+              "octets": 1089867
+            },
+            {
+              "id": "TechnicalAnalysis.Candles",
+              "nom": "Candles",
+              "role": "Paquet NuGet",
+              "fichiers": 123,
+              "octets": 420070
+            }
+          ]
+        },
+        {
+          "id": "assemblages",
+          "nom": "Assemblages",
+          "role": "Réunissent les couches du dessous",
+          "modules": [
+            {
+              "id": "TechnicalAnalysis",
+              "nom": "TechnicalAnalysis",
+              "role": "Méta-paquet : réunit les autres",
+              "fichiers": 0,
+              "octets": 0
+            }
+          ]
+        },
+        {
+          "id": "demonstrations",
+          "nom": "Démonstrations",
+          "role": "La bibliothèque à l’œuvre",
+          "modules": [
+            {
+              "id": "Demo.BlazorWasm",
+              "nom": "Demo.BlazorWasm",
+              "role": "Démo Blazor WebAssembly · MudBlazor",
+              "fichiers": 22,
+              "octets": 172626
+            },
+            {
+              "id": "TechnicalAnalysis.Samples.Backtesting",
+              "nom": "Samples.Backtesting",
+              "role": "Application console",
+              "fichiers": 34,
+              "octets": 171671
+            },
+            {
+              "id": "TechnicalAnalysis.Samples.RealTime",
+              "nom": "Samples.RealTime",
+              "role": "Application web",
+              "fichiers": 17,
+              "octets": 102075
+            },
+            {
+              "id": "TechnicalAnalysis.Samples.RealTime.Client",
+              "nom": "Samples.RealTime.Client",
+              "role": "Application console · SignalR",
+              "fichiers": 4,
+              "octets": 20859
+            }
+          ]
+        },
+        {
+          "id": "tests",
+          "nom": "Tests",
+          "role": "Vérifient et mesurent le reste",
+          "modules": [
+            {
+              "id": "TechnicalAnalysis.Functions.UnitTests",
+              "nom": "Functions.UnitTests",
+              "role": "Tests de Functions",
+              "fichiers": 101,
+              "octets": 177859
+            },
+            {
+              "id": "TechnicalAnalysis.Benchmarks",
+              "nom": "Benchmarks",
+              "role": "Mesures de performance",
+              "fichiers": 17,
+              "octets": 163669
+            },
+            {
+              "id": "TechnicalAnalysis.Samples.Backtesting.UnitTests",
+              "nom": "Samples.Backtesting.UnitTests",
+              "role": "Tests de Samples.Backtesting",
+              "fichiers": 25,
+              "octets": 135288
+            },
+            {
+              "id": "TechnicalAnalysis.Candles.UnitTests",
+              "nom": "Candles.UnitTests",
+              "role": "Tests de Candles",
+              "fichiers": 63,
+              "octets": 99308
+            }
+          ]
+        }
+      ],
+      "liens": [
+        {
+          "de": "Demo.BlazorWasm",
+          "vers": "TechnicalAnalysis.Candles"
+        },
+        {
+          "de": "Demo.BlazorWasm",
+          "vers": "TechnicalAnalysis.Common"
+        },
+        {
+          "de": "Demo.BlazorWasm",
+          "vers": "TechnicalAnalysis.Functions"
+        },
+        {
+          "de": "TechnicalAnalysis",
+          "vers": "TechnicalAnalysis.Candles"
+        },
+        {
+          "de": "TechnicalAnalysis",
+          "vers": "TechnicalAnalysis.Functions"
+        },
+        {
+          "de": "TechnicalAnalysis.Benchmarks",
+          "vers": "TechnicalAnalysis.Candles"
+        },
+        {
+          "de": "TechnicalAnalysis.Benchmarks",
+          "vers": "TechnicalAnalysis.Functions"
+        },
+        {
+          "de": "TechnicalAnalysis.Candles",
+          "vers": "TechnicalAnalysis.Common"
+        },
+        {
+          "de": "TechnicalAnalysis.Candles.UnitTests",
+          "vers": "TechnicalAnalysis.Candles"
+        },
+        {
+          "de": "TechnicalAnalysis.Functions",
+          "vers": "TechnicalAnalysis.Common"
+        },
+        {
+          "de": "TechnicalAnalysis.Functions.UnitTests",
+          "vers": "TechnicalAnalysis.Functions"
+        },
+        {
+          "de": "TechnicalAnalysis.Samples.Backtesting",
+          "vers": "TechnicalAnalysis.Candles"
+        },
+        {
+          "de": "TechnicalAnalysis.Samples.Backtesting",
+          "vers": "TechnicalAnalysis.Functions"
+        },
+        {
+          "de": "TechnicalAnalysis.Samples.Backtesting.UnitTests",
+          "vers": "TechnicalAnalysis.Samples.Backtesting"
+        },
+        {
+          "de": "TechnicalAnalysis.Samples.RealTime",
+          "vers": "TechnicalAnalysis.Candles"
+        },
+        {
+          "de": "TechnicalAnalysis.Samples.RealTime",
+          "vers": "TechnicalAnalysis.Functions"
+        }
+      ]
+    },
+    {
+      "key": "phmatray/FormCraft",
+      "commit": "a30cb4cc9404506da8510bac91795b17de431977",
+      "couches": [
+        {
+          "id": "socle",
+          "nom": "Socle",
+          "role": "Ne dépend d’aucun autre projet",
+          "modules": [
+            {
+              "id": "FormCraft",
+              "nom": "FormCraft",
+              "role": "Composants Razor · FluentValidation",
+              "fichiers": 125,
+              "octets": 563763
+            }
+          ]
+        },
+        {
+          "id": "extensions",
+          "nom": "Extensions",
+          "role": "Bâties sur le socle",
+          "modules": [
+            {
+              "id": "FormCraft.ForMudBlazor",
+              "nom": "ForMudBlazor",
+              "role": "Composants Razor · MudBlazor",
+              "fichiers": 73,
+              "octets": 333712
+            },
+            {
+              "id": "FormCraft.ForFluentUI",
+              "nom": "ForFluentUI",
+              "role": "Composants Razor · Fluent UI",
+              "fichiers": 62,
+              "octets": 196286
+            }
+          ]
+        },
+        {
+          "id": "demonstrations",
+          "nom": "Démonstrations",
+          "role": "La bibliothèque à l’œuvre",
+          "modules": [
+            {
+              "id": "FormCraft.DemoBlazorApp",
+              "nom": "DemoBlazorApp",
+              "role": "Démo Blazor WebAssembly · MudBlazor",
+              "fichiers": 114,
+              "octets": 542299
+            },
+            {
+              "id": "FormCraft.DemoFluentApp",
+              "nom": "DemoFluentApp",
+              "role": "Démo Blazor WebAssembly · Fluent UI",
+              "fichiers": 6,
+              "octets": 8023
+            }
+          ]
+        },
+        {
+          "id": "tests",
+          "nom": "Tests",
+          "role": "Vérifient et mesurent le reste",
+          "modules": [
+            {
+              "id": "FormCraft.UnitTests",
+              "nom": "UnitTests",
+              "role": "Tests de FormCraft et ForMudBlazor",
+              "fichiers": 105,
+              "octets": 1053978
+            },
+            {
+              "id": "FormCraft.ForMudBlazor.UnitTests",
+              "nom": "ForMudBlazor.UnitTests",
+              "role": "Tests de 3 projets",
+              "fichiers": 83,
+              "octets": 822708
+            },
+            {
+              "id": "FormCraft.ForFluentUI.UnitTests",
+              "nom": "ForFluentUI.UnitTests",
+              "role": "Tests de 3 projets",
+              "fichiers": 44,
+              "octets": 290028
+            },
+            {
+              "id": "FormCraft.TestSupport",
+              "nom": "TestSupport",
+              "role": "Outils partagés des tests",
+              "fichiers": 4,
+              "octets": 62426
+            }
+          ]
+        }
+      ],
+      "liens": [
+        {
+          "de": "FormCraft.DemoBlazorApp",
+          "vers": "FormCraft"
+        },
+        {
+          "de": "FormCraft.DemoBlazorApp",
+          "vers": "FormCraft.ForMudBlazor"
+        },
+        {
+          "de": "FormCraft.DemoFluentApp",
+          "vers": "FormCraft"
+        },
+        {
+          "de": "FormCraft.DemoFluentApp",
+          "vers": "FormCraft.ForFluentUI"
+        },
+        {
+          "de": "FormCraft.ForFluentUI",
+          "vers": "FormCraft"
+        },
+        {
+          "de": "FormCraft.ForFluentUI.UnitTests",
+          "vers": "FormCraft"
+        },
+        {
+          "de": "FormCraft.ForFluentUI.UnitTests",
+          "vers": "FormCraft.ForFluentUI"
+        },
+        {
+          "de": "FormCraft.ForFluentUI.UnitTests",
+          "vers": "FormCraft.ForMudBlazor"
+        },
+        {
+          "de": "FormCraft.ForFluentUI.UnitTests",
+          "vers": "FormCraft.TestSupport"
+        },
+        {
+          "de": "FormCraft.ForMudBlazor",
+          "vers": "FormCraft"
+        },
+        {
+          "de": "FormCraft.ForMudBlazor.UnitTests",
+          "vers": "FormCraft"
+        },
+        {
+          "de": "FormCraft.ForMudBlazor.UnitTests",
+          "vers": "FormCraft.ForFluentUI"
+        },
+        {
+          "de": "FormCraft.ForMudBlazor.UnitTests",
+          "vers": "FormCraft.ForMudBlazor"
+        },
+        {
+          "de": "FormCraft.ForMudBlazor.UnitTests",
+          "vers": "FormCraft.TestSupport"
+        },
+        {
+          "de": "FormCraft.TestSupport",
+          "vers": "FormCraft"
+        },
+        {
+          "de": "FormCraft.UnitTests",
+          "vers": "FormCraft"
+        },
+        {
+          "de": "FormCraft.UnitTests",
+          "vers": "FormCraft.ForMudBlazor"
+        }
+      ]
+    },
+    {
+      "key": "Atypical-Consulting/VirtualFileSystem",
+      "commit": "24a918a397501932e8b21aac9c5eb82e295eb042",
+      "couches": [
+        {
+          "id": "socle",
+          "nom": "Socle",
+          "role": "Ne dépend d’aucun autre projet",
+          "modules": [
+            {
+              "id": "Atypical.VirtualFileSystem.Core",
+              "nom": "Core",
+              "role": "Paquet NuGet",
+              "fichiers": 61,
+              "octets": 222296
+            }
+          ]
+        },
+        {
+          "id": "extensions",
+          "nom": "Extensions",
+          "role": "Bâties sur le socle",
+          "modules": [
+            {
+              "id": "Atypical.VirtualFileSystem.Providers.Abstractions",
+              "nom": "Providers.Abstractions",
+              "role": "Bibliothèque",
+              "fichiers": 14,
+              "octets": 10634
+            }
+          ]
+        },
+        {
+          "id": "assemblages",
+          "nom": "Assemblages",
+          "role": "Réunissent les couches du dessous",
+          "modules": [
+            {
+              "id": "Atypical.VirtualFileSystem.GitHub",
+              "nom": "GitHub",
+              "role": "Paquet NuGet · Octokit",
+              "fichiers": 14,
+              "octets": 79620
+            },
+            {
+              "id": "Atypical.VirtualFileSystem.Ftp",
+              "nom": "Ftp",
+              "role": "Bibliothèque · FluentFTP",
+              "fichiers": 10,
+              "octets": 16973
+            }
+          ]
+        },
+        {
+          "id": "demonstrations",
+          "nom": "Démonstrations",
+          "role": "La bibliothèque à l’œuvre",
+          "modules": [
+            {
+              "id": "Atypical.VirtualFileSystem.DemoBlazorApp",
+              "nom": "DemoBlazorApp",
+              "role": "Application web · Octokit",
+              "fichiers": 63,
+              "octets": 311275
+            },
+            {
+              "id": "Atypical.VirtualFileSystem.DemoCli",
+              "nom": "DemoCli",
+              "role": "Application console · Spectre.Console",
+              "fichiers": 5,
+              "octets": 7243
+            }
+          ]
+        },
+        {
+          "id": "tests",
+          "nom": "Tests",
+          "role": "Vérifient et mesurent le reste",
+          "modules": [
+            {
+              "id": "Atypical.VirtualFileSystem.UnitTests",
+              "nom": "UnitTests",
+              "role": "Tests de Core",
+              "fichiers": 44,
+              "octets": 212509
+            },
+            {
+              "id": "Atypical.VirtualFileSystem.GitHub.Tests",
+              "nom": "GitHub.Tests",
+              "role": "Tests de GitHub",
+              "fichiers": 8,
+              "octets": 20647
+            },
+            {
+              "id": "Atypical.VirtualFileSystem.Benchmarks",
+              "nom": "Benchmarks",
+              "role": "Mesures de performance",
+              "fichiers": 6,
+              "octets": 19891
+            },
+            {
+              "id": "Atypical.VirtualFileSystem.Ftp.Tests",
+              "nom": "Ftp.Tests",
+              "role": "Tests de Ftp",
+              "fichiers": 4,
+              "octets": 6354
+            },
+            {
+              "id": "Atypical.VirtualFileSystem.Providers.Abstractions.Tests",
+              "nom": "Providers.Abstractions.Tests",
+              "role": "Tests de Providers.Abstractions",
+              "fichiers": 6,
+              "octets": 2600
+            }
+          ]
+        }
+      ],
+      "liens": [
+        {
+          "de": "Atypical.VirtualFileSystem.Benchmarks",
+          "vers": "Atypical.VirtualFileSystem.Core"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.DemoBlazorApp",
+          "vers": "Atypical.VirtualFileSystem.Core"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.DemoBlazorApp",
+          "vers": "Atypical.VirtualFileSystem.Ftp"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.DemoBlazorApp",
+          "vers": "Atypical.VirtualFileSystem.GitHub"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.DemoBlazorApp",
+          "vers": "Atypical.VirtualFileSystem.Providers.Abstractions"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.DemoCli",
+          "vers": "Atypical.VirtualFileSystem.Core"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.Ftp",
+          "vers": "Atypical.VirtualFileSystem.Core"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.Ftp",
+          "vers": "Atypical.VirtualFileSystem.Providers.Abstractions"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.Ftp.Tests",
+          "vers": "Atypical.VirtualFileSystem.Ftp"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.GitHub",
+          "vers": "Atypical.VirtualFileSystem.Core"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.GitHub",
+          "vers": "Atypical.VirtualFileSystem.Providers.Abstractions"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.GitHub.Tests",
+          "vers": "Atypical.VirtualFileSystem.GitHub"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.Providers.Abstractions",
+          "vers": "Atypical.VirtualFileSystem.Core"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.Providers.Abstractions.Tests",
+          "vers": "Atypical.VirtualFileSystem.Providers.Abstractions"
+        },
+        {
+          "de": "Atypical.VirtualFileSystem.UnitTests",
+          "vers": "Atypical.VirtualFileSystem.Core"
+        }
+      ]
+    }
+  ]
+}
