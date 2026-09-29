@@ -41,10 +41,22 @@ describe('compterLaVisite', () => {
 
   it('compte une seule fois par session', async () => {
     const s = session()
-    const recuperer = vi.fn(() => reponse({ value: 42 }))
-    expect(await compterLaVisite(s, recuperer)).toBe(42)
-    expect(await compterLaVisite(s, recuperer)).toBe(42)
-    expect(recuperer).toHaveBeenCalledTimes(1)
+    const recuperer = vi.fn<(url: string) => Promise<Response>>(() => reponse({ value: 42 }))
+    expect(await compterLaVisite(s, recuperer as unknown as typeof fetch)).toBe(42)
+    expect(await compterLaVisite(s, recuperer as unknown as typeof fetch)).toBe(42)
+    // Un seul /hit/ (qui incrémente) ; le rechargement ne fait que relire.
+    expect(recuperer.mock.calls.filter(([u]) => u.includes('/hit/'))).toHaveLength(1)
+  })
+
+  it('relit le vrai total aux chargements suivants, sans recompter', async () => {
+    // Un onglet gardé ouvert (ou restauré) depuis le jour où le compteur valait 1.
+    const s = session()
+    s.setItem('musee:visites', '1')
+    const recuperer = vi.fn((url: string) => reponse({ value: url.includes('/get/') ? 158 : 159 }))
+    expect(await compterLaVisite(s, recuperer as unknown as typeof fetch)).toBe(158)
+    expect(recuperer).toHaveBeenCalledWith(expect.stringContaining('/get/'))
+    // Service en panne : on garde ce qu'on avait.
+    expect(await compterLaVisite(s, () => Promise.reject(new Error('hors ligne')))).toBe(158)
   })
 
   it('rend null sans bloquer quand le service tombe', async () => {

@@ -48,18 +48,23 @@ export function dureeDuCompteur(de: number[], a: number[]): number {
   return Math.max(0, ...de.map((d, i) => ((a[i] - d + FACES) % FACES) * CRAN_S))
 }
 
-/** Compte cette visite une fois par session, puis relit la valeur gardée. */
+/**
+ * Compte cette visite une fois par session ; aux chargements suivants, relit
+ * le total (`/get/`, sans l'incrémenter). Rendre la valeur gardée telle quelle
+ * figeait le compteur au nombre du premier chargement : un onglet ouvert (ou
+ * restauré par le navigateur) le jour où le compteur valait 1 affichait 1 pour
+ * toujours. En panne, la valeur gardée.
+ */
 export async function compterLaVisite(session: Pick<Storage, 'getItem' | 'setItem'> | null, recuperer: typeof fetch, url = URL_COMPTEUR): Promise<number | null> {
+  const garde = Number(session?.getItem(CLE_SESSION)) || null
   try {
-    const garde = session?.getItem(CLE_SESSION)
-    if (garde) return Number(garde)
-    const r = await recuperer(url)
-    if (!r.ok) return null
+    const r = await recuperer(garde === null ? url : url.replace('/hit/', '/get/'))
+    if (!r.ok) return garde
     const { value } = (await r.json()) as { value?: unknown }
-    if (typeof value !== 'number' || !Number.isFinite(value)) return null
+    if (typeof value !== 'number' || !Number.isFinite(value)) return garde
     session?.setItem(CLE_SESSION, String(value))
     return value
   } catch {
-    return null
+    return garde
   }
 }
