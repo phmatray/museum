@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import accrochage from '../../../public/data/accrochage.json'
 import type { Artwork } from '../../domain/types.ts'
 import { CARTEL_LARGEUR, cartelPlacements, cartelTexte } from '../cartels.ts'
+import { CIMAISES } from '../cimaises.ts'
 import type { Accrochage } from '../hang.ts'
 
 const ACC = accrochage as Accrochage
@@ -31,6 +32,17 @@ describe('cartelPlacements', () => {
       expect(aDroite).toBeGreaterThan(t.width / 2)
       expect(Math.hypot(c.x - t.x, c.z - t.z)).toBeLessThan(t.width / 2 + 1)
       expect(c.y).toBeLessThan(t.y)
+    }
+  })
+
+  it('se fait sombre sur le stratifié blanc des cimaises, et là seulement', () => {
+    const surPanneau = cartels.filter((c) => c.surPanneau)
+    // Au moins une toile par face de chaque cimaise (cimaises.test.ts).
+    expect(surPanneau.length).toBeGreaterThanOrEqual(2 * CIMAISES.length)
+    for (const c of surPanneau) {
+      const t = toiles.find((t) => t.key === c.key)!
+      // Aucun mur n'est à moins de 3 m d'une cimaise : la toile est à ~2 cm de l'axe du panneau.
+      expect(CIMAISES.some((m) => Math.abs(m.axe === 'x' ? t.z - m.z : t.x - m.x) < 0.05), c.key).toBe(true)
     }
   })
 

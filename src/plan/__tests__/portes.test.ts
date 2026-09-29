@@ -9,12 +9,13 @@ const niveaux = MUSEE.levels.map((l) => ({
   l,
   portes: l.openings.filter((o) => (o.kind === 'door' || o.kind === 'entrance') && o.a !== 'honneur' && o.b !== 'honneur'),
 }))
+const versHonneur = MUSEE.levels.flatMap((l) => l.openings.filter((o) => o.kind === 'door' && (o.a === 'honneur' || o.b === 'honneur')))
 
 /** La porte habillée par ce qui est posé en (x, y, z) : `u` le long du mur depuis son centre, `v` à travers. */
 function porteDe(x: number, y: number, z: number) {
-  for (const { l, portes: ps } of niveaux) {
+  for (const l of MUSEE.levels) {
     if (y < l.elevation - 1e-6 || y >= l.elevation + MUSEE.storey - 1e-6) continue
-    for (const o of ps) {
+    for (const o of l.openings.filter((o) => o.kind === 'door' || o.kind === 'entrance')) {
       const a = l.rooms.find((r) => r.id === o.a)!
       const vertical = o.x === a.x || o.x === a.x + a.width
       const [u, v] = vertical ? [z - o.z, x - o.x] : [x - o.x, z - o.z]
@@ -65,11 +66,19 @@ describe('portes', () => {
     }
   })
 
-  it('laisse la salle d’honneur et ses deux portes intactes', () => {
+  it('laisse la salle d’honneur intacte, mais encadre ses deux portes côté galerie', () => {
     const h = MUSEE.levels[1].rooms.find((r) => r.id === 'honneur')!
-    const pres = (x: number, y: number, z: number) =>
+    const dedans = (x: number, y: number, z: number) =>
+      y >= MUSEE.levels[1].elevation - 1e-6 && x > h.x && x < h.x + h.width && z > h.z - 1 && z < h.z + h.depth
+    expect(pieces.filter((p) => dedans(p.x, p.y, p.z))).toEqual([])
+    const autour = (x: number, y: number, z: number) =>
       y >= MUSEE.levels[1].elevation - 1e-6 && x > h.x - 1 && x < h.x + h.width + 1 && z > h.z - 1 && z < h.z + h.depth
-    expect(pieces.filter((p) => pres(p.x, p.y, p.z))).toEqual([])
-    expect(embrasures.filter((b) => pres(b.x, b.y, b.z))).toEqual([])
+    expect(embrasures.filter((b) => autour(b.x, b.y, b.z))).toEqual([])
+    for (const o of versHonneur) {
+      const ici = pieces.filter((p) => Math.abs(p.z - o.z) < o.width / 2 + 1 && Math.abs(p.x - o.x) < 0.8 && p.y >= MUSEE.levels[1].elevation - 1e-6)
+      expect(ici.map((p) => p.nom).sort(), `${o.a}>${o.b}`).toEqual(['Chambranle', 'Plinthe', 'Plinthe'])
+      // Sur la face de la galerie, hors de la salle d'honneur.
+      for (const p of ici) expect(p.x < h.x || p.x > h.x + h.width, `${o.a}>${o.b}`).toBe(true)
+    }
   })
 })

@@ -19,7 +19,7 @@ vi.mock('@react-three/drei', () => ({
 import { Cartel } from '../Cartel'
 import type { CartelPlacement } from '../../plan/cartels'
 
-const placement: CartelPlacement = { key: 'salle/oeuvre', x: 0, y: 0, z: 0, rotation: 0 }
+const placement: CartelPlacement = { key: 'salle/oeuvre', x: 0, y: 0, z: 0, rotation: 0, surPanneau: false }
 
 describe('Cartel', () => {
   it('passe à son <Text> une police vendorisée sous BASE_URL', async () => {

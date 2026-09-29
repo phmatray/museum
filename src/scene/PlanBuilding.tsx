@@ -47,8 +47,11 @@ import { plafonds } from '../plan/plafonds'
 import { creerGranit, creerPierre } from './pierre'
 import { LumiereLayer } from './LumiereLayer'
 import { rangsDeLumiere } from './lumiere'
+import { useGameStore } from '../stores/gameStore'
 
 const AUCUNE: Box[] = []
+/** La lumière d'un plafond lumineux électrique, la nuit. */
+const CHAUD = new THREE.Color('#ffd6a0')
 const SCULPTURES = sculpturePlacements(MUSEE)
 const PARC = parkPlacements(MUSEE)
 const BANDES = bandesDuSol(MUSEE)
@@ -125,6 +128,21 @@ function Niveau({ level, verre, sansMarches }: { level: number; verre: THREE.Mat
   const platrePlafond = useMatiere('platre')
   const lanterneau = useMemo(() => new THREE.MeshStandardMaterial({ color: '#f4f1ea', emissive: '#fff6e6', emissiveIntensity: 0.55, roughness: 0.9 }), [])
   useEffect(() => () => lanterneau.dispose(), [lanterneau])
+  // Le verre dépoli ne luit que du ciel qu'il a au-dessus : sous le toit, la
+  // nuit, il s'éteint comme la verrière de la nef et ce sont les projecteurs qui
+  // tiennent la salle. Au rez-de-chaussée, l'étage le couvre : c'est un plafond
+  // lumineux, électrique, qui reste allumé la nuit, plus bas et plus chaud.
+  const jour = useGameStore((s) => s.ciel.jour)
+  const sousLeToit = level === MUSEE.levels[MUSEE.levels.length - 1].id
+  useEffect(() => {
+    /* eslint-disable react-hooks/immutability */
+    const nuit = 1 - jour
+    lanterneau.emissiveIntensity = sousLeToit ? 0.03 + 0.52 * jour : 0.55 - 0.3 * nuit
+    lanterneau.emissive.set('#fff6e6').lerp(CHAUD, sousLeToit ? 0 : nuit)
+    // Sous un ciel noir, le dépoli n'est plus blanc : un gris de verre.
+    lanterneau.color.set('#f4f1ea').multiplyScalar(sousLeToit ? 0.4 + 0.6 * jour : 1)
+    /* eslint-enable react-hooks/immutability */
+  }, [lanterneau, jour, sousLeToit])
   // Les balcons sont de pierre, comme la nef qu'ils bordent : pas de parquet vu d'en bas.
   const dalles = useMemo(() => {
     const niveau = MUSEE.levels.find((l) => l.id === level)

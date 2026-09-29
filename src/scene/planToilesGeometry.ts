@@ -10,6 +10,7 @@ import type { Hanging } from '../builders/artwork'
 import { FRAME_BORDER, FRAME_DEPTH } from '../builders/artwork'
 import { DEFAULT_ASPECT } from '../domain/hanging'
 import type { Accrochage } from '../plan/hang'
+import { MAX_NEAR_TEXTURES, NEAR_LOD_DISTANCE } from '../io/arrayTexture'
 
 /** Toutes les toiles, avant de savoir dans quelle couche d'atlas elles vivent. */
 export type Pose = Omit<Hanging, 'atlas' | 'layer'>
@@ -30,3 +31,24 @@ export function computePoses(salles: Accrochage['rooms']): Pose[] {
       return { id: `${salle.id}#${p.key}`, key: p.key, canvas, frame, centre: at(0) }
     }))
 }
+
+/**
+ * Les toiles qui méritent leur vignette 1024 × 512 (`media/near/`) : à moins de
+ * `NEAR_LOD_DISTANCE` du regard, sur le niveau où il se tient — une toile de
+ * l'étage est à moins de dix mètres mais derrière un plancher —, les plus
+ * proches d'abord, `MAX_NEAR_TEXTURES` au plus. Au-delà, la couche 256 × 128 de
+ * l'atlas suffit ; de près, elle rendait le texte des toiles illisible.
+ */
+export function posesProches<P extends Pick<Pose, 'id' | 'centre'>>(poses: readonly P[], oeil: THREE.Vector3): P[] {
+  const rayon = NEAR_LOD_DISTANCE * NEAR_LOD_DISTANCE
+  return poses
+    .filter((p) => Math.abs(p.centre.y - oeil.y) < MEME_NIVEAU)
+    .map((p) => ({ p, d2: p.centre.distanceToSquared(oeil) }))
+    .filter(({ d2 }) => d2 <= rayon)
+    .sort((a, b) => a.d2 - b.d2 || (a.p.id < b.p.id ? -1 : 1))
+    .slice(0, MAX_NEAR_TEXTURES)
+    .map(({ p }) => p)
+}
+
+/** L'axe des toiles est à 1,55 m, l'œil vers 1,6 m ; un étage plus haut, 4,80 m. */
+const MEME_NIVEAU = 2.4
