@@ -16,6 +16,7 @@ import { PointerLockCamera } from './components/PointerLockCamera'
 import { PlanPlayer } from './components/PlanPlayer'
 import { PlanBuilding } from './scene/PlanBuilding'
 import { utiliserKTX2 } from './io/textures'
+import { Pret } from './scene/chargement'
 
 const postTraitement = import('./scene/PostProcessing')
 const PostProcessing = lazy(() => postTraitement.then((m) => ({ default: m.PostProcessing })))
@@ -56,6 +57,7 @@ export default function Musee3D() {
   return (
     <KeyboardControls map={keyMap}>
       <Canvas shadows="percentage" camera={{ fov: 75, near: 0.1, far: 1000 }} gl={{ preserveDrawingBuffer: import.meta.env.DEV }} onCreated={({ gl }) => utiliserKTX2(gl)}>
+        <Pret />
         <Suspense fallback={null}>
           <PointerLockCamera />
           <PlanBuilding />

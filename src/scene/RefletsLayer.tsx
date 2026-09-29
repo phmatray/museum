@@ -22,6 +22,7 @@ import * as THREE from 'three'
 
 import { sondeDeReflet } from '../domain/ombres'
 import { MUSEE } from '../plan/musee'
+import { useChargement } from '../stores/chargementStore'
 import { useGameStore } from '../stores/gameStore'
 import { sansTri } from './tri'
 
@@ -67,6 +68,11 @@ export function RefletsLayer() {
     const id = setTimeout(() => (file.current = [...new Set([...file.current, ...TOUTES])]), RATTRAPAGE)
     return () => clearTimeout(id)
   }, [])
+  // Tout est arrivé (écran de chargement) : chaque sonde est reprise avant de lever le rideau.
+  const finition = useChargement((s) => s.etape === 'finition')
+  useEffect(() => {
+    if (finition) file.current = [...new Set([...file.current, ...TOUTES])]
+  }, [finition])
   useEffect(() => {
     const toutes = cartes.current
     return () => {
@@ -105,6 +111,7 @@ export function RefletsLayer() {
         cartes.current.set(cle, carte)
         if (courante.current === cle) scene.environment = carte.texture
       } else file.current.push(cle) // le ciel n'est pas encore chargé : plus tard
+      if (file.current.length === 0 && finition) useChargement.setState({ sondes: true })
     }
 
     const voulue = sondeDeReflet(useGameStore.getState().visiteur?.surface)

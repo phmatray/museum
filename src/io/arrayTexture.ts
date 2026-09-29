@@ -36,6 +36,7 @@
 import * as THREE from 'three'
 
 import type { AtlasIndex, RepoKey } from '../domain/types'
+import { suivre } from '../stores/chargementStore'
 
 // ── Emplacements ─────────────────────────────────────────────────────────
 
@@ -314,7 +315,7 @@ let enCours: Promise<AtlasTextures> | null = null
 
 export function atlasResource(): Promise<AtlasTextures> {
   if (enCours === null) {
-    enCours = chargerAtlas().catch((erreur: unknown) => {
+    enCours = suivre(chargerAtlas()).catch((erreur: unknown) => {
       enCours = null
       throw erreur
     })

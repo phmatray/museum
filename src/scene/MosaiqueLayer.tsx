@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
+import { suivre } from '../stores/chargementStore'
 import { canevasEnMetres } from './canevas'
 import { COTE, dateDuJour, semainesDuLundi, indexDuJour, moisDeLaMosaique, panneau, tesselles, texteDePlaque, type Contributions } from '../plan/mosaique'
 
@@ -26,7 +27,7 @@ const EPAISSEUR = 0.006
 
 let contributions: Promise<Contributions | null> | null = null
 function charger() {
-  contributions ??= fetch(`${import.meta.env.BASE_URL}data/contributions.json`)
+  contributions ??= suivre(fetch(`${import.meta.env.BASE_URL}data/contributions.json`))
     .then((r) => (r.ok ? (r.json() as Promise<Contributions>) : null))
     .catch(() => null)
   return contributions

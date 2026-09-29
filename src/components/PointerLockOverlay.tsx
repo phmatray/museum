@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react'
+import config from '../../museum.config.json'
 import { useGameStore } from '../stores/gameStore'
 
 export function PointerLockOverlay() {
@@ -51,10 +52,10 @@ export function PointerLockOverlay() {
       }}
       onClick={handleClick}
     >
-      <h1 style={{ fontSize: '2rem', margin: 0 }}>Virtual Museum</h1>
-      <p style={{ fontSize: '1.2rem', opacity: 0.8 }}>Click to enter</p>
+      <h1 style={{ fontSize: '2rem', margin: 0, fontFamily: "Georgia, 'Times New Roman', serif", fontWeight: 400, letterSpacing: '0.06em' }}>{config.name}</h1>
+      <p style={{ fontSize: '1.2rem', opacity: 0.8 }}>Cliquer pour entrer</p>
       <p style={{ fontSize: '0.9rem', opacity: 0.6 }}>
-        WASD to move | Mouse to look | Escape to pause
+        ZQSD (WASD) ou flèches pour marcher · souris pour regarder · Échap pour la pause
       </p>
       <button
         onClick={handleStartTour}
@@ -62,14 +63,14 @@ export function PointerLockOverlay() {
           marginTop: '1rem',
           padding: '0.75rem 1.5rem',
           fontSize: '1rem',
-          background: '#4a90d9',
-          color: 'white',
+          background: '#d1a54a',
+          color: '#1c2530',
           border: 'none',
           borderRadius: '4px',
           cursor: 'pointer',
         }}
       >
-        Start Guided Tour
+        Visite guidée
       </button>
     </div>
   )
@@ -122,7 +123,7 @@ export function TourExitButton() {
         zIndex: 1000,
       }}
     >
-      Exit Tour (ESC)
+      Quitter la visite (Échap)
     </button>
   )
 }

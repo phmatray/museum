@@ -1,7 +1,7 @@
 /**
  * Le bouton du son, en haut à droite : la minimap tient le bas à droite, les
  * cartes le bas à gauche, la visite guidée le haut à gauche. Pendant la visite,
- * « Exit Tour » prend le coin : le bouton descend d'un cran.
+ * « Quitter la visite » prend le coin : le bouton descend d'un cran.
  *
  * Au-dessus de l'écran d'accueil, pour qu'on puisse choisir avant d'entrer ;
  * une fois la souris capturée, la touche M le remplace.

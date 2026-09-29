@@ -7,16 +7,18 @@ import { useEffect, useState } from 'react'
 
 import type { Accrochage } from '../plan/hang'
 import { parseAccrochage } from '../schema'
+import { suivre } from '../stores/chargementStore'
 
 export function useAccrochage(): Accrochage | null {
   const [accrochage, setAccrochage] = useState<Accrochage | null>(null)
   useEffect(() => {
     let vivant = true
-    fetch(`${import.meta.env.BASE_URL}data/accrochage.json`)
-      .then((r) => {
+    suivre(
+      fetch(`${import.meta.env.BASE_URL}data/accrochage.json`).then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`)
         return r.json().then(parseAccrochage)
-      })
+      }),
+    )
       .then(
         (charge) => vivant && setAccrochage(charge),
         (erreur: unknown) => console.error('accrochage.json indisponible', erreur),
