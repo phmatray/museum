@@ -235,6 +235,12 @@ const ARCHITECTURE = [
     usage: "banquettes capitonnées des galeries, bancs de la nef, banque d'accueil, bancs Batlló de la salle d'honneur, bancs de granit et de cèdre du jardin",
   },
   {
+    id: 'lampadaire',
+    source: "`tools/blender/build-lampadaire.py`, d'après le lampadaire Lindby « Daphne » (2,20 m, fonte d'aluminium noire, crosse et cloche)",
+    licence: 'œuvre originale du dépôt',
+    usage: 'lampadaires du parc, le long de la ceinture, des accès et de l’axe de l’entrée',
+  },
+  {
     id: 'accessoires',
     source:
       'Meshy (généré par IA, texte → 3D, texture PBR), mis à l’échelle et allégé par `tools/blender/build-accessoires.py` ; prompts : ' +

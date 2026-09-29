@@ -37,6 +37,7 @@ import { EveilLayer } from './EveilLayer'
 import { ProjecteursLayer } from './ProjecteursLayer'
 import { PortesLayer } from './PortesLayer'
 import { MobilierLayer } from './MobilierLayer'
+import { EclairageLayer } from './EclairageLayer'
 import { AccessoiresLayer } from './AccessoiresLayer'
 import { CimaisesLayer } from './CimaisesLayer'
 import { ConstellationLayer } from './ConstellationLayer'
@@ -86,6 +87,7 @@ export function PlanBuilding() {
       <ProjecteursLayer />
       <PortesLayer />
       <MobilierLayer />
+      <EclairageLayer />
       <AccessoiresLayer />
       <CimaisesLayer />
       <ConstellationLayer />
