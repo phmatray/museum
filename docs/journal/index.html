@@ -1,0 +1,869 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Journal de chantier du musée</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+  :root {
+    --pierre: #efe9dc;
+    --pierre-2: #e4dccb;
+    --encre: #2a2620;
+    --encre-2: #6a6152;
+    --or: #946a22;
+    --fonte: #3b3a36;
+    --filet: #cfc4ae;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --pierre: #1c1a17; --pierre-2: #26231e; --encre: #ebe4d5; --encre-2: #a99f8c;
+      --or: #d4a954; --fonte: #bdb6a6; --filet: #3d382f; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --pierre: #1c1a17; --pierre-2: #26231e; --encre: #ebe4d5; --encre-2: #a99f8c;
+    --or: #d4a954; --fonte: #bdb6a6; --filet: #3d382f; color-scheme: dark;
+  }
+  body {
+    margin: 0;
+    background: var(--pierre); color: var(--encre);
+    font: 400 16px/1.6 "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+    padding-inline: 16px; padding-block: 40px 64px;
+  }
+  main { max-width: 980px; margin: 0 auto; display: grid; gap: 56px; }
+  header { display: grid; gap: 8px; max-width: 65ch; }
+  .sur { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--or); font-weight: 600; }
+  h1, h2 { font-family: Marcellus, "Times New Roman", serif; font-weight: 400; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(32px, 6vw, 52px); line-height: 1.05; }
+  h2 { font-size: clamp(22px, 3.4vw, 30px); line-height: 1.15; }
+  p { margin: 0; }
+  .chapeau { color: var(--encre-2); font-size: 17px; }
+  .chapeau a { color: var(--or); }
+  .etape { display: grid; gap: 16px; border-top: 1px solid var(--filet); padding-top: 24px; }
+  .entete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+  .statut { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--encre-2); }
+  .statut.fait { color: var(--or); }
+  .statut.valider { color: var(--encre); background: var(--pierre-2); border: 1px solid var(--or); padding: 2px 8px; }
+  .texte { display: grid; gap: 10px; max-width: 65ch; }
+  ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+  figure { margin: 0; display: grid; gap: 6px; }
+  figure img { width: 100%; height: auto; display: block; border: 1px solid var(--filet); background: var(--pierre-2); }
+  figcaption { font-size: 13px; color: var(--encre-2); }
+  .paire { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .a-venir ol { margin: 0; padding-left: 1.4em; display: grid; gap: 6px; color: var(--encre-2); }
+  .a-venir li strong, .pistes li strong { color: var(--encre); font-weight: 600; }
+  .note { color: var(--encre-2); font-size: 14px; margin-top: 4px; }
+  .pistes { margin: 0; padding-left: 1.4em; display: grid; gap: 10px; max-width: 70ch; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="sur">Musée GitHub · journal de chantier</span>
+    <h1>Un musée pour mes projets GitHub</h1>
+    <p class="chapeau">Chaque étape ajoute une capture prise dans le vrai moteur du site, les plus récentes en haut. Chaque étape vérifiée part en ligne sur <a href="https://phmatray.github.io/museum/">phmatray.github.io/museum</a>.</p>
+  </header>
+
+  <section class="etape" aria-labelledby="t-49">
+    <div class="entete"><h2 id="t-49">49. Bavette moins pomme de terre</h2><span class="statut fait">en ligne · PR #115</span></div>
+    <div class="texte">
+      <p>Pour le rendre « trapu », j’avais élargi son tronc de 10 %, et il ne mesurait que 47 cm du museau à la queue. Son corps et son squelette sont maintenant étirés de 8 % dans la longueur, soit 50 cm, le haut de tes mesures, et son tronc garde sa largeur d’origine. Assis, son bassin bascule un peu moins, pour que ses pattes avant restent bien posées.</p>
+    </div>
+    <figure><img src="img/49-bavette.jpg" width="960" height="600" alt="Bavette de profil, marchant et assis, avant et après : plus long et plus fin après."><figcaption>En haut avant, en bas après.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-48">
+    <div class="entete"><h2 id="t-48">48. Des cimaises modulables Novo</h2><span class="statut fait">en ligne · PR #114</span></div>
+    <div class="texte">
+      <p>Les cimaises suivent la fiche Novo : modules de 1 m × 2,50 m, 40 mm d’épaisseur, stratifié blanc, connecteurs d’aluminium, pieds posés en travers. Deux cimaises parallèles de 4 modules sont installées dans Librairies .NET, Parsers &amp; langages et Trading &amp; finance, la seule salle qui était pleine. Chaque face porte un tableau avec son cartel, son spot et son rail. Personne ne les traverse, ni toi, ni la visite guidée, ni Bavette. Il reste au moins 2 m de circulation partout, et aucune porte ni ligne de vue n’est barrée.</p>
+      <p>En les vérifiant, j’ai trouvé une tache sombre au sol de Trading &amp; finance : la lumière calculée dans Blender gardait l’ombre du banc à son ancienne place. J’ai refait le calcul, avec les cimaises qui font désormais écran.</p>
+      <p class="note">Limites : une cimaise de 4 m ne porte qu’un tableau par face, car tes tableaux font 1,70 à 2,20 m de large. Seuls des alignements droits sont possibles pour l’instant (pas de L, de T ni de zigzag).</p>
+    </div>
+    <figure><img src="img/48-cimaises.jpg" width="1280" height="800" alt="Deux cimaises blanches de part et d’autre d’une banquette verte, chacune portant un tableau éclairé."><figcaption>Librairies .NET, la banquette entre les deux cimaises.</figcaption></figure>
+    <figure><img src="img/48-jonction.jpg" width="1280" height="800" alt="Gros plan sur le bout d’une cimaise : connecteur d’aluminium, pied, plinthe en retrait, cartel."><figcaption>Connecteur, pied et cartel.</figcaption></figure>
+    <figure><img src="img/48-trading.jpg" width="1280" height="800" alt="Trading &amp; finance vu de la porte ouest : deux cimaises, le mur du fond visible entre elles, plus de tache au sol."><figcaption>Trading &amp; finance, sans la tache au sol.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-47">
+    <div class="entete"><h2 id="t-47">47. Plus rapide, et des rayons de soleil sous la verrière</h2><span class="statut fait">en ligne · PR #113</span></div>
+    <div class="texte">
+      <p>Le musée ne dessine plus les salles qu’on ne peut pas voir d’où l’on est : dans une galerie, il affiche deux tiers de triangles en moins. L’écran d’accueil s’affiche deux fois plus vite, car il ne télécharge plus le moteur 3D d’un bloc. Les textures sont compressées pour la carte graphique (93 Mo de mémoire vidéo ramenés à 15, 24 Mo de téléchargement ramenés à 9,5).</p>
+      <p>Dans la nef, des rayons de soleil et de la poussière en suspension descendent de la verrière selon la vraie position du soleil. Ils disparaissent quand le ciel est couvert ou dans le brouillard. Fin septembre le soleil est bas : c’est vers 13 h 30 qu’ils sont les plus beaux.</p>
+      <p class="note">Depuis la nef presque tout reste visible, donc le gain s’y voit peu ; il est net dans les galeries et le jardin.</p>
+    </div>
+    <figure><img src="img/47-rayons.jpg" width="1280" height="800" alt="La nef à 13 h 30 : des rayons de soleil descendent de la verrière vers l’horloge et l’escalier."><figcaption>La nef à 13 h 30.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-46">
+    <div class="entete"><h2 id="t-46">46. Les pattes arrière de Bavette</h2><span class="statut fait">en ligne · PR #112</span></div>
+    <div class="texte">
+      <p>J’ai mesuré sa foulée image par image dans ta vidéo. Son pas arrière était trop court : la patte partait loin derrière, raide, et tirait un pli de peau sous le ventre. Maintenant elle se pose sous le ventre, le talon se lève dès le milieu de l’appui, le jarret se replie juste après le décollage et le genou reste en avant, sous la hanche. Le pli de peau a disparu.</p>
+      <p class="note">Limite : la vidéo est petite (512 × 288), la longueur exacte du pas reste une estimation. Son corps est toujours un peu haut sur pattes : le baisser plie la patte en Z à cause du tibia court du modèle.</p>
+    </div>
+    <figure><img src="img/46-bavette.jpg" width="1280" height="541" alt="Huit phases d’une foulée : la vidéo, puis avant et après, corps entier et gros plan du train arrière."><figcaption>En haut ta vidéo, puis avant et après, en entier puis le train arrière.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-45">
+    <div class="entete"><h2 id="t-45">45. La mosaïque, du lundi au dimanche</h2><span class="statut fait">en ligne · PR #111</span></div>
+    <div class="texte">
+      <p>En Belgique la semaine commence le lundi : les colonnes vont maintenant du lundi à l’ouest au dimanche à l’est (L M M J V S D). Les jours sans contribution sont en pierre grise, nettement à part de l’or le plus pâle.</p>
+    </div>
+    <figure><img src="img/45-mosaique.jpg" width="1280" height="800" alt="La mosaïque au sol : tesselles grises pour les jours vides, or pour les jours actifs, légende L M M J V S D."><figcaption>Les jours vides en gris, la semaine commence le lundi.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-44">
+    <div class="entete"><h2 id="t-44">44. Une étoile pour tes projets</h2><span class="statut fait">en ligne · PR #110</span></div>
+    <div class="texte">
+      <p>Devant chaque tableau et sur la borne de la salle d’honneur, un bouton « ★ Mettre une étoile » affiche le nombre d’étoiles du projet. On le clique, ou on appuie sur <strong>E</strong>. Il ouvre la page GitHub du dépôt, où le bouton Star est à un clic.</p>
+      <p class="note">Le musée ne peut pas mettre l’étoile à la place du visiteur : il faudrait que celui-ci connecte son compte GitHub au site, ce qu’un site statique ne peut pas faire. Les nombres d’étoiles viennent du catalogue de juillet ; les rafraîchir, c’est relancer la récupération des données GitHub.</p>
+    </div>
+    <figure><img src="img/44-etoile.jpg" width="1280" height="800" alt="La carte d’un projet avec le bouton « Mettre une étoile » et le nombre d’étoiles."><figcaption>Le bouton sur la carte de MasterCommander.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-43">
+    <div class="entete"><h2 id="t-43">43. Carpes koï, oiseaux et lucioles</h2><span class="statut fait">en ligne · PR #109</span></div>
+    <div class="texte">
+      <p>Dix carpes koï se rassemblent devant toi quand tu t’approches du bord de l’étang et viennent gober en surface. Des moineaux et des mésanges se perchent au bord des arbres (sur les branches nues en hiver), picorent les allées, volent d’arbre en arbre et s’enfuient si tu approches. Sous la pluie ils restent à l’abri, et la nuit ils dorment. Les nuits chaudes et sèches de la belle saison, des lucioles clignotent au-dessus de l’eau (<code>?saison=ete&amp;heure=23:00</code>).</p>
+    </div>
+    <figure><img src="img/43-faune.jpg" width="1280" height="800" alt="Quatre vues : les koï au bord de l’étang, des oiseaux sur un érable nu, un moineau sur l’allée, des lucioles la nuit."><figcaption>Koï, oiseaux en hiver, moineau sur l’allée, lucioles.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-42">
+    <div class="entete"><h2 id="t-42">42. Les ombres, et la lune ne traverse plus les murs</h2><span class="statut fait">en ligne · PR #108</span></div>
+    <div class="texte">
+      <p>La lumière de la lune et celle du soleil sont la même lumière dans le moteur, et elle n’avait pas d’ombres : elle traversait les murs et laissait ce reflet bleu sur le sol du hall. Elle porte maintenant de vraies ombres. Le bâtiment l’arrête, et elle n’entre plus que par la verrière, les fenêtres et les portes ouvertes. De jour, le soleil dessine la résille de la verrière sur le sol de la nef. Il y a aussi des ombres douces sous les meubles et sous Bavette, et de vrais reflets : le ciel dehors, chaque salle dedans.</p>
+      <p class="note">Les galeries du bas ne reçoivent plus le soleil qui passait à travers leur plafond ; elles restent éclairées par leurs verrières et leurs spots.</p>
+    </div>
+    <figure><img src="img/42-lune.jpg" width="1280" height="400" alt="Avant et après, de nuit près de l’entrée : le reflet bleu de la lune a disparu du sol."><figcaption>Le même endroit de nuit, avant et après.</figcaption></figure>
+    <figure><img src="img/42-nef.jpg" width="1280" height="800" alt="La nef l’après-midi, le soleil dessine la résille de la verrière sur le sol."><figcaption>Le soleil à travers la verrière.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-41">
+    <div class="entete"><h2 id="t-41">41. Plinthes et main courante</h2><span class="statut fait">en ligne · PR #107</span></div>
+    <div class="texte">
+      <p>Une plinthe de 12 cm court au pied de chaque mur et s’arrête aux portes. Elle est en granit sombre dans le hall, en pierre claire sur les murs de couleur des salles. Côté mur, les volées de l’escalier ont maintenant une main courante d’acier scellée au mur, sur consoles, à 90 cm au-dessus des marches.</p>
+    </div>
+    <figure><img src="img/41-main-courante.jpg" width="1280" height="800" alt="La volée ouest vue du balcon : une main courante d’acier le long du mur de pierre."><figcaption>La main courante le long du mur.</figcaption></figure>
+    <figure><img src="img/41-plinthes.jpg" width="1280" height="800" alt="Une galerie verte : une plinthe de pierre claire au pied des murs, interrompue à la porte."><figcaption>Les plinthes dans une galerie.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-40">
+    <div class="entete"><h2 id="t-40">40. La lumière cuite dans Blender</h2><span class="statut fait">en ligne · PR #106</span></div>
+    <div class="texte">
+      <p>Blender (Cycles) a calculé comment la lumière du ciel entre par la verrière et les fenêtres, puis rebondit sur la pierre. Ce calcul est enregistré dans une seule image de 80 Ko que le site applique aux murs et aux sols. Les dessous des balcons, les murs qu’ils abritent et les coins s’assombrissent ; le sol reste le plus clair sous la verrière. Le soleil et les lampes restent en temps réel.</p>
+      <p class="note">Limite : l’escalier de marbre et la salle d’honneur (modèles Blender à part) n’en profitent pas encore, et l’escalier paraît maintenant un peu trop clair à côté des murs.</p>
+    </div>
+    <figure><img src="img/40-lumiere.jpg" width="1280" height="800" alt="Avant et après, la nef et l’escalier : à droite les dessous de balcon et les coins sont plus sombres."><figcaption>À gauche avant, à droite après : la nef à 14 h, puis l’escalier.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-39">
+    <div class="entete"><h2 id="t-39">39. La vraie météo de Bruxelles et les saisons</h2><span class="statut fait">en ligne · PR #105</span></div>
+    <div class="texte">
+      <p>Le jardin prend le temps qu’il fait vraiment à Bruxelles (relevé toutes les 15 minutes) : pluie avec des ronds sur l’étang et des coulures sur la verrière, neige qui tient sur la pelouse et les corniches, brouillard, orage avec éclairs, vent dans l’herbe et les érables. Il ne pleut jamais à l’intérieur.</p>
+      <p>Les saisons suivent la date : aujourd’hui, fin septembre, les érables commencent à rougir. En automne les feuilles tombent au pied des arbres, en hiver les branches sont nues et la pelouse ternit, au printemps les azalées fleurissent.</p>
+      <p>Pour essayer sans attendre : <code>?meteo=pluie</code>, <code>neige</code>, <code>brouillard</code>, <code>orage</code>, et <code>?saison=printemps</code>, <code>ete</code>, <code>automne</code>, <code>hiver</code> à la fin de l’adresse.</p>
+      <p class="note">Limites : les érables nus en hiver n’ont que leurs grosses branches, sans rameaux ; les chemins mouillés foncent mais ne reflètent rien.</p>
+    </div>
+    <figure><img src="img/39-meteo.jpg" width="1280" height="1200" alt="Six vues du jardin : pluie, pluie sur l’étang, neige, automne, brouillard, orage."><figcaption>Pluie, pluie sur l’étang, neige, automne, brouillard, orage.</figcaption></figure>
+    <figure><img src="img/39-entree-pluie.jpg" width="1280" height="800" alt="L’entrée sous la pluie, portes ouvertes sur le hall."><figcaption>L’entrée sous la pluie.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-38">
+    <div class="entete"><h2 id="t-38">38. Les portes, cette fois contre le mur</h2><span class="statut fait">en ligne · PR #104</span></div>
+    <div class="texte">
+      <p>Tu avais raison : je n’avais pas vérifié. J’avais accroché les paumelles à la face extérieure du mur au lieu de sa face intérieure, et les battants flottaient à 28 cm dans le vide. Ils sont maintenant posés contre le mur, côté hall. Un test vérifie cette position, et je l’ai contrôlée sous quatre angles (de côté, depuis le hall, du dehors, et le parvis vu d’en haut).</p>
+      <p>Les deux textures qui se superposaient étaient le dallage du parvis et le gravier de l’allée, posés à la même hauteur. Le dallage est maintenant 1 cm au-dessus.</p>
+    </div>
+    <figure><img src="img/38-gonds.jpg" width="1280" height="800" alt="Un battant de verre ouvert, rabattu contre le mur du hall, avec ses paumelles."><figcaption>Le battant rabattu contre le mur, de nuit.</figcaption></figure>
+    <figure><img src="img/38-parvis.jpg" width="1280" height="800" alt="Le parvis dallé, net, et l’allée de gravier qui y arrive."><figcaption>Le parvis et l’allée ne se mélangent plus.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-37">
+    <div class="entete"><h2 id="t-37">37. Ta mosaïque, la cloche, le compteur</h2><span class="statut fait">en ligne · PR #102</span></div>
+    <div class="texte">
+      <p>Ton graphe de contributions GitHub est incrusté dans le sol de la nef : une tesselle par jour, en or plus ou moins soutenu selon l’activité, sur une échelle logarithmique pour que tes très gros jours n’écrasent pas le reste. La plus vieille semaine est à l’entrée ; tu remontes l’année en marchant vers l’escalier. Une plaque de laiton donne le total.</p>
+      <p>Quand un de tes projets publie une nouvelle version, la cloche de la nef sonne et l’annonce. Un compteur tient le nombre de visiteurs.</p>
+    </div>
+    <figure><img src="img/37-mosaique.jpg" width="1280" height="800" alt="Une bande de tesselles or et marbre au sol de la nef, avec la plaque « 24 013 contributions cette année »."><figcaption>24 013 contributions cette année.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-36">
+    <div class="entete"><h2 id="t-36">36. L’ambiance sonore</h2><span class="statut fait">en ligne · PR #101</span></div>
+    <div class="texte">
+      <p>Bouton « Son » en haut à droite (ou touche <strong>M</strong>), coupé par défaut. Tout est synthétisé dans le navigateur, sans fichier audio :</p>
+      <ul>
+        <li>tes pas, qui changent selon le sol : la pierre de la nef qui résonne longuement, le parquet des galeries, le bois du pont, le gravier, l’herbe ;</li>
+        <li>le tic-tac de l’horloge, le carillon de Westminster à chaque heure (et quand un projet publie une nouvelle version), le cliquetis des palettes du tableau ;</li>
+        <li>au jardin : les oiseaux le jour, les grillons la nuit, le ruisseau, la cascade, le vent ;</li>
+        <li>et Bavette qui ronronne quand tu t’approches de lui.</li>
+      </ul>
+      <p class="note">Je ne peux pas écouter : j’ai vérifié chaque son par un rendu hors ligne (ni silence, ni saturation). Ton oreille est le vrai juge ; dis-moi ce qui sonne faux (les grillons et les oiseaux sont les plus simples).</p>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-35">
+    <div class="entete"><h2 id="t-35">35. De vraies portes d’entrée</h2><span class="statut fait">en ligne · PR #99</span></div>
+    <div class="texte"><p>Tu avais vu Bavette traverser un battant noir sans gonds. Les portes sont maintenant en verre clair, avec trois paumelles de bronze par battant et une barre de tirage des deux côtés, et on ne les traverse plus : ni toi, ni Bavette.</p></div>
+    <figure><img src="img/35-porte.jpg" width="1280" height="800" alt="Un battant de l’entrée ouvert : verre clair, cadre de bronze, barre de tirage."><figcaption>Un battant ouvert, vu du hall.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-34">
+    <div class="entete"><h2 id="t-34">34. Bavette marche comme dans ta vidéo</h2><span class="statut fait">en ligne · PR #100</span></div>
+    <div class="texte">
+      <p>J’ai mesuré sa marche image par image dans ta vidéo : un cycle de 0,93 s, un pas de 40 cm, 0,43 m/s, les pattes dans l’ordre arrière gauche, avant gauche, arrière droite, avant droite, la tête basse au ras du dos et la queue basse. Son animation est refaite sur ces mesures, sans que les pattes glissent. Assis, sa queue s’enroule autour de ses pattes.</p>
+      <p>Sa taille était déjà juste : 30 cm au garrot, 47 cm du nez à la queue. S’il paraît petit, c’est l’angle de la caméra, très large (75°), qui éloigne tout. Je l’ai rendu un peu plus trapu, comme sur la vidéo.</p>
+      <p class="note">Encore imparfait : un pli de peau entre le ventre et la patte arrière quand elle est tendue en fin de pas, et un corps un peu plus haut sur pattes que le vrai Bavette.</p>
+    </div>
+    <figure><img src="img/34-marche.jpg" width="2000" height="600" alt="En haut quatre images de la vidéo de Bavette qui marche, en bas le rendu 3D aux mêmes phases."><figcaption>En haut ta vidéo, en bas l’animation aux mêmes instants.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-33">
+    <div class="entete"><h2 id="t-33">33. Le mobilier</h2><span class="statut fait">en ligne · PR #98</span></div>
+    <div class="texte"><p>Des banquettes de velours vert capitonné dans les galeries, des bancs de chêne et cuir dans la nef, une banque d’accueil en noyer avec sa lampe de banquier, deux bancs doubles Batlló en chêne dans la salle d’honneur, un banc de granit face à l’étang et trois bancs de cèdre au jardin. On ne les traverse pas, et Bavette fait la sieste au bout de certains bancs. (Captures prises avant la passe de polish : les murs des galeries sont maintenant en couleur.)</p></div>
+    <figure><img src="img/33-v1-nef.jpg" width="1280" height="800" alt="La nef avec deux paires de bancs de part et d’autre de l’allée."><figcaption>La nef et ses bancs.</figcaption></figure>
+    <div class="paire">
+      <figure><img src="img/33-v3-ban.jpg" width="1280" height="800" alt="Une banquette de velours vert capitonné."><figcaption>Une banquette de galerie.</figcaption></figure>
+      <figure><img src="img/33-v3-bat.jpg" width="1280" height="800" alt="Le banc double Batlló en chêne, près de la baie."><figcaption>Le banc double Batlló.</figcaption></figure>
+    </div>
+    <div class="paire">
+      <figure><img src="img/33-v4-acc.jpg" width="1280" height="800" alt="La banque d’accueil en noyer, plateau de marbre, lampe verte."><figcaption>L’accueil.</figcaption></figure>
+      <figure><img src="img/33-v1-etang.jpg" width="1280" height="800" alt="Un banc de granit face à l’étang."><figcaption>Le banc de granit, face à l’étang.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-32">
+    <div class="entete"><h2 id="t-32">32. Les captures d’écran de tes projets</h2><span class="statut fait">en ligne · PR #97</span></div>
+    <div class="texte">
+      <p class="note">Captures : en ligne après la prochaine reconstruction nocturne, ou dès que le déploiement en cours aura fini de photographier les sites.</p>
+      <p>Les toiles montrent maintenant tes projets eux-mêmes, et plus seulement leur nom : une capture du site en ligne quand il existe (32 projets), sinon la première vraie image du README (61), sinon la carte GitHub (23). Tout est refait chaque nuit.</p>
+      <p>Devant une toile, la carte montre la capture, et <strong>Entrée</strong> ouvre le site ; <strong>E</strong> reste pour voir le code sur GitHub. Même chose sur les bornes de la salle d’honneur.</p>
+      <p class="note">À corriger de ton côté, dans le champ « site » des dépôts : nuke.build (le domaine ne répond plus), la page NuGet d’Antlr4Library, le GitHub Pages de TheAppManager et paulovich.net/acerola (404). Geometrix met plus de 30 s à charger.</p>
+    </div>
+    <figure><img src="img/32-carte.jpg" width="1280" height="800" alt="La toile de RoselineMCP montre son site ; la carte propose Entrée : visiter le site."><figcaption>RoselineMCP : son site sur la toile, et la carte pour le visiter.</figcaption></figure>
+    <div class="paire">
+      <figure><img src="img/32-wall2.jpg" width="1280" height="800" alt="Une galerie dont les toiles montrent des captures de sites."><figcaption>Une galerie de captures.</figcaption></figure>
+      <figure><img src="img/32-borne.jpg" width="1280" height="800" alt="La borne de FormCraft avec la capture de son site en tête."><figcaption>La borne FormCraft, avec son site.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-31">
+    <div class="entete"><h2 id="t-31">31. Polish : réalisme et corrections</h2><span class="statut fait">en ligne · PR #95</span></div>
+    <div class="texte">
+      <ul>
+        <li>Les toiles ont retrouvé leur contraste (elles étaient délavées) ; les galeries ont des murs de couleur comme à Orsay, et du parquet au rez-de-chaussée.</li>
+        <li>L’entrée a de vraies portes vitrées à cadre de bronze, grandes ouvertes, et un seuil de pierre. Le parvis est dallé, et chaque allée rejoint le parvis : on n’entre plus par le gazon.</li>
+        <li>Le gravier des allées est beige-gris au lieu d’un blanc aveuglant.</li>
+        <li>La nuit, les salles gardent leur lumière chaude au lieu du bleu de la lune.</li>
+        <li>Bugs corrigés : les rails qui se croisaient dans les angles, et les cartels qui apparaissaient et disparaissaient (les plaques restent, seul le texte s’efface au loin).</li>
+      </ul>
+    </div>
+    <div class="paire">
+      <figure><img src="img/31-j1.jpg" width="1280" height="800" alt="L’entrée : allée continue jusqu’au parvis dallé, portes vitrées ouvertes."><figcaption>L’allée rejoint le parvis dallé ; les portes sont ouvertes.</figcaption></figure>
+      <figure><img src="img/31-j2.jpg" width="1280" height="800" alt="Depuis le hall, les deux battants vitrés ouverts et le parvis dallé."><figcaption>Vu du hall : les deux battants et le seuil.</figcaption></figure>
+    </div>
+    <figure><img src="img/31-n1.jpg" width="1280" height="800" alt="Une galerie la nuit, éclairage chaud, murs vert sombre."><figcaption>Une galerie la nuit : la lumière reste chaude.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-30">
+    <div class="entete"><h2 id="t-30">30. La baie Batlló sur toute la largeur</h2><span class="statut fait">en ligne · PR #96</span></div>
+    <div class="texte"><p>La baie occupe maintenant tout le mur sud de la salle d’honneur (14,40 m) : six colonnes en os, sept arcs ondulés qui montent vers le centre, une rose de vitrail par travée autour de la rosace sculptée. Le chêne est un peu plus sombre, moins moutarde. La salle d’honneur accroche quatre toiles au lieu de six.</p></div>
+    <div class="paire">
+      <figure><img src="img/30-nef3.jpg" width="1280" height="800" alt="Depuis l’escalier : la baie Batlló sur toute la largeur sous le tableau et l’horloge."><figcaption>Depuis l’escalier.</figcaption></figure>
+      <figure><img src="img/30-in4.jpg" width="1280" height="800" alt="Depuis la salle d’honneur : la baie remplit tout le mur."><figcaption>Depuis la salle d’honneur.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="etape idees" aria-labelledby="t-realisme">
+    <div class="entete"><h2 id="t-realisme">Polish : ce qui n’existerait pas dans un vrai musée</h2><span class="statut">en cours</span></div>
+    <div class="texte"><p>Ta remarque sur la porte et le gazon est juste, et le défaut se répète ailleurs. Voici ce que j’ai relevé en parcourant le musée comme un visiteur.</p></div>
+    <ol class="pistes">
+      <li><strong>Une entrée sans porte</strong> : il faut de vraies portes vitrées à deux battants, ouvertes, avec un tambour ou un sas.</li>
+      <li><strong>Marcher sur le gazon pour entrer</strong> : une bande de pelouse coupe l’allée du parvis. Il faut une allée pavée continue du jardin jusqu’aux marches de l’entrée, un vrai parvis dallé, et quelques marches.</li>
+      <li><strong>Des allées d’un blanc aveuglant</strong> : du gravier ratissé beige-gris, bordé de pierre, comme dans un jardin japonais.</li>
+      <li><strong>La nuit, l’intérieur baigne dans le bleu de la lune</strong> : un musée ouvert est éclairé par ses propres lumières, chaudes. Et dehors, rien n’éclaire les allées : il faut des lanternes et des bornes lumineuses le long des chemins, et la façade éclairée.</li>
+      <li><strong>Aucune signalétique</strong> : pas de plan du musée à l’entrée, pas de flèches, pas de numéros de salle, pas de pictogrammes « sortie ».</li>
+      <li><strong>Des plantes posées sur des cubes gris</strong> : il faut de vrais bacs, ou les retirer des galeries (un musée évite les plantes près des œuvres).</li>
+      <li><strong>Pas de sol devant le seuil</strong> : le sol extérieur s’arrête net contre l’entrée.</li>
+      <li><strong>Un lanterneau au quadrillage noir épais</strong> : de fins meneaux métalliques et un verre plus lumineux.</li>
+      <li><strong>Les toiles ressemblent à des écrans</strong> : cadres noirs épais et images de cartes GitHub. Les captures d’écran de tes projets sont en cours ; les cadres suivront.</li>
+    </ol>
+    <p class="note">Déjà corrigé dans cette passe : les toiles délavées (elles ont retrouvé leur contraste), des murs de couleur dans les galeries comme à Orsay, du parquet au rez-de-chaussée, des halos plus discrets, et les rails qui se croisaient. En cours avec les agents : le mobilier, Bavette à la bonne taille avec une marche réaliste, les captures d’écran de tes projets avec l’accès à leur site, et la baie Batlló sur toute la largeur.</p>
+    <div class="paire">
+      <figure><img src="img/29-toiles.jpg" width="1280" height="800" alt="Toiles contrastées sur le mur d’une galerie."><figcaption>Les toiles ont retrouvé leur contraste.</figcaption></figure>
+      <figure><img src="img/29-salle.jpg" width="1280" height="800" alt="Une galerie aux murs vert sombre, parquet, salles voisines bleue et bordeaux."><figcaption>Les galeries en couleur, avec du parquet.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="etape idees" aria-labelledby="t-vivant">
+    <div class="entete"><h2 id="t-vivant">D’autres éléments vivants : les pistes</h2><span class="statut">retenus, en cours</span></div>
+    <ol class="pistes">
+      <li><strong>La météo réelle de Bruxelles</strong> : la pluie qui ruisselle sur la verrière et fait des ronds dans l’étang, le brouillard, la neige en hiver (données Open-Meteo, gratuites et sans clé).</li>
+      <li><strong>Les saisons</strong> : les érables qui passent du vert au rouge en automne, nus en hiver, en fleurs au printemps, selon la date réelle.</li>
+      <li><strong>Le calendrier de tes contributions</strong> en mosaïque au sol de la nef : 365 carreaux dont la teinte suit ton activité GitHub, comme le graphe vert de ton profil, en marbre et en or.</li>
+      <li><strong>Des carpes koï dans l’étang</strong>, qui viennent à la surface quand on s’approche ; des oiseaux dans les arbres, des lucioles la nuit.</li>
+      <li><strong>Une ambiance sonore</strong> : les pas qui résonnent dans la nef, les oiseaux et l’eau au jardin, le tic-tac de l’horloge, le cliquetis des palettes du tableau (activée par un bouton).</li>
+      <li><strong>Une cloche des versions</strong> : quand un de tes dépôts publie une nouvelle version, l’horloge sonne et le tableau l’annonce.</li>
+      <li><strong>Un compteur de visiteurs</strong> façon compteur mécanique à l’entrée.</li>
+    </ol>
+  </section>
+
+
+  <section class="etape" aria-labelledby="t-27">
+    <div class="entete"><h2 id="t-27">27. La salle d’honneur, façon Casa Batlló et Cernuschi</h2><span class="statut fait">en ligne · PR #93</span></div>
+    <div class="texte">
+      <ul>
+        <li><strong>Tes trois meilleurs projets</strong> sur le mur nord : TaLibStandard, FormCraft et VirtualFileSystem. Chacun a son grand panneau bordeaux, comme au musée Cernuschi : le nom, un filet, le début du README en deux colonnes, l’image du dépôt dans un cadre doré sculpté, un cartel et son projecteur.</li>
+        <li><strong>Une borne rouge interactive</strong> devant chaque panneau. Approche-toi et le README complet s’ouvre, avec les langages, les étoiles et le dernier push. La molette fait défiler, E ouvre le dépôt sur GitHub et H ouvre son site.</li>
+        <li><strong>La salle elle-même</strong>, dans l’esprit de la Casa Batlló : une voûte de plâtre en tourbillon autour d’une lampe-soleil de laiton, des murs crème aux angles arrondis, des pilastres en forme d’os, un lambris de chêne ondulé, des encadrements de porte en chêne sculpté semés de cives colorées, et un parquet en point de Hongrie qui pointe vers la baie.</li>
+      </ul>
+      <p>Les images des dépôts sont encore les vignettes de ma machine ; en ligne, ce seront les vraies images GitHub.</p>
+    </div>
+    <figure>
+      <img src="img/27-final-1-nord.jpg" width="1280" height="800" alt="Le mur nord : trois panneaux bordeaux avec texte, cadres dorés et bornes rouges, pilastres en os, parquet en chevrons.">
+      <figcaption>Le mur nord et ses trois vitrines.</figcaption>
+    </figure>
+    <div class="paire">
+      <figure>
+        <img src="img/27-c1.jpg" width="1280" height="800" alt="La vitrine TaLibStandard de près : titre, filet, deux colonnes de texte, cadre doré.">
+        <figcaption>TaLibStandard, de près.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/27-final-3-borne.jpg" width="1280" height="800" alt="Le panneau de la borne VirtualFileSystem ouvert : README complet, barre de langages, touches E et H.">
+        <figcaption>La borne interactive : le README complet.</figcaption>
+      </figure>
+    </div>
+    <div class="paire">
+      <figure>
+        <img src="img/27-nv.jpg" width="1280" height="800" alt="La voûte en tourbillon autour de la lampe-soleil, la nuit.">
+        <figcaption>La voûte en tourbillon et sa lampe-soleil, la nuit.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/27-final-4-batllo.jpg" width="1280" height="800" alt="Vers la baie Batlló depuis l’intérieur : pilastres, lambris ondulé, parquet en chevrons.">
+        <figcaption>Vers la baie Batlló.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-26">
+    <div class="entete"><h2 id="t-26">26. Bavette en liberté</h2><span class="statut fait">en ligne · PR #94</span></div>
+    <div class="texte">
+      <p>Bavette a quitté son socle. Pour pouvoir l’animer, il fallait un modèle de profil, la tête droite. Meshy a donc redessiné ta photo de profil puis refait le modèle 3D (39 crédits), avec la même robe tigrée et blanche, la queue sombre et le poitrail blanc. Regarde bien si c’est lui.</p>
+      <ul>
+        <li>Un squelette de chat (29 os, queue articulée) et quatre animations faites dans Blender : marcher, se tenir debout en respirant et en regardant autour, s’asseoir, rester assis.</li>
+        <li>Il se promène seul, d’un coin tranquille à l’autre : devant les toiles, dans le hall, sur le palier, sur les balcons, sous les arbres du jardin. Il prend les portes et le grand escalier, ne traverse jamais un mur, et s’assoit quand il fait une longue pause.</li>
+        <li>Quand tu t’approches, il tourne la tête vers toi, et une petite carte apparaît : « Bavette — Il se promène librement dans le musée et dans le jardin. — Philippe Matray, 2026 ». La minimap montre où il est.</li>
+      </ul>
+      <p>Il est à taille réelle (36 cm aux oreilles), donc petit vu de haut. Je peux le grandir un peu si tu préfères.</p>
+    </div>
+    <figure>
+      <img src="img/26-m_side.jpg" width="2000" height="750" alt="Huit images de la marche de Bavette vue de profil.">
+      <figcaption>Le cycle de marche, de profil (rendu Blender).</figcaption>
+    </figure>
+    <div class="paire">
+      <figure>
+        <img src="img/26-proche-crop.jpg" width="760" height="600" alt="Bavette assis, levant la tête vers le visiteur.">
+        <figcaption>Il lève la tête vers toi.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/26-escalier.jpg" width="1280" height="800" alt="Bavette montant la volée centrale de l’escalier de marbre.">
+        <figcaption>Il monte le grand escalier.</figcaption>
+      </figure>
+    </div>
+    <figure>
+      <img src="img/26-jardin.jpg" width="1280" height="800" alt="Bavette marchant sur la pelouse du parc, sa carte affichée.">
+      <figcaption>Dans le parc (capture faite avant le nouveau jardin).</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-25">
+    <div class="entete"><h2 id="t-25">25. Le jardin : bosquets, vrai gazon, relief</h2><span class="statut fait">en ligne · PR #92</span></div>
+    <div class="texte">
+      <ul>
+        <li><strong>Les anciens arbres sont retirés</strong>. Le parc est planté en bosquets d’érables rouges ou verts, plus grands au cœur, bordés de buis et d’azalées, avec des clairières et quelques isolés.</li>
+        <li><strong>Un vrai gazon</strong> : 160 000 brins d’herbe qui ondulent au vent autour de toi, sur un sol mat qui ne brille plus. Ils s’arrêtent aux allées, à l’eau, aux troncs et aux rochers.</li>
+        <li><strong>Du relief</strong> : des vallons et des buttes douces jusqu’à 3,3 m, qu’on monte et descend en marchant. Le bâtiment, le parvis, l’allée d’entrée et les abords de l’eau restent à plat.</li>
+      </ul>
+    </div>
+    <figure>
+      <img src="img/25-d2.jpg" width="1280" height="800" alt="Une butte couverte d’herbe dense, un érable vert au premier plan.">
+      <figcaption>En montant une butte, au sud-ouest.</figcaption>
+    </figure>
+    <div class="paire">
+      <figure>
+        <img src="img/25-h3.jpg" width="1280" height="800" alt="L’étang, la lanterne, l’herbe jusqu’aux berges, les érables rouges au fond.">
+        <figcaption>Au bord de l’étang.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/25-g1.jpg" width="1280" height="800" alt="L’allée d’entrée entre deux pelouses d’herbe haute, le musée au fond.">
+        <figcaption>L’allée d’entrée.</figcaption>
+      </figure>
+    </div>
+    <div class="paire">
+      <figure>
+        <img src="img/25-d4.jpg" width="1280" height="800" alt="Un bosquet d’érables et d’azalées sur une pente, au nord-ouest.">
+        <figcaption>Un bosquet sur une pente, au nord-ouest.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/25-g5.jpg" width="1280" height="800" alt="L’allée d’entrée la nuit, l’herbe sombre.">
+        <figcaption>La même allée, la nuit.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-24">
+    <div class="entete"><h2 id="t-24">24. Les portes</h2><span class="statut fait">en ligne · PR #90</span></div>
+    <div class="texte">
+      <p>Le choix que tu m’avais laissé : chaque porte a un chambranle de pierre mouluré sur ses deux faces, posé sur deux plinthes et modélisé dans Blender. Côté nef et balcons, une corniche porte le nom de la salle et son nombre de projets en lettres de bronze, qui s’allument doucement la nuit. L’épaisseur du mur est habillée de pierre au lieu du blanc nu. La salle d’honneur n’est pas touchée : elle sera traitée avec son réaménagement Batlló.</p>
+    </div>
+    <figure>
+      <img src="img/24-balcon.jpg" width="1280" height="800" alt="Une porte vue du balcon : chambranle mouluré, corniche gravée BLAZOR / BLAZOR COMPONENTS · 11 PROJETS, embrasure de pierre.">
+      <figcaption>Depuis le balcon ouest.</figcaption>
+    </figure>
+    <div class="paire">
+      <figure>
+        <img src="img/24-close.jpg" width="1280" height="800" alt="Une porte du hall de biais : chambranle, plinthes, corniche et nom gravé.">
+        <figcaption>Une porte du hall, de biais.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/24-nuit.jpg" width="1280" height="800" alt="La nuit, MCP / CLAUDE · 13 PROJETS en lettres dorées au-dessus d’une porte du hall.">
+        <figcaption>La nuit, les lettres s’allument.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-23">
+    <div class="entete"><h2 id="t-23">23. Le jardin japonais</h2><span class="statut">validé, en reprise</span></div>
+    <div class="texte">
+      <p>D’après ta photo de Hasselt : un étang sombre bordé de rochers moussus, de fougères et de galets au sud-est de l’entrée ; un ruisseau qui serpente depuis une source, passe sous un pont de bois arqué et tombe en petite cascade dans l’étang ; des érables du Japon rouges et verts, des dômes de buis et d’azalées en fleurs, des pétales roses au sol, une lanterne de pierre et un pas japonais. L’allée d’entrée reste droite et dégagée ; les autres allées serpentent. On ne marche pas dans l’eau, sauf sur le pont.</p>
+      <p>Points faibles connus : la cascade ressemble encore à une nappe blanche, et le ruisseau est une bande plate aux bords droits.</p>
+    </div>
+    <figure>
+      <img src="img/23-final-etang.jpg" width="1280" height="800" alt="L’étang du jardin japonais depuis le pas japonais, lanterne de pierre, érables rouges et verts, azalées roses.">
+      <figcaption>L’étang depuis le pas japonais.</figcaption>
+    </figure>
+    <div class="paire">
+      <figure>
+        <img src="img/23-final-musee.jpg" width="1280" height="800" alt="Depuis le coin sud-est du jardin, l’étang et la façade du musée.">
+        <figcaption>Vers le musée, par-dessus l’étang.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/23-c8.jpg" width="1280" height="800" alt="Le pont de bois sur le ruisseau, érables rouges et azalées en fleurs.">
+        <figcaption>Le pont sur le ruisseau.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-22">
+    <div class="entete"><h2 id="t-22">22. Bavette, remodelée d’après ta photo</h2><span class="statut fait">en ligne · PR #89</span></div>
+    <div class="texte">
+      <p>Un nouveau modèle 3D tiré de ta photo (Meshy, 30 crédits utilisés sur les 2 000 autorisés) : Bavette debout, le pelage tigré et blanc, le regard par-dessus l’épaule. Il mesure 65 cm, un peu plus grand que nature, sur son socle dans la niche sous la volée ouest, visible dès l’entrée. Le cartel dit simplement « Bavette ».</p>
+    </div>
+    <div class="paire">
+      <figure>
+        <img src="img/22-bavette.jpg" width="1280" height="800" alt="Bavette debout sur son socle, dans la niche sous l’escalier de marbre.">
+        <figcaption>Dans sa niche, sous l’escalier.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/22-bavette-proche.jpg" width="1280" height="800" alt="Bavette de plus près : pelage tigré et blanc, tête tournée.">
+        <figcaption>De plus près (à 50 cm de haut sur cette capture).</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-21">
+    <div class="entete"><h2 id="t-21">21. L’escalier de marbre, façon Opéra Garnier</h2><span class="statut fait">en ligne · PR #88</span></div>
+    <div class="texte">
+      <p>Modélisé dans Blender. Marches en marbre crème veiné, nez arrondis. Les trois premières marches de la volée centrale s’évasent en courbes, comme la cascade de Garnier. Les flancs sont en marbre rouge griotte avec une moulure crème, et le palier est bordé d’une incrustation rouge. Les garde-corps de verre que tu avais validés restent, et Bavette reste bien visible sous la volée ouest.</p>
+    </div>
+    <div class="paire">
+      <figure>
+        <img src="img/21-c2.jpg" width="1280" height="800" alt="L’escalier en marbre crème veiné vu de trois quarts, marches du bas arrondies, flancs en marbre rouge ; Bavette en bas à gauche.">
+        <figcaption>De trois quarts, depuis le pied : Bavette en bas à gauche.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/21-b3.jpg" width="1280" height="800" alt="Vue de face des marches du bas évasées et arrondies, marbre veiné.">
+        <figcaption>Les marches du bas, évasées.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-19">
+    <div class="entete"><h2 id="t-19">19. La baie de la salle d’honneur, façon Casa Batlló</h2><span class="statut fait">en ligne · PR #87</span></div>
+    <div class="texte">
+      <p>Modélisée dans Blender, visible des deux côtés : deux colonnes de pierre en forme d’os, trois arcs souples, une menuiserie de chêne aux meneaux ondulés, des vitres arrondies et une rangée de petits ovales en bas, et en haut un bandeau de vitraux en médaillons bleus, turquoise, verts et blancs, avec une rosace centrale sculptée. À juger : le chêne paraît un peu plat et orangé face au bois sculpté de Gaudí.</p>
+    </div>
+    <div class="paire">
+      <figure>
+        <img src="img/19-proche.jpg" width="1280" height="800" alt="La baie vue du hall : médaillons de vitrail bleus et verts, colonnes en os, menuiserie de chêne ondulée.">
+        <figcaption>Depuis le hall.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/19-jourdedans.jpg" width="1280" height="800" alt="La baie vue de l’intérieur de la salle d’honneur, vitraux lumineux au-dessus des arcs.">
+        <figcaption>Depuis la salle d’honneur.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-18">
+    <div class="entete"><h2 id="t-18">18. Des projecteurs sur rail</h2><span class="statut fait">en ligne · PR #86</span></div>
+    <div class="texte">
+      <p>Tu avais raison : une toile ne peut pas s’éclairer sans source. Chaque toile a maintenant son projecteur noir, modélisé dans Blender, sur un rail au plafond à 1,60 m du mur, la tête inclinée vers elle. Quand tu regardes la toile, c’est ce projecteur qui s’allume.</p>
+    </div>
+    <div class="paire">
+      <figure>
+        <img src="img/18-p2.jpg" width="1280" height="800" alt="Une salle vue en grand : rails noirs au plafond, un projecteur au-dessus de chaque toile.">
+        <figcaption>Les rails et les projecteurs au plafond.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/18-p1.jpg" width="1280" height="800" alt="Une toile éclairée par son projecteur, la carte de l’œuvre en bas à gauche.">
+        <figcaption>La toile regardée, dans la lumière de son projecteur.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-16">
+    <div class="entete"><h2 id="t-16">16. Des toiles plus grandes</h2><span class="statut fait">en ligne · PR #85</span></div>
+    <div class="texte">
+      <p>Les toiles font maintenant au moins 1,70 m de large (1 m avant), jusqu’à 3,20 m pour les dépôts très étoilés. L’accrochage a été recalculé, et chaque salle, salle d’honneur comprise, garde toutes ses œuvres.</p>
+    </div>
+    <figure>
+      <img src="img/16-toiles.jpg" width="1280" height="800" alt="Une salle avec des toiles plus grandes sur les murs.">
+      <figcaption>La salle « Html / Dashboard » : même point de vue que l’étape 13.</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-20">
+    <div class="entete"><h2 id="t-20">Correctif : des amas à différentes hauteurs</h2><span class="statut fait">en ligne · PR #84</span></div>
+    <div class="texte"><p>Chaque salle de la constellation flotte maintenant à sa propre hauteur, entre 5,60 et 10,60 m, au lieu d’une nappe à un seul niveau.</p></div>
+    <figure>
+      <img src="img/20-hauteurs.jpg" width="1280" height="800" alt="Depuis le balcon la nuit : les amas d’étoiles à des hauteurs différentes, certains au niveau de l’attique.">
+      <figcaption>23 h, depuis le balcon ouest.</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-17">
+    <div class="entete"><h2 id="t-17">Correctifs : la constellation suspendue, l’enseigne lisible</h2><span class="statut fait">en ligne · PR #83</span></div>
+    <div class="texte">
+      <ul>
+        <li><strong>La constellation</strong> ne colle plus au plafond : elle flotte entre les deux balcons, de 6,10 à 8,60 m, à hauteur des yeux quand on est au balcon. Chaque étoile pend à un fil jusqu’à la voûte, les étoiles évitent les lanternes, et les noms des salles se tournent vers toi.</li>
+        <li><strong>« ATYPICAL MUSEUM »</strong> passe sur la face du linteau de pierre, là où rien ne le cache : bronze sur pierre le jour, lettres dorées allumées la nuit.</li>
+      </ul>
+    </div>
+    <figure>
+      <img src="img/17-c1.jpg" width="1280" height="800" alt="Depuis le balcon ouest la nuit : un nuage d’étoiles lumineuses suspendues à des fils, les noms de salles en or, l’horloge et le tableau au fond.">
+      <figcaption>23 h, depuis le balcon ouest : la constellation à hauteur des yeux.</figcaption>
+    </figure>
+    <div class="paire">
+      <figure>
+        <img src="img/17-c2.jpg" width="1280" height="800" alt="Depuis la nef la nuit, vue vers le haut : la constellation suspendue devant l’horloge.">
+        <figcaption>Depuis la nef, la nuit.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/17-e1.jpg" width="1280" height="800" alt="L’entrée la nuit : ATYPICAL MUSEUM en lettres dorées sur le linteau de pierre.">
+        <figcaption>L’enseigne la nuit, à 8 m de l’entrée.</figcaption>
+      </figure>
+    </div>
+    <figure>
+      <img src="img/17-e2.jpg" width="1280" height="800" alt="L’entrée de jour : ATYPICAL MUSEUM en bronze sur le linteau de pierre clair.">
+      <figcaption>La même, de jour.</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-15">
+    <div class="entete"><h2 id="t-15">15. Le jour et la nuit, et la constellation qui s’allume</h2><span class="statut fait">en ligne · PR #81</span></div>
+    <div class="texte">
+      <p>Comme tu l’as choisi, le ciel suit le vrai soleil : sa position est calculée pour Bruxelles (modifiable dans la configuration du musée) et l’heure réelle, et recalculée toutes les 30 secondes.</p>
+      <ul>
+        <li>Le jour, le ciel nuageux et le soleil, qui se déplace pour de vrai. Au lever et au coucher, l’horizon se dore.</li>
+        <li>La nuit, un vrai ciel étoilé avec la Voie lactée ; une lune froide remplace le soleil, et le musée reste éclairé de l’intérieur.</li>
+        <li>La verrière cesse de luire, on voit les étoiles au travers, et les lanternes brûlent plus fort.</li>
+        <li>La constellation de tes dépôts ne s’allume que la nuit : chaque dépôt est une étoile, plus grosse s’il a des étoiles GitHub, et chaque salle une constellation nommée.</li>
+      </ul>
+      <p>Pour voir la nuit en plein jour, ajoute <code>?heure=23:00</code> à l’adresse du musée.</p>
+    </div>
+    <figure>
+      <img src="img/15-2300.jpg" width="1280" height="800" alt="La nef la nuit : la constellation dorée illumine la voûte, les lanternes brillent, le ciel étoilé derrière la verrière.">
+      <figcaption>23 h : la constellation s’illumine sous la verrière.</figcaption>
+    </figure>
+    <figure>
+      <img src="img/15-ext.jpg" width="1280" height="800" alt="La façade la nuit sous un ciel étoilé avec la Voie lactée ; la nef illuminée brille derrière le pignon vitré.">
+      <figcaption>23 h, depuis le parc : la nef brille sous la Voie lactée.</figcaption>
+    </figure>
+    <div class="paire">
+      <figure>
+        <img src="img/15-1920.jpg" width="1280" height="800" alt="La nef au crépuscule : lumière chaude, premières étoiles.">
+        <figcaption>19 h 20 : le crépuscule, les premières étoiles.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/15-1200.jpg" width="1280" height="800" alt="La nef à midi : verrière laiteuse, pas d’étoiles.">
+        <figcaption>Midi : la verrière laiteuse, la constellation éteinte.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-14">
+    <div class="entete"><h2 id="t-14">14. La constellation de la verrière</h2><span class="statut">refaite en 15</span></div>
+    <div class="texte">
+      <p>Le verre de la nef est laiteux en plein jour : des étoiles lumineuses s’y perdraient. J’ai donc pris le parti du plafond doré de Grand Central, à New York : un ciel d’étoiles d’or sous la verrière.</p>
+      <ul>
+        <li>Chaque dépôt accroché est une étoile ; plus il a d’étoiles GitHub, plus elle est grosse. Elles scintillent doucement.</li>
+        <li>Chaque salle est une constellation : ses étoiles sont reliées par des filets d’or, et le nom de la salle est inscrit dessous. L’amas des grosses étoiles au centre, c’est ta salle d’honneur.</li>
+        <li>Les étoiles évitent les arcs de la voûte, pour qu’aucune ne soit cachée derrière.</li>
+      </ul>
+    </div>
+    <figure>
+      <img src="img/14-constellation-24.jpg" width="1280" height="800" alt="Vue vers le haut de la voûte : étoiles dorées reliées par des filets sous la verrière, avec les noms de salles comme Design patterns, Shell, HTML / Dashboard.">
+      <figcaption>En levant la tête dans la nef.</figcaption>
+    </figure>
+    <figure>
+      <img src="img/14-constellation-25.jpg" width="1280" height="800" alt="La nef depuis l’entrée : la constellation dorée sous la verrière, l’horloge et le tableau Mes derniers projets.">
+      <figcaption>Depuis l’entrée : la constellation, l’horloge et le tableau ensemble.</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-13">
+    <div class="entete"><h2 id="t-13">13. Des toiles qui s’éveillent, et la lumière de l’activité</h2><span class="statut fait">en ligne · PR #80</span></div>
+    <div class="texte">
+      <ul>
+        <li><strong>Le projecteur</strong> : regarde une toile à moins de 4 m, un projecteur chaud s’allume en fondu au-dessus d’elle, et s’éteint quand tu passes à la suivante.</li>
+        <li><strong>La carte</strong>, en bas à gauche : le propriétaire, le nom, la description, une barre des langages aux couleurs de GitHub, les étoiles, les forks, le dernier push. La touche <strong>E</strong> ouvre le dépôt sur GitHub dans un nouvel onglet.</li>
+        <li><strong>Le halo</strong> : chaque toile poussée dans l’année porte un halo doré, à pleine intensité la semaine du push, qui pâlit de moitié chaque mois. En entrant dans une salle, on voit ce qui est vivant. Sur ces captures, les halos sont discrets parce que mon catalogue local date de juillet ; en ligne, tes pushs récents brilleront franchement.</li>
+      </ul>
+    </div>
+    <figure>
+      <img src="img/13-toiles-22.jpg" width="1280" height="800" alt="Une toile sous un projecteur chaud, et la carte de l’œuvre ai-migration-kit en bas à gauche avec sa barre de langages HTML, Python, Shell.">
+      <figcaption>Devant ai-migration-kit : le projecteur et la carte.</figcaption>
+    </figure>
+    <figure>
+      <img src="img/13-toiles-23.jpg" width="1280" height="800" alt="Une salle vue de loin : quatre toiles, chacune entourée d’un léger halo orangé.">
+      <figcaption>La salle « Musique &amp; audio » de loin : le halo autour de chaque toile. On voit aussi que les toiles sont petites pour ces grands murs (voir la proposition plus haut).</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-12">
+    <div class="entete"><h2 id="t-12">12. Les drapeaux de Microsoft</h2><span class="statut fait">en ligne · PR #79</span></div>
+    <div class="texte"><p>À ta demande : quatre drapeaux aux couleurs du logo Microsoft, puisque la collection est d’abord du C#.</p></div>
+    <figure>
+      <img src="img/12-drapeaux.jpg" width="1280" height="800" alt="La façade avec quatre drapeaux rouge, vert, bleu et jaune sur le toit.">
+      <figcaption>Rouge, vert, bleu, jaune.</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape idees" aria-labelledby="t-portes">
+    <div class="entete"><h2 id="t-portes">Les portes : les pistes</h2><span class="statut fait">choisies : 1, 2 et 3</span></div>
+    <div class="texte">
+      <p>Aujourd’hui une porte est un trou rectangulaire dans le mur, avec des tableaux blancs nus. Voici ce que je propose ; les trois premières vont bien ensemble.</p>
+    </div>
+    <ol class="pistes">
+      <li><strong>Des encadrements de pierre moulurés</strong> autour de chaque porte, des deux côtés, avec une petite corniche au-dessus des portes qui donnent sur la nef. C’est ce qui fait « musée » au premier coup d’œil, à Orsay comme au Louvre.</li>
+      <li><strong>Des embrasures habillées</strong> : l’épaisseur du mur, qu’on voit en passant, devient de la pierre ou du chêne au lieu du blanc nu.</li>
+      <li><strong>Le nom de la salle au-dessus de chaque porte</strong>, côté nef, en lettres de bronze : « BLAZOR · 9 PROJETS ». On sait où l’on va avant d’entrer, et le thème annonce les dépôts.</li>
+      <li><strong>Des portes en plein cintre</strong> : le haut de l’ouverture en arc, comme les galeries d’Orsay. Plus spectaculaire, mais c’est un vrai chantier : les murs ne sont que des boîtes, il faut un linteau cintré modélisé pour chaque porte.</li>
+      <li><strong>De grandes portes vitrées à double battant</strong>, chêne et verre, ouvertes et rabattues contre l’embrasure : on les voit, on ne s’y cogne pas.</li>
+    </ol>
+  </section>
+
+  <section class="etape" aria-labelledby="t-11">
+    <div class="entete"><h2 id="t-11">Correctif : l’entrée dégagée</h2><span class="statut fait">en ligne · PR #77</span></div>
+    <div class="texte">
+      <p>Vus du hall, deux piliers du portique se dressaient dans l’embrasure de l’entrée : la baie du milieu était plus étroite que la porte. Elle fait maintenant 3,80 m, l’ouverture plus 30 cm de chaque côté.</p>
+    </div>
+    <figure>
+      <img src="img/11-entree.jpg" width="1280" height="800" alt="Depuis le hall, l’entrée dégagée : le parc et le ciel à travers l’ouverture, les piliers en retrait hors de l’embrasure.">
+      <figcaption>Le même point de vue que ta capture, après correction.</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape idees" aria-labelledby="t-idees">
+    <div class="entete"><h2 id="t-idees">Faire vivre tes projets : les pistes</h2><span class="statut fait">choisies</span></div>
+    <div class="texte">
+      <p>Tu m’as demandé comment mettre tes dépôts en valeur pour que les visiteurs se disent « waw ». Le fil rouge : le musée doit raconter ton activité, pas seulement exposer des vignettes. Voici ce que je propose, du plus fort au plus simple. Dis-moi lesquelles tu veux, et dans quel ordre.</p>
+    </div>
+    <ol class="pistes">
+      <li><strong>Le tableau des départs</strong> (retenu, étape 10). Orsay était une gare : sous l’horloge, un grand panneau à palettes (split-flap) qui claque et affiche les derniers dépôts poussés, comme des trains au départ. « MusicTheory · C# · poussé il y a 2 h · Salle Musique &amp; audio ». Le musée respire au rythme de ton travail, et chaque ligne dit où aller.</li>
+      <li><strong>Des toiles qui s’éveillent</strong> (retenu, avec les lumières dynamiques). Quand on s’approche d’une œuvre, un projecteur s’allume, le cadre s’ouvre en panneau : description, barre des langages, étoiles, date du dernier push, et les liens vers le dépôt et la démo. Aujourd’hui, on passe devant des vignettes muettes.</li>
+      <li><strong>La lumière de l’activité</strong> (retenue). Chaque tableau porte un halo selon la fraîcheur de son dernier push : doré s’il a bougé cette semaine, qui pâlit avec le temps. En entrant dans une salle, on voit tout de suite ce qui est vivant.</li>
+      <li><strong>Une constellation dans la verrière</strong> (retenue). La nuit tombée, la verrière devient un ciel où chaque dépôt est une étoile, sa taille selon ses étoiles GitHub, reliée à ses voisins de thème. On lève les yeux et on voit toute ton œuvre d’un coup.</li>
+      <li><strong>Un audioguide</strong> (écarté). Devant une toile, une voix lit sa description, avec la synthèse vocale du navigateur : aucun fichier audio, aucun coût. La visite guidée en profite aussi.</li>
+      <li><strong>Des visiteurs</strong> (pas pour l’instant). Quelques silhouettes discrètes qui déambulent et s’attardent devant les dépôts les plus étoilés. Un musée vide paraît mort ; ces silhouettes montrent aussi ce qui attire.</li>
+    </ol>
+  </section>
+
+  <section class="etape" aria-labelledby="t-10">
+    <div class="entete"><h2 id="t-10">10. Le tableau « Mes derniers projets »</h2><span class="statut fait">en ligne · PR #78</span></div>
+    <div class="texte">
+      <p>Orsay était une gare : sous l’horloge pend désormais un tableau à palettes, titré « Mes derniers projets » comme tu l’as demandé, qui annonce tes derniers dépôts poussés à la manière des trains au départ. Pour chacun : depuis quand, le nom du dépôt, son langage, et la salle où le trouver.</p>
+      <p>Deux pages de six lignes alternent toutes les douze secondes, et les palettes tournent en vague, de gauche à droite, jusqu’à la bonne lettre. Les données viennent du catalogue reconstruit chaque nuit. Sur la capture, les dates sont celles de juillet parce que mon catalogue local est ancien ; en ligne, ce seront tes pushs de la veille.</p>
+    </div>
+    <figure>
+      <img src="img/10-departs.jpg" width="1280" height="800" alt="La nef vue depuis l’allée : le tableau des départs noir aux lettres blanches et jaunes, suspendu sous l’horloge.">
+      <figcaption>Depuis le milieu de la nef. Bavette est dans sa niche, en bas à gauche.</figcaption>
+    </figure>
+    <figure>
+      <img src="img/10-departs-zoom.jpg" width="700" height="330" alt="Gros plan du tableau : colonnes Départ, Destination, Langage, Salle ; lignes museum, astral, koine, ai-migration-kit, roselinemcp, github-toolkit.">
+      <figcaption>De plus près : la deuxième page.</figcaption>
+    </figure>
+  </section>
+
+
+  <section class="etape" aria-labelledby="t-9">
+    <div class="entete"><h2 id="t-9">9. La façade façon S.M.A.K.</h2><span class="statut fait">en ligne · PR #76</span></div>
+    <div class="texte">
+      <p>D’après ta photo du S.M.A.K. de Gand : la boîte de béton devient un bâtiment de brique, avec un portique de pierre devant l’entrée.</p>
+      <ul>
+        <li>Brique rouge-brun sur les quatre façades, parapet à couvertine de pierre qui cache le toit plat.</li>
+        <li>Un portique de pierre large comme la nef : quatre piliers cannelés, des portes vitrées et de hautes verrières. La baie du milieu est l’entrée, ouverte. On contourne les piliers, on ne les traverse pas.</li>
+        <li>« ATYPICAL MUSEUM » au fronton, tiré de la configuration du musée.</li>
+        <li>Deux bannières qui annoncent les deux premiers dépôts de ta salle d’honneur (aujourd’hui MusicTheory et ts-blockchain) : elles changent toutes seules avec l’accrochage.</li>
+        <li>Des drapeaux sur le toit, aux couleurs GitHub de C#, TypeScript, JavaScript, Python et HTML.</li>
+      </ul>
+    </div>
+    <figure>
+      <img src="img/09-facade-15.jpg" width="1280" height="800" alt="La façade de brique vue du parc : portique de pierre à piliers, nom du musée au fronton, deux bannières blanches, drapeaux sur le toit, la verrière de la nef derrière.">
+      <figcaption>Depuis l’allée du parc, à 24 m.</figcaption>
+    </figure>
+    <figure>
+      <img src="img/09-facade-16.jpg" width="1280" height="800" alt="Vue rapprochée du portique : piliers cannelés, jambages de pierre de taille, verrières sombres, bannière ts-blockchain à droite.">
+      <figcaption>Au pied du portique.</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-8">
+    <div class="entete"><h2 id="t-8">8. Des garde-corps de verre clair</h2><span class="statut fait">en ligne · PR #72</span></div>
+    <div class="texte">
+      <p>D’après ta photo de référence : fini les blocs de verre épais posés en marches d’escalier.</p>
+      <ul>
+        <li>Panneaux de verre clair de 15 mm, d’au plus 1,50 m, séparés par un joint fin.</li>
+        <li>Une main courante d’acier continue par-dessus, à 1,00 m du sol.</li>
+        <li>Le long des volées, verre et main courante suivent la pente d’un seul trait.</li>
+      </ul>
+      <p>On ne passe toujours pas au travers : la marche n’a pas changé.</p>
+    </div>
+    <figure>
+      <img src="img/08-garde-corps-13.jpg" width="1280" height="800" alt="L’escalier impérial avec des garde-corps de verre qui suivent la pente des trois volées, main courante métallique ; Bavette dans sa niche à gauche.">
+      <figcaption>L’escalier impérial. Bavette est dans sa niche, en bas à gauche.</figcaption>
+    </figure>
+    <figure>
+      <img src="img/08-garde-corps-14.jpg" width="1280" height="800" alt="Depuis le balcon ouest : panneaux de verre clair et main courante le long du vide du hall.">
+      <figcaption>Depuis le balcon ouest, le long du vide de la nef.</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-7">
+    <div class="entete"><h2 id="t-7">7. L’horloge à l’heure</h2><span class="statut fait">en ligne · PR #71</span></div>
+    <div class="texte">
+      <p>Les aiguilles tournent maintenant avec l’heure réelle du visiteur, sur un cadran de douze heures ; l’aiguille des heures avance doucement avec les minutes.</p>
+    </div>
+    <div class="paire">
+      <figure>
+        <img src="img/07-horloge.jpg" width="450" height="330" alt="Gros plan du cadran : petite aiguille sur le 6, grande juste après le 12.">
+        <figcaption>Capture prise à 18 h 06 : petite aiguille sur le 6, grande juste après midi.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/07-horloge-large.jpg" width="1280" height="800" alt="Vue vers le haut depuis le pied de l’escalier : la voûte, la verrière et l’horloge au pignon.">
+        <figcaption>Depuis le pied de l’escalier, en levant les yeux.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-6">
+    <div class="entete"><h2 id="t-6">6. Le parc accessible</h2><span class="statut fait">en ligne · PR #70</span></div>
+    <div class="texte">
+      <p>On sort maintenant par l’entrée pour se promener dans le parc, sur les allées et la pelouse, jusqu’au bord du terrain (40 m autour du musée). Dehors, la façade reste un mur : on rentre par l’entrée. La minimap continue de fonctionner.</p>
+    </div>
+    <figure>
+      <img src="img/06-parc.jpg" width="1280" height="800" alt="Vue depuis le parc, sur l’allée centrale, face à l’entrée du musée et au pignon vitré de la nef.">
+      <figcaption>Dans le parc, à 22 m de l’entrée : la nef et son pignon vitré dépassent du bâtiment.</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-5">
+    <div class="entete"><h2 id="t-5">5. Des plafonds à lanterneau</h2><span class="statut fait">en ligne · PR #69</span></div>
+    <div class="texte">
+      <p>Les salles de l’étage étaient à ciel ouvert, et au rez-de-chaussée on voyait le dessous du parquet. Chaque salle d’exposition reçoit un plafond de plâtre et, au milieu, un lanterneau : un grand panneau de verre dépoli lumineux tenu par une résille, comme les salles à éclairage zénithal des musées. La lumière tombe sur les œuvres sans leur voler la vedette.</p>
+      <p>Les toiles paraissent noires sur ces captures parce que l’atlas des œuvres n’est pas construit sur la machine de travail ; en ligne, elles s’affichent.</p>
+    </div>
+    <div class="paire">
+      <figure>
+        <img src="img/05-plafond-9.jpg" width="1280" height="800" alt="Salle du rez-de-chaussée avec un plafond clair et un lanterneau quadrillé.">
+        <figcaption>Rez-de-chaussée, salle « Mcp / Claude ».</figcaption>
+      </figure>
+      <figure>
+        <img src="img/05-plafond-10.jpg" width="1280" height="800" alt="Salle de l’étage, parquet au sol, plafond à lanterneau quadrillé.">
+        <figcaption>Étage, salle « Testing / Python ».</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-4">
+    <div class="entete"><h2 id="t-4">4. Un vrai ciel</h2><span class="statut fait">en ligne · PR #68</span></div>
+    <div class="texte">
+      <p>L’aplat bleu est remplacé par une photo de ciel à nuages, libre de droits (Poly Haven), réduite à 252 Ko pour garder le site léger. Si elle ne charge pas, l’ancien bleu reste en fond.</p>
+    </div>
+    <figure>
+      <img src="img/04-ciel-7.jpg" width="1280" height="800" alt="Vue vers le haut dans la nef : les nuages passent derrière la verrière et les baies de l’attique.">
+      <figcaption>En levant les yeux dans la nef : les nuages derrière la verrière.</figcaption>
+    </figure>
+    <figure>
+      <img src="img/04-ciel-8.jpg" width="1280" height="800" alt="Vue vers l’entrée : horizon de nuages au-dessus du parc.">
+      <figcaption>Vers l’entrée : un vrai horizon au-dessus du parc.</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-3">
+    <div class="entete"><h2 id="t-3">3. L’allée des sculptures</h2><span class="statut">abandonnée</span></div>
+    <div class="texte">
+      <p>Refusée, à raison : le musée sert à présenter tes projets GitHub, et les pièces cachaient Bavette depuis l’entrée. Rien n’a été mis en ligne ; Bavette est toujours dans sa niche, sous la volée ouest.</p>
+    </div>
+  </section>
+
+  <section class="etape" aria-labelledby="t-2">
+    <div class="entete"><h2 id="t-2">2. La pierre du hall</h2><span class="statut fait">en ligne · PR #67</span></div>
+    <div class="texte">
+      <p>Les murs gris du hall deviennent de la pierre de taille claire, comme la nef d’Orsay. Le côté galeries garde son plâtre.</p>
+      <ul>
+        <li>Parement en blocs de 1,20 m sur des assises de 60 cm, joints croisés, sur toutes les faces qui regardent le hall. Les portes restent ouvertes.</li>
+        <li>Balcons en pierre : fini le parquet vu d’en dessous.</li>
+        <li>Bandes de granit dans le dallage, deux le long de l’allée centrale et une sous chaque arc de la voûte, du pied de l’escalier à l’entrée.</li>
+      </ul>
+    </div>
+    <figure>
+      <img src="img/02-pierre.jpg" width="1280" height="800" alt="Le hall avec des murs et des balcons en pierre de taille claire, et des bandes sombres dans le dallage.">
+      <figcaption>Depuis l’entrée, textures du site chargées. Comparer avec l’étape 1 juste en dessous.</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-1">
+    <div class="entete"><h2 id="t-1">1. La nef : voûte, verrière, horloge</h2><span class="statut fait">en ligne · PR #66</span></div>
+    <div class="texte">
+      <p>Le hall de 16 × 28 m était ouvert sur le ciel. Il est maintenant couvert, comme la gare d’Orsay.</p>
+      <ul>
+        <li>Voûte en berceau de 8 m de rayon, sommet à 20,6 m, sur 9 arcs doubleaux à caissons dorés.</li>
+        <li>Verrière laiteuse au sommet, résille de fonte ; baies cintrées dans l’attique.</li>
+        <li>Pignons vitrés, horloge dorée au fond de la nef, six lanternes de bronze.</li>
+      </ul>
+    </div>
+    <figure>
+      <img src="img/01-nef.jpg" width="1280" height="800" alt="Le hall vu depuis l’entrée : voûte à caissons dorés, verrière, grande horloge au fond, lanternes de part et d’autre.">
+      <figcaption>Depuis l’entrée, à hauteur d’œil. Capture prise sans les textures (murs et sol blancs).</figcaption>
+    </figure>
+    <figure>
+      <img src="img/01-nef-balcon.jpg" width="1280" height="800" alt="Rendu Blender depuis le balcon ouest : les baies cintrées de l’attique et les lanternes.">
+      <figcaption>Depuis le balcon ouest. Rendu Blender de contrôle, avant le déplacement des lanternes sur les côtés.</figcaption>
+    </figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-0">
+    <div class="entete"><h2 id="t-0">0. Avant</h2><span class="statut">point de départ</span></div>
+    <figure>
+      <img src="img/00-avant.jpg" width="1280" height="800" alt="L’ancien hall : murs gris, dalles de bois, ciel bleu uni au-dessus.">
+      <figcaption>Le hall d’origine, ouvert sur un ciel uni.</figcaption>
+    </figure>
+  </section>
+</main>
+
+</body>
+</html>
