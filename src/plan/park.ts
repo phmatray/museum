@@ -153,15 +153,11 @@ function tracerAllees(parvis: Rect, terrain: Rect): Allee[] {
   const [z0, z1] = [parvis.z - RETRAIT_PERIPHERIQUE, parvis.z + parvis.depth + RETRAIT_PERIPHERIQUE]
   const coins = [{ x: x0, z: z0 }, { x: x1, z: z0 }, { x: x1, z: z1 }, { x: x0, z: z1 }]
   const [cx, cz] = [parvis.x + parvis.width / 2, parvis.z + parvis.depth / 2]
-  // Chaque accès rejoint le PARVIS, pas seulement le chemin de ceinture : sans ce
-  // raccord, il fallait traverser une bande de gazon pour entrer au musée.
-  const [px0, px1, pz0, pz1] = [parvis.x, parvis.x + parvis.width, parvis.z, parvis.z + parvis.depth]
-  const raccords: Allee[] = [
-    { a: { x: cx, z: pz1 }, b: { x: cx, z: z1 }, largeur: LARGEUR_ACCES },
-    { a: { x: cx, z: pz0 }, b: { x: cx, z: z0 }, largeur: LARGEUR_ACCES },
-    { a: { x: px0, z: cz }, b: { x: x0, z: cz }, largeur: LARGEUR_ACCES },
-    { a: { x: px1, z: cz }, b: { x: x1, z: cz }, largeur: LARGEUR_ACCES },
-  ]
+  // Seule l'entrée (au sud) est reliée au PARVIS : sans ce raccord, il fallait
+  // traverser une bande de gazon pour entrer au musée. Les trois autres accès
+  // s'arrêtent au chemin de ceinture, qui fait le tour : ils filaient droit
+  // dans un mur aveugle, sans porte (audit du jardin).
+  const raccords: Allee[] = [{ a: { x: cx, z: parvis.z + parvis.depth }, b: { x: cx, z: z1 }, largeur: LARGEUR_ACCES }]
   return [
     ...raccords,
     ...coins.map((a, i) => ({ a, b: coins[(i + 1) % 4], largeur: LARGEUR_PERIPHERIQUE })),

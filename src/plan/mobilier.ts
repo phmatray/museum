@@ -104,6 +104,12 @@ export const MOBILIER: Meuble[] = [
   // et sur la pelouse du sud, entre les buis, deux bancs qui regardent la façade.
   dans('BancJardin', PARC, 36.5, 47.6, NORD),
   dans('BancJardin', PARC, 13.5, 47.6, NORD),
+  // Là où les accès du nord, de l'ouest et de l'est touchent le chemin de ceinture,
+  // un banc, dos au musée, tourné vers le parc : l'allée mène quelque part. Un peu
+  // à côté de l'axe, qui reste un passage le long de la façade.
+  dans('BancJardin', PARC, 56.6, 22.6, EST),
+  dans('BancJardin', PARC, -8.6, 22.6, -EST),
+  dans('BancJardin', PARC, 26.6, -8.6, NORD),
 ]
 
 /** L'emprise au sol d'un meuble posé : son rectangle tourné, aligné sur les axes. */
