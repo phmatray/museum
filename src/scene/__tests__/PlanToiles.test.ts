@@ -19,7 +19,7 @@ import { DEFAULT_ASPECT } from '../../domain/hanging'
 import { useAccrochage } from '../../hooks/useAccrochage'
 import { resetAtlasResource } from '../../io/arrayTexture'
 import type { Accrochage } from '../../plan/hang'
-import { computePoses } from '../planToilesGeometry'
+import { computePoses, posesProches } from '../planToilesGeometry'
 import { PlanToiles } from '../PlanToiles'
 
 // Mocké : monter le <Text> réel de troika ferait un vrai chargement de police,
@@ -160,5 +160,20 @@ describe('PlanToiles', () => {
     await waitFor(() => expect(texteSalle.length).toBeGreaterThan(0))
 
     expect(texteSalle[0].font).toBe(`${import.meta.env.BASE_URL}assets/fonts/PTSans-Regular.ttf`)
+  })
+})
+
+describe('posesProches', () => {
+  const pose = (id: string, x: number, y: number) => ({ id, centre: new THREE.Vector3(x, y, 0) })
+  const oeil = new THREE.Vector3(0, 1.6, 0)
+
+  it('garde les toiles à moins de dix mètres, sur le niveau du regard, les plus proches d’abord', () => {
+    const poses = [pose('loin', 11, 1.55), pose('b', 4, 1.55), pose('etage', 1, 6.35), pose('a', 2, 1.55)]
+    expect(posesProches(poses, oeil).map((p) => p.id)).toEqual(['a', 'b'])
+  })
+
+  it('n’en garde que six, pour ne pas charger toutes les vignettes à la fois', () => {
+    const poses = Array.from({ length: 9 }, (_, i) => pose(`t${i}`, i, 1.55))
+    expect(posesProches(poses, oeil).map((p) => p.id)).toEqual(['t0', 't1', 't2', 't3', 't4', 't5'])
   })
 })

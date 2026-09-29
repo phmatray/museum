@@ -411,7 +411,7 @@ export function FrameInstances({ hangings }: { hangings: readonly Pick<Hanging, 
 
 // ── Le LOD proche ────────────────────────────────────────────────────────
 
-function NearArtwork({ hanging, texture }: { hanging: Hanging; texture: THREE.Texture }) {
+export function NearArtwork({ hanging, texture }: { hanging: Pick<Hanging, 'canvas'>; texture: THREE.Texture }) {
   const material = useMemo(
     () =>
       new THREE.ShaderMaterial({
