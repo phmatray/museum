@@ -17,7 +17,7 @@
  */
 import { presDeLEau } from './jardin.ts'
 import { OBSTACLES_PORTIQUE } from './facade.ts'
-import { DIMENSIONS, MOBILIER, blocsDuMobilier, contournement, contourner as eviter } from './mobilier.ts'
+import { ASSISES, DIMENSIONS, MOBILIER, blocsDuMobilier, contournement, contourner as eviter } from './mobilier.ts'
 import type { Parc } from './park.ts'
 import { PARC, PASSABLE, surfaceAt } from './rules.ts'
 import { capVers, chemin, passages } from './tour.ts'
@@ -48,7 +48,8 @@ const LOIN_DES_PORTES = 2
 /** Le dernier pas se fait droit sur le lieu, pour y arriver dans le bon sens. */
 const APPROCHE = 0.8
 
-export type Posture = 'marche' | 'debout' | 'assis'
+export type PhaseSieste = 'saut' | 'enroule' | 'dort' | 'reveil' | 'descente'
+export type Posture = 'marche' | 'debout' | 'assis' | PhaseSieste
 
 export interface Lieu {
   surface: string
@@ -57,6 +58,33 @@ export interface Lieu {
   /** Le cap où regarder une fois arrivé (0 = −z, comme `Walker.yaw`). */
   cap: number
   genre: 'toile' | 'hall' | 'palier' | 'balcon' | 'arbre' | 'banc'
+  /** Un lieu de sieste : on y arrive au point d'appel, face au banc. */
+  couchette?: Couchette
+}
+
+/**
+ * Où dormir sur un banc : le point de sieste sur l'assise, le point d'appel au
+ * sol d'où il saute, et le cap du saut (de l'appel vers l'assise).
+ */
+export interface Couchette {
+  /** L'index du banc dans `MOBILIER`. */
+  banc: number
+  surface: string
+  x: number
+  z: number
+  /** La cote de l'assise. */
+  y: number
+  appel: { x: number; z: number; y: number }
+  cap: number
+}
+
+export interface Sieste {
+  couchette: Couchette
+  phase: PhaseSieste
+  /** Secondes depuis le début de la phase. */
+  t: number
+  /** Combien de temps il dort, en secondes. */
+  dort: number
 }
 
 export interface Promenade {
@@ -73,6 +101,8 @@ export interface Promenade {
   vitesse: number
   /** L'état du générateur : la promenade est une fonction de sa graine. */
   graine: number
+  /** Sur un banc, de l'appel à la descente. */
+  sieste?: Sieste
 }
 
 /** mulberry32 : un tirage dans [0, 1) et l'état suivant. */
@@ -168,6 +198,152 @@ export function lieuxCalmes(plan: Plan, parc: Parc): Lieu[] {
   return out
 }
 
+// ── La sieste sur un banc ──────────────────────────────────────────────────
+// « Si Bavette pouvait dormir aléatoirement sur l'un des bancs ce serait top. »
+// Les actions viennent de `tools/blender/build-bavette-anime.py`, qui CUIT le
+// déplacement du saut : ces nombres sont les siens (voir BAVETTE_SIESTE).
+
+/** Les instants d'une action en part de sa durée : [début, fin]. */
+type Fenetre = readonly [number, number]
+export const SIESTE = {
+  /** La hauteur de saut cuite, m ; l'écart au vrai banc se rattrape en vol. */
+  hauteur: 0.46,
+  /** De l'appel au point de sieste, m. */
+  elan: 0.7,
+  /** Du point de sieste au bord de l'assise, côté saut, m. */
+  bord: 0.2,
+  saut: { duree: 1.4, vol: [0.52, 0.72] as Fenetre, avance: [0.44, 0.76] as Fenetre, monte: [0.46, 0.72] as Fenetre },
+  enroule: 5.4,
+  /** Une boucle de `Dort`. */
+  souffle: 12,
+  reveil: 4,
+  descente: { duree: 2.4, vol: [0.62, 0.78] as Fenetre, avance: [0.5, 0.84] as Fenetre, monte: [0.58, 0.82] as Fenetre },
+  /** Il dort de deux à six minutes, en temps réel. */
+  dort: [120, 360] as Fenetre,
+  /** Une chance sur vingt-cinq, à chaque nouveau lieu, d'aller dormir sur un banc proche… */
+  chance: 1 / 25,
+  /** … à moins de 25 m de chemin. */
+  portee: 25,
+  /** Le visiteur à moins de ce rayon du banc : il n'y monte pas. */
+  gene: 1.3,
+} as const
+
+const lisse = (u: number) => 0.5 - 0.5 * Math.cos(Math.PI * Math.min(1, Math.max(0, u)))
+/** La part faite d'une fenêtre, en cosinus comme dans le script Blender. */
+export const rampe = (u: number, [a, b]: Fenetre) => lisse((u - a) / (b - a))
+
+const COUCHETTES = new WeakMap<Plan, Couchette[]>()
+
+/**
+ * Les points de sieste : sur chaque banc qui a une assise (`ASSISES`), de
+ * chaque côté, à `bord` en deçà du bord ; l'appel est à `elan` devant, au sol.
+ * Gardés seulement si l'appel est sur la surface du banc, hors de l'eau, et
+ * libre — un pas nul de `step` ne l'en déloge pas.
+ */
+export function couchettes(plan: Plan): Couchette[] {
+  const deja = COUCHETTES.get(plan)
+  if (deja) return deja
+  const out: Couchette[] = []
+  MOBILIER.forEach((m, banc) => {
+    const assise = ASSISES[m.piece]
+    if (!assise) return
+    const level = plan.levels.find((l) => l.id === m.niveau)!
+    const elevation = m.surface === PARC ? 0 : level.elevation
+    for (const cote of [1, -1]) {
+      // L'avant du modèle regarde (sin θ, cos θ) ; `cote` choisit l'avant ou l'arrière.
+      const [nx, nz] = [Math.sin(m.lacet) * cote, Math.cos(m.lacet) * cote]
+      const d = assise.demiProfondeur - SIESTE.bord
+      const [x, z] = [m.x + nx * d, m.z + nz * d]
+      const [ax, az] = [x + nx * SIESTE.elan, z + nz * SIESTE.elan]
+      if (surfaceAt(plan, ax, az, elevation) !== m.surface) continue
+      if (m.surface === PARC && presDeLEau(ax, az, LOIN_DE_L_EAU)) continue
+      const pose: Walker = { level: m.niveau, surface: m.surface, x: ax, z: az, y: elevation, yaw: 0 }
+      const w = step(plan, pose, { forward: 0, strafe: 0, yaw: 0 }, 0)
+      if (w.surface !== m.surface || Math.hypot(w.x - ax, w.z - az) > 0.01) continue
+      out.push({ banc, surface: m.surface, x, z, y: m.y + assise.hauteur, appel: { x: ax, z: az, y: w.y }, cap: capVers({ x: ax, z: az }, x, z) })
+    }
+  })
+  COUCHETTES.set(plan, out)
+  return out
+}
+
+/** Le visiteur est-il trop près du banc pour qu'il y monte ? */
+const gene = (c: Couchette, visiteur?: Visiteur) =>
+  !!visiteur && visiteur.surface === c.surface &&
+  (Math.hypot(visiteur.x - c.x, visiteur.z - c.z) < SIESTE.gene || Math.hypot(visiteur.x - c.appel.x, visiteur.z - c.appel.z) < SIESTE.gene)
+
+/** Le lieu qui mène à une couchette : l'appel, face au banc. */
+export const lieuDeSieste = (c: Couchette): Lieu => ({ surface: c.surface, x: c.appel.x, z: c.appel.z, cap: c.cap, genre: 'banc', couchette: c })
+
+const DUREES: Record<Exclude<PhaseSieste, 'dort'>, number> = {
+  saut: SIESTE.saut.duree, enroule: SIESTE.enroule, reveil: SIESTE.reveil, descente: SIESTE.descente.duree,
+}
+const SUIVANTE: Record<PhaseSieste, PhaseSieste | null> = { saut: 'enroule', enroule: 'dort', dort: 'reveil', reveil: 'descente', descente: null }
+
+/**
+ * Où est le chat pendant la sieste : du point d'appel à l'assise pendant le
+ * saut (au fil du corps cuit), sur l'assise ensuite, et retour à l'appel à
+ * la descente. Le cap : vers le banc, puis dos au banc une fois redescendu.
+ */
+export function corpsEnSieste(s: Sieste, walker: Walker): Walker {
+  const c = s.couchette
+  const entre = (de: { x: number; z: number; y: number }, a: { x: number; z: number; y: number }, avance: number, monte: number) =>
+    ({ ...walker, x: de.x + (a.x - de.x) * avance, z: de.z + (a.z - de.z) * avance, y: de.y + (a.y - de.y) * monte })
+  const siege = { x: c.x, z: c.z, y: c.y }
+  if (s.phase === 'saut') {
+    const u = s.t / SIESTE.saut.duree
+    return { ...entre(c.appel, siege, rampe(u, SIESTE.saut.avance), rampe(u, SIESTE.saut.monte)), yaw: c.cap }
+  }
+  if (s.phase === 'descente') {
+    const u = s.t / SIESTE.descente.duree
+    // Le demi-tour d'abord, sur l'assise : le cap bascule quand il saute.
+    return { ...entre(siege, c.appel, rampe(u, SIESTE.descente.avance), rampe(u, SIESTE.descente.monte)), yaw: c.cap + (u < 0.42 ? 0 : Math.PI) }
+  }
+  return { ...walker, ...siege, yaw: c.cap }
+}
+
+/** Un pas de sieste : la phase avance ; au bout de la descente, il reprend sa promenade au point d'appel. */
+function siester(p: Promenade & { sieste: Sieste }, dt: number): Promenade {
+  let s: Sieste = { ...p.sieste, t: p.sieste.t + dt }
+  const duree = s.phase === 'dort' ? s.dort : DUREES[s.phase]
+  if (s.t >= duree) {
+    const suite = SUIVANTE[s.phase]
+    if (!suite) {
+      const c = s.couchette
+      const walker = { ...p.walker, x: c.appel.x, z: c.appel.z, y: c.appel.y, yaw: angle(c.cap + Math.PI) }
+      // Une pause d'une seconde, debout : le temps de reprendre le pas.
+      return { ...p, walker, sieste: undefined, points: [], pause: 1, duree: 1, bloque: 0, vitesse: 0 }
+    }
+    s = { ...s, phase: suite, t: s.t - duree }
+  }
+  return { ...p, sieste: s, walker: corpsEnSieste(s, p.walker), vitesse: 0 }
+}
+
+/**
+ * La sieste qui commence : au point d'appel, face au banc. `dort` tiré entre
+ * deux et six minutes.
+ */
+function commencerSieste(p: Promenade, c: Couchette): Promenade {
+  const [u, graine] = tirer(p.graine)
+  const sieste: Sieste = { couchette: c, phase: 'saut', t: 0, dort: SIESTE.dort[0] + u * (SIESTE.dort[1] - SIESTE.dort[0]) }
+  return { ...p, graine, sieste, points: [], pause: 0, duree: 0, bloque: 0, vitesse: 0, walker: corpsEnSieste(sieste, p.walker) }
+}
+
+/**
+ * En développement : l'envoyer dormir sur une couchette — il y marche, saute et
+ * s'enroule —, ou, `phase` donnée, l'y poser tout de suite dans cette phase.
+ */
+export function siesteForcee(plan: Plan, p: Promenade, c: Couchette, phase?: PhaseSieste, t = 0): Promenade {
+  if (phase) {
+    const sieste: Sieste = { couchette: c, phase, t, dort: 1e9 }
+    const walker = step(plan, { level: p.walker.level, surface: c.surface, x: c.appel.x, z: c.appel.z, y: c.appel.y, yaw: c.cap }, { forward: 0, strafe: 0, yaw: c.cap }, 0)
+    return { ...p, walker: corpsEnSieste(sieste, walker), points: [], lieu: lieuDeSieste(c), pause: 0, duree: 0, bloque: 0, vitesse: 0, sieste }
+  }
+  const lieu = lieuDeSieste(c)
+  const points = itineraire(plan, p.walker, lieu)
+  return points ? { ...p, sieste: undefined, lieu, points, pause: 0, duree: 0, bloque: 0 } : p
+}
+
 /** Les passages de la visite, plus l'entrée : du hall au parc, au-delà du portique. */
 function graphe(plan: Plan) {
   const g = passages(plan)
@@ -222,16 +398,30 @@ export function itineraire(plan: Plan, de: Pick<Walker, 'surface' | 'x' | 'z'>, 
  * Le prochain lieu : plutôt proche (en mètres de chemin), jamais celui d'où il part ;
  * une fois sur trois, là où se tient le visiteur — un chat vient voir.
  */
-function choisir(plan: Plan, lieux: readonly Lieu[], p: Pick<Promenade, 'walker' | 'lieu' | 'graine'>, visiteur?: string): { lieu: Lieu; points: [number, number][]; graine: number } | null {
+function choisir(plan: Plan, lieux: readonly Lieu[], p: Pick<Promenade, 'walker' | 'lieu' | 'graine'>, visiteur?: Visiteur): { lieu: Lieu; points: [number, number][]; graine: number } | null {
   let graine = p.graine
   let u: number
   ;[u, graine] = tirer(graine)
   const longueur = (pts: [number, number][]) => pts.reduce((s, q, i) => s + Math.hypot(q[0] - (i ? pts[i - 1][0] : p.walker.x), q[1] - (i ? pts[i - 1][1] : p.walker.z)), 0)
+  // De temps en temps, un banc proche et libre : il va y dormir.
+  const [sieste, apres] = tirer(graine)
+  graine = apres
+  if (sieste < SIESTE.chance) {
+    const bancs = couchettes(plan)
+      .filter((c) => !gene(c, visiteur) && c.banc !== p.lieu.couchette?.banc)
+      .map((c) => ({ l: lieuDeSieste(c), points: itineraire(plan, p.walker, lieuDeSieste(c)) }))
+      .filter((c): c is { l: Lieu; points: [number, number][] } => c.points !== null && longueur(c.points) < SIESTE.portee)
+    if (bancs.length) {
+      ;[u, graine] = tirer(graine)
+      const b = bancs[Math.floor(u * bancs.length)]
+      return { lieu: b.l, points: b.points, graine }
+    }
+  }
   const candidats = lieux
     .filter((l) => l !== p.lieu)
     .map((l) => ({ l, points: itineraire(plan, p.walker, l) }))
     .filter((c): c is { l: Lieu; points: [number, number][] } => c.points !== null)
-  const pres = visiteur ? candidats.filter((c) => c.l.surface === visiteur) : []
+  const pres = visiteur ? candidats.filter((c) => c.l.surface === visiteur.surface) : []
   const pool = pres.length && u < 1 / 3 ? pres : candidats
   if (!pool.length) return null
   // Plutôt près : à 6 m, huit fois moins probable qu’à côté ; à 30 m, deux cents fois.
@@ -266,6 +456,7 @@ export function promenadeInitiale(plan: Plan, lieux: readonly Lieu[], graine: nu
 
 /** Ce que fait le corps : l'arrêt long passe par l'assise, et s'en relève avant de repartir. */
 export function posture(p: Promenade): Posture {
+  if (p.sieste) return p.sieste.phase
   if (p.points.length) return 'marche'
   const ecoule = p.duree - p.pause
   return p.duree >= PAUSE_ASSISE && ecoule >= SE_POSER && p.pause >= SE_LEVER ? 'assis' : 'debout'
@@ -273,8 +464,12 @@ export function posture(p: Promenade): Posture {
 
 const angle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
 
-/** Un pas de promenade, de durée `dt`. `visiteur` : la surface où il se tient, s'il est là. */
-export function avancerPromenade(plan: Plan, lieux: readonly Lieu[], p: Promenade, dt: number, visiteur?: string): Promenade {
+/** Où se tient le visiteur, s'il est là. */
+export type Visiteur = Pick<Walker, 'surface' | 'x' | 'z'>
+
+/** Un pas de promenade, de durée `dt`. */
+export function avancerPromenade(plan: Plan, lieux: readonly Lieu[], p: Promenade, dt: number, visiteur?: Visiteur): Promenade {
+  if (p.sieste) return siester(p as Promenade & { sieste: Sieste }, dt)
   if (!p.points.length) {
     const pause = p.pause - dt
     if (pause > 0) return { ...p, pause, vitesse: 0 }
@@ -295,6 +490,11 @@ export function avancerPromenade(plan: Plan, lieux: readonly Lieu[], p: Promenad
   let points = p.points
   if (Math.hypot(cx - n.x, cz - n.z) < ATTEINT) points = points.slice(1)
   let { pause, duree, graine } = p
+  if (!points.length && bloque <= PATIENCE && p.lieu.couchette) {
+    // Arrivé à l'appel, face au banc : il saute — sauf si le visiteur est là.
+    const c = p.lieu.couchette
+    if (!gene(c, visiteur) && Math.hypot(n.x - c.appel.x, n.z - c.appel.z) < ATTEINT) return commencerSieste({ ...p, walker: n, points }, c)
+  }
   if (!points.length || bloque > PATIENCE) {
     // Arrivé — ou coincé : il s'arrête là, et repartira ailleurs.
     let u: number
