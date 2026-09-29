@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-29T14:21:47.364Z",
+  "generatedAt": "2026-09-29T14:52:11.576Z",
   "ateliers": [
     {
       "key": "phmatray/TaLibStandard",
@@ -8,8 +8,8 @@
       "couches": [
         {
           "id": "socle",
-          "nom": "Socle",
-          "role": "Ne dépend d’aucun autre projet",
+          "nom": "Common",
+          "role": "Socle · ne dépend d’aucun autre projet",
           "modules": [
             {
               "id": "TechnicalAnalysis.Common",
@@ -22,8 +22,8 @@
         },
         {
           "id": "extensions",
-          "nom": "Extensions",
-          "role": "Bâties sur le socle",
+          "nom": "Functions · Candles",
+          "role": "Extensions · bâties sur le socle",
           "modules": [
             {
               "id": "TechnicalAnalysis.Functions",
@@ -43,8 +43,8 @@
         },
         {
           "id": "assemblages",
-          "nom": "Assemblages",
-          "role": "Réunissent les couches du dessous",
+          "nom": "TechnicalAnalysis",
+          "role": "Assemblages · réunissent le dessous",
           "modules": [
             {
               "id": "TechnicalAnalysis",
@@ -57,8 +57,8 @@
         },
         {
           "id": "demonstrations",
-          "nom": "Démonstrations",
-          "role": "La bibliothèque à l’œuvre",
+          "nom": "Démos MudBlazor · console · web",
+          "role": "Démonstrations · la bibliothèque à l’œuvre",
           "modules": [
             {
               "id": "Demo.BlazorWasm",
@@ -92,7 +92,7 @@
         },
         {
           "id": "tests",
-          "nom": "Tests",
+          "nom": "Tests unitaires · Benchmarks",
           "role": "Vérifient et mesurent le reste",
           "modules": [
             {
@@ -199,8 +199,8 @@
       "couches": [
         {
           "id": "socle",
-          "nom": "Socle",
-          "role": "Ne dépend d’aucun autre projet",
+          "nom": "FormCraft",
+          "role": "Socle · ne dépend d’aucun autre projet",
           "modules": [
             {
               "id": "FormCraft",
@@ -213,8 +213,8 @@
         },
         {
           "id": "extensions",
-          "nom": "Extensions",
-          "role": "Bâties sur le socle",
+          "nom": "MudBlazor · Fluent UI",
+          "role": "Extensions · bâties sur le socle",
           "modules": [
             {
               "id": "FormCraft.ForMudBlazor",
@@ -234,8 +234,8 @@
         },
         {
           "id": "demonstrations",
-          "nom": "Démonstrations",
-          "role": "La bibliothèque à l’œuvre",
+          "nom": "Démos MudBlazor · Fluent UI",
+          "role": "Démonstrations · la bibliothèque à l’œuvre",
           "modules": [
             {
               "id": "FormCraft.DemoBlazorApp",
@@ -255,7 +255,7 @@
         },
         {
           "id": "tests",
-          "nom": "Tests",
+          "nom": "Tests unitaires",
           "role": "Vérifient et mesurent le reste",
           "modules": [
             {
@@ -366,8 +366,8 @@
       "couches": [
         {
           "id": "socle",
-          "nom": "Socle",
-          "role": "Ne dépend d’aucun autre projet",
+          "nom": "Core",
+          "role": "Socle · ne dépend d’aucun autre projet",
           "modules": [
             {
               "id": "Atypical.VirtualFileSystem.Core",
@@ -380,8 +380,8 @@
         },
         {
           "id": "extensions",
-          "nom": "Extensions",
-          "role": "Bâties sur le socle",
+          "nom": "Providers.Abstractions",
+          "role": "Extensions · bâties sur le socle",
           "modules": [
             {
               "id": "Atypical.VirtualFileSystem.Providers.Abstractions",
@@ -394,8 +394,8 @@
         },
         {
           "id": "assemblages",
-          "nom": "Assemblages",
-          "role": "Réunissent les couches du dessous",
+          "nom": "GitHub · Ftp",
+          "role": "Assemblages · réunissent le dessous",
           "modules": [
             {
               "id": "Atypical.VirtualFileSystem.GitHub",
@@ -415,8 +415,8 @@
         },
         {
           "id": "demonstrations",
-          "nom": "Démonstrations",
-          "role": "La bibliothèque à l’œuvre",
+          "nom": "Démos Blazor · Spectre.Console",
+          "role": "Démonstrations · la bibliothèque à l’œuvre",
           "modules": [
             {
               "id": "Atypical.VirtualFileSystem.DemoBlazorApp",
@@ -436,7 +436,7 @@
         },
         {
           "id": "tests",
-          "nom": "Tests",
+          "nom": "Tests unitaires · Benchmarks",
           "role": "Vérifient et mesurent le reste",
           "modules": [
             {

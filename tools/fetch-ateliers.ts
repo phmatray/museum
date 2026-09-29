@@ -1,7 +1,8 @@
 /**
  * Relève l'architecture des projets phares (les vitrines de la salle
  * d'honneur, `choisirVitrines`) dans leurs dépôts : l'arbre, puis chaque
- * `.csproj`. Écrit `public/data/ateliers.json`, VERSIONNÉ : si l'API tombe, le
+ * `.csproj` — ou, pour un dépôt JavaScript, le `package.json` de chaque paquet
+ * de ses espaces de travail. Écrit `public/data/ateliers.json`, VERSIONNÉ : si l'API tombe, le
  * fichier de la veille reste, et le musée avec.
  *
  * Après `npm run fetch` (il lui faut le catalogue), avant `build`.
@@ -12,7 +13,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { deriverAtelier, type Atelier, type FichierArbre } from '../src/domain/atelier.ts'
+import { deriverAtelier, manifestesNpm, type Atelier, type FichierArbre } from '../src/domain/atelier.ts'
 import type { Catalogue } from '../src/domain/types.ts'
 import { choisirVitrines } from '../src/plan/vitrines.ts'
 
@@ -39,11 +40,16 @@ export async function releverAtelier(key: string, api: (chemin: string, brut?: b
   const commit = (JSON.parse(await api(`repos/${key}/commits/HEAD`)) as { sha: string }).sha
   const arbre = JSON.parse(await api(`repos/${key}/git/trees/${commit}?recursive=1`)) as { tree: FichierArbre[]; truncated: boolean }
   if (arbre.truncated) console.warn(`  ! ${key} : arbre tronqué par l'API, les tailles sont des minima`)
-  const csprojs = new Map<string, string>()
-  for (const f of arbre.tree) {
-    if (f.type === 'blob' && f.path.endsWith('.csproj')) csprojs.set(f.path, await api(`repos/${key}/contents/${f.path}?ref=${commit}`, true))
+  const lire = (chemin: string) => api(`repos/${key}/contents/${chemin}?ref=${commit}`, true)
+  const existe = (chemin: string) => arbre.tree.some((f) => f.type === 'blob' && f.path === chemin)
+  let chemins = arbre.tree.filter((f) => f.type === 'blob' && f.path.endsWith('.csproj')).map((f) => f.path)
+  // Pas de .NET : les paquets JavaScript, si le dépôt en a.
+  if (chemins.length === 0 && existe('package.json')) {
+    chemins = manifestesNpm(await lire('package.json'), existe('pnpm-workspace.yaml') ? await lire('pnpm-workspace.yaml') : null, arbre.tree)
   }
-  return deriverAtelier(key, commit, arbre.tree, csprojs)
+  const manifestes = new Map<string, string>()
+  for (const c of chemins) manifestes.set(c, await lire(c))
+  return deriverAtelier(key, commit, arbre.tree, manifestes)
 }
 
 async function main() {
@@ -59,7 +65,7 @@ async function main() {
   const ateliers: Atelier[] = []
   for (const a of choisirVitrines(catalogue.artworks, catalogue.owners)) {
     const atelier = await releverAtelier(a.key, api)
-    if (atelier === null) console.warn(`  ! ${a.key} : pas de .csproj de bibliothèque, pas d'atelier`)
+    if (atelier === null) console.warn(`  ! ${a.key} : ni .csproj ni paquet npm de bibliothèque, pas d'atelier`)
     else {
       ateliers.push(atelier)
       console.log(`${a.key} : ${atelier.couches.length} couches, ${atelier.couches.flatMap((c) => c.modules).length} modules, ${atelier.liens.length} liens`)

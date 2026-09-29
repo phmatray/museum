@@ -19,7 +19,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { Atelier } from '../domain/atelier'
 import { useVitrines } from '../hooks/useCatalogue'
 import { useGameStore } from '../stores/gameStore'
-import { ATELIERS, disposerCoupe, PLAQUE, RECUL_PLAQUES, SOCLE_ATELIER, type Coupe } from '../plan/ateliers'
+import { ATELIERS, disposerCoupe, MUR_ATELIER, PLAQUE, RECUL_PLAQUES, SOCLE_ATELIER, type Coupe } from '../plan/ateliers'
 import { CARTEL_FONT, TITRE_FONT } from './cartelStyle'
 
 /** La teinte de chaque couche, du socle aux tests : cuivre, or, paille, puis un bleu-vert et un vert sauge. */
@@ -99,7 +99,12 @@ export function AteliersLayer() {
   const lots = useMemo(() => {
     const monde = (e: { x: number; z: number }, b: Boite): Boite => ({ ...b, p: [e.x + b.p[0], b.p[1], e.z + b.p[2]] })
     const bois = ATELIERS.map((a) => ({ p: [a.x, SOCLE_ATELIER.hauteur / 2, a.z], s: [SOCLE_ATELIER.largeur, SOCLE_ATELIER.hauteur, SOCLE_ATELIER.profondeur] }) as Boite)
-    const cuivre = exposes.flatMap((e) => laiton(e.coupe).map((b) => monde(e, b)))
+    const m = MUR_ATELIER
+    const cuivre = [
+      ...exposes.flatMap((e) => laiton(e.coupe).map((b) => monde(e, b))),
+      // La lisse de laiton qui borde le haut du mur d'atelier.
+      { p: [(m.x0 + m.x1) / 2, m.haut + 0.02, m.z + 0.012], s: [m.x1 - m.x0, 0.04, 0.024] } as Boite,
+    ]
     const verre = exposes.flatMap((e) =>
       e.coupe.plaques.map((pl) => monde(e, { p: [0, pl.y, RECUL_PLAQUES], s: [PLAQUE.largeur, PLAQUE.epaisseur, PLAQUE.profondeur] })),
     )
@@ -130,6 +135,7 @@ export function AteliersLayer() {
 
   return (
     <group name="ateliers">
+      <MurAtelier />
       <Lot boites={lots.bois} materiau={materiaux.bois} />
       <Lot boites={lots.cuivre} materiau={materiaux.laiton} />
       <Lot boites={lots.blocs} materiau={materiaux.blocs} />
@@ -141,6 +147,46 @@ export function AteliersLayer() {
         </Suspense>
       ))}
     </group>
+  )
+}
+
+/** Le carreau d'épure, 50 cm de côté : un trait tous les 10 cm, un peu plus appuyé au bord du carreau. */
+function carreauDEpure(): THREE.CanvasTexture | null {
+  const n = 256
+  const canvas = document.createElement('canvas')
+  canvas.width = canvas.height = n
+  const g = canvas.getContext('2d')
+  if (g === null) return null // jsdom
+  g.fillStyle = '#2d3843'
+  g.fillRect(0, 0, n, n)
+  for (let i = 0; i < 5; i++) {
+    const t = (i * n) / 5
+    g.fillStyle = i === 0 ? 'rgba(214, 226, 232, 0.2)' : 'rgba(214, 226, 232, 0.08)'
+    const e = i === 0 ? 2 : 1
+    g.fillRect(t, 0, e, n)
+    g.fillRect(0, t, n, e)
+  }
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.colorSpace = THREE.SRGBColorSpace
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping
+  tex.anisotropy = 8
+  const m = MUR_ATELIER
+  tex.repeat.set((m.x1 - m.x0) / 0.5, (m.haut - m.bas) / 0.5)
+  return tex
+}
+
+/** Le mur d'atelier (`MUR_ATELIER`) : un lambris mat d'un bleu d'ardoise, quadrillé comme une table à dessin, derrière le verre. */
+function MurAtelier() {
+  const m = MUR_ATELIER
+  const materiau = useMemo(() => new THREE.MeshStandardMaterial({ color: '#ffffff', map: carreauDEpure(), roughness: 0.92 }), [])
+  useEffect(() => () => {
+    materiau.map?.dispose()
+    materiau.dispose()
+  }, [materiau])
+  return (
+    <mesh position={[(m.x0 + m.x1) / 2, (m.bas + m.haut) / 2, m.z]} material={materiau}>
+      <planeGeometry args={[m.x1 - m.x0, m.haut - m.bas]} />
+    </mesh>
   )
 }
 
@@ -283,7 +329,7 @@ function Legendes({ expose: { x, z, atelier, coupe } }: { expose: Expose }) {
           {`L’atelier en coupe — l’architecture de ${projet}`}
         </Text>
         <Text font={CARTEL_FONT} position={[-0.43, 0.012, 0.004]} fontSize={0.0165} lineHeight={1.3} maxWidth={0.86} color={ENCRE} anchorX="left" anchorY="top">
-          {`Chaque plaque est une couche, chaque bloc un projet .csproj à la taille de son code, chaque fil une référence de projet : la lumière monte de la dépendance vers qui s’en sert. Relevé dans le dépôt ${atelier.key}, commit ${atelier.commit.slice(0, 7)}.`}
+          {`Chaque plaque est une couche, chaque bloc un projet du dépôt à la taille de son code, chaque fil une dépendance entre eux : la lumière monte de la dépendance vers qui s’en sert. Relevé dans le dépôt ${atelier.key}, commit ${atelier.commit.slice(0, 7)}.`}
         </Text>
       </group>
     </group>

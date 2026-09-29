@@ -77,6 +77,14 @@ describe('hangPlan', () => {
     for (const k of reservees) expect(accrochees).not.toContain(k)
   })
 
+  it('laisse nu le mur derrière les ateliers en coupe, sans perdre une toile', () => {
+    const ateliers = accrochage.rooms.find((r) => r.id === 'r-n')!
+    expect(ateliers.placements.length).toBeGreaterThan(0)
+    expect(ateliers.placements.filter((p) => p.normal[1] === 1 && p.z < 1)).toEqual([])
+    const toiles = accrochage.rooms.reduce((n, r) => n + r.placements.length, 0)
+    expect(toiles).toBe(ARTWORKS.length - reservees.size)
+  })
+
   it('accroche chaque œuvre attribuée, et rien d’autre', () => {
     for (const r of accrochage.rooms) {
       const attendues = salles.get(r.id)!.artworks.map((a) => a.key).sort()
