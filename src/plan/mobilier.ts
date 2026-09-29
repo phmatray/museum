@@ -13,6 +13,11 @@
  * - au jardin, un banc de granit brut au bord de l'étang et trois bancs de
  *   cèdre tournés vers l'eau ou vers le musée.
  *
+ * Et ce qui fait un vrai musée, modelé par Meshy (`tools/blender/build-accessoires.py`) :
+ * un cordon de velours devant les vitrines, la chaise du gardien, la table de
+ * livres près de l'accueil, des extincteurs au mur ; dehors, des vélos à leurs
+ * arceaux, des caisses de Versailles, le panneau des horaires et une fontaine.
+ *
  * ── Hors des passages ──
  *
  * La visite (`tour.ts`) et Bavette (`promenade.ts`) marchent en ligne droite
@@ -29,7 +34,11 @@ import { cimaisesDe, emprise as empriseCimaise } from './cimaises.ts'
 import { hauteurDuParc } from './relief.ts'
 import type { Rect } from './types.ts'
 
-export type PieceMobilier = 'Banquette' | 'BancNef' | 'Accueil' | 'BancBatllo' | 'BancPierre' | 'BancJardin'
+export type PieceMobilier =
+  | 'Banquette' | 'BancNef' | 'Accueil' | 'BancBatllo' | 'BancPierre' | 'BancJardin'
+  | 'ChaiseGardien' | 'Presentoir' | 'Extincteur' | 'PanneauHoraires' | 'Fontaine' | 'Versailles'
+  // Les ensembles : une seule emprise pour la marche, plusieurs modèles posés (`garniture`).
+  | 'Cordon' | 'Velos'
 
 /** L'emprise au sol de chaque modèle, à plat : `largeur` selon son x, `profondeur` selon son z (son avant). */
 export const DIMENSIONS: Record<PieceMobilier, { largeur: number; profondeur: number }> = {
@@ -39,6 +48,16 @@ export const DIMENSIONS: Record<PieceMobilier, { largeur: number; profondeur: nu
   BancBatllo: { largeur: 1.4, profondeur: 0.64 },
   BancPierre: { largeur: 1.66, profondeur: 0.56 },
   BancJardin: { largeur: 1.8, profondeur: 0.5 },
+  ChaiseGardien: { largeur: 0.43, profondeur: 0.5 },
+  Presentoir: { largeur: 1.4, profondeur: 0.86 },
+  Extincteur: { largeur: 0.24, profondeur: 0.14 },
+  PanneauHoraires: { largeur: 1.6, profondeur: 0.24 },
+  Fontaine: { largeur: 3, profondeur: 3 },
+  Versailles: { largeur: 0.83, profondeur: 0.83 },
+  // Sept potelets de 32 cm de pied, à 2,20 m d'axe en axe.
+  Cordon: { largeur: 6 * 2.2 + 0.32, profondeur: 0.32 },
+  // Quatre arceaux à 1,90 m d'axe en axe, un vélo de 1,78 m contre chacun (sauf un).
+  Velos: { largeur: 3 * 1.9 + 1.78, profondeur: 0.9 },
 }
 
 export interface Meuble {
@@ -52,6 +71,8 @@ export interface Meuble {
   z: number
   /** Lacet, en radians : le modèle regarde +Z, une rotation θ l'envoie vers (sin θ, cos θ). */
   lacet: number
+  /** Au-dessus du sol : un extincteur est accroché au mur, pas posé par terre. */
+  accroche?: number
 }
 
 const RDC = 0
@@ -64,6 +85,11 @@ const dans = (piece: PieceMobilier, surface: string, x: number, z: number, lacet
   const n = niveau === 'parc' ? RDC : Number(niveau)
   return { piece, surface, niveau: n, x, z, lacet, y: surface === PARC ? hauteurDuParc(x, z) : n === 1 ? ETAGE : RDC }
 }
+/** Le pied à 45 cm du sol, la poignée vers 1 m : à portée de main, sous les yeux sans les attirer. */
+const auMur = (surface: string, x: number, z: number, lacet: number): Meuble => ({ ...dans('Extincteur', surface, x, z, lacet), accroche: 0.45 })
+
+/** La face d'un mur du hall, peau de pierre comprise (`parement.ts`) ; celle de la salle d'honneur est peinte. */
+const PIERRE = 0.15 + 0.03
 
 /**
  * Les banquettes des ailes : la même place aux deux niveaux, puisque les portes
@@ -110,7 +136,53 @@ export const MOBILIER: Meuble[] = [
   dans('BancJardin', PARC, 56.6, 22.6, EST),
   dans('BancJardin', PARC, -8.6, 22.6, -EST),
   dans('BancJardin', PARC, 26.6, -8.6, NORD),
+
+  // ── Ce qui fait un vrai musée ──
+  // Un cordon de velours devant le mur des vitrines, à 70 cm du mur : on voit la
+  // toile de près sans la toucher, et la borne reste devant, du bon côté.
+  dans('Cordon', '1:honneur', 24, 0.7, SUD),
+  // La chaise du gardien, contre le mur est de la nef, entre les deux portes : il voit tout le hall.
+  dans('ChaiseGardien', '0:hall', 32 - PIERRE - 0.25, 29.5, -EST),
+  // La table de livres, contre le mur sud à droite en entrant, à côté de l'accueil : la boutique.
+  dans('Presentoir', '0:hall', 27.5, 40 - PIERRE - 0.45, NORD),
+  // Les extincteurs : près de l'entrée, au pied des volées, et dans la salle d'honneur.
+  auMur('0:hall', 20.2, 40 - PIERRE - 0.07, NORD),
+  auMur('0:hall', 32 - PIERRE - 0.07, 21.4, -EST),
+  auMur('1:honneur', 32 - 0.15 - 0.07, 9.6, -EST),
+  // Dehors, sur le parvis : les vélos le long de l'aile est, à l'écart de l'axe…
+  dans('Velos', PARC, 40, 40.45 + 0.9, SUD),
+  // … deux caisses de Versailles de part et d'autre de l'entrée, deux aux angles du portique…
+  ...[21.2, 26.8, 15.3, 32.7].map((x) => dans('Versailles', PARC, x, 42.25, SUD)),
+  // … le panneau des horaires au bord de l'axe, tourné vers qui arrive du jardin…
+  dans('PanneauHoraires', PARC, 20.9, 46.2, 0.35),
+  // … et la fontaine sur la pelouse ouest, au-delà de la ceinture : l'étang est à l'est.
+  dans('Fontaine', PARC, 17.5, 56, SUD),
 ]
+
+/** Un modèle d'un ensemble, en coordonnées monde. */
+export interface Garniture {
+  piece: 'Potelet' | 'Velo' | 'ArceauVelo'
+  x: number
+  z: number
+  lacet: number
+}
+
+/**
+ * Les modèles d'un ensemble, le long de son grand axe (son x local) : les
+ * potelets du cordon ; les arceaux, et un vélo contre chacun sauf le troisième.
+ */
+export function garniture(m: Meuble): Garniture[] {
+  const [c, s] = [Math.cos(m.lacet), Math.sin(m.lacet)]
+  // Le x local tourné de θ autour de y : (cos θ, −sin θ).
+  const a = (u: number, v: number, piece: Garniture['piece'], lacet = m.lacet): Garniture => ({ piece, x: m.x + u * c + v * s, z: m.z - u * s + v * c, lacet })
+  if (m.piece === 'Cordon') return Array.from({ length: 7 }, (_, i) => a((i - 3) * 2.2, 0, 'Potelet'))
+  if (m.piece === 'Velos')
+    return [-1.5, -0.5, 0.5, 1.5].flatMap((k, i) => [
+      a(k * 1.9, -0.25, 'ArceauVelo'),
+      ...(i === 2 ? [] : [a(k * 1.9, 0.08, 'Velo', m.lacet + (i % 2) * Math.PI)]),
+    ])
+  return []
+}
 
 /** L'emprise au sol d'un meuble posé : son rectangle tourné, aligné sur les axes. */
 export function emprise(m: Meuble): Rect {

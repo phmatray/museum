@@ -212,6 +212,22 @@ const ARCHITECTURE = [
     licence: 'œuvre originale du dépôt',
     usage: "banquettes capitonnées des galeries, bancs de la nef, banque d'accueil, bancs Batlló de la salle d'honneur, bancs de granit et de cèdre du jardin",
   },
+  {
+    id: 'accessoires',
+    source:
+      'Meshy (généré par IA, texte → 3D, texture PBR), mis à l’échelle et allégé par `tools/blender/build-accessoires.py` ; prompts : ' +
+      '« a single museum stanchion post, polished brass, round weighted base, 95 cm tall » ; ' +
+      '« a classic museum gallery attendant’s chair, dark stained oak frame, upholstered seat in deep burgundy fabric » ; ' +
+      'image Nano Banana puis image → 3D : « a museum bookshop display table, walnut wood with turned legs and a lower shelf, stacks of colourful art books and exhibition catalogues » ; ' +
+      '« a red fire extinguisher, 6 kg, black handle and hose, pressure gauge » ; ' +
+      '« a freestanding museum information sign, blank dark green enamel panel between two black cast iron posts » ; ' +
+      '« a classic European city bicycle, dark green frame, mudguards, rear rack » ; ' +
+      '« a classical French garden fountain, round low limestone basin, central pedestal holding an upper bowl » ; ' +
+      'image Nano Banana puis image → 3D : « a square Versailles orangery planter box, pale grey painted oak panels, cast iron corner posts with ball finials, one clipped boxwood topiary ball on a short trunk ». ' +
+      'L’arceau à vélos est modelé par le script',
+    licence: 'généré pour le dépôt (conditions de Meshy)',
+    usage: "cordon de velours des vitrines, chaise du gardien, table de livres, extincteurs, vélos et arceaux, panneau des horaires, fontaine, caisses de Versailles",
+  },
 ] as const
 
 interface Telechargement {
