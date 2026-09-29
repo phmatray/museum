@@ -395,10 +395,14 @@ def volee_laterale(g, v, blanc, rouge):
     za, zb = z, z + d
     # La paillasse : une dalle inclinée sous les marches. Dessous crème — c'est
     # le plafond de la niche de la sculpture, qu'il faut garder clair.
+    # Au départ, la paillasse naît de la dalle du palier : son dessous part de la
+    # sous-face du palier, sans dépasser dessous (elle pendait de 6 cm sous la
+    # corniche, sa baguette finissant dans le vide).
     for_ = [(za, rampe(v, za)), (zb, rampe(v, zb))]
+    sous = [PALIER - DALLE, for_[1][1] - PAILLASSE]
     anneaux = []
     for xx in (xa, xb):
-        anneaux.append([pt(xx, za, for_[0][1] - PAILLASSE), pt(xx, zb, for_[1][1] - PAILLASSE), pt(xx, zb, for_[1][1]), pt(xx, za, for_[0][1])])
+        anneaux.append([pt(xx, za, sous[0]), pt(xx, zb, sous[1]), pt(xx, zb, for_[1][1]), pt(xx, za, for_[0][1])])
     g.balayage(anneaux, [blanc, rouge, rouge, rouge], boucle=True)
     # Les flancs (faces d'about) sont les limons : on les repeint en griotte.
     g.m[-2] = rouge
@@ -406,7 +410,7 @@ def volee_laterale(g, v, blanc, rouge):
     xl = xb if s > 0 else xa
     zt = zb - 0.12  # le tore s'arrête avant le balcon, sans dépasser son sol
     moulure(g, (xl, za, rampe(v, za)), (xl, zt, rampe(v, zt)), (s, 0.0), TORE, blanc)
-    moulure(g, (xl, za, rampe(v, za) - PAILLASSE), (xl, zb, rampe(v, zb) - PAILLASSE), (s, 0.0), TORE, blanc)
+    moulure(g, (xl, za, sous[0]), (xl, zb, sous[1]), (s, 0.0), TORE, blanc)
     for zr, sd, dessus, h, giron in marches(v):
         marche_droite(g, x0, x1, zr, sd, profil_marche(dessus, dessus - 2 * h, giron), blanc)
 

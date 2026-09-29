@@ -29,7 +29,22 @@ function hallDe(plan: Plan): Rect {
 
 /** Le parement des murs et linteaux qui bordent le hall, sur un niveau. */
 export function parementDuHall(plan: Plan, levelId: number): Box[] {
-  return peauInterieure(plan, levelId, hallDe(plan), PEAU)
+  const peau = peauInterieure(plan, levelId, hallDe(plan), PEAU)
+  // Les murs d'un niveau s'arrêtent sous la dalle du suivant : sur le hall, là
+  // où aucun balcon ne vient s'y appuyer (au-dessus des volées latérales, sous
+  // la baie de la salle d'honneur), la tranche de cette dalle restait à nu, en
+  // retrait du parement — une bande de parquet de 30 cm en travers de la
+  // pierre. La peau monte d'autant, en boîtes à part : celles d'en dessous
+  // gardent leur clé, donc leur lumière cuite.
+  const level = plan.levels.find((l) => l.id === levelId)
+  const dessus = plan.levels.some((l) => level !== undefined && l.elevation > level.elevation)
+  if (level === undefined || !dessus) return peau
+  const haut = level.elevation + plan.storey - plan.slab
+  const tranches = peau
+    .filter((b) => Math.abs(b.y + b.h / 2 - haut) < EPS)
+    // Arasée 1 mm sous le plancher : le long des balcons, son dessus serait dans le plan de leur dalle.
+    .map((b) => ({ ...b, y: haut + (plan.slab - 0.001) / 2, h: plan.slab - 0.001 }))
+  return [...peau, ...tranches]
 }
 
 /**

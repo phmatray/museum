@@ -22,10 +22,12 @@ const CHUTE = 0.08
 /**
  * Le marteau et la cloche, `t` secondes après le début d'un coup : le marteau
  * se lève (angle négatif), retombe, frappe à `LEVEE + CHUTE` ; la cloche vibre
- * ensuite et s'amortit. Hors d'un coup, tout est au repos.
+ * ensuite et s'amortit. Hors d'un coup, tout est au repos — y compris avant
+ * le tout premier (`t` infini) : `0 × sin(∞)` vaudrait NaN, et une rotation NaN
+ * efface la cloche de l'écran.
  */
 export function coupDeCloche(t: number): { marteau: number; cloche: number } {
-  if (t < 0) return { marteau: 0, cloche: 0 }
+  if (t < 0 || !Number.isFinite(t)) return { marteau: 0, cloche: 0 }
   if (t < LEVEE) return { marteau: -0.7 * Math.sin((t / LEVEE) * (Math.PI / 2)), cloche: 0 }
   if (t < LEVEE + CHUTE) return { marteau: -0.7 * Math.cos(((t - LEVEE) / CHUTE) * (Math.PI / 2)), cloche: 0 }
   const s = t - LEVEE - CHUTE
