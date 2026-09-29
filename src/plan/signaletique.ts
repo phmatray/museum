@@ -18,8 +18,8 @@ export interface Sortie {
   lacet: number
 }
 
-/** 40 × 15 cm sur 6 cm, posé sur la peau du mur : la pierre du hall (3 cm), la peinture des galeries. */
-export const BLOC_SORTIE = { largeur: 0.4, hauteur: 0.15, epaisseur: 0.06 }
+/** 36 × 14 cm sur 6 cm, un luminaire de sortie ordinaire, posé sur la peau du mur : la pierre du hall (3 cm), la peinture des galeries. */
+export const BLOC_SORTIE = { largeur: 0.36, hauteur: 0.14, epaisseur: 0.06 }
 /** Au-dessus du chambranle (architrave et frise) d'une porte, au-dessus des portes vitrées de l'entrée. */
 const AU_DESSUS_DES_PORTES = LINTEAU + 0.62
 const AU_DESSUS_DE_L_ENTREE = 3.25
