@@ -11,7 +11,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
 import type { Parc, PlantPlacement, EspeceParc } from '../plan/park'
-import { hauteurDuParc, masqueDuRelief } from '../plan/relief'
+import { COTE_DALLAGE, hauteurDuParc, masqueDuRelief } from '../plan/relief'
 import type { Rect } from '../plan/types'
 import { REGLAGE_MATIERE, repetitionMetrique, useCartes, useMatiere } from './materials'
 import { creerBrique, creerPierre } from './pierre'
@@ -28,8 +28,6 @@ import { INTEMPERIES, intemperer } from './intemperies'
 
 /** Le bord du terrain descend d'autant : du bout du monde, pas une feuille de papier. */
 const EPAISSEUR_SOL = 0.4
-/** Assez pour ne pas scintiller avec la pelouse. */
-const RELIEF_ALLEE = 0.03
 /** Le pas de la grille de la pelouse, en mètres : les bornes du plan tombent sur ses nœuds. */
 const PAS_PELOUSE = 1
 /** Sous l'herbe, une pelouse plus sombre : on voit l'ombre entre les brins, pas le vert du dessus. */
@@ -61,7 +59,7 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   // l'axe de l'entrée avec lui ; le gravier est pour les allées du jardin.
   // Le dallage 1 cm au-dessus du gravier : à la même cote, les allées qui le
   // rejoignent se battaient avec lui (deux textures entremêlées, signalé par Philippe).
-  const parvis = useMemo(() => dalles(placements.dalles.map((r) => pave(r, 0, RELIEF_ALLEE + 0.01))), [placements])
+  const parvis = useMemo(() => dalles(placements.dalles.map((r) => pave(r, 0, COTE_DALLAGE))), [placements])
   const dallage = useMemo(() => creerPierre(), [])
   useEffect(() => () => {
     parvis.dispose()

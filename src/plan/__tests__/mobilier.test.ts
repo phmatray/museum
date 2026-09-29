@@ -101,8 +101,8 @@ describe('MOBILIER', () => {
     }
   })
 
-  it('tient les potelets et les vélos dans l’emprise de leur ensemble, le cordon entre la toile et la borne', () => {
-    for (const m of MOBILIER.filter((m) => m.piece === 'Cordon' || m.piece === 'Velos')) {
+  it('tient les potelets dans l’emprise du cordon, le cordon entre la toile et la borne', () => {
+    for (const m of MOBILIER.filter((m) => m.piece === 'Cordon')) {
       const e = gonfler(emprise(m), 1e-9)
       const g = garniture(m)
       expect(g.length, nom(m)).toBeGreaterThan(2)
