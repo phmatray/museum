@@ -117,13 +117,13 @@ export function oiseauxInitiaux(ps: Perchoir[], n = 16, alea: () => number = gen
 }
 
 /** Un perchoir libre, pas trop loin, et à plus de `loinDe` du visiteur s'il y en a un. */
-function choisir(ps: Perchoir[], o: Oiseau, pris: Set<number>, alea: () => number, loinDe: { x: number; z: number } | null): number {
+function choisir(ps: Perchoir[], o: Oiseau, pris: Set<number>, alea: () => number, loinDe: { x: number; z: number } | null, abrite: boolean): number {
   let meilleur = o.de
   for (let essai = 0; essai < 40; essai++) {
     const k = Math.floor(alea() * ps.length)
     const p = ps[k]
     const d = Math.hypot(p.x - o.x, p.z - o.z)
-    if (pris.has(k) || d < 3 || d > 30) continue
+    if (pris.has(k) || d < 3 || d > 30 || (abrite && p.sol)) continue
     // Jamais par-dessus le musée : on le contourne en changeant de destination.
     if ([0.25, 0.5, 0.75].some((t) => dansLeMusee(o.x + (p.x - o.x) * t, o.z + (p.z - o.z) * t))) continue
     if (loinDe && Math.hypot(p.x - loinDe.x, p.z - loinDe.z) < PORTEE_FUITE * 3) continue
@@ -141,9 +141,15 @@ export function enVol(a: Perchoir, b: Perchoir, u: number): [number, number, num
   return [a.x + (b.x - a.x) * s, a.y + (b.y - a.y) * s + arc, a.z + (b.z - a.z) * s]
 }
 
+/**
+ * `intemperie` (0 à 1, la pluie ou la neige qui tombe) : sous l'averse, les
+ * oiseaux s'abritent dans les arbres — plus aucun au sol — et ne volent plus
+ * que pour fuir.
+ */
 export function avancerOiseaux(
-  oiseaux: readonly Oiseau[], ps: Perchoir[], dt: number, visiteur: { x: number; z: number } | null, alea: () => number,
+  oiseaux: readonly Oiseau[], ps: Perchoir[], dt: number, visiteur: { x: number; z: number } | null, alea: () => number, intemperie = 0,
 ): Oiseau[] {
+  const abrite = intemperie > 0.3
   const pris = new Set(oiseaux.map((o) => o.vers))
   return oiseaux.map((o) => {
     const saut = Math.max(0, o.saut - dt / 0.3)
@@ -158,9 +164,10 @@ export function avancerOiseaux(
     const minuteur = o.minuteur - dt
     if (!effraye && minuteur > 0) return { ...o, minuteur, saut, picore }
     // Changer d'arbre (ou fuir), sinon sautiller, ou picorer au sol.
-    if (effraye || alea() < 0.2) {
+    const aLAbri = abrite && ps[o.de].sol
+    if (effraye || aLAbri || alea() < 0.2 * (1 - intemperie)) {
       pris.delete(o.vers)
-      const vers = choisir(ps, o, pris, alea, effraye ? visiteur : null)
+      const vers = choisir(ps, o, pris, alea, effraye ? visiteur : null, abrite)
       if (vers !== o.de) {
         pris.add(vers)
         const b = ps[vers]

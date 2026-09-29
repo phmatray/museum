@@ -19,6 +19,7 @@ import { MUSEE } from '../plan/musee'
 import { avancerOiseaux, oiseauxInitiaux, perchoirs, type Oiseau, type Perchoir, type Point3 } from '../plan/oiseaux'
 import { generateur, parkPlacements } from '../plan/park'
 import { hauteurDuParc } from '../plan/relief'
+import type { Saison } from '../domain/saisons'
 import { useGameStore } from '../stores/gameStore'
 import { parkAssetsResource } from './parkAssets'
 
@@ -374,6 +375,17 @@ function bordsDuHouppier(g: THREE.BufferGeometry, azimuts = 48): Point3[] {
   return out
 }
 
+/** Branches nues : le bout des rameaux, haut (plus de 2 m) et loin du tronc (plus de 1,5 m), un point tous les 40 cm. */
+function rameaux(g: THREE.BufferGeometry): Point3[] {
+  const p = g.getAttribute('position')
+  const out: Point3[] = []
+  for (let i = 0; i < p.count; i += 5) {
+    const [x, y, z] = [p.getX(i), p.getY(i), p.getZ(i)]
+    if (y > 2 && Math.hypot(x, z) > 1.5 && !out.some((q) => Math.hypot(q[0] - x, q[1] - y, q[2] - z) < 0.4)) out.push([x, y + 0.03, z])
+  }
+  return out
+}
+
 /** Les perchoirs, une fois les érables chargés : on se pose sur leurs vraies branches. */
 function Oiseaux() {
   const [ps, setPs] = useState<Perchoir[] | null>(null)
@@ -382,8 +394,11 @@ function Oiseaux() {
     void parkAssetsResource().then(({ especes }) => {
       const branches: Record<string, Point3[]> = {}
       for (const [espece, lots] of especes) {
-        const feuillage = lots.find((l) => l.material.name.startsWith('Jardin_Feuillage'))
-        if (espece.startsWith('erable') && feuillage) branches[espece] = bordsDuHouppier(feuillage.geometry)
+        if (!espece.startsWith('erable')) continue
+        // Houppier plein : au bord des feuilles. Branches nues (l'hiver, `saison.chute`) : sur le bois.
+        const nu = useGameStore.getState().saison.chute > 0.5
+        const lot = lots.find((l) => l.material.name.startsWith(nu ? 'Jardin_Ecorce' : 'Jardin_Feuillage'))
+        if (lot) branches[espece] = nu ? rameaux(lot.geometry) : bordsDuHouppier(lot.geometry)
       }
       if (vivant) setPs(perchoirs(PARC, branches))
     })
@@ -422,7 +437,8 @@ function Volee({ ps: PERCHOIRS }: { ps: Perchoir[] }) {
       // Un visiteur fictif sous chaque oiseau : tous décollent.
       volee.current = volee.current.map((o) => avancerOiseaux([o], PERCHOIRS, 0, { x: o.x, z: o.z }, Math.random)[0])
     }
-    if (!dev.gel) volee.current = avancerOiseaux(volee.current, PERCHOIRS, dt, visiteur, Math.random)
+    const { pluie, neige } = useGameStore.getState().meteo
+    if (!dev.gel) volee.current = avancerOiseaux(volee.current, PERCHOIRS, dt, visiteur, Math.random, Math.max(pluie, neige))
     dev.oiseaux = volee.current
     dev.perchoirs = PERCHOIRS
     volee.current.forEach((o, i) => {
@@ -446,6 +462,12 @@ function Volee({ ps: PERCHOIRS }: { ps: Perchoir[] }) {
 // ── Les lucioles ──────────────────────────────────────────────────────────
 
 const NB_LUCIOLES = 300
+
+/**
+ * Les lucioles volent de juin à la mi-septembre : ni au débourrement, ni quand
+ * les érables tournent, ni sous la pelouse terne de l'hiver. 0 à 1.
+ */
+const saisonDesLucioles = (s: Saison): number => (1 - s.chute) * (1 - s.feuillage) * (1 - s.pelouse.terne) * (1 - s.tendre)
 
 /** Où elles dansent : sur les berges de l'étang, le long du ruisseau, sous les érables. */
 function nuageDeLucioles(): THREE.BufferGeometry {
@@ -534,8 +556,9 @@ function Lucioles() {
   /* eslint-disable react-hooks/immutability */
   useFrame(({ gl, size }, delta) => {
     const jour = useGameStore.getState().ciel.jour
-    // Elles naissent au crépuscule, pleinement là quand la nuit est faite.
-    uniforms.uNuit.value = 1 - THREE.MathUtils.smoothstep(jour, 0.05, 0.3)
+    // Elles naissent au crépuscule, pleinement là quand la nuit est faite — les nuits chaudes et sèches seulement.
+    const { saison, meteo } = useGameStore.getState()
+    uniforms.uNuit.value = (1 - THREE.MathUtils.smoothstep(jour, 0.05, 0.3)) * saisonDesLucioles(saison) * (1 - meteo.pluie) * (1 - meteo.neige)
     uniforms.uTemps.value += dev.gel ? 0 : delta
     uniforms.uEchelle.value = size.height * gl.getPixelRatio()
     if (points.current) points.current.visible = uniforms.uNuit.value > 0.001

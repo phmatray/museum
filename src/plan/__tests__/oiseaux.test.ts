@@ -51,4 +51,21 @@ describe('oiseaux', () => {
     for (let t = 0; t < 20; t += DT) o = avancerOiseaux(o, PS, DT, visiteur, alea)
     expect(Math.hypot(o[0].x - visiteur.x, o[0].z - visiteur.z)).toBeGreaterThan(PORTEE_FUITE)
   })
+
+  it('s’abritent sous l’averse : plus personne au sol, bien moins de vols', () => {
+    const compter = (intemperie: number) => {
+      const alea = generateur('pluie')
+      let o = oiseauxInitiaux(PS, 16, alea)
+      let vols = 0
+      for (let t = 0; t < 120; t += DT) {
+        const avant = o
+        o = avancerOiseaux(o, PS, DT, null, alea, intemperie)
+        o.forEach((b, i) => { if (b.etat === 'vol' && avant[i].etat !== 'vol') vols++ })
+      }
+      return { vols, auSol: o.filter((b) => b.etat === 'perche' && PS[b.de].sol).length }
+    }
+    const [sec, averse] = [compter(0), compter(1)]
+    expect(averse.auSol).toBe(0)
+    expect(averse.vols).toBeLessThan(sec.vols / 2)
+  })
 })
