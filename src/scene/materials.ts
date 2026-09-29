@@ -409,7 +409,71 @@ export function creerMatiere(
   appliquerCartes(material, jeu, id)
   peindreRebond(material, options.rebond ?? reglage.rebond)
   appliquerEchelleInstance(material)
+  retoucherCartes(material, id)
   return material
+}
+
+/**
+ * Le parquet, tuile par tuile : chaque tuile de 3 m tire son propre décalage,
+ * un nombre ENTIER de lames — un quart de tuile en long (la longueur d'une
+ * lame), un seizième en travers (sa largeur). Les joints restent sur la grille,
+ * seule change la façon dont les lames claires tombent : les rangées de taches
+ * claires qui se répétaient tous les trois mètres disparaissent. `textureGrad`
+ * garde les dérivées de l'UV continu, sans quoi le saut de décalage ferait
+ * choisir le plus petit mip au bord de chaque tuile (un liseré).
+ */
+const RETOUCHE_GLSL = /* glsl */ `
+uniform float uDecale;
+uniform float uContraste;
+uniform vec3 uMoyenne;
+vec4 texRetouche(sampler2D t, vec2 uv) {
+  if (uDecale < 0.5) return texture2D(t, uv);
+  vec2 c = floor(uv);
+  vec2 h = fract(sin(vec2(dot(c, vec2(127.1, 311.7)), dot(c, vec2(269.5, 183.3)))) * 43758.5453);
+  return textureGrad(t, uv + floor(h * vec2(4.0, 16.0)) / vec2(4.0, 16.0), dFdx(uv), dFdy(uv));
+}`
+
+/**
+ * Le terrazzo, adouci : ses éclats noirs sur fond blanc, à pleine force, font
+ * un granit moucheté qui grésille sur trente mètres de hall. On ramène la carte
+ * à mi-chemin de sa moyenne (linéaire, mesurée) : la MÊME moyenne, donc le même
+ * albédo — et la même lumière cuite — avec moitié moins de contraste.
+ */
+const TERRAZZO = { moyenne: new THREE.Color(0.603, 0.568, 0.54), contraste: 0.5 }
+
+/**
+ * Retouches propres à une carte, greffées par-dessus les autres (même chaîne
+ * que `appliquerEchelleInstance`). Le MÊME code pour toutes les matières — le
+ * programme unique tient toujours —, réglé par uniformes : le décalage des
+ * lames pour le parquet, le contraste pour le terrazzo, neutres ailleurs. Le
+ * décalage ne vaut que pour les Boites instanciées : les lames du point de
+ * Hongrie portent chacune leurs UV, et une frontière de tuile couperait une
+ * lame en deux.
+ */
+export function retoucherCartes(material: THREE.MeshStandardMaterial, id: MatiereId): void {
+  const uniforms = {
+    uDecale: { value: id === 'parquet' ? 1 : 0 },
+    uContraste: { value: id === 'marbre' ? TERRAZZO.contraste : 1 },
+    uMoyenne: { value: TERRAZZO.moyenne },
+  }
+  material.userData.retouche = uniforms
+  const precedent = material.onBeforeCompile
+  material.onBeforeCompile = (shader, renderer) => {
+    precedent(shader, renderer)
+    Object.assign(shader.uniforms, uniforms)
+    // `instancing` est un paramètre du programme (il entre déjà dans sa clé).
+    const lot = (shader as unknown as { instancing?: boolean }).instancing === true
+    const tex = (chunk: string, appel: string) => (lot ? chunk.replaceAll(`texture2D( ${appel} )`, `texRetouche( ${appel} )`) : chunk)
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\n${RETOUCHE_GLSL}`)
+      .replace('#include <map_fragment>', tex(THREE.ShaderChunk.map_fragment, 'map, vMapUv').replace(
+        'diffuseColor *= sampledDiffuseColor;',
+        `sampledDiffuseColor.rgb = mix(uMoyenne, sampledDiffuseColor.rgb, uContraste);
+         diffuseColor *= sampledDiffuseColor;`,
+      ))
+      .replace('#include <roughnessmap_fragment>', tex(THREE.ShaderChunk.roughnessmap_fragment, 'roughnessMap, vRoughnessMapUv'))
+      .replace('#include <normal_fragment_maps>', tex(THREE.ShaderChunk.normal_fragment_maps, 'normalMap, vNormalMapUv'))
+  }
 }
 
 /**

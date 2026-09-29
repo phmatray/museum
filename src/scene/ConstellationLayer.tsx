@@ -108,11 +108,17 @@ function Filets({ ciel, nuit }: { ciel: Constellation[]; nuit: number }) {
   )
 }
 
-/** Le nom de la salle, au-dessus de son amas, toujours tourné vers qui le regarde. */
+/**
+ * Le nom de la salle, au-dessus de son amas, toujours tourné vers qui le regarde.
+ * Un or plus clair que les filets, cerné d'un halo sombre flou : sans lui, l'or
+ * se fondait dans les caissons dorés de la voûte éclairée et le nom flottait,
+ * illisible.
+ */
 function Etiquette({ c, nuit }: { c: Constellation; nuit: number }) {
   return (
     <Billboard position={[c.etiquette.x, c.etiquette.y, c.etiquette.z]}>
-      <Text font={CARTEL_FONT} fontSize={0.2} letterSpacing={0.08} lineHeight={1.1} maxWidth={2.6} textAlign="center" color={OR} fillOpacity={nuit} anchorX="center" anchorY="bottom">
+      <Text font={CARTEL_FONT} fontSize={0.26} letterSpacing={0.06} lineHeight={1.1} maxWidth={3.2} textAlign="center" color="#ffe3a3" fillOpacity={nuit}
+        outlineWidth="10%" outlineBlur="70%" outlineColor="#120a03" outlineOpacity={0.9 * nuit} anchorX="center" anchorY="bottom">
         {c.nom.toUpperCase()}
       </Text>
     </Billboard>
