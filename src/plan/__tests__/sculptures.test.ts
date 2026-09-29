@@ -2,14 +2,18 @@
  * Les sculptures du plan : une pièce dans le hall, sur son socle, là où
  * la marche ne peut pas la traverser.
  *
- * Le musée publié n'en expose plus — Bavette se promène désormais librement
- * (`promenade.ts`) —, mais la config d'un fork peut en déclarer : on éprouve
- * le placement sur une pièce d'essai.
+ * Le musée publié n'en expose plus dans le hall — Bavette se promène
+ * désormais librement (`promenade.ts`) —, mais la config d'un fork peut en
+ * déclarer : on éprouve le placement sur une pièce d'essai. Les siennes vont
+ * aux vitrines de la salle d'honneur, à côté de leur projet.
  */
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 
+import type { Catalogue } from '../../domain/types.ts'
 import { MUSEE } from '../musee.ts'
-import { sculpturePlacements } from '../sculptures.ts'
+import { sculpturePlacements, sculpturesDesVitrines } from '../sculptures.ts'
+import { choisirVitrines, OBSTACLES_BORNES, OBSTACLES_SOCLES, SALLE_VITRINES, SOCLE, VITRINES } from '../vitrines.ts'
 import { step, type Walker } from '../walk.ts'
 
 const dans = (r: { x: number; z: number; width: number; depth: number }, x0: number, x1: number, z0: number, z1: number) =>
@@ -62,5 +66,47 @@ describe('sculpturePlacements', () => {
 
   it('tourne la pièce vers le sud, face à l’entrée', () => {
     expect(bavette!.rotation).toBe(0)
+  })
+})
+
+describe('sculpturesDesVitrines', () => {
+  const catalogue = JSON.parse(readFileSync('public/data/catalogue.json', 'utf8')) as Catalogue
+  const projets = choisirVitrines(catalogue.artworks, catalogue.owners).map((a) => a.key)
+  const pieces = sculpturesDesVitrines(projets)
+  const honneur = MUSEE.levels[1].rooms.find((r) => r.id === SALLE_VITRINES)!
+
+  it('donne sa pièce à chaque projet des vitrines, dans le rang de sa vitrine', () => {
+    expect(pieces.map((p) => p.project)).toEqual(projets)
+    pieces.forEach((p, rang) => expect(p.x).toBeCloseTo(VITRINES[rang].x + SOCLE.u))
+  })
+
+  it('ne montre rien pour un projet sans pièce déclarée', () => {
+    expect(sculpturesDesVitrines(['quelqu-un/autre-chose', projets[1]]).map((p) => p.project)).toEqual([projets[1]])
+  })
+
+  it('pose chaque socle dans son emplacement, un obstacle de la salle d’honneur', () => {
+    expect(MUSEE.levels[1].obstacles).toEqual(expect.arrayContaining(OBSTACLES_SOCLES))
+    for (const p of pieces) {
+      const [x0, x1, z0, z1] = [p.x - p.plinth.width / 2, p.x + p.plinth.width / 2, p.z - p.plinth.depth / 2, p.z + p.plinth.depth / 2]
+      expect(p.y).toBe(MUSEE.levels[1].elevation)
+      expect(dans(honneur, x0, x1, z0, z1)).toBe(true)
+      expect(OBSTACLES_SOCLES.some((o) => dans(o, x0, x1, z0, z1))).toBe(true)
+    }
+  })
+
+  it('laisse du jeu entre chaque socle et chaque borne', () => {
+    for (const s of OBSTACLES_SOCLES) {
+      for (const b of OBSTACLES_BORNES) {
+        const ecart = Math.max(b.x - (s.x + s.width), s.x - (b.x + b.width), b.z - (s.z + s.depth), s.z - (b.z + b.depth))
+        expect(ecart).toBeGreaterThan(0.4)
+      }
+    }
+  })
+
+  it('tient chaque pièce à l’échelle d’un bronze de musée : 0,8 à 1,4 m', () => {
+    for (const p of pieces) {
+      expect(p.height).toBeGreaterThanOrEqual(0.8)
+      expect(p.height).toBeLessThanOrEqual(1.4)
+    }
   })
 })

@@ -63,6 +63,11 @@ PIECES = {
         "hauteur": 0.65,
         "front_yaw": 0.0,
     },
+    # Les pièces des vitrines de la salle d'honneur (`plan/sculptures.ts`) : Meshy
+    # texte → 3D, bronze patiné. 15 000 triangles, cartes 1024 (`meshy/REGLES`).
+    "chandelles": {"triangles": 15_000, "textures": 1024, "hauteur": 0.85, "front_yaw": 180.0},
+    "formulaire": {"triangles": 15_000, "textures": 1024, "hauteur": 1.3, "front_yaw": 0.0},
+    "arborescence": {"triangles": 15_000, "textures": 1024, "hauteur": 1.2, "front_yaw": 0.0},
 }
 
 # En dessous, décimer abîme plus qu'il n'allège : un maillage déjà économe n'a
@@ -127,8 +132,11 @@ def construire(identifiant: str, source: Path) -> None:
     # 1. LA MISE EN FACE, d'abord : elle change l'emprise, donc elle doit
     #    précéder le recentrage.
     if reglage["front_yaw"] != 0.0:
+        # Par la matrice monde : l'import glTF met les nœuds en QUATERNION, et
+        # `rotation_euler` y serait ignoré sans rien dire.
+        tour = mathutils.Matrix.Rotation(reglage["front_yaw"] * 3.14159265358979 / 180, 4, "Z")
         for o in objets:
-            o.rotation_euler.rotate_axis("Z", reglage["front_yaw"] * 3.14159265358979 / 180)
+            o.matrix_world = tour @ o.matrix_world
     bpy.context.view_layer.update()
 
     # 2. LA DÉCIMATION, ensuite — et avant l'échelle et l'ancrage : un

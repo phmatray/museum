@@ -446,6 +446,7 @@ const sculptureSchema = z.strictObject({
     }),
   }),
   room: z.string().min(1).optional(),
+  project: z.string().regex(/^[^/\s]+\/[^/\s]+$/, { error: 'attendu une clé de dépôt « owner/nom »' }).optional(),
   cartel: sculptureCartelSchema,
 })
 

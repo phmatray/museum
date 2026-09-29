@@ -23,7 +23,7 @@ import { obstaclesDesCimaises } from './cimaises.ts'
 import { OBSTACLES_PORTES_ENTREE, OBSTACLES_PORTIQUE } from './facade.ts'
 import { OBSTACLES_JARDIN } from './jardin.ts'
 import { obstaclesDuMobilier } from './mobilier.ts'
-import { OBSTACLES_BORNES } from './vitrines.ts'
+import { OBSTACLES_BORNES, OBSTACLES_SOCLES } from './vitrines.ts'
 import type { Plan } from './types.ts'
 
 const STOREY = 4.8
@@ -119,8 +119,8 @@ export const MUSEE: Plan = {
         // La salle d'honneur regarde le hall et l'escalier.
         { kind: 'bay', a: 'honneur', b: null, x: 24, z: 12, width: 14.4 },
       ],
-      // Les bornes des vitrines, devant le mur nord de la salle d'honneur (vitrines.ts), les bancs (mobilier.ts) et les cimaises (cimaises.ts).
-      obstacles: [...OBSTACLES_BORNES, ...obstaclesDuMobilier(1), ...obstaclesDesCimaises(1)],
+      // Les bornes et les socles des vitrines, devant le mur nord de la salle d'honneur (vitrines.ts), les bancs (mobilier.ts) et les cimaises (cimaises.ts).
+      obstacles: [...OBSTACLES_BORNES, ...OBSTACLES_SOCLES, ...obstaclesDuMobilier(1), ...obstaclesDesCimaises(1)],
     },
   ],
 }

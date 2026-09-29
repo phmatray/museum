@@ -15,6 +15,9 @@ export type SculptureAssets = ReadonlyMap<string, THREE.Object3D>
 
 const cache = new Map<string, Promise<SculptureAssets>>()
 
+/** Facteurs appliqués aux cartes de la pièce : métallicité, force des reflets, éclat de la couleur. */
+const PATINE = { metal: 0.35, reflets: 2, eclat: 2.6 }
+
 /**
  * Mémorisé par jeu de fichiers : un remontage ne retélécharge rien. Sous
  * `BASE_URL`, comme les toiles : le site est servi sous `/museum/`.
@@ -41,7 +44,18 @@ async function charger(fichiers: readonly string[], base: string): Promise<Sculp
   const pieces = new Map<string, THREE.Object3D>()
   for (const fichier of fichiers) {
     try {
-      pieces.set(fichier, (await gltf.loadAsync(`${base}assets/sculptures/${fichier}`)).scene)
+      const piece = (await gltf.loadAsync(`${base}assets/sculptures/${fichier}`)).scene
+      piece.traverse((o) => {
+        // Un bronze patiné n'est pas un miroir : la patine diffuse, le poli
+        // reflète. À pleine métallicité (celle des cartes de Meshy), la pièce ne
+        // montrait que le reflet sombre de la salle — un bloc brun, sans forme.
+        if (o instanceof THREE.Mesh && o.material instanceof THREE.MeshStandardMaterial) {
+          o.material.metalness = PATINE.metal
+          o.material.envMapIntensity = PATINE.reflets
+          o.material.color.multiplyScalar(PATINE.eclat)
+        }
+      })
+      pieces.set(fichier, piece)
     } catch (erreur) {
       // Une pièce manquante n'emporte pas les autres.
       console.warn(`sculpture « ${fichier} » introuvable`, erreur)

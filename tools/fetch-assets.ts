@@ -136,6 +136,27 @@ const SCULPTURES = [
     licence: '© tous droits réservés',
     usage: 'le chat Bavette, qui se promène dans le musée et le jardin',
   },
+  {
+    id: 'chandelles',
+    source:
+      'Meshy (généré par IA, texte → 3D, textures PBR), prompt : « Abstract modernist museum sculpture in cast bronze: six slender vertical candlestick chart candles standing close together in a row on one simple rectangular bronze base, each candle is a thin vertical rod with a thicker rectangular block body fixed on it at a different height, the bodies climbing progressively higher from left to right like a rising market trend… » ; `tools/blender/build-sculptures.py`',
+    licence: '© tous droits réservés',
+    usage: "sculpture de la vitrine TaLibStandard, salle d'honneur",
+  },
+  {
+    id: 'formulaire',
+    source:
+      'Meshy (généré par IA, texte → 3D, textures PBR), prompt : « Abstract modernist museum sculpture in cast bronze: thin rectangular slabs like form input fields and small square frames like checkboxes, one checkbox holding a tick mark, stacked and interlocking at slight angles into an elegant slender vertical tower… » ; `tools/blender/build-sculptures.py`',
+    licence: '© tous droits réservés',
+    usage: "sculpture de la vitrine FormCraft, salle d'honneur",
+  },
+  {
+    id: 'arborescence',
+    source:
+      'Meshy (généré par IA, texte → 3D, textures PBR), prompt : « Abstract modernist museum sculpture in cast bronze: a stylised tree whose trunk splits into branches at right angles like a directory tree hierarchy, each branch ending in a small flat rectangular tablet shaped like a closed folder… » ; `tools/blender/build-sculptures.py`',
+    licence: '© tous droits réservés',
+    usage: "sculpture de la vitrine VirtualFileSystem, salle d'honneur",
+  },
 ] as const
 
 /**
