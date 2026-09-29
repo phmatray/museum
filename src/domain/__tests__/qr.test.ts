@@ -89,14 +89,15 @@ function decoder(m: boolean[][]): string {
 
 /** La case `i` de l'atlas, relue en matrice (rangées de texels comptées depuis le bas). */
 function caseDe(atlas: AtlasQr, i: number): boolean[][] {
-  const n = atlas.case - 2 * QR_MARGE
+  const t = atlas.tailles[i]
+  const n = t - 2 * QR_MARGE
   const [x0, y0] = atlas.uv[i].map((u) => Math.round(u * atlas.cote))
   const sombre = (x: number, y: number) => atlas.pixels[(y * atlas.cote + x) * 4] < 128
   // La marge est blanche partout.
-  for (let k = 0; k < atlas.case; k++)
-    for (const [x, y] of [[k, 0], [k, atlas.case - 1], [0, k], [atlas.case - 1, k]]) expect(sombre(x0 + x, y0 + y)).toBe(false)
+  for (let k = 0; k < t; k++)
+    for (const [x, y] of [[k, 0], [k, t - 1], [0, k], [t - 1, k]]) expect(sombre(x0 + x, y0 + y)).toBe(false)
   return Array.from({ length: n }, (_, l) =>
-    Array.from({ length: n }, (_, c) => sombre(x0 + QR_MARGE + c, y0 + atlas.case - 1 - QR_MARGE - l)))
+    Array.from({ length: n }, (_, c) => sombre(x0 + QR_MARGE + c, y0 + t - 1 - QR_MARGE - l)))
 }
 
 const OEUVRES = new Map((catalogue.artworks as Artwork[]).map((a) => [a.key, a]))
@@ -134,13 +135,22 @@ describe('atlasQr', () => {
 })
 
 describe('le QR code sur la plaque', () => {
-  it('tient dans la plaque, sans toucher le texte', () => {
-    const d = CARTEL_QR.cote / 2
-    expect(CARTEL_QR.x + d).toBeLessThan(CARTEL_LARGEUR / 2)
-    expect(CARTEL_QR.x - d).toBeGreaterThan(-CARTEL_LARGEUR / 2)
-    expect(Math.abs(CARTEL_QR.y) + d).toBeLessThan(CARTEL_HAUTEUR / 2)
-    expect(CARTEL_TEXTE.x + CARTEL_TEXTE.largeur).toBeLessThan(CARTEL_QR.x - d)
-    // Le texte garde la largeur d'avant le QR code (26 cm), à un centimètre près.
+  it('a sa plaque au-dessus du cartel, dans sa colonne, à hauteur des yeux', () => {
+    const d = CARTEL_QR.plaque / 2
+    expect(CARTEL_QR.cote).toBeLessThan(CARTEL_QR.plaque)
+    expect(CARTEL_QR.x - d).toBeCloseTo(-CARTEL_LARGEUR / 2)
+    expect(CARTEL_QR.x + d).toBeLessThanOrEqual(CARTEL_LARGEUR / 2)
+    // Un vrai jour entre les deux plaques, sans les écarter.
+    const jour = CARTEL_QR.y - d - CARTEL_HAUTEUR / 2
+    expect(jour).toBeGreaterThan(0.03)
+    expect(jour).toBeLessThan(0.1)
     expect(CARTEL_TEXTE.largeur).toBeGreaterThan(0.25)
+    // Plus de deux pixels par module à 1,20 m (champ vertical de 75°, 800 px),
+    // même pour le plus long code du musée (version 5 : 37 + 2 × QR_MARGE modules).
+    const pixelsParMetre = 800 / (2 * 1.2 * Math.tan((75 / 2) * (Math.PI / 180)))
+    expect((CARTEL_QR.cote / (37 + 2 * QR_MARGE)) * pixelsParMetre).toBeGreaterThan(2.2)
+    const [p] = (accrochage as Accrochage).rooms[0].placements
+    const [c] = cartelPlacements({ ...(accrochage as Accrochage), rooms: [{ ...(accrochage as Accrochage).rooms[0], placements: [p] }] })
+    expect(c.y + CARTEL_QR.y + d).toBeCloseTo(1.6, 1)
   })
 })

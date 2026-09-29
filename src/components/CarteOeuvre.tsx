@@ -10,13 +10,41 @@
  * de la 3D : un texte de 14 px se lit, un texte posé sur un mur à trois mètres
  * beaucoup moins, et il n'y a pas la place entre deux toiles.
  */
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 
 import { couleurDeLangage, partsDeLangages } from '../domain/langages'
+import { adresseQr, matriceQr, QR_MARGE } from '../domain/qr'
 import { useCapture, useCatalogue } from '../hooks/useCatalogue'
 import { ilYA } from '../plan/eveil'
 import { useGameStore } from '../stores/gameStore'
 import { partager } from './partager'
+
+/** Pixels par module : trois pixels nets, qu'un téléphone lit sur un écran de portable à bout de bras. */
+const QR_PX = 3
+
+/**
+ * Le QR code du projet, en SVG : noir pur sur blanc pur, marge de la norme,
+ * bords nets (`crispEdges`). C'est ici qu'il se scanne le mieux — le code du
+ * mur, lui, dépend de la distance et de l'angle.
+ */
+function CodeQr({ adresse }: { adresse: string }) {
+  const m = useMemo(() => matriceQr(adresse), [adresse])
+  const cote = m.length + 2 * QR_MARGE
+  const chemin = m.flatMap((ligne, l) => ligne.map((sombre, c) => (sombre ? `M${c + QR_MARGE} ${l + QR_MARGE}h1v1h-1z` : ''))).join('')
+  return (
+    <svg
+      role="img"
+      aria-label={`QR code : ${adresse}`}
+      viewBox={`0 0 ${cote} ${cote}`}
+      width={cote * QR_PX}
+      height={cote * QR_PX}
+      shapeRendering="crispEdges"
+      style={{ display: 'block', flex: 'none', background: '#fff', borderRadius: 4 }}
+    >
+      <path d={chemin} fill="#000" />
+    </svg>
+  )
+}
 
 const Touche = ({ children }: { children: string }) => (
   <kbd style={{ border: '1px solid rgba(255,255,255,0.4)', borderBottomWidth: 2, borderRadius: 4, padding: '0 6px', font: '600 12px system-ui' }}>{children}</kbd>
@@ -69,23 +97,29 @@ export function CarteOeuvre() {
       {oeuvre.description && (
         <p style={{ margin: '0 0 10px', color: '#d9d3c7', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{oeuvre.description}</p>
       )}
-      {parts.length > 0 && (
-        <>
-          <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 6 }}>
-            {parts.map(({ langage, part }) => <span key={langage} title={langage} style={{ width: `${part * 100}%`, background: couleurDeLangage(langage) }} />)}
+      <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {parts.length > 0 && (
+            <>
+              <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', marginBottom: 6 }}>
+                {parts.map(({ langage, part }) => <span key={langage} title={langage} style={{ width: `${part * 100}%`, background: couleurDeLangage(langage) }} />)}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', fontSize: 12, color: '#c9c2b4', marginBottom: 8 }}>
+                {parts.slice(0, 3).map(({ langage, part }) => (
+                  <span key={langage}>
+                    <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 4, background: couleurDeLangage(langage), marginRight: 5 }} />
+                    {langage} {Math.round(part * 100)} %
+                  </span>
+                ))}
+              </div>
+            </>
+          )}
+          <div style={{ fontSize: 13, color: '#c9c2b4', fontVariantNumeric: 'tabular-nums' }}>
+            ⑂ {oeuvre.forks.toLocaleString('fr-FR')} · poussé {ilYA(oeuvre.pushedAt, new Date())}
           </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 12px', fontSize: 12, color: '#c9c2b4', marginBottom: 8 }}>
-            {parts.slice(0, 3).map(({ langage, part }) => (
-              <span key={langage}>
-                <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: 4, background: couleurDeLangage(langage), marginRight: 5 }} />
-                {langage} {Math.round(part * 100)} %
-              </span>
-            ))}
-          </div>
-        </>
-      )}
-      <div style={{ fontSize: 13, color: '#c9c2b4', fontVariantNumeric: 'tabular-nums' }}>
-        ⑂ {oeuvre.forks.toLocaleString('fr-FR')} · poussé {ilYA(oeuvre.pushedAt, new Date())}
+          <div style={{ fontSize: 12, color: '#c9c2b4', marginTop: 8 }}>Scannez le code pour ouvrir le projet sur votre téléphone.</div>
+        </div>
+        <CodeQr adresse={adresseQr(oeuvre, catalogue ? [...catalogue.keys()] : [oeuvre.key])} />
       </div>
       <div style={{ marginTop: 10, fontSize: 13, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 16px' }}>
         {oeuvre.site && (
