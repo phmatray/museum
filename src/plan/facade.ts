@@ -118,7 +118,12 @@ export interface Facade {
 /** Le soubassement de pierre, sa saillie ; la corniche sous le parapet ; le bandeau au droit du plancher. */
 const SOCLE = { h: 0.7, saillie: 0.16 }
 const CORNICHE = { h: 0.38, saillie: 0.22 }
-const BANDEAU_ETAGE = { saillie: 0.06 }
+/**
+ * Plus saillant que les pilastres (12 cm) : il passe DEVANT eux et tourne les
+ * angles, comme le socle et la corniche. À 6 cm, il mourait dans chaque
+ * pilastre et s'arrêtait à 90 cm de l'angle, un filet d'ombre à sa place.
+ */
+const BANDEAU_ETAGE = { saillie: 0.15 }
 /** Les pilastres de brique, au droit des murs de refend, et aux angles. */
 const PILASTRE = { l: 0.9, saillie: 0.12 }
 /** Une fenêtre aveugle : baie de pierre de 1,4 × 2,4 m, chambranle de 15 cm, appui saillant. */
@@ -163,7 +168,8 @@ function modenature(plan: Plan, haut: number, out: Facade): void {
     const retour = (s: number) => (face.long === 'x' ? s : 0)
     for (const [a, b] of pleins) {
       out.pierre.push(contre(a - retour(SOCLE.saillie), b + retour(SOCLE.saillie), 0, SOCLE.h, SOCLE.saillie))
-      for (const e of niveaux.filter((e) => e > 0)) out.pierre.push(contre(a, b, e - plan.slab, e, BANDEAU_ETAGE.saillie))
+      for (const e of niveaux.filter((e) => e > 0))
+        out.pierre.push(contre(a - retour(BANDEAU_ETAGE.saillie), b + retour(BANDEAU_ETAGE.saillie), e - plan.slab, e, BANDEAU_ETAGE.saillie))
     }
     out.pierre.push(contre(-f - retour(CORNICHE.saillie), L + f + retour(CORNICHE.saillie), haut - CORNICHE.h, haut, CORNICHE.saillie))
     // Les pilastres : aux deux angles, et au droit des refends (sauf derrière le portique).
@@ -277,7 +283,8 @@ export function facade(plan: Plan): Facade {
   out.pierre.push(pave(ENTREE.x - ENTREE.width / 2, ENTREE.x + ENTREE.width / 2, 0, 0.02, ENTREE.z - EXT, ENTREE.z + EXT))
 
   out.enseigne = { x: (P.x0 + P.x1) / 2, y: P.haut - LINTEAU / 2, z: P.facade + P.saillie + 0.01 }
-  out.bannieres = [P.x0 - 4.5, P.x1 + 4.5].map((x) => ({ x, y: 5.2, z: D + EXT + PEAU + 0.12, w: 3, h: 7 }))
+  // Décollées de 20 cm : le bandeau d'étage (15 cm) passe derrière la toile, pas au travers.
+  out.bannieres = [P.x0 - 4.5, P.x1 + 4.5].map((x) => ({ x, y: 5.2, z: D + EXT + PEAU + 0.2, w: 3, h: 7 }))
   out.mats = [6, 12, 36, 42].map((x) => ({ x, y: haut, z: D - 1.5 }))
   return out
 }
