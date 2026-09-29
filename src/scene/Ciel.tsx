@@ -9,10 +9,11 @@
  * jamais de fond noir). Pas de `<color attach="background">` : en production,
  * R3F le rattachait par-dessus le ciel (#73).
  */
-import { useEffect, useMemo } from 'react'
-import { useThree } from '@react-three/fiber'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 
+import { cadrerOmbre } from '../domain/ombres'
 import { directionDuSoleil } from '../domain/soleil'
 import { useGameStore } from '../stores/gameStore'
 import { INTEMPERIES } from './intemperies'
@@ -115,7 +116,7 @@ export function Ciel() {
 
   // Loin, mais en deçà du plan lointain de la caméra (1000) ; dessinée avant tout.
   return (
-    <mesh material={materiau} renderOrder={-1} frustumCulled={false} scale={800}>
+    <mesh name="ciel" material={materiau} renderOrder={-1} frustumCulled={false} scale={800}>
       <sphereGeometry args={[1, 48, 24]} />
     </mesh>
   )
@@ -132,8 +133,26 @@ const OR_BAS = new THREE.Color('#ffb070')
 const AMBIANCE_NUIT = { ciel: new THREE.Color('#8a7358'), intensite: 0.8 }
 
 /**
+ * La boîte d'ombre du soleil : un carré de `2 × OMBRE.demi` mètres vu du soleil,
+ * centré un peu DEVANT le visiteur (c'est là qu'il regarde), sur une carte de
+ * `OMBRE.carte` texels — 3,5 cm par texel, assez pour la dentelle d'un érable.
+ * La lumière est reculée de `OMBRE.recul` le long du rayon : tout ce qui peut
+ * porter une ombre dans la boîte, toit de la nef compris, est devant elle.
+ *
+ * Le biais est réglé à l'écran : `normalBias` décolle l'acné des pentes du
+ * parc et des murs rasés par le couchant, `bias` reste minuscule pour que le
+ * pied d'un banc touche son ombre (pas de « peter-panning »).
+ */
+const OMBRE = { demi: 55, carte: 4096, avance: 25, recul: 150, bias: -0.0004, normalBias: 0.035, rayon: 2.5 }
+const AVANT = new THREE.Vector3()
+/** `?ombres=0` : le soleil sans ombre, pour mesurer ce qu'elle coûte. */
+const SANS_OMBRE = typeof location !== 'undefined' && new URLSearchParams(location.search).get('ombres') === '0'
+
+/**
  * Le soleil de la scène, là où il est vraiment au-dessus du musée, doré quand
- * il rase l'horizon ; la nuit, une lune froide et fixe prend le relais.
+ * il rase l'horizon ; la nuit, une lune froide et fixe prend le relais. Il
+ * porte l'ombre : les toits, les plafonds et les murs l'arrêtent — seuls les
+ * verres (verrière, vitraux, garde-corps) le laissent passer (`OmbresLayer`).
  */
 export function LumiereDuJour() {
   const { jour, crepuscule, elevation, azimut } = useGameStore((s) => s.ciel)
@@ -142,14 +161,35 @@ export function LumiereDuJour() {
   const soleil = useMemo(() => {
     const d = elevation > 0 ? directionDuSoleil({ elevation, azimut }) : directionDuSoleil({ elevation: 35, azimut: (azimut + 180) % 360 })
     const couleur = LUNE.couleur.clone().lerp(new THREE.Color(SOLEIL.couleur).lerp(OR_BAS, crepuscule), jour)
-    return { position: [24 + d[0] * 60, d[1] * 60, 20 + d[2] * 60] as [number, number, number], couleur, intensite: (SOLEIL.intensite * jour + LUNE.intensite * (1 - jour)) * (1 - voile) }
+    return { d, couleur, intensite: (SOLEIL.intensite * jour + LUNE.intensite * (1 - jour)) * (1 - voile) }
   }, [jour, crepuscule, elevation, azimut, voile])
   const ciel = useMemo(() => AMBIANCE_NUIT.ciel.clone().lerp(new THREE.Color(AMBIANCE.ciel), jour), [jour])
+
+  const lumiere = useRef<THREE.DirectionalLight>(null)
+  useLayoutEffect(() => {
+    const l = lumiere.current
+    if (l === null) return
+    const cam = l.shadow.camera
+    ;[cam.left, cam.right, cam.top, cam.bottom, cam.near, cam.far] = [-OMBRE.demi, OMBRE.demi, OMBRE.demi, -OMBRE.demi, 1, OMBRE.recul * 2]
+    cam.updateProjectionMatrix()
+    l.shadow.mapSize.set(OMBRE.carte, OMBRE.carte)
+    Object.assign(l.shadow, { bias: OMBRE.bias, normalBias: OMBRE.normalBias, radius: OMBRE.rayon })
+  }, [])
+  // La boîte suit le visiteur, recalée au texel près (`cadrerOmbre`).
+  useFrame(({ camera }) => {
+    const l = lumiere.current
+    if (l === null) return
+    camera.getWorldDirection(AVANT).setY(0).normalize().multiplyScalar(OMBRE.avance).add(camera.position)
+    const [x, y, z] = cadrerOmbre([AVANT.x, AVANT.y, AVANT.z], soleil.d, (2 * OMBRE.demi) / OMBRE.carte)
+    l.target.position.set(x, y, z)
+    l.target.updateMatrixWorld()
+    l.position.set(x + soleil.d[0] * OMBRE.recul, y + soleil.d[1] * OMBRE.recul, z + soleil.d[2] * OMBRE.recul)
+  })
   return (
     <>
       {/* En props, pas en `args` : changer d'heure ne reconstruit pas la lumière. */}
       <hemisphereLight color={ciel} groundColor={AMBIANCE.sol} intensity={AMBIANCE_NUIT.intensite + (AMBIANCE.intensite - AMBIANCE_NUIT.intensite) * jour} />
-      <directionalLight color={soleil.couleur} intensity={soleil.intensite} position={soleil.position} />
+      <directionalLight ref={lumiere} castShadow={!SANS_OMBRE} color={soleil.couleur} intensity={soleil.intensite} />
     </>
   )
 }

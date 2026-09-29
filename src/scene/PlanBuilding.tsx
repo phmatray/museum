@@ -37,6 +37,7 @@ import { PortesLayer } from './PortesLayer'
 import { MobilierLayer } from './MobilierLayer'
 import { ConstellationLayer } from './ConstellationLayer'
 import { FacadeLayer } from './FacadeLayer'
+import { OmbresLayer } from './OmbresLayer'
 import { bandesDuSol, parementDuHall, peintureDesSalles, plinthes } from '../plan/parement'
 import { plafonds } from '../plan/plafonds'
 import { creerGranit, creerPierre } from './pierre'
@@ -79,6 +80,7 @@ export function PlanBuilding() {
       <LumiereLayer />
       <BavetteLayer />
       <MeteoLayer />
+      <OmbresLayer />
       {/* Le décor à part : un texte qui attend sa police ne doit pas suspendre les murs. */}
       <FacadeLayer />
       <Suspense fallback={null}>
