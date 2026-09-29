@@ -96,6 +96,8 @@ export default defineConfig({
           groups: [
             { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store|zod)[\\/]/, priority: 40 },
             { name: 'postprocessing', test: /node_modules[\\/](postprocessing|@react-three[\\/]postprocessing|n8ao)[\\/]/, priority: 30 },
+            // Les chargeurs (glTF, Draco, KTX2) à part du cœur de three.
+            { name: 'three-addons', test: /node_modules[\\/]three[\\/]examples[\\/]/, priority: 25 },
             { name: 'three', test: /node_modules[\\/]three[\\/]/, priority: 20 },
             { name: 'r3f', test: /node_modules[\\/]/, priority: 10 },
           ],
