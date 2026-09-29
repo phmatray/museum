@@ -149,6 +149,25 @@ export function assignRooms(plan: Plan, artworks: Artwork[], reservees: Readonly
       dest.artworks = [...dest.artworks, salle.artworks.pop()!].sort(parEtoiles)
     }
   })
+
+  // Équilibre : un thème trop mince laissait une galerie presque vide (quatre
+  // toiles sur 60 m de murs) quand sa voisine en portait quinze. Chaque galerie
+  // reçoit au moins la moyenne moins une toile, prises une à une au moins
+  // étoilé de la galerie la plus remplie (murs comptés) qui reste au-dessus.
+  const remplissage = (h: Exposee) => out.get(h.room.id)!.artworks.length / h.cap
+  const total = galeries.reduce((n, g) => n + out.get(g.room.id)!.artworks.length, 0)
+  const plancher = Math.floor(total / galeries.length) - 1
+  for (const g of galeries) {
+    const salle = out.get(g.room.id)!
+    while (salle.artworks.length < Math.min(plancher, g.cap)) {
+      const donneuse = galeries
+        .filter((h) => out.get(h.room.id)!.artworks.length > plancher)
+        .sort((a, b) => remplissage(b) - remplissage(a))[0]
+      if (!donneuse) break
+      const dons = out.get(donneuse.room.id)!
+      salle.artworks = [...salle.artworks, dons.artworks.pop()!].sort(parEtoiles)
+    }
+  }
   return out
 }
 
@@ -164,6 +183,9 @@ export interface Accrochage {
     placements: { key: RepoKey; x: number; y: number; z: number; normal: [number, number]; width: number }[]
   }[]
 }
+
+/** Une toile seule sur un long segment grandit jusqu'à ce facteur (`HangOptions.ampleur`). */
+const AMPLEUR_TOILE_SEULE = 1.35
 
 /** Hauteur d'axe des toiles, au-dessus du plancher du niveau. */
 export const AXE_TOILES = 1.55
@@ -253,7 +275,7 @@ export function hangPlan(plan: Plan, salles: Map<string, Salle>, generatedAt: st
       keys: salle.artworks.map((a) => a.key),
     }
     const entrees = salle.artworks.map((a) => ({ key: a.key, stars: a.stars, aspect: DEFAULT_ASPECT, atlas: 0, layer: 0 }))
-    const accrochee = hangRoom(domaine, entrees, { centerHeight: AXE_TOILES })
+    const accrochee = hangRoom(domaine, entrees, { centerHeight: AXE_TOILES, ampleur: AMPLEUR_TOILE_SEULE })
     return {
       id: room.id,
       level: level.id,
