@@ -622,7 +622,7 @@ export const BUDGET_PUITS = 3
 export const AMBIANCE = {
   ciel: '#dbe6f5',
   sol: '#dcd8d0',
-  intensite: 1.15,
+  intensite: 0.95,
 } as const
 
 /**
@@ -657,7 +657,7 @@ export const CIEL: string = AMBIANCE.ciel
  */
 export const SOLEIL = {
   couleur: '#fff3e0',
-  intensite: 1.8,
+  intensite: 3.4,
 } as const
 
 /**
