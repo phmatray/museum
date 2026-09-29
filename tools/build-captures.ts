@@ -103,7 +103,7 @@ async function photographier(navigateur: Navigateur, url: string): Promise<Buffe
       await new Promise((r) => setTimeout(r, essai === 0 ? 2000 : 3000))
       // Le bandeau d'erreur de Blazor (« Une erreur est survenue. Recharger ») :
       // l'appli a planté, la photo montrerait « Chargement… » au mur.
-      const plantee = await page.$eval('#blazor-error-ui', (e) => getComputedStyle(e).display !== 'none').catch(() => false)
+      const plantee = await page.$eval('#blazor-error-ui', (e) => (e as unknown as { checkVisibility(): boolean }).checkVisibility()).catch(() => false)
       if (plantee) return null
       const png = Buffer.from(await page.screenshot({ type: 'png' }))
       if (!(await estVide(png))) return png
