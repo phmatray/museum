@@ -66,9 +66,7 @@ export function ParkLayer({ placements }: { placements: Parc }) {
     dallage.map?.dispose()
     dallage.dispose()
   }, [parvis, dallage])
-  const allees = useMemo(() => dalles([
-    ...placements.allees.map(allee),
-  ]), [placements])
+  const allees = useMemo(() => dalles(chaines(placements.allees).map(ruban)), [placements])
   useEffect(() => () => {
     sol.dispose()
     allees.dispose()
@@ -161,24 +159,67 @@ function pelouse(parc: Parc): THREE.BufferGeometry {
   return g
 }
 
-/** Une allée drapée sur le relief : une bande subdivisée au mètre, rallongée d'une largeur en tout. */
-function allee(a: Allee): THREE.BufferGeometry {
-  const [dx, dz] = [a.b.x - a.a.x, a.b.z - a.a.z]
-  const l = Math.hypot(dx, dz)
-  const [ux, uz] = [dx / l, dz / l]
-  const n = Math.max(1, Math.ceil(l + a.largeur))
+/**
+ * Les allées bout à bout (l'arrivée de l'une est le départ de la suivante, même
+ * largeur) : une allée qui serpente, la boucle de ceinture. Dessinées une à une,
+ * chaque bande rallongée à ses bouts, leurs coins carrés dépassaient au dehors
+ * des virages et mordaient la pelouse : des bords en dents de scie.
+ */
+function chaines(allees: Allee[]): Allee[][] {
+  const out: Allee[][] = []
+  for (const a of allees) {
+    const c = out[out.length - 1]
+    const d = c?.[c.length - 1]
+    if (d && d.largeur === a.largeur && Math.hypot(d.b.x - a.a.x, d.b.z - a.a.z) < 1e-6) c.push(a)
+    else out.push([a])
+  }
+  return out
+}
+
+/**
+ * Un ruban d'allée drapé sur le relief : les bords sont joints en onglet à
+ * chaque coude, et la bande est subdivisée au mètre pour suivre la pelouse.
+ * Une chaîne ouverte est rallongée d'une demi-largeur à ses bouts (elle se
+ * glisse sous l'allée qu'elle rejoint) ; une boucle se referme sur elle-même.
+ */
+function ruban(chaine: Allee[]): THREE.BufferGeometry {
+  const w = chaine[0].largeur / 2
+  const pts = [chaine[0].a, ...chaine.map((s) => s.b)].map((p) => ({ ...p }))
+  const fermee = Math.hypot(pts[0].x - pts[pts.length - 1].x, pts[0].z - pts[pts.length - 1].z) < 1e-6
+  const dir = (a: { x: number; z: number }, b: { x: number; z: number }) => {
+    const l = Math.hypot(b.x - a.x, b.z - a.z) || 1
+    return { x: (b.x - a.x) / l, z: (b.z - a.z) / l }
+  }
+  const n = pts.length
+  if (!fermee) {
+    const [d0, d1] = [dir(pts[0], pts[1]), dir(pts[n - 2], pts[n - 1])]
+    pts[0] = { x: pts[0].x - d0.x * w, z: pts[0].z - d0.z * w }
+    pts[n - 1] = { x: pts[n - 1].x + d1.x * w, z: pts[n - 1].z + d1.z * w }
+  }
+  // Les deux bords à chaque sommet : la normale moyenne, allongée pour garder la largeur (onglet).
+  const bords = pts.map((p, i) => {
+    const avant = i > 0 ? dir(pts[i - 1], p) : fermee ? dir(pts[n - 2], p) : null
+    const apres = i < n - 1 ? dir(p, pts[i + 1]) : fermee ? dir(pts[0], pts[1]) : null
+    const [a, b] = [avant ?? apres!, apres ?? avant!]
+    const t = dir({ x: 0, z: 0 }, { x: a.x + b.x, z: a.z + b.z })
+    const k = w / Math.max(0.5, t.x * a.x + t.z * a.z)
+    return [{ x: p.x + t.z * k, z: p.z - t.x * k }, { x: p.x - t.z * k, z: p.z + t.x * k }]
+  })
   const pos: number[] = []
   const index: number[] = []
-  for (let i = 0; i <= n; i++) {
-    const s = -a.largeur / 2 + ((l + a.largeur) * i) / n
-    for (let j = 0; j < 3; j++) {
-      const t = ((j - 1) * a.largeur) / 2
-      const [x, z] = [a.a.x + ux * s - uz * t, a.a.z + uz * s + ux * t]
-      pos.push(x, hauteurDuParc(x, z) + RELIEF_ALLEE, z)
-      if (i > 0 && j > 0) {
-        const k = 3 * i + j
-        index.push(k - 4, k - 3, k - 1, k - 1, k - 3, k)
+  let rang = 0
+  for (let i = 0; i + 1 < n; i++) {
+    const [[g0, d0], [g1, d1]] = [bords[i], bords[i + 1]]
+    const m = Math.max(1, Math.ceil(Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].z - pts[i].z)))
+    for (let k = i === 0 ? 0 : 1; k <= m; k++) {
+      const u = k / m
+      const [g, d] = [{ x: g0.x + (g1.x - g0.x) * u, z: g0.z + (g1.z - g0.z) * u }, { x: d0.x + (d1.x - d0.x) * u, z: d0.z + (d1.z - d0.z) * u }]
+      for (const [x, z] of [[g.x, g.z], [(g.x + d.x) / 2, (g.z + d.z) / 2], [d.x, d.z]]) pos.push(x, hauteurDuParc(x, z) + RELIEF_ALLEE, z)
+      if (rang > 0) for (const j of [1, 2]) {
+        const q = 3 * rang + j
+        index.push(q - 4, q - 3, q - 1, q - 1, q - 3, q)
       }
+      rang++
     }
   }
   const g = new THREE.BufferGeometry()
