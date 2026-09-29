@@ -69,6 +69,11 @@ export function PlanToiles({ level }: { level: number }) {
     return groupes
   }, [poses, atlas])
   const niveau = MUSEE.levels.find((l) => l.id === level)
+  // Le nom est PEINT sur le mur : une matière éclairée, comme le mur. Le
+  // matériau par défaut de troika ne l'est pas, et la nuit les lettres crème
+  // luisaient sur des murs plongés dans le noir.
+  const peinture = useMemo(() => new THREE.MeshStandardMaterial({ roughness: 0.85 }), [])
+  useEffect(() => () => peinture.dispose(), [peinture])
 
   return (
     <>
@@ -93,6 +98,7 @@ export function PlanToiles({ level }: { level: number }) {
             <Text
               key={salle.id}
               font={CARTEL_FONT}
+              material={peinture}
               position={[room.x + room.width / 2, niveau.elevation + (masque ? HAUTEUR_NOM_CIMAISE : HAUTEUR_NOM), room.z + DEMI_MUR + 0.01]}
               fontSize={0.32}
               // Crème sur les murs de couleur des galeries (parement.ts).
