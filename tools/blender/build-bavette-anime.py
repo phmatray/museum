@@ -67,16 +67,23 @@ Z_GARROT = 0.332        # sur la source
 # Y0 : milieu entre coussinets avant (−0,475) et arrière (+0,21).
 Y0 = -0.13
 K = GARROT / (Z_GARROT + 0.5)
-# Trapu : la source est un chat de gouttière élancé. Le tronc s'élargit et le
-# ventre descend un peu entre les pattes (voir `etoffer`), sans toucher aux
-# pattes, à la tête ni à la queue.
-LARGEUR = 1.10
-VENTRE = 0.05           # unités source (≈ 1,8 cm) au milieu du ventre
+# Allongé : à l'échelle du garrot, la source ne fait que 47 cm du museau à la
+# queue et, élargie de 10 %, Bavette avait l'air d'une pomme de terre
+# (Philippe). Tout ce qui court le long du corps — maillage ET squelette — est
+# étiré d'autant : 50 cm, le haut de ses mesures. Assis, le bassin bascule
+# moins (`assise`) : un dos plus long lèverait les épaules hors de portée des
+# pattes avant.
+ALLONGE = 1.08
+KY = K * ALLONGE
+# Le tronc garde sa largeur ; le ventre descend à peine entre les pattes (voir
+# `etoffer`), sans toucher aux pattes, à la tête ni à la queue.
+LARGEUR = 1.0
+VENTRE = 0.02           # unités source (≈ 0,7 cm) au milieu du ventre
 
 
 def P(x, y, z):
     """Un point relevé sur la source (unités Meshy) → mètres, origine au sol."""
-    return Vector((x * K, (y - Y0) * K, (z + 0.5) * K))
+    return Vector((x * K, (y - Y0) * KY, (z + 0.5) * K))
 
 
 # ── Le squelette, relevé en coupes sur la source (voir SOURCES.md) ─────────
@@ -168,7 +175,7 @@ def importer(source: Path):
     bpy.ops.object.modifier_apply(modifier=mod.name)
     # Échelle et ancrage FIXES, relevés sur la source : le squelette est
     # exprimé dans le même repère.
-    m = Matrix.Diagonal((K, K, K, 1)) @ Matrix.Translation((0, -Y0, 0.5)) @ corps.matrix_world
+    m = Matrix.Diagonal((K, KY, K, 1)) @ Matrix.Translation((0, -Y0, 0.5)) @ corps.matrix_world
     corps.data.transform(m)
     corps.matrix_world = Matrix.Identity(4)
     etoffer(corps)
@@ -195,15 +202,15 @@ def etoffer(corps):
     Mesure ensuite ce que le script promet : garrot, longueur, oreilles.
     """
     for v in corps.data.vertices:
-        y, z = v.co.y / K + Y0, v.co.z / K - 0.5
+        y, z = v.co.y / KY + Y0, v.co.z / K - 0.5
         tronc = cloche(y, -0.70, 0.42) ** 0.5 * max(0.0, min(1.0, (z + 0.22) / 0.12))
         v.co.x *= 1 + (LARGEUR - 1) * tronc
         ventre = cloche(y, -0.36, 0.14) * max(0.0, min(1.0, (0.20 - z) / 0.30)) * (z > -0.22)
         v.co.z -= VENTRE * K * ventre
     vs = [v.co for v in corps.data.vertices]
-    garrot = max(c.z for c in vs if -0.47 <= c.y / K + Y0 <= -0.39)
+    garrot = max(c.z for c in vs if -0.47 <= c.y / KY + Y0 <= -0.39)
     museau = min(c.y for c in vs)
-    queue = (0.36 - Y0) * K
+    queue = (0.36 - Y0) * KY
     print(f"BAVETTE_MESURES garrot {garrot:.3f} m · oreilles {max(c.z for c in vs):.3f} m · "
           f"museau–queue {queue - museau:.3f} m · largeur {2 * max(c.x for c in vs):.3f} m")
 
@@ -365,7 +372,7 @@ def nettoyer_poids(corps, arm):
     bpy.ops.object.mode_set(mode="OBJECT")
     groupes = {g.index: g.name for g in corps.vertex_groups}
     for v in corps.data.vertices:
-        x, y, z = v.co.x / K, v.co.y / K + Y0, v.co.z / K - 0.5
+        x, y, z = v.co.x / K, v.co.y / KY + Y0, v.co.z / K - 0.5
         if z < -0.24:
             continue
         # Au-dessus du coude et du genou : 1 près des pattes, 0 au milieu du ventre
@@ -601,7 +608,7 @@ def assise(arm, s, t=0.0):
     pose = arm.pose.bones
     e = lisse(s)
     deplacer(pose["Bassin"], (0, 0.0, -0.19 * e))
-    tourner(pose["Bassin"], (1, 0, 0), -40 * e)
+    tourner(pose["Bassin"], (1, 0, 0), -34 * e)
     tourner(pose["Dos"], (1, 0, 0), -8 * e)
     tourner(pose["Poitrine"], (1, 0, 0), -6 * e)
     tourner(pose["Cou"], (1, 0, 0), 36 * e)
