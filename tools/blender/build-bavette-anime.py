@@ -142,13 +142,25 @@ PATTES = [
 PERIODE = 28 / FPS      # s ≈ 0,93
 FOULEE = 0.40           # m, un cycle
 VITESSE = FOULEE / PERIODE   # ≈ 0,43 m/s à timeScale 1
-FLEXION = 0.042         # m : il marche bas, le ventre près de l'herbe (au-delà, genou en Z)
+# Les proportions de la marche, mesurées sur la vidéo (repères posés à la main
+# sur 6 images de profil, sol redressé de 6°) contre ce modèle, en rapport à la
+# hauteur au garrot H : museau–base de queue 1,75 H, poitrail 0,60 H, ventre à
+# 0,40 H du sol, oreille 0,18 H au-dessus du garrot. Il marchait accroupi
+# (garrot à 25 cm au lieu de 30, museau–queue 2,0 H, tête sous le dos) : un
+# chat à l'affût, pas le chat de la vidéo, qui marche haut, la tête portée.
+FLEXION = 0.012         # m : le garrot reste à ~29 cm en marche (30 debout)
+# Le cou se redresse (−10° au lieu de 18° vers le bas) et s'allonge un peu,
+# comme tendu en avant ; la tête pique du nez pour garder le regard devant.
+COU_MARCHE = -10
+COU_ETIRE = 1.15
+TETE_MARCHE = 30
 LEVER = {True: 0.065, False: 0.035}
 APPUI = {True: 0.0, False: -0.018}   # m : milieu de l'appui avancé (−Y) sous le ventre
-OMOPLATE = 0.07         # m : course avant–arrière de l'épaule avec la patte
+OMOPLATE = 0.10         # m : course avant–arrière de l'épaule — plus haut sur pattes, c'est
+                        # elle qui laisse l'antérieur atteindre sa pose loin devant
 # La queue, en angle absolu sous l'horizontale, de la base à la pointe : basse,
-# en courbe douce, la pointe à hauteur de jarret (vidéo : −38° à la base).
-QUEUE_MARCHE = (-34, -42, -44, -42, -36, -28)
+# en courbe douce, la pointe à hauteur de jarret (vidéo : ~45° sous le sol redressé).
+QUEUE_MARCHE = (-40, -48, -48, -44, -36, -28)
 QUEUE_REPOS = (-24, -38, -46, -46, -36, -18)
 
 
@@ -189,7 +201,107 @@ def importer(source: Path):
         if max(img.size) > TEXTURES:
             f = TEXTURES / max(img.size)
             img.scale(int(img.size[0] * f), int(img.size[1] * f))
+    robe(corps)
     return corps
+
+
+def blanc_attendu(x, y, z):
+    """
+    Part de blanc de la robe au point (x, y, z) de la source, d'après les
+    vidéos et les photos : il est surtout BLANC — cou et nuque, poitrail,
+    ventre, pattes, museau et liseré entre les yeux, une tache au milieu du
+    flanc et une autre sur la croupe. Le tabby ne garde que la calotte, la
+    selle des épaules, la hanche, la ligne du dos et la queue.
+    """
+    def bosse(u, a, b, bord):
+        return lisse((u - a) / bord) * lisse((b - u) / bord)
+    cou = bosse(y, -0.68, -0.50, 0.05) * lisse((0.36 - z) / 0.04)
+    flanc = bosse(y, -0.20, 0.06, 0.05) * bosse(z, -0.05, 0.20, 0.05)
+    croupe = bosse(y, 0.24, 0.36, 0.04) * bosse(z, 0.06, 0.22, 0.04)
+    dessous = lisse((0.0 - z) / 0.08) * (y > -0.84)
+    museau = lisse((-0.80 - y) / 0.05) * lisse((0.26 - z) / 0.05)
+    liste = lisse((0.03 - abs(x)) / 0.02) * lisse((-0.78 - y) / 0.04) * lisse((0.36 - z) / 0.04)
+    queue = lisse((y - 0.36) / 0.02)
+    return max(cou, flanc, croupe, dessous, museau, liste) * (1 - queue)
+
+
+def robe(corps):
+    """
+    Recolore la texture de base, sans aléa : le blanc gris de la source est
+    rehaussé et les zones `blanc_attendu` virent au blanc, en gardant le grain
+    du poil (la luminance de la source module ce blanc). Cuit par Cycles dans
+    une nouvelle image aux MÊMES UV : rien d'autre ne change dans le glTF.
+    """
+    mat = corps.material_slots[0].material
+    nt = mat.node_tree
+    bsdf = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
+    tex = bsdf.inputs["Base Color"].links[0].from_node
+    attr = corps.data.color_attributes.new("robe", "FLOAT_COLOR", "POINT")
+    for v in corps.data.vertices:
+        w = blanc_attendu(v.co.x / K, v.co.y / KY + Y0, v.co.z / K - 0.5)
+        attr.data[v.index].color = (w, w, w, 1)
+    ca = nt.nodes.new("ShaderNodeVertexColor")
+    ca.layer_name = "robe"
+    # Luminance de la source → blanc de poil (0,80 à 0,96) ; saturée (truffe
+    # rose, yeux), elle garde sa couleur.
+    hsv = nt.nodes.new("ShaderNodeSeparateColor")
+    hsv.mode = "HSV"
+    nt.links.new(tex.outputs["Color"], hsv.inputs["Color"])
+    poil = nt.nodes.new("ShaderNodeMapRange")
+    poil.inputs["From Min"].default_value, poil.inputs["From Max"].default_value = 0.1, 0.9
+    poil.inputs["To Min"].default_value, poil.inputs["To Max"].default_value = 0.80, 0.96
+    nt.links.new(hsv.outputs["Blue"], poil.inputs["Value"])
+    blanc = nt.nodes.new("ShaderNodeCombineColor")
+    for i, k in enumerate((1.0, 0.985, 0.955)):
+        m = nt.nodes.new("ShaderNodeMath")
+        m.operation = "MULTIPLY"
+        m.inputs[1].default_value = k
+        nt.links.new(poil.outputs["Result"], m.inputs[0])
+        nt.links.new(m.outputs[0], blanc.inputs[i])
+    # Les gris clairs de la source (V > 0,55, peu saturés) sont déjà du blanc :
+    # on les rehausse partout, et on force la zone blanche attendue.
+    clair = nt.nodes.new("ShaderNodeMapRange")
+    clair.inputs["From Min"].default_value, clair.inputs["From Max"].default_value = 0.50, 0.70
+    nt.links.new(hsv.outputs["Blue"], clair.inputs["Value"])
+    fac = nt.nodes.new("ShaderNodeMath")
+    fac.operation = "MAXIMUM"
+    nt.links.new(clair.outputs["Result"], fac.inputs[0])
+    nt.links.new(ca.outputs["Color"], fac.inputs[1])
+    terne = nt.nodes.new("ShaderNodeMapRange")          # 1 si peu saturé, 0 si saturé
+    terne.inputs["From Min"].default_value, terne.inputs["From Max"].default_value = 0.35, 0.18
+    nt.links.new(hsv.outputs["Green"], terne.inputs["Value"])
+    f2 = nt.nodes.new("ShaderNodeMath")
+    f2.operation = "MULTIPLY"
+    f2.use_clamp = True
+    nt.links.new(fac.outputs[0], f2.inputs[0])
+    nt.links.new(terne.outputs["Result"], f2.inputs[1])
+    mix = nt.nodes.new("ShaderNodeMix")
+    mix.data_type = "RGBA"
+    nt.links.new(f2.outputs[0], mix.inputs["Factor"])
+    nt.links.new(tex.outputs["Color"], mix.inputs["A"])
+    nt.links.new(blanc.outputs["Color"], mix.inputs["B"])
+    nt.links.new(mix.outputs["Result"], bsdf.inputs["Base Color"])
+    cuite = bpy.data.images.new("Robe", tex.image.size[0], tex.image.size[1])
+    cible = nt.nodes.new("ShaderNodeTexImage")
+    cible.image = cuite
+    nt.nodes.active = cible
+    sc = bpy.context.scene
+    sc.render.engine = "CYCLES"
+    sc.cycles.samples = 1
+    sc.cycles.device = "CPU"
+    bpy.ops.object.select_all(action="DESELECT")
+    corps.select_set(True)
+    bpy.context.view_layer.objects.active = corps
+    bpy.ops.object.bake(type="DIFFUSE", pass_filter={"COLOR"}, margin=4, use_clear=True)
+    # La nouvelle image remplace l'ancienne ; les nœuds de calcul disparaissent.
+    tex.image = cuite
+    for n in (ca, hsv, poil, blanc, clair, fac, terne, f2, mix, cible) + tuple(
+            l.from_node for l in blanc.inputs[0].links + blanc.inputs[1].links + blanc.inputs[2].links):
+        if n.name in nt.nodes:
+            nt.nodes.remove(n)
+    nt.links.new(tex.outputs["Color"], bsdf.inputs["Base Color"])
+    corps.data.color_attributes.remove(corps.data.color_attributes["robe"])
+    cuite.pack()
 
 
 def cloche(u, a, b):
@@ -570,8 +682,8 @@ def action(arm, nom, images, poser, boucle=True):
 
 def marche(arm, t):
     """
-    Un cycle, t ∈ [0, 1[ ; t = 0 : le postérieur gauche décolle. Le corps bas,
-    le dos long et plat, la tête portée au niveau du dos, la queue basse.
+    Un cycle, t ∈ [0, 1[ ; t = 0 : le postérieur gauche décolle. Haut sur
+    pattes, le dos plat, la tête portée au-dessus du dos, la queue basse.
     """
     pose = arm.pose.bones
     # Deux petits creux par cycle, juste après la pose de chaque antérieur.
@@ -587,11 +699,12 @@ def marche(arm, t):
     tourner(pose["Poitrine"], (1, 0, 0), 2)
     tourner(pose["Poitrine"], (0, 1, 0), 2.5 * math.cos(2 * math.pi * (t - 0.51)))
     tourner(pose["Poitrine"], (0, 0, 1), -1.5 * math.sin(2 * math.pi * (t - 0.51)))
-    # La tête basse, dans l'axe, qui compense le roulis et hoche à peine.
-    tourner(pose["Cou"], (1, 0, 0), 18)
+    # La tête portée au-dessus du dos, dans l'axe, qui compense le roulis et hoche à peine.
+    tourner(pose["Cou"], (1, 0, 0), COU_MARCHE)
+    pose["Cou"].scale = (1, COU_ETIRE, 1)
     tourner(pose["Cou"], (0, 1, 0), -2.5 * math.cos(2 * math.pi * (t - 0.51)))
     tourner(pose["Cou"], (0, 0, 1), 1.5 * math.sin(2 * math.pi * (t - 0.51)))
-    tourner(pose["Tete"], (1, 0, 0), -10 + 1.5 * math.cos(4 * math.pi * (t - 0.70)))
+    tourner(pose["Tete"], (1, 0, 0), TETE_MARCHE + 1.5 * math.cos(4 * math.pi * (t - 0.70)))
     for c, avant, decolle, vol in PATTES:
         u = (t - decolle) % 1.0
         recul, hauteur, bascule = patte_en_marche(u, vol, avant)
