@@ -3,7 +3,8 @@
  *
  * - `sondeDeReflet` : quel environnement le visiteur voit dans le laiton et le
  *   verre — le ciel dehors, la nef sous la verrière, sinon sa salle. Lu sur la
- *   surface du marcheur (`plan/walk.ts`).
+ *   surface du marcheur (`plan/walk.ts`). `melangeDeReflets` : près d'une
+ *   porte, la part de la sonde d'à côté.
  * - `cadrerOmbre` : la carte d'ombre du soleil suit le visiteur, mais ne glisse
  *   que d'un texel entier à la fois ; sans quoi chaque pas ferait scintiller le
  *   bord de toutes les ombres.
@@ -23,6 +24,49 @@ export function sondeDeReflet(surface: string | null | undefined): string {
   const salle = surface.slice(surface.indexOf(':') + 1)
   if (surface.startsWith('palier:') || surface.startsWith('volee:') || salle === 'hall' || salle.startsWith('balcon')) return 'nef'
   return surface
+}
+
+/** La demi-largeur du fondu entre deux sondes, de part et d'autre d'une porte (m). */
+export const FONDU_REFLET = 1.5
+
+interface NiveauDeReflet {
+  id: number
+  rooms: readonly { id: string; x: number; z: number; width: number; depth: number }[]
+  openings: readonly { kind: string; a: string; b: string | null; x: number; z: number; width: number }[]
+}
+
+/**
+ * Les deux sondes à mélanger là où se tient le visiteur, et la part de la
+ * voisine (0 à ½). Sur le seuil même d'une porte, moitié-moitié ; à
+ * `FONDU_REFLET` mètres de part ou d'autre, sa seule sonde. La part ne dépend
+ * que de la distance au plan du mur : elle vaut ½ des deux côtés de la ligne où
+ * `sondeDeReflet` bascule, le reflet passe la porte sans saut.
+ */
+export function melangeDeReflets(
+  niveau: NiveauDeReflet | undefined,
+  x: number,
+  z: number,
+  surface: string | null | undefined,
+): { sonde: string; voisine: string; part: number } {
+  const sonde = sondeDeReflet(surface)
+  let res = { sonde, voisine: sonde, part: 0 }
+  if (!niveau) return res
+  const cle = (id: string | null) => (id === null ? 'ciel' : sondeDeReflet(`${niveau.id}:${id}`))
+  for (const o of niveau.openings) {
+    if (o.kind === 'bay') continue
+    const [ka, kb] = [cle(o.a), cle(o.b)]
+    const voisine = ka === sonde ? kb : kb === sonde ? ka : null
+    const a = niveau.rooms.find((r) => r.id === o.a)
+    if (voisine === null || voisine === sonde || !a) continue
+    // Le mur est nord-sud si l'ouverture est posée sur une arête x de sa salle.
+    const nordSud = Math.abs(o.x - a.x) < 1e-6 || Math.abs(o.x - a.x - a.width) < 1e-6
+    const [travers, long] = nordSud ? [x - o.x, z - o.z] : [z - o.z, x - o.x]
+    // Le long du mur, le fondu s'éteint au-delà des tableaux de la porte : pas de saut non plus.
+    const cote = Math.max(0, 1 - Math.max(0, Math.abs(long) - o.width / 2) / FONDU_REFLET)
+    const part = 0.5 * Math.max(0, 1 - Math.abs(travers) / FONDU_REFLET) * cote
+    if (part > res.part) res = { sonde, voisine, part }
+  }
+  return res
 }
 
 type V3 = readonly [number, number, number]

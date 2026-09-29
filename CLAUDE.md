@@ -63,7 +63,8 @@ asset credits are declared in the `tools/fetch-assets.ts` manifest and regenerat
 **Runtime systems worth knowing before touching the scene:**
 - Global state in `src/stores/gameStore.ts` (zustand): `ciel` (real sun/moon, `jour` 0–1), `meteo`, `saison`, tour, etc.
 - One directional light (sun by day, moon by night) with a shadow box following the visitor (`OmbresLayer`);
-  lightmap multiplies ambient/env diffuse (`scene/lumiere.ts`); per-room reflection probes (`RefletsLayer`).
+  lightmap multiplies ambient diffuse (`scene/lumiere.ts`); per-room reflection probes (`RefletsLayer`) are
+  specular only (the IBL irradiance is patched out of three's shader chunk) and cross-fade by position at doorways.
 - Weather/season effects are `onBeforeCompile` shader add-ons in `scene/intemperies.ts` — chain onto an existing hook,
   never replace it.
 - Room-visibility culling (`VisibiliteLayer` + `scene/tri.ts`) hides meshes by `layers.mask` and **compacts instanced

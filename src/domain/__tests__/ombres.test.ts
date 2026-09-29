@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
-import { cadrerOmbre, regrouperEmprises, sondeDeReflet } from '../ombres'
+import { MUSEE } from '../../plan/musee'
+import { surfaceAt } from '../../plan/rules'
+import { FONDU_REFLET, cadrerOmbre, melangeDeReflets, regrouperEmprises, sondeDeReflet } from '../ombres'
 
 describe('sondeDeReflet', () => {
   it('lit la sonde sur la surface du marcheur', () => {
@@ -12,6 +14,38 @@ describe('sondeDeReflet', () => {
     expect(sondeDeReflet('volee:v1')).toBe('nef')
     expect(sondeDeReflet('1:honneur')).toBe('1:honneur')
     expect(sondeDeReflet('0:r-o2')).toBe('0:r-o2')
+  })
+})
+
+describe('melangeDeReflets', () => {
+  // La part d'une sonde donnée dans le reflet, là où se tient le visiteur.
+  const partDe = (cle: string, level: number, x: number, z: number) => {
+    const n = MUSEE.levels.find((l) => l.id === level)!
+    const m = melangeDeReflets(n, x, z, surfaceAt(MUSEE, x, z, n.elevation))
+    return (m.sonde === cle ? 1 - m.part : 0) + (m.voisine === cle && m.voisine !== m.sonde ? m.part : 0)
+  }
+  it('passe une porte sans saut : moitié-moitié sur le seuil, sa seule salle au-delà du fondu', () => {
+    for (const [level, cle, pas] of [
+      [0, 'nef', (t: number) => [16 + t, 24.4]], // hall ↔ r-o2
+      [0, '0:r-o3', (t: number) => [8.3, 27 + t]], // r-o2 ↔ r-o3
+      [0, 'nef', (t: number) => [24.5, 40 - t]], // l'entrée : le ciel ↔ la nef
+      [1, '1:honneur', (t: number) => [16 + t, 6]], // e-o1 ↔ salle d'honneur
+    ] as const) {
+      let avant = partDe(cle, level, ...(pas(-2) as [number, number]))
+      expect(avant).toBe(0)
+      for (let t = -2; t <= 2; t += 0.05) {
+        const p = partDe(cle, level, ...(pas(t) as [number, number]))
+        expect(Math.abs(p - avant)).toBeLessThan(0.05)
+        avant = p
+      }
+      expect(avant).toBe(1)
+      expect(partDe(cle, level, ...(pas(0.001) as [number, number]))).toBeCloseTo(0.5, 2)
+    }
+  })
+  it('ne mélange rien au milieu d’une salle, ni le long d’un mur loin des portes', () => {
+    const n = MUSEE.levels[0]
+    expect(melangeDeReflets(n, 8, 20, '0:r-o2').part).toBe(0)
+    expect(melangeDeReflets(n, 16.3, 24 + 1.2 + FONDU_REFLET + 0.1, '0:hall').part).toBe(0)
   })
 })
 

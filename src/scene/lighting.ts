@@ -618,11 +618,16 @@ export const BUDGET_PUITS = 3
  *
  * Son « sol » reste volontairement clair : c'est lui qui éclaire les faces
  * tournées vers le bas (voir `REBOND`), et un sol sombre les rendrait au noir.
+ *
+ * Elle remonte de 0,95 à 1,9 quand les sondes de reflets (`RefletsLayer`)
+ * cessent d'éclairer le diffus : elles en donnaient à peu près autant, mais
+ * selon la pièce où se tenait le visiteur — la clarté changeait à chaque porte.
+ * Remesuré à l'écran : murs et vues d'ensemble à ±6 % de l'avant, de jour.
  */
 export const AMBIANCE = {
   ciel: '#dbe6f5',
   sol: '#dcd8d0',
-  intensite: 0.95,
+  intensite: 1.9,
 } as const
 
 /**

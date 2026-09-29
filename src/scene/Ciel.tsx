@@ -128,9 +128,11 @@ const OR_BAS = new THREE.Color('#ffb070')
  * La nuit, le musée reste éclairé de l'intérieur par ses propres lumières,
  * chaudes : une ambiance bleu lune baignait les salles comme si elles étaient
  * fermées et éteintes. Le bleu de la nuit vient de la lune (directionnelle) et
- * du ciel, pas de l'ambiance.
+ * du ciel, pas de l'ambiance. 1,1 et non plus 0,8 : les sondes de reflets
+ * n'éclairent plus le diffus (voir `AMBIANCE`) ; galeries et parc retrouvent
+ * leur clarté d'avant, la nef la nuit reste un peu plus sombre (−18 %).
  */
-const AMBIANCE_NUIT = { ciel: new THREE.Color('#8a7358'), intensite: 0.8 }
+const AMBIANCE_NUIT = { ciel: new THREE.Color('#8a7358'), intensite: 1.1 }
 
 /**
  * La boîte d'ombre du soleil : un carré de `2 × OMBRE.demi` mètres vu du soleil,
