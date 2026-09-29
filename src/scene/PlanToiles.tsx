@@ -41,13 +41,14 @@ export function PlanToiles({ level }: { level: number }) {
 
   // De près, la vignette 1024 × 512 du dépôt remplace la couche 256 × 128 de
   // l'atlas, comme dans l'ancienne scène (`ArtworkLayer`) : sans elle, le texte
-  // d'une toile restait flou à un mètre. Réévalué tous les demi-mètres.
+  // d'une toile restait flou à un mètre. Réévalué tous les demi-mètres, avec
+  // hystérésis (`posesProches`) : sans elle, les toiles clignotaient d'un LOD à l'autre.
   const [proches, setProches] = useState<readonly Pose[]>(AUCUNE_POSE)
   const derniere = useRef(new THREE.Vector3(Infinity, 0, 0))
   useFrame(({ camera }) => {
     if (camera.position.distanceToSquared(derniere.current) < 0.25) return
     derniere.current.copy(camera.position)
-    const vues = posesProches(poses, camera.position)
+    const vues = posesProches(poses, camera.position, proches)
     if (vues.length !== proches.length || vues.some((p, i) => p !== proches[i])) setProches(vues)
   })
   useEffect(() => claimNearTextures(`plan:${level}`, proches.map((p) => p.key)), [level, proches])

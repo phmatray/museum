@@ -10,7 +10,7 @@ import type { Hanging } from '../builders/artwork'
 import { FRAME_BORDER, FRAME_DEPTH } from '../builders/artwork'
 import { DEFAULT_ASPECT } from '../domain/hanging'
 import type { Accrochage } from '../plan/hang'
-import { MAX_NEAR_TEXTURES, NEAR_LOD_DISTANCE } from '../io/arrayTexture'
+import { MAX_NEAR_TEXTURES } from '../io/arrayTexture'
 
 /** Toutes les toiles, avant de savoir dans quelle couche d'atlas elles vivent. */
 export type Pose = Omit<Hanging, 'atlas' | 'layer'>
@@ -33,22 +33,42 @@ export function computePoses(salles: Accrochage['rooms']): Pose[] {
 }
 
 /**
- * Les toiles qui méritent leur vignette 1024 × 512 (`media/near/`) : à moins de
- * `NEAR_LOD_DISTANCE` du regard, sur le niveau où il se tient — une toile de
- * l'étage est à moins de dix mètres mais derrière un plancher —, les plus
- * proches d'abord, `MAX_NEAR_TEXTURES` au plus. Au-delà, la couche 256 × 128 de
- * l'atlas suffit ; de près, elle rendait le texte des toiles illisible.
+ * Les toiles qui méritent leur vignette 1024 × 512 (`media/near/`), sur le
+ * niveau où se tient le regard — une toile de l'étage est à moins de dix mètres
+ * mais derrière un plancher —, `MAX_NEAR_TEXTURES` au plus. Au-delà, la couche
+ * 256 × 128 de l'atlas suffit ; de près, elle rendait le texte illisible.
+ *
+ * Avec hystérésis, sinon les toiles clignotent : une toile ENTRE sous
+ * `ENTREE`, ne SORT qu'au-delà de `SORTIE`, et une toile déjà retenue ne cède sa
+ * place, quand les six sont prises, qu'à une toile plus proche qu'elle de
+ * `SORTIE - ENTREE`. Sans cela, un pas de part et d'autre des dix mètres, ou
+ * deux toiles à égale distance, les faisaient basculer d'un LOD à l'autre à
+ * chaque demi-mètre. Rendues triées par identifiant : l'ordre ne change pas
+ * quand on bouge, seul l'ensemble compte.
  */
-export function posesProches<P extends Pick<Pose, 'id' | 'centre'>>(poses: readonly P[], oeil: THREE.Vector3): P[] {
-  const rayon = NEAR_LOD_DISTANCE * NEAR_LOD_DISTANCE
-  return poses
-    .filter((p) => Math.abs(p.centre.y - oeil.y) < MEME_NIVEAU)
-    .map((p) => ({ p, d2: p.centre.distanceToSquared(oeil) }))
-    .filter(({ d2 }) => d2 <= rayon)
-    .sort((a, b) => a.d2 - b.d2 || (a.p.id < b.p.id ? -1 : 1))
-    .slice(0, MAX_NEAR_TEXTURES)
-    .map(({ p }) => p)
+export function posesProches<P extends Pick<Pose, 'id' | 'centre'>>(poses: readonly P[], oeil: THREE.Vector3, avant: readonly P[] = []): P[] {
+  const distance = new Map<string, number>()
+  for (const p of poses) if (Math.abs(p.centre.y - oeil.y) < MEME_NIVEAU) distance.set(p.id, p.centre.distanceTo(oeil))
+  const d = (p: P) => distance.get(p.id) ?? Infinity
+  const gardees = avant.filter((p) => d(p) <= SORTIE)
+  const candidats = poses
+    .filter((p) => d(p) <= ENTREE && !gardees.some((g) => g.id === p.id))
+    .sort((a, b) => d(a) - d(b) || (a.id < b.id ? -1 : 1))
+  for (const c of candidats) {
+    if (gardees.length < MAX_NEAR_TEXTURES) {
+      gardees.push(c)
+      continue
+    }
+    const loin = gardees.reduce((a, b) => (d(b) > d(a) ? b : a))
+    if (d(loin) - d(c) <= SORTIE - ENTREE) break
+    gardees[gardees.indexOf(loin)] = c
+  }
+  return gardees.sort((a, b) => (a.id < b.id ? -1 : 1))
 }
+
+/** Une toile passe à sa vignette sous huit mètres, et la garde jusqu'à onze. */
+export const ENTREE = 8
+export const SORTIE = 11
 
 /** L'axe des toiles est à 1,55 m, l'œil vers 1,6 m ; un étage plus haut, 4,80 m. */
 const MEME_NIVEAU = 2.4

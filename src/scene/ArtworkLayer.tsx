@@ -29,7 +29,7 @@
  *
  * Loin, la couche 256×128 de la texture array, toujours résidente. Sous dix
  * mètres, la vignette 1024×512 du dépôt, chargée À LA DEMANDE et rendue par un
- * maillage individuel ; l'instance correspondante passe alors à l'échelle nulle.
+ * maillage individuel ; le shader écarte alors l'instance correspondante.
  * Charger les 115 vignettes coûterait 240 Mo de VRAM, soit plus que le budget
  * textures ENTIER du §9 — c'est très exactement ce que la texture array évite.
  *
@@ -44,7 +44,7 @@
  * surbrillance du spot est PEINTE dans le fragment shader, ce qui coûte trois
  * instructions et zéro draw call.
  */
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
@@ -110,12 +110,17 @@ const PEINDRE_LE_SPOT = /* glsl */ `
  */
 const TOILE_VERT = /* glsl */ `
   in float aLayer;
+  uniform float cachees[${MAX_NEAR_TEXTURES}];
   out vec2 vUv;
   flat out int vLayer;
   void main() {
     vUv = uv;
     vLayer = int(aLayer);
     gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+    // Relayée par sa vignette : rejetée hors du volume de vue, jamais tracée.
+    for (int i = 0; i < ${MAX_NEAR_TEXTURES}; i++) {
+      if (aLayer == cachees[i]) gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
+    }
   }
 `
 
@@ -317,7 +322,7 @@ export function CanvasInstances({ texture, hangings, masquees }: CanvasInstances
     () =>
       new THREE.ShaderMaterial({
         glslVersion: THREE.GLSL3,
-        uniforms: { map: { value: texture } },
+        uniforms: { map: { value: texture }, cachees: { value: new Float32Array(MAX_NEAR_TEXTURES).fill(-1) } },
         vertexShader: TOILE_VERT,
         fragmentShader: TOILE_FRAG,
       }),
@@ -336,24 +341,29 @@ export function CanvasInstances({ texture, hangings, masquees }: CanvasInstances
   useEffect(() => {
     const noeud = mesh.current
     if (noeud === null) return
-
-    const nul = new THREE.Vector3(0, 0, 0)
-    const tampon = new THREE.Matrix4()
-    for (let i = 0; i < hangings.length; i++) {
-      if (masquees.has(hangings[i].id)) {
-        // Échelle nulle plutôt que suppression : l'index d'instance reste
-        // aligné sur `aLayer`, et `Matrix4.scale` laisse la translation intacte
-        // — la sphère englobante du lot ne bouge donc pas.
-        noeud.setMatrixAt(i, tampon.copy(hangings[i].canvas).scale(nul))
-      } else {
-        noeud.setMatrixAt(i, hangings[i].canvas)
-      }
-    }
+    for (let i = 0; i < hangings.length; i++) noeud.setMatrixAt(i, hangings[i].canvas)
     noeud.instanceMatrix.needsUpdate = true
     // Sans sphère englobante, three teste le frustum sur la géométrie du quad
     // UNITÉ : le lot entier disparaîtrait dès que l'origine sort du champ.
     noeud.computeBoundingSphere()
-  }, [hangings, masquees])
+  }, [hangings])
+
+  // Le LOD proche masque par un uniform, JAMAIS en réécrivant le lot : le tri
+  // des salles (`tri.ts`) compacte les attributs d'instance en place et ne voit
+  // une réécriture qu'à sa passe suivante, jusqu'à une demi-seconde plus tard.
+  // Réécrire les matrices dans l'ordre d'origine sur un lot compacté laissait
+  // entre-temps des toiles peintes avec la couche d'une autre, ou pas peintes
+  // du tout : elles clignotaient à chaque bascule de vignette. Posé avant
+  // l'image (effet de mise en page), dans le même commit que la vignette qui
+  // prend le relais : jamais les deux à la fois, jamais aucune.
+  /* eslint-disable react-hooks/immutability */
+  useLayoutEffect(() => {
+    const cachees = material.uniforms.cachees.value as Float32Array
+    cachees.fill(-1)
+    let n = 0
+    for (const hanging of hangings) if (masquees.has(hanging.id) && n < cachees.length) cachees[n++] = hanging.layer
+  }, [material, hangings, masquees])
+  /* eslint-enable */
 
   return (
     <instancedMesh
