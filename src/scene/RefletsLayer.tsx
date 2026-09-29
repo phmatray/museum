@@ -23,6 +23,7 @@ import * as THREE from 'three'
 import { sondeDeReflet } from '../domain/ombres'
 import { MUSEE } from '../plan/musee'
 import { useGameStore } from '../stores/gameStore'
+import { sansTri } from './tri'
 
 /** Côté d'une face de sonde : les reflets sont flous, 128 suffit. */
 const TAILLE = 128
@@ -94,7 +95,8 @@ export function RefletsLayer() {
         // La sonde voit le ciel dans les métaux qu'elle capture, pas sa propre carte périmée.
         const avant = scene.environment
         scene.environment = cartes.current.get('ciel')?.texture ?? avant
-        carte = pmrem.fromScene(scene, 0, 0.1, 1000, { size: TAILLE, position: SONDES.get(cle) })
+        // Toute la scène, pas seulement ce que le visiteur voit d'où il est (VisibiliteLayer).
+        carte = sansTri(() => pmrem.fromScene(scene, 0, 0.1, 1000, { size: TAILLE, position: SONDES.get(cle) }))
         scene.environment = avant
       }
       file.current.shift()
