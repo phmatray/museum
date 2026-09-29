@@ -13,6 +13,7 @@ import { describe, expect, it } from 'vitest'
 import { MUSEE } from '../musee.ts'
 import { capacity } from '../rules.ts'
 import { assignRooms, hangPlan } from '../hang.ts'
+import { cimaiseSous } from '../cimaises.ts'
 import { choisirVitrines } from '../vitrines.ts'
 import type { Artwork } from '../../domain/types.ts'
 
@@ -109,7 +110,8 @@ describe('hangPlan', () => {
     for (const r of accrochage.rooms) {
       const room = MUSEE.levels.find((l) => l.id === r.level)!.rooms.find((x) => x.id === r.id)!
       const [cx, cz] = [room.x + room.width / 2, room.z + room.depth / 2]
-      for (const p of r.placements) {
+      // Celles des cimaises ont leurs propres tests (cimaises.test.ts).
+      for (const p of r.placements.filter((p) => !cimaiseSous(r.level, r.id, p.x, p.z))) {
         const [nx, nz] = p.normal
         expect(nx * (cx - p.x) + nz * (cz - p.z), p.key).toBeGreaterThan(0)
         expect(p.x).toBeGreaterThan(room.x)

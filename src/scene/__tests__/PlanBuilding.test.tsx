@@ -40,6 +40,7 @@ import { bandesDuSol, parementDuHall, peintureDesSalles, plinthes } from '../../
 import { plafonds } from '../../plan/plafonds'
 import { facade } from '../../plan/facade'
 import { portes } from '../../plan/portes'
+import { boitesDesCimaises } from '../../plan/cimaises'
 import { meshLevel, type Box } from '../../plan/mesh'
 import { CIEL } from '../lighting'
 import { useGameStore } from '../../stores/gameStore'
@@ -89,6 +90,11 @@ describe('PlanBuilding', () => {
     })
     // Puis les embrasures de pierre des portes (PortesLayer ; ses chambranles attendent leur GLB).
     attendus.push(portes(MUSEE).embrasures.length)
+    // Puis les cimaises (CimaisesLayer) : le stratifié et l'aluminium de chaque niveau qui en a.
+    for (const niveau of MUSEE.levels) {
+      const { panneaux, alu } = boitesDesCimaises(MUSEE, niveau.id)
+      if (panneaux.length) attendus.push(panneaux.length, alu.length)
+    }
     // Puis la façade, après les niveaux : brique, pierre, piliers, vitres, menuiseries.
     const f = facade(MUSEE)
     attendus.push(f.brique.length, f.pierre.length, f.piliers.length, f.vitres.length, f.portes.length, f.menuiseries.length)

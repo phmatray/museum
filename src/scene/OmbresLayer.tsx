@@ -64,7 +64,7 @@ export function OmbresLayer() {
  * meuble (les pièces d'un même meuble fusionnées, `regrouperEmprises`), toutes
  * en un seul appel de dessin ; une de plus sous Bavette, qui la suit.
  */
-const MEUBLES = ['mobilier', 'props', 'sculptures', 'vitrines']
+const MEUBLES = ['mobilier', 'props', 'sculptures', 'vitrines', 'cimaises']
 /** La tache déborde l'emprise de tant (m) et d'une fraction, comme une vraie pénombre. */
 const DEBORD = { fixe: 0.3, relatif: 0.4 }
 const OPACITE = 0.75

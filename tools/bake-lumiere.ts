@@ -21,6 +21,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import sharp from 'sharp'
 
+import { boitesDesCimaises } from '../src/plan/cimaises.ts'
 import { facade } from '../src/plan/facade.ts'
 import { cleDeBoite, emballer, facesVisibles, surfacesCuites } from '../src/plan/lumiere.ts'
 import { MOBILIER } from '../src/plan/mobilier.ts'
@@ -49,6 +50,8 @@ console.log(`${surfaces.length} boîtes, ${nFaces} faces visibles, ${densite} te
 
 const lanterneaux = MUSEE.levels.flatMap((l) => plafonds(MUSEE, l.id).verre)
 const residus = MUSEE.levels.flatMap((l) => plafonds(MUSEE, l.id).resille)
+// Les cimaises modulables (cimaises.ts) font écran comme le mobilier.
+const cimaises = MUSEE.levels.flatMap((l) => boitesDesCimaises(MUSEE, l.id).panneaux)
 
 mkdirSync(TRAVAIL, { recursive: true })
 writeFileSync(
@@ -56,7 +59,7 @@ writeFileSync(
   JSON.stringify({
     atlas: { largeur: LARGEUR, hauteur },
     surfaces: surfaces.map((s, i) => ({ boite: s.boite, matiere: s.matiere, rects: atlas.rects[i] })),
-    obstacles: [...obstacles, ...residus],
+    obstacles: [...obstacles, ...residus, ...cimaises],
     lanterneaux,
     mobilier: MOBILIER.filter((m) => m.surface !== 'parc:terrain'),
     glb: ['nef', 'escalier', 'salle-honneur', 'batllo', 'mobilier'].map((n) => resolve(ROOT, `public/assets/architecture/${n}.glb`)),

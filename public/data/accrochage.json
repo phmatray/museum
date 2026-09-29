@@ -135,48 +135,15 @@
           "width": 1.851
         },
         {
-          "key": "phmatray/ClaudeCodeSdkNet",
-          "x": 0.15,
-          "y": 1.55,
-          "z": 16.568,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.851
-        },
-        {
           "key": "Atypical-Consulting/SalesPitch",
           "x": 0.15,
           "y": 1.55,
-          "z": 20.075,
+          "z": 20,
           "normal": [
             1,
             0
           ],
           "width": 2.177
-        },
-        {
-          "key": "Atypical-Consulting/x402-dotnet",
-          "x": 0.15,
-          "y": 1.55,
-          "z": 23.507,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "Atypical-Consulting/AdrMcp",
-          "x": 15.85,
-          "y": 1.55,
-          "z": 15.678,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.7
         },
         {
           "key": "Atypical-Consulting/GitHubSkills",
@@ -190,13 +157,46 @@
           "width": 1.939
         },
         {
-          "key": "phmatray/AIPromptMaster",
-          "x": 15.85,
+          "key": "phmatray/ClaudeCodeSdkNet",
+          "x": 4.2,
           "y": 1.55,
-          "z": 20.672,
+          "z": 17.42,
           "normal": [
-            -1,
-            0
+            0,
+            1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "Atypical-Consulting/AdrMcp",
+          "x": 4.2,
+          "y": 1.55,
+          "z": 17.38,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "Atypical-Consulting/x402-dotnet",
+          "x": 4.2,
+          "y": 1.55,
+          "z": 22.62,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/AIPromptMaster",
+          "x": 4.2,
+          "y": 1.55,
+          "z": 22.58,
+          "normal": [
+            0,
+            -1
           ],
           "width": 1.7
         }
@@ -420,8 +420,8 @@
       "name": "Music / Nuget",
       "placements": [
         {
-          "key": "Atypical-Consulting/nuke",
-          "x": 34.777,
+          "key": "stephaneweg/MusicTracker",
+          "x": 35.302,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -431,19 +431,19 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/dotnet-toolbelt",
-          "x": 37.329,
+          "key": "Atypical-Consulting/nuke",
+          "x": 38.304,
           "y": 1.55,
           "z": 0.15,
           "normal": [
             0,
             1
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
           "key": "phmatray/MasterCommander",
-          "x": 40.075,
+          "x": 41.501,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -453,19 +453,8 @@
           "width": 2.089
         },
         {
-          "key": "Atypical-Consulting/MarkdownInk",
-          "x": 42.747,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
           "key": "phmatray/Monads",
-          "x": 45.223,
+          "x": 44.698,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -486,29 +475,18 @@
           "width": 2.001
         },
         {
-          "key": "phmatray/PipeException",
-          "x": 43.023,
-          "y": 1.55,
-          "z": 12.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.53
-        },
-        {
           "key": "Atypical-Consulting/NFT",
-          "x": 45.319,
+          "x": 44.225,
           "y": 1.55,
           "z": 12.85,
           "normal": [
             0,
             -1
           ],
-          "width": 1.745
+          "width": 1.939
         },
         {
-          "key": "phmatray/CCrossHelper",
+          "key": "Atypical-Consulting/StaticWGen",
           "x": 32.15,
           "y": 1.55,
           "z": 2.775,
@@ -516,7 +494,7 @@
             1,
             0
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
           "key": "phmatray/BuildSphere",
@@ -533,7 +511,7 @@
           "key": "phmatray/CentralisedPackageConverter",
           "x": 47.85,
           "y": 1.55,
-          "z": 2.68,
+          "z": 3.313,
           "normal": [
             -1,
             0
@@ -541,21 +519,10 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/music-dotnet",
-          "x": 47.85,
-          "y": 1.55,
-          "z": 5.135,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.851
-        },
-        {
           "key": "phmatray/MusicTheory",
           "x": 47.85,
           "y": 1.55,
-          "z": 7.765,
+          "z": 6.5,
           "normal": [
             -1,
             0
@@ -563,13 +530,57 @@
           "width": 2.049
         },
         {
-          "key": "Atypical-Consulting/StaticWGen",
+          "key": "phmatray/PipeException",
           "x": 47.85,
           "y": 1.55,
-          "z": 10.32,
+          "z": 9.687,
           "normal": [
             -1,
             0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/CCrossHelper",
+          "x": 43.8,
+          "y": 1.55,
+          "z": 3.32,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "phmatray/dotnet-toolbelt",
+          "x": 43.8,
+          "y": 1.55,
+          "z": 3.28,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "phmatray/music-dotnet",
+          "x": 43.8,
+          "y": 1.55,
+          "z": 9.72,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "Atypical-Consulting/MarkdownInk",
+          "x": 43.8,
+          "y": 1.55,
+          "z": 9.68,
+          "normal": [
+            0,
+            -1
           ],
           "width": 1.7
         }
@@ -636,21 +647,10 @@
           "width": 1.851
         },
         {
-          "key": "stephaneweg/MusicTracker",
-          "x": 47.85,
-          "y": 1.55,
-          "z": 17.749,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
           "key": "phmatray/SudokuSolver",
           "x": 47.85,
           "y": 1.55,
-          "z": 22.1,
+          "z": 20,
           "normal": [
             -1,
             0
@@ -877,19 +877,8 @@
           "width": 1.851
         },
         {
-          "key": "phmatray/blazor-state-experiments",
-          "x": 11.067,
-          "y": 6.35,
-          "z": 26.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
           "key": "Atypical-Consulting/blazor-state",
-          "x": 13.383,
+          "x": 12.225,
           "y": 6.35,
           "z": 26.85,
           "normal": [
@@ -902,18 +891,7 @@
           "key": "phmatray/blazor-tailwind-ui",
           "x": 0.15,
           "y": 6.35,
-          "z": 15.92,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/BlazorTSInterop",
-          "x": 0.15,
-          "y": 6.35,
-          "z": 18.54,
+          "z": 17.749,
           "normal": [
             1,
             0
@@ -924,7 +902,7 @@
           "key": "phmatray/BlazorKawaii",
           "x": 0.15,
           "y": 6.35,
-          "z": 21.31,
+          "z": 22.1,
           "normal": [
             1,
             0
@@ -932,37 +910,59 @@
           "width": 2.001
         },
         {
-          "key": "phmatray/IdxDb",
-          "x": 0.15,
-          "y": 6.35,
-          "z": 24.08,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/ComputerInfo",
-          "x": 15.85,
-          "y": 6.35,
-          "z": 16.47,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
           "key": "phmatray/Ducky",
           "x": 15.85,
           "y": 6.35,
-          "z": 19.76,
+          "z": 18.175,
           "normal": [
             -1,
             0
           ],
           "width": 1.939
+        },
+        {
+          "key": "phmatray/BlazorTSInterop",
+          "x": 4.2,
+          "y": 6.35,
+          "z": 17.42,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/ComputerInfo",
+          "x": 4.2,
+          "y": 6.35,
+          "z": 17.38,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/IdxDb",
+          "x": 4.2,
+          "y": 6.35,
+          "z": 22.62,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/blazor-state-experiments",
+          "x": 4.2,
+          "y": 6.35,
+          "z": 22.58,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
         }
       ]
     },

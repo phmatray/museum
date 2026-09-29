@@ -14,6 +14,7 @@
 import { clusterArtworks } from '../domain/clustering.ts'
 import { DEFAULT_ASPECT, hangRoom } from '../domain/hanging.ts'
 import { WALL_CORNER_MARGIN, type Artwork, type RepoKey, type Room as SalleDomaine, type Wall } from '../domain/types.ts'
+import { MARGE_BOUT, MODULE, cimaisesDe, faces } from './cimaises.ts'
 import { edges } from './geometry.ts'
 import { capacity, NORMES } from './rules.ts'
 import { INT as DEMI_MUR } from './svg.ts'
@@ -188,6 +189,29 @@ function murs(room: Room, level: Level, hauteur: number): Wall[] {
 }
 
 /**
+ * Les deux faces de chaque cimaise de la salle (`cimaises.ts`), comme des murs
+ * de plus. `hangRoom` laisse `WALL_CORNER_MARGIN` au bout de chaque mur : on
+ * rallonge la face du reste pour ne garder que `MARGE_BOUT` de panneau libre —
+ * l'écart minimal d'une toile s'y ajoute, et le cartel tient encore à côté.
+ */
+function facesDeCimaises(room: Room, level: Level): Wall[] {
+  const r = WALL_CORNER_MARGIN - MARGE_BOUT
+  return cimaisesDe(level.id, room.id).flatMap((c, i) => faces(c).map((f, j): Wall => {
+    const [dx, dz] = [Math.sign(f.b.x - f.a.x), Math.sign(f.b.z - f.a.z)]
+    return {
+      id: `${room.id}-cimaise${i}-${j}`,
+      a: { x: f.a.x - dx * r, z: f.a.z - dz * r },
+      b: { x: f.b.x + dx * r, z: f.b.z + dz * r },
+      height: MODULE.hauteur,
+      kind: 'inner',
+      normal: f.normal,
+      openings: [],
+      placements: [],
+    }
+  }))
+}
+
+/**
  * Accroche chaque salle sur ses murs avec `hangRoom`. `generatedAt` vient du
  * catalogue, jamais de l'horloge : même catalogue, même fichier.
  */
@@ -202,7 +226,10 @@ export function hangPlan(plan: Plan, salles: Map<string, Salle>, generatedAt: st
       side: 'north',
       footprint: { x: room.x, z: room.z, width: room.width, depth: room.depth },
       theme: 'classic',
-      walls: murs(room, level, hauteur).filter((_, i) => !(avecVitrines && room.id === SALLE_VITRINES && i === MUR_NORD)),
+      walls: [
+        ...murs(room, level, hauteur).filter((_, i) => !(avecVitrines && room.id === SALLE_VITRINES && i === MUR_NORD)),
+        ...facesDeCimaises(room, level),
+      ],
       topics: [],
       keys: salle.artworks.map((a) => a.key),
     }
