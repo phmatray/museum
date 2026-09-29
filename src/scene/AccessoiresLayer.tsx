@@ -9,7 +9,7 @@
  *   avec les matières de l'étang (`jardinMatieres.ts`).
  */
 import { useFrame } from '@react-three/fiber'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
@@ -122,23 +122,39 @@ function Sorties() {
     [l, h],
   )
   // Éclairé de l'intérieur : sans ombre ni lumière, qu'il fasse jour ou nuit.
-  const materiaux = useMemo(() => {
-    const cote = new THREE.MeshBasicMaterial({ color: '#dfe3df' })
-    return [cote, cote, cote, cote, new THREE.MeshBasicMaterial({ map: face, color: face ? '#ffffff' : '#0a8a3a' }), cote]
-  }, [face])
+  const materiaux = useMemo(
+    () => [new THREE.MeshBasicMaterial({ color: '#dfe3df' }), new THREE.MeshBasicMaterial({ map: face, color: face ? '#ffffff' : '#0a8a3a' })],
+    [face],
+  )
+  // Tous les blocs en un lot : les cinq faces du boîtier d'abord, puis la face
+  // peinte (+z, la cinquième de `BoxGeometry`) — deux groupes, deux appels de dessin en tout.
+  const geometrie = useMemo(() => {
+    const g = new THREE.BoxGeometry(l, h, e)
+    const i = Array.from(g.index!.array)
+    g.setIndex([...i.slice(0, 24), ...i.slice(30), ...i.slice(24, 30)])
+    g.clearGroups()
+    g.addGroup(0, 30, 0)
+    g.addGroup(30, 6, 1)
+    return g
+  }, [l, h, e])
   useEffect(() => () => {
     face?.dispose()
-    for (const m of new Set(materiaux)) m.dispose()
+    materiaux.forEach((m) => m.dispose())
   }, [face, materiaux])
-  return (
-    <>
-      {liste.map((s, i) => (
-        <mesh key={i} position={[s.x, s.y, s.z]} rotation={[0, s.lacet, 0]} material={materiaux}>
-          <boxGeometry args={[l, h, e]} />
-        </mesh>
-      ))}
-    </>
-  )
+  useEffect(() => () => geometrie.dispose(), [geometrie])
+  const ref = useRef<THREE.InstancedMesh>(null)
+  useEffect(() => {
+    const mesh = ref.current
+    if (mesh === null) return
+    const m = new THREE.Matrix4()
+    const q = new THREE.Quaternion()
+    const [un, haut] = [new THREE.Vector3(1, 1, 1), new THREE.Vector3(0, 1, 0)]
+    liste.forEach((s, i) => mesh.setMatrixAt(i, m.compose(new THREE.Vector3(s.x, s.y, s.z), q.setFromAxisAngle(haut, s.lacet), un)))
+    mesh.instanceMatrix.needsUpdate = true
+    mesh.computeBoundingSphere()
+  }, [liste])
+  // Le matériau en prop, jamais dans `args` (#35).
+  return <instancedMesh ref={ref} args={[geometrie, undefined, liste.length]} material={materiaux} />
 }
 
 // ── Le panneau des horaires ─────────────────────────────────────────────────

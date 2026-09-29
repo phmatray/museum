@@ -19,9 +19,10 @@ import { adresseQr, matriceQr, QR_MARGE } from '../domain/qr'
 import type { Artwork } from '../domain/types'
 import { useReadme, useVitrines } from '../hooks/useCatalogue'
 import { nearTextureUrl } from '../io/arrayTexture'
-import { borneRegardee, chapeau, enColonnes, PANNEAU, readmeEnBlocs, TOILE, VITRINES, type Vitrine } from '../plan/vitrines'
+import { borneRegardee, chapeau, enColonnes, PANNEAU, readmeEnBlocs, SALLE_VITRINES, TOILE, VITRINES, type Vitrine } from '../plan/vitrines'
 import { useGameStore } from '../stores/gameStore'
 import { CARTEL_FONT, TITRE_FONT } from './cartelStyle'
+import { teinteDeLot, useLotDeTextes } from './lotDeTextes'
 
 const CREME = '#efe3c8'
 const ENCRE = '#2a2620'
@@ -89,6 +90,7 @@ export function VitrinesLayer() {
   useEffect(() => {
     if (useGameStore.getState().borne !== borne) useGameStore.setState({ borne })
   }, [borne])
+  const textes = useLotDeTextes(SALLE_VITRINES)
 
   return (
     <group name="vitrines">
@@ -97,6 +99,10 @@ export function VitrinesLayer() {
           <Instances key={nom} objet={pieces[nom]} positions={VITRINES.map((v) => poses(v)[nom])} />
         ))}
       {vitrines?.map((a, i) => VITRINES[i] && <Exposition key={a.key} oeuvre={a} vitrine={VITRINES[i]} active={a.key === borne} />)}
+      {/* Le texte des trois panneaux et de leurs cartels en un lot : un seul appel de dessin. */}
+      <Suspense fallback={null}>
+        <primitive object={textes}>{vitrines?.map((a, i) => VITRINES[i] && <Textes key={a.key} oeuvre={a} vitrine={VITRINES[i]} />)}</primitive>
+      </Suspense>
     </group>
   )
 }
@@ -133,58 +139,70 @@ function Lot({ maillage, racine, positions }: { maillage: THREE.Mesh; racine: TH
   return <instancedMesh key={positions.length} ref={ref} args={[maillage.geometry, undefined, positions.length]} material={maillage.material} />
 }
 
-/** Le texte, l'image, le cartel et l'écran d'une vitrine. */
+/** Un point du panneau d'une vitrine : `u` depuis son axe, `h` depuis le sol, `dz` devant sa face. */
+function surPanneau(v: Vitrine, u: number, h: number, dz = 0): [number, number, number] {
+  return [v.x + u, v.y + h, v.z + PANNEAU.recul + PANNEAU.epaisseur + 0.002 + dz]
+}
+
+/** L'image, le filet, la plaque du cartel et l'écran d'une vitrine ; son texte est dans le lot (`Textes`). */
 function Exposition({ oeuvre, vitrine: v, active }: { oeuvre: Artwork; vitrine: Vitrine; active: boolean }) {
+  return (
+    <>
+      <Toile oeuvre={oeuvre} position={[v.toile.x, v.toile.y, v.toile.z]} />
+      {/* Le filet du titre. */}
+      <mesh position={surPanneau(v, 0.05, 2.86)}>
+        <boxGeometry args={[3.7, 0.006, 0.002]} />
+        <meshStandardMaterial color={CREME} roughness={0.7} />
+      </mesh>
+      {/* Le cartel, sous le cadre : une plaque crème. */}
+      <mesh position={surPanneau(v, 0.52, 1.28, 0.003)}>
+        <boxGeometry args={[0.5, 0.2, 0.006]} />
+        <meshStandardMaterial color="#efe6d2" roughness={0.85} />
+      </mesh>
+      <Ecran oeuvre={oeuvre} vitrine={v} active={active} />
+    </>
+  )
+}
+
+const LOT = { creme: teinteDeLot(CREME), encre: teinteDeLot(ENCRE) }
+
+/** Le texte d'une vitrine — le titre, le début du README en deux colonnes, le cartel : des `<Text>` enfants directs du lot. */
+function Textes({ oeuvre, vitrine: v }: { oeuvre: Artwork; vitrine: Vitrine }) {
   const md = useReadme(oeuvre.key)
   const [col1, col2] = useMemo(() => {
     const texte = md ? chapeau(readmeEnBlocs(md), 1800) : oeuvre.description ?? ''
     return enColonnes(texte, COLONNES.parLigne, COLONNES.lignes)
   }, [md, oeuvre.description])
-  const face = v.z + PANNEAU.recul + PANNEAU.epaisseur + 0.002
-  const at = (u: number, h: number, dz = 0): [number, number, number] => [v.x + u, v.y + h, face + dz]
+  const at = (u: number, h: number, dz = 0) => surPanneau(v, u, h, dz)
   const annee = new Date(oeuvre.createdAt).getFullYear()
   const langues = partsDeLangages(oeuvre.languages).slice(0, 3).map((p) => p.langage).join(' · ')
-  const texte = { font: CARTEL_FONT, color: CREME, anchorX: 'left' as const, anchorY: 'top' as const }
+  const texte = { font: CARTEL_FONT, color: LOT.creme, anchorX: 'left' as const, anchorY: 'top' as const }
   return (
     <>
-      <Toile oeuvre={oeuvre} position={[v.toile.x, v.toile.y, v.toile.z]} />
-      {/* Le filet du titre. */}
-      <mesh position={at(0.05, 2.86)}>
-        <boxGeometry args={[3.7, 0.006, 0.002]} />
-        <meshStandardMaterial color={CREME} roughness={0.7} />
-      </mesh>
-      {/* Le cartel, sous le cadre : une plaque crème. */}
-      <mesh position={at(0.52, 1.28, 0.003)}>
-        <boxGeometry args={[0.5, 0.2, 0.006]} />
-        <meshStandardMaterial color="#efe6d2" roughness={0.85} />
-      </mesh>
-      <Suspense fallback={null}>
-        <Text {...texte} position={at(-1.8, 3.33)} fontSize={0.07} letterSpacing={0.2}>
-          {`${oeuvre.owner.toUpperCase()}  ·  N° ${v.rang + 1}`}
+      <Text {...texte} position={at(-1.8, 3.33)} fontSize={0.07} letterSpacing={0.2}>
+        {`${oeuvre.owner.toUpperCase()}  ·  N° ${v.rang + 1}`}
+      </Text>
+      <Text {...texte} font={TITRE_FONT} position={at(-1.82, 3.2)} fontSize={0.3} maxWidth={3.7} whiteSpace="nowrap">
+        {oeuvre.name}
+      </Text>
+      {[col1, col2].map((c, i) => (
+        <Text
+          key={i}
+          {...texte}
+          position={at(COLONNES.u + i * (COLONNES.largeur + COLONNES.gouttiere), COLONNES.haut)}
+          fontSize={COLONNES.corps}
+          lineHeight={COLONNES.interligne}
+          maxWidth={COLONNES.largeur}
+        >
+          {c}
         </Text>
-        <Text {...texte} font={TITRE_FONT} position={at(-1.82, 3.2)} fontSize={0.3} maxWidth={3.7} whiteSpace="nowrap">
-          {oeuvre.name}
-        </Text>
-        {[col1, col2].map((c, i) => (
-          <Text
-            key={i}
-            {...texte}
-            position={at(COLONNES.u + i * (COLONNES.largeur + COLONNES.gouttiere), COLONNES.haut)}
-            fontSize={COLONNES.corps}
-            lineHeight={COLONNES.interligne}
-            maxWidth={COLONNES.largeur}
-          >
-            {c}
-          </Text>
-        ))}
-        <Text {...texte} color={ENCRE} font={TITRE_FONT} position={at(0.3, 1.36, 0.007)} fontSize={0.04} maxWidth={0.44}>
-          {oeuvre.name}
-        </Text>
-        <Text {...texte} color={ENCRE} position={at(0.3, 1.3, 0.007)} fontSize={0.026} lineHeight={1.35} maxWidth={0.44}>
-          {`${langues || oeuvre.language || ''}\n★ ${oeuvre.stars.toLocaleString('fr-FR')}  ·  depuis ${annee}`}
-        </Text>
-      </Suspense>
-      <Ecran oeuvre={oeuvre} vitrine={v} active={active} />
+      ))}
+      <Text {...texte} color={LOT.encre} font={TITRE_FONT} position={at(0.3, 1.36, 0.007)} fontSize={0.04} maxWidth={0.44}>
+        {oeuvre.name}
+      </Text>
+      <Text {...texte} color={LOT.encre} position={at(0.3, 1.3, 0.007)} fontSize={0.026} lineHeight={1.35} maxWidth={0.44}>
+        {`${langues || oeuvre.language || ''}\n★ ${oeuvre.stars.toLocaleString('fr-FR')}  ·  depuis ${annee}`}
+      </Text>
     </>
   )
 }

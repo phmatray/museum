@@ -33,6 +33,8 @@ vi.mock('../EscalierLayer', async () => {
 vi.mock('../FauneLayer', () => ({ FauneLayer: () => null }))
 // Les ateliers en coupe aussi : leurs socles, laitons, verres et blocs sont des lots à eux.
 vi.mock('../AteliersLayer', () => ({ AteliersLayer: () => null }))
+// Et les accessoires : les blocs « Sortie » sont un lot à eux.
+vi.mock('../AccessoiresLayer', () => ({ AccessoiresLayer: () => null }))
 import { Color } from 'three'
 import type * as THREE from 'three'
 

@@ -8,7 +8,8 @@
  * `tools/fetch-ateliers.ts`).
  *
  * Quatre lots d'instances pour les trois ateliers (bois, laiton, verre, blocs),
- * un seul maillage pour tous les fils, et le texte par troika comme les cartels.
+ * un seul maillage pour tous les fils, et le texte par troika comme les cartels —
+ * celui des trois ateliers en un seul lot (`lotDeTextes.ts`).
  */
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Text } from '@react-three/drei'
@@ -19,8 +20,9 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { Atelier } from '../domain/atelier'
 import { useVitrines } from '../hooks/useCatalogue'
 import { useGameStore } from '../stores/gameStore'
-import { ATELIERS, disposerCoupe, MUR_ATELIER, PLAQUE, RECUL_PLAQUES, SOCLE_ATELIER, type Coupe } from '../plan/ateliers'
+import { ATELIERS, disposerCoupe, MUR_ATELIER, PLAQUE, RECUL_PLAQUES, SALLE_ATELIERS, SOCLE_ATELIER, type Coupe } from '../plan/ateliers'
 import { CARTEL_FONT, TITRE_FONT } from './cartelStyle'
+import { teinteDeLot, useLotDeTextes } from './lotDeTextes'
 
 /** La teinte de chaque couche, du socle aux tests : cuivre, or, paille, puis un bleu-vert et un vert sauge. */
 const TEINTES: Record<string, string> = {
@@ -133,6 +135,8 @@ export function AteliersLayer() {
     /* eslint-enable */
   }, [materiaux, nuit])
 
+  const legendes = useLotDeTextes(SALLE_ATELIERS)
+
   return (
     <group name="ateliers">
       <MurAtelier />
@@ -142,10 +146,16 @@ export function AteliersLayer() {
       <Lot boites={lots.verre} materiau={materiaux.verre} />
       <Fils exposes={exposes} />
       {exposes.map((e) => (
-        <Suspense key={e.atelier.key} fallback={null}>
-          <Legendes expose={e} />
-        </Suspense>
+        <PlaqueDeCartel key={e.atelier.key} expose={e} />
       ))}
+      {/* Les légendes des trois ateliers en un lot : deux appels de dessin (le texte, son contour) au lieu de deux par légende. */}
+      <Suspense fallback={null}>
+        <primitive object={legendes}>
+          {exposes.map((e) => (
+            <Legendes key={e.atelier.key} expose={e} />
+          ))}
+        </primitive>
+      </Suspense>
     </group>
   )
 }
@@ -281,36 +291,57 @@ function Fils({ exposes }: { exposes: Expose[] }) {
 /** Un nom de projet se coupe à ses points : troika ne coupe qu'aux blancs. */
 const coupable = (s: string) => s.replace(/\./g, '.​')
 
-/** Les noms des couches en marge de leur plaque, ceux des blocs debout devant eux (les fils partent de l'arrière), et le cartel au rebord du socle. */
+/** Le cartel : une plaque crème couchée sur le rebord du socle, devant le verre, relevée de 25° vers le visiteur. */
+const AVANT = RECUL_PLAQUES + PLAQUE.profondeur / 2 + 0.022
+const CARTEL = {
+  position: new THREE.Vector3(0, SOCLE_ATELIER.hauteur + 0.03, (AVANT + SOCLE_ATELIER.profondeur / 2) / 2),
+  inclinaison: new THREE.Euler(-(Math.PI / 2 - 0.44), 0, 0),
+}
+
+/** La plaque du cartel ; son texte est dans le lot des légendes. */
+function PlaqueDeCartel({ expose: { x, z } }: { expose: Expose }) {
+  return (
+    <mesh position={[x + CARTEL.position.x, CARTEL.position.y, z + CARTEL.position.z]} rotation={CARTEL.inclinaison}>
+      <boxGeometry args={[0.92, 0.13, 0.006]} />
+      <meshStandardMaterial color="#efe6d2" roughness={0.85} />
+    </mesh>
+  )
+}
+
+const LOT = { creme: teinteDeLot(CREME), encre: teinteDeLot(ENCRE), contour: teinteDeLot('#1c140c') }
+
+/**
+ * Les noms des couches en marge de leur plaque, ceux des blocs debout devant eux (les fils partent de l'arrière), et le
+ * texte du cartel. Des `<Text>` enfants directs du lot (`lotDeTextes.ts`) : leurs positions sont en coordonnées monde.
+ */
 function Legendes({ expose: { x, z, atelier, coupe } }: { expose: Expose }) {
   const projet = atelier.key.split('/')[1]
-  const contour = { outlineWidth: 0.0018, outlineColor: '#1c140c', outlineOpacity: 0.85 }
-  const avant = RECUL_PLAQUES + PLAQUE.profondeur / 2 + 0.022
-  const gauche = -PLAQUE.largeur / 2 - 0.06
-  // Le cartel : une plaque crème couchée sur le rebord du socle, devant le verre, relevée de 25° vers le visiteur.
-  const inclinaison = -(Math.PI / 2 - 0.44)
-  const cartel: [number, number, number] = [0, SOCLE_ATELIER.hauteur + 0.03, (avant + SOCLE_ATELIER.profondeur / 2) / 2]
+  const contour = { outlineWidth: 0.0018, outlineColor: LOT.contour, outlineOpacity: 0.85 }
+  const gauche = x - PLAQUE.largeur / 2 - 0.06
+  // Un point du cartel, dans le plan incliné de sa plaque, 4 mm au-dessus.
+  const surCartel = (u: number, v: number): [number, number, number] => {
+    const p = new THREE.Vector3(u, v, 0.004).applyEuler(CARTEL.inclinaison).add(CARTEL.position)
+    return [x + p.x, p.y, z + p.z]
+  }
   return (
-    <group position={[x, 0, z]}>
+    <>
       {/* La colonne des légendes, à gauche des plaques : le nom de la couche à hauteur de sa plaque, son rôle dessous. */}
-      {coupe.plaques.map((pl) => (
-        <group key={pl.couche} position={[gauche, pl.y, avant]}>
-          <Text font={CARTEL_FONT} fontSize={0.028} letterSpacing={0.08} color={CREME} anchorX="right" anchorY="bottom" {...contour}>
-            {pl.nom.toUpperCase()}
-          </Text>
-          <Text font={CARTEL_FONT} position={[0, -0.006, 0]} fontSize={0.017} color={CREME} anchorX="right" anchorY="top" {...contour}>
-            {pl.role}
-          </Text>
-        </group>
-      ))}
+      {coupe.plaques.flatMap((pl) => [
+        <Text key={`${pl.couche}-nom`} font={CARTEL_FONT} position={[gauche, pl.y, z + AVANT]} fontSize={0.028} letterSpacing={0.08} color={LOT.creme} anchorX="right" anchorY="bottom" {...contour}>
+          {pl.nom.toUpperCase()}
+        </Text>,
+        <Text key={`${pl.couche}-role`} font={CARTEL_FONT} position={[gauche, pl.y - 0.006, z + AVANT]} fontSize={0.017} color={LOT.creme} anchorX="right" anchorY="top" {...contour}>
+          {pl.role}
+        </Text>,
+      ])}
       {coupe.blocs.map((b) => (
         <Text
           key={b.id}
           font={CARTEL_FONT}
-          position={b.etiquette}
+          position={[x + b.etiquette[0], b.etiquette[1], z + b.etiquette[2]]}
           fontSize={0.024}
           lineHeight={1.15}
-          color={CREME}
+          color={LOT.creme}
           anchorX="center"
           anchorY="bottom"
           textAlign="center"
@@ -320,18 +351,12 @@ function Legendes({ expose: { x, z, atelier, coupe } }: { expose: Expose }) {
           {`${coupable(b.nom)}\n${b.legende}`}
         </Text>
       ))}
-      <group position={cartel} rotation={[inclinaison, 0, 0]}>
-        <mesh>
-          <boxGeometry args={[0.92, 0.13, 0.006]} />
-          <meshStandardMaterial color="#efe6d2" roughness={0.85} />
-        </mesh>
-        <Text font={TITRE_FONT} position={[-0.43, 0.052, 0.004]} fontSize={0.03} color={ENCRE} anchorX="left" anchorY="top">
-          {`L’atelier en coupe — l’architecture de ${projet}`}
-        </Text>
-        <Text font={CARTEL_FONT} position={[-0.43, 0.012, 0.004]} fontSize={0.0165} lineHeight={1.3} maxWidth={0.86} color={ENCRE} anchorX="left" anchorY="top">
-          {`Chaque plaque est une couche, chaque bloc un projet du dépôt à la taille de son code, chaque fil une dépendance entre eux : la lumière monte de la dépendance vers qui s’en sert. Relevé dans le dépôt ${atelier.key}, commit ${atelier.commit.slice(0, 7)}.`}
-        </Text>
-      </group>
-    </group>
+      <Text font={TITRE_FONT} position={surCartel(-0.43, 0.052)} rotation={CARTEL.inclinaison} fontSize={0.03} color={LOT.encre} anchorX="left" anchorY="top">
+        {`L’atelier en coupe — l’architecture de ${projet}`}
+      </Text>
+      <Text font={CARTEL_FONT} position={surCartel(-0.43, 0.012)} rotation={CARTEL.inclinaison} fontSize={0.0165} lineHeight={1.3} maxWidth={0.86} color={LOT.encre} anchorX="left" anchorY="top">
+        {`Chaque plaque est une couche, chaque bloc un projet du dépôt à la taille de son code, chaque fil une dépendance entre eux : la lumière monte de la dépendance vers qui s’en sert. Relevé dans le dépôt ${atelier.key}, commit ${atelier.commit.slice(0, 7)}.`}
+      </Text>
+    </>
   )
 }
