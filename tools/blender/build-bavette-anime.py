@@ -5,7 +5,9 @@ Bavette, vivant : maillage allégé, squelette de quadrupède et trois boucles.
         "/chemin/vers/Bavette Meshy profil.glb"
 
 Produit `public/assets/sculptures/bavette-anime.glb` : un maillage skinné et ses
-actions `Marche`, `Repos` et `Assis`, lues par `src/scene/BavetteLayer.tsx`.
+actions `Marche`, `Repos`, `Sasseoir` et `Assis`, et celles de la sieste sur un
+banc — `Saut`, `Enroule`, `Dort`, `Reveil`, `Descente` —, lues par
+`src/scene/BavetteLayer.tsx`.
 
 ── Pourquoi une AUTRE source que `bavette.glb` ──
 
@@ -23,7 +25,10 @@ même robe tabby et blanche, tête dans l'axe, queue détachée des pattes.
      chat regarde +Z après l'export (−Y de Blender) ;
   3. `Marche` fait avancer les pattes à VITESSE m/s sans glisser : c'est la
      vitesse à laquelle la marche doit jouer à `timeScale = 1` ;
-  4. les os `Tete` et `Cou` existent — la couche les tourne vers le visiteur.
+  4. les os `Tete` et `Cou` existent — la couche les tourne vers le visiteur ;
+  5. les actions de la sieste ont le déplacement du saut CUIT (SAUT_H, SAUT_D,
+     BORD, SAUT_VOL, DESCENTE_VOL et leurs durées sont recopiés dans
+     `src/plan/promenade.ts`, objet SIESTE).
 
 ── Méthode ──
 
@@ -371,6 +376,8 @@ def squelette(corps):
 
     ponderer(corps, arm)
     nettoyer_poids(corps, arm)
+    oreilles(corps, arm)
+    paupieres(corps, arm)
 
     # Les contraintes : IK à deux os, la main et le pied copient leur contrôleur.
     pose = arm.pose.bones
@@ -386,6 +393,153 @@ def squelette(corps):
             cr = pose[rot].constraints.new("COPY_ROTATION")
             cr.target, cr.subtarget = arm, ctrl
     return arm
+
+
+# Les oreilles, relevées sur le maillage : elles ne dépassent le crâne (z = 0,343)
+# que de 1,5 cm, de |x| = 0,035 à 0,058, vers y = −0,26. Un os chacune, qui
+# ne sert qu'au sommeil : une oreille frémit. Au repos, il ne bouge rien.
+OREILLE = (Vector((0.044, -0.262, 0.334)), Vector((0.050, -0.268, 0.362)))
+
+
+def oreilles(corps, arm):
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode="EDIT")
+    eb = arm.data.edit_bones
+    for c, s in (("G", 1), ("D", -1)):
+        b = eb.new(f"Oreille_{c}")
+        b.head = Vector((s * OREILLE[0].x, OREILLE[0].y, OREILLE[0].z))
+        b.tail = Vector((s * OREILLE[1].x, OREILLE[1].y, OREILLE[1].z))
+        roll_lateral(b)
+        b.parent = eb["Tete"]
+    bpy.ops.object.mode_set(mode="OBJECT")
+    groupes = {c: corps.vertex_groups.new(name=f"Oreille_{c}") for c in ("G", "D")}
+    idx = {g.name: g.index for g in corps.vertex_groups}
+    n = 0
+    for v in corps.data.vertices:
+        x, y, z = v.co
+        w = lisse((z - 0.330) / 0.014) * lisse((abs(x) - 0.024) / 0.012) * lisse((y + 0.300) / 0.015) * lisse((-0.232 - y) / 0.015)
+        if w <= 0:
+            continue
+        n += 1
+        c = "G" if x > 0 else "D"
+        # Ce que l'oreille prend, les autres os le cèdent en proportion.
+        for g in v.groups:
+            if g.group != idx[f"Oreille_{c}"]:
+                g.weight *= 1 - w
+        groupes[c].add([v.index], w, "REPLACE")
+    bpy.ops.object.select_all(action="DESELECT")
+    corps.select_set(True)
+    bpy.context.view_layer.objects.active = corps
+    bpy.ops.object.vertex_group_limit_total(group_select_mode="ALL", limit=4)
+    bpy.ops.object.vertex_group_normalize_all(group_select_mode="ALL", lock_active=False)
+    print(f"BAVETTE_OREILLES {n} sommets")
+
+
+# Les paupières. Les yeux sont PEINTS sur la texture (relevés de face : 1,4 ×
+# 1 cm, à x = ±0,0225, z = 0,294) : pour qu'il dorme les yeux fermés, une
+# amande se pose sur chacun, habillée de la robe prise 11 mm plus haut — les
+# rayures du front continuent dessus —, et barrée au tiers bas d'un trait
+# sombre, pris dans la pupille : la fente d'un œil clos. Chacune pend à un os
+# `Paupiere_*`, réduit à rien hors du sommeil (`remettre`).
+OEIL = (0.0225, 0.294)
+PAUPIERE = (0.0074, 0.0052, 0.0010)     # demi-largeur, demi-hauteur, bombé (m)
+FENTE = (0.0070, 0.0006, 0.0013)
+FERMEE = 1.0
+OUVERTE = 0.01
+
+
+def paupieres(corps, arm):
+    import bmesh
+    from mathutils.bvhtree import BVHTree
+    from mathutils.interpolate import poly_3d_calc
+    uv_corps = corps.data.uv_layers.active.name
+    me = corps.data
+    uvs = me.uv_layers.active.data
+    # Les indices de faces de `Object.ray_cast` sont ceux du maillage évalué : un arbre sur les polygones d'origine.
+    arbre = BVHTree.FromPolygons([v.co for v in me.vertices], [tuple(f.vertices) for f in me.polygons])
+
+    image = next(n for n in corps.material_slots[0].material.node_tree.nodes if n.type == "TEX_IMAGE").image
+    largeur, hauteur = image.size
+    pixels = image.pixels[:]
+
+    def texel(uv):
+        x, y = int(uv.x % 1 * (largeur - 1)), int(uv.y % 1 * (hauteur - 1))
+        i = (y * largeur + x) * 4
+        return Vector(pixels[i:i + 3])
+
+    def toucher(x, z):
+        """Le point de la face en (x, z) vu de devant, sa normale, et l'UV interpolé en ce point."""
+        p, n, i, _ = arbre.ray_cast(Vector((x, -1.0, z)), Vector((0, 1, 0)))
+        poly = me.polygons[i]
+        poids = poly_3d_calc([me.vertices[v].co for v in poly.vertices], p)
+        uv = sum((uvs[li].uv * w for li, w in zip(poly.loop_indices, poids)), Vector((0, 0)))
+        return p, n, uv
+
+    bpy.context.view_layer.objects.active = arm
+    bpy.ops.object.mode_set(mode="EDIT")
+    poses = {}
+    for c, s in (("G", 1), ("D", -1)):
+        p, n, _ = toucher(s * OEIL[0], OEIL[1])
+        b = arm.data.edit_bones.new(f"Paupiere_{c}")
+        b.head, b.tail = p, p + n * 0.01
+        b.parent = arm.data.edit_bones["Tete"]
+        poses[c] = (p, n, s)
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+    def amande(p, n, t, b_, taille, decale, uv_de, courbe=0.0):
+        bm = bmesh.new()
+        bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=8, radius=1.0)
+        for v in bm.verts:
+            x, y, z = v.co
+            v.co = p + b_ * (decale + courbe * x * x) + n * (0.0008 + taille[2] * max(z, -0.2)) + t * (taille[0] * x) + b_ * (taille[1] * y)
+        couche = bm.loops.layers.uv.new(uv_corps)
+        for f in bm.faces:
+            for loop in f.loops:
+                loop[couche].uv = uv_de(loop.vert.co)
+        return bm
+
+    objets = []
+    for c, (p, n, s) in poses.items():
+        # Repère de l'œil : n dehors, t à l'horizontale, b vers le haut ; le coin externe relevé de 12°.
+        t = Vector((1, 0, 0)) - n * n.x
+        t.normalize()
+        b_ = n.cross(t)
+        inclin = math.radians(12) * s
+        t, b_ = t * math.cos(inclin) + b_ * math.sin(inclin), b_ * math.cos(inclin) - t * math.sin(inclin)
+        # La robe au-dessus de l'œil : parmi quelques points, celui dont la teinte est la plus proche de
+        # leur moyenne. Un seul texel — la texture de Meshy est un puzzle d'îlots, l'interpoler en brouille.
+        pris = [toucher(p.x + dx * 0.003, p.z + 0.009 + dz * 0.0025)[2] for dx in range(-2, 3) for dz in range(3)]
+        teintes = [texel(uv) for uv in pris]
+        moyenne = sum(teintes, Vector((0, 0, 0))) / len(teintes)
+        poil = min(zip(pris, teintes), key=lambda pt: (pt[1] - moyenne).length)[0]
+        pupille = toucher(p.x, p.z)[2]
+        morceaux = [
+            amande(p, n, t, b_, PAUPIERE, 0.0, lambda q: poil),
+            amande(p, n, t, b_, FENTE, -0.0019, lambda q: pupille, courbe=0.0016),
+        ]
+        lid = bpy.data.meshes.new(f"Paupiere_{c}")
+        bm = morceaux[0]
+        tmp = bpy.data.meshes.new("tmp")
+        morceaux[1].to_mesh(tmp)
+        bm.from_mesh(tmp)
+        bpy.data.meshes.remove(tmp)
+        bm.to_mesh(lid)
+        bm.free()
+        morceaux[1].free()
+        obj = bpy.data.objects.new(f"Paupiere_{c}", lid)
+        bpy.context.scene.collection.objects.link(obj)
+        obj.data.materials.append(corps.material_slots[0].material)
+        g = obj.vertex_groups.new(name=f"Paupiere_{c}")
+        g.add(list(range(len(lid.vertices))), 1.0, "REPLACE")
+        objets.append(obj)
+    # Joindre à la fin : la jointure invalide les UV du maillage lues plus haut.
+    bpy.ops.object.select_all(action="DESELECT")
+    for obj in objets:
+        obj.select_set(True)
+    corps.select_set(True)
+    bpy.context.view_layer.objects.active = corps
+    bpy.ops.object.join()
+    print(f"BAVETTE_PAUPIERES {', '.join(f'{c} ({p.x:+.4f}, {p.y:.4f}, {p.z:.4f})' for c, (p, *_ ) in poses.items())}")
 
 
 def ponderer(corps, arm):
@@ -571,7 +725,7 @@ def remettre(arm):
         pb.rotation_mode = "QUATERNION"
         pb.location = (0, 0, 0)
         pb.rotation_quaternion = (1, 0, 0, 0)
-        pb.scale = (1, 1, 1)
+        pb.scale = (OUVERTE,) * 3 if pb.name.startswith("Paupiere") else (1, 1, 1)
 
 
 def cle(arm, frame):
@@ -767,17 +921,17 @@ Z_SOL = 0.02            # m : l'axe de la queue couchée, un rayon au-dessus du 
 QUEUE_AUTOUR = (60, 100, 130, 155, 175, 190)
 
 
-def au_sol(arm, dirs):
-    """La queue suit `dirs`, sans jamais passer sous Z_SOL : elle se couche sur le sol."""
+def au_sol(arm, dirs, sol=0.0):
+    """La queue suit `dirs`, sans jamais passer sous Z_SOL (au-dessus de `sol`) : elle se couche sur le sol."""
     bpy.context.view_layer.update()
     p = arm.pose.bones["Queue1"].head.copy()
     out = []
     for i, d in enumerate(dirs):
         n = arm.data.bones[f"Queue{i + 1}"].length
         d = d.normalized()
-        if p.z + d.z * n < Z_SOL:
+        if p.z + d.z * n < sol + Z_SOL:
             plat = Vector((d.x, d.y, 0)).normalized()
-            dz = max(-1.0, min(1.0, (Z_SOL - p.z) / n))
+            dz = max(-1.0, min(1.0, (sol + Z_SOL - p.z) / n))
             d = plat * math.sqrt(1 - dz * dz) + Vector((0, 0, dz))
         out.append(d)
         p = p + d * n
@@ -813,6 +967,377 @@ def assis(arm, t):
     assise(arm, 1.0)
     souffle_et_regard(arm, t, 14)
     queue(arm, au_sol(arm, queue_autour(t, 12)))
+
+
+# ── La sieste sur un banc ──────────────────────────────────────────────────
+# « Si Bavette pouvait dormir aléatoirement sur l'un des bancs ce serait top.
+# Faudrait réussir à faire l'animation pour qu'il saute. » (Philippe)
+#
+# Cinq actions, que `promenade.ts` enchaîne : `Saut` (du sol sur l'assise),
+# `Enroule` (il tourne une fois sur lui-même, se couche et s'enroule, le nez
+# dans la queue), `Dort` (en boucle : il respire lentement, une oreille
+# frémit), `Reveil` (il se déroule, se lève et s'étire) et `Descente` (un
+# demi-tour, et il saute au sol).
+#
+# Le déplacement est CUIT dans le bassin : pendant le saut, le corps part
+# d'un point d'appel au sol et arrive SAUT_D plus loin, SAUT_H plus haut — les
+# cibles des pattes sont posées au sol puis sur l'assise, elles ne glissent
+# pas. `BavetteLayer` pose le chat au point d'appel pour `Saut`, sur l'assise
+# pour les suivantes ; l'écart entre SAUT_H et la vraie hauteur du banc (0,45
+# à 0,48 m, et le relief du jardin) se rattrape PENDANT LE VOL, quand aucune
+# patte ne touche rien — d'où les instants SAUT_VOL et DESCENTE_VOL, recopiés
+# dans `promenade.ts`.
+SAUT_H = 0.46           # m : l'assise des bancs (mesurée sur mobilier.glb)
+SAUT_D = 0.70           # m : du point d'appel au point de sieste
+BORD = 0.20             # m : du point de sieste au bord de l'assise, côté saut
+QUEUE_HAUTE = (8, 22, 30, 28, 16, -4)   # dressée en crosse, pour l'équilibre
+
+
+def rz(degres):
+    return Matrix.Rotation(math.radians(degres), 4, "Z")
+
+
+def rx_autour(degres, pivot):
+    """Rotation autour de l'axe X passant par `pivot` (positif = museau vers le bas)."""
+    p = Vector(pivot)
+    return Matrix.Translation(p) @ Matrix.Rotation(math.radians(degres), 4, "X") @ Matrix.Translation(-p)
+
+
+def porter(arm, M):
+    """
+    Tout le corps suit M (repère du monde) : le bassin porte le reste, et les
+    pôles des coudes et des genoux suivent — les cibles des pattes, non.
+    """
+    bpy.context.view_layer.update()
+    for nom in ("Bassin", "PoleBras_G", "PoleBras_D", "PoleCuisse_G", "PoleCuisse_D"):
+        pb = arm.pose.bones[nom]
+        pb.matrix = M @ pb.matrix
+
+
+def placer(arm, nom, M, degres=0.0):
+    """Le contrôleur `nom`, à sa place de repos transformée par M, basculé de `degres` sur la pointe."""
+    pb = arm.pose.bones[nom]
+    repos = pb.bone.matrix_local
+    pointe = arm.data.bones[nom.replace("Ctrl", "")].tail_local
+    r = M.to_3x3() @ Matrix.Rotation(math.radians(degres), 3, "X")
+    tete = M @ pointe + r @ (repos.to_translation() - pointe)
+    pb.matrix = Matrix.Translation(tete) @ r.to_4x4() @ repos.to_3x3().to_4x4()
+
+
+def entre(a, b, f):
+    """De la matrice a à la matrice b : translation linéaire, rotation sphérique."""
+    ta, ra, _ = a.decompose()
+    tb, rb, _ = b.decompose()
+    return Matrix.Translation(ta.lerp(tb, f)) @ ra.slerp(rb, f).to_matrix().to_4x4()
+
+
+def bosse(u, a, b):
+    """0 hors de [a, b], 1 au milieu, en sinus."""
+    return math.sin(math.pi * (u - a) / (b - a)) if a < u < b else 0.0
+
+
+def rampe(u, a, b):
+    return lisse((u - a) / (b - a))
+
+
+HANCHE = Vector((0, 0.152, 0.224))      # la hanche, pivot de l'élan
+# Le saut, en part de l'action : les antérieurs décollent puis se posent les
+# premiers ; entre SAUT_VOL[0] et SAUT_VOL[1], plus rien ne touche.
+SAUT_PATTES = {True: (0.38, 0.72), False: (0.52, 0.80)}
+SAUT_VOL = (0.52, 0.72)
+
+
+def trajet(arm, u, h, d, pattes, monte, avance, repli, R=None, assise=None):
+    """
+    Le corps et les pattes d'un saut de `d` vers l'avant et `h` vers le haut.
+    `pattes[avant] = (décollage, pose)` ; `monte(u)`, `avance(u)` : la part
+    faite du trajet, en hauteur et en longueur ; `repli[avant]` : où la patte
+    se replie en vol, par rapport au corps ; `assise = (y0, y1, z)` : au-dessus
+    de l'assise (y0 < y < y1, repère du saut), une patte en vol reste au-dessus
+    de z — elle passe le bord, pas au travers. Rend la matrice du corps.
+    """
+    pz, py = monte(u), avance(u)
+    R = Matrix.Identity(4) if R is None else R
+    tangage = 24 * bosse(u, pattes[True][0] - (0.08 if h > 0 else 0.0), pattes[True][1] + 0.03) ** 0.7 * (-1 if h > 0 else 1)
+    arc = 0.08 * math.sin(math.pi * pz)
+    ici = Vector((0, -d * py, h * pz + arc))
+    M = R @ Matrix.Translation(ici) @ rx_autour(tangage, HANCHE)
+    for c, avant, _, _ in PATTES:
+        nom = f"Ctrl{'Main' if avant else 'Pied'}_{c}"
+        lever, poser_ = pattes[avant]
+        a = (u - lever) / (poser_ - lever)
+        depart, arrivee = R, R @ Matrix.Translation((0, -d, h))
+        if a <= 0:
+            # Il roule sur ses doigts avant de quitter le sol : la patte s'allonge d'autant.
+            placer(arm, nom, depart, (30 if avant else 45) * rampe(u, lever - 0.12, lever))
+        elif a >= 1:
+            placer(arm, nom, arrivee)
+        else:
+            en_vol = M @ Matrix.Translation(repli[avant])
+            m = entre(depart, en_vol, lisse(a / 0.4)) if a < 0.4 else entre(en_vol, arrivee, lisse((a - 0.5) / 0.5)) if a > 0.5 else en_vol
+            if assise:
+                pointe = R.inverted() @ m @ arm.data.bones[nom.replace("Ctrl", "")].tail_local
+                if assise[0] < pointe.y < assise[1] and pointe.z < assise[2] + 0.01:
+                    m = R @ Matrix.Translation((0, 0, assise[2] + 0.01 - pointe.z)) @ R.inverted() @ m
+            placer(arm, nom, m, (50 if avant else -30) * math.sin(math.pi * a))
+    return M
+
+
+def saut(arm, u):
+    """
+    1,4 s, sans boucle : du sol sur l'assise. Il se ramasse en regardant où il
+    va (le train arrière frétille), les antérieurs décollent, les postérieurs
+    poussent, il passe le bord pattes repliées, pose les mains puis les pieds,
+    et amortit.
+    """
+    pose = arm.pose.bones
+    ramasse = rampe(u, 0.0, 0.30) * (1 - rampe(u, 0.40, 0.54))
+    amorti = bosse(u, 0.70, 0.98)
+    deplacer(pose["Bassin"], (0, 0.012 * ramasse, -0.07 * ramasse - 0.02 * amorti))
+    tourner(pose["Bassin"], (0, 0, 1), 3.0 * math.sin(2 * math.pi * 2.5 * u) * bosse(u, 0.08, 0.36))
+    tourner(pose["Poitrine"], (1, 0, 0), 10 * ramasse)
+    # Le regard sur l'assise, puis devant lui une fois posé.
+    regard = rampe(u, 0.0, 0.25) * (1 - rampe(u, 0.7, 0.95))
+    tourner(pose["Cou"], (1, 0, 0), -14 * regard)
+    tourner(pose["Tete"], (1, 0, 0), -6 * regard)
+    # En vol, l'échine s'étire à l'appel et se voûte à la réception.
+    tourner(pose["Dos"], (1, 0, 0), -6 * bosse(u, 0.42, 0.62) + 5 * bosse(u, 0.64, 0.86))
+    M = trajet(arm, u, SAUT_H, SAUT_D, SAUT_PATTES, lambda v: rampe(v, 0.46, 0.72), lambda v: rampe(v, 0.44, 0.76),
+               {True: Vector((0, -0.05, 0.10)), False: Vector((0, -0.04, 0.09))}, assise=(-9, BORD - SAUT_D, SAUT_H))
+    porter(arm, M)
+    q = rampe(u, 0.3, 0.6)
+    dirs = [a.lerp(b, q) for a, b in zip(queue_basse(QUEUE_REPOS, 0.0, 7), queue_basse(QUEUE_HAUTE, u, 4))]
+    queue(arm, au_sol(arm, dirs, SAUT_H * rampe(u, 0.55, 0.8)))
+
+
+def bas_du_corps(arm):
+    """Le point le plus bas et le centre (x, y) du maillage déformé, dans la pose courante."""
+    bpy.context.view_layer.update()
+    corps = next(o for o in bpy.data.objects if o.type == "MESH" and o.parent == arm)
+    ev = corps.evaluated_get(bpy.context.evaluated_depsgraph_get())
+    me = ev.to_mesh()
+    vs = [corps.matrix_world @ v.co for v in me.vertices]
+    ev.to_mesh_clear()
+    return (min(v.z for v in vs),
+            (min(v.x for v in vs) + max(v.x for v in vs)) / 2, (min(v.y for v in vs) + max(v.y for v in vs)) / 2)
+
+
+# L'enroulé, relevé sur la photo 39 : couché sur le flanc droit, le dos rond,
+# le museau rentré sur les pattes avant, les postérieurs repliés contre le
+# ventre, la queue qui fait le tour et vient passer sous le nez.
+BOULE_ECHINE = {"Dos": 34, "Poitrine": 34, "Cou": 50, "Tete": 42}
+BOULE_BASSIN = -40
+BOULE_ROULIS = -78      # autour de l'axe du corps : le flanc gauche vers le ciel
+BOULE_TETE = -35        # degrés, autour de l’axe du museau
+BOULE_LACET = 90       # il finit de tourner en se couchant : la boule en long sur le banc
+AXE_ECHINE = Vector((0, 0.02, 0.21))
+
+
+def boule(arm, echine, roulis):
+    """La forme de l'enroulé, de debout (e = 0) à enroulé (e = 1), sans les pattes ni la queue."""
+    pose = arm.pose.bones
+    for nom, deg in BOULE_ECHINE.items():
+        tourner(pose[nom], (1, 0, 0), deg * echine)
+    tourner(pose["Bassin"], (1, 0, 0), BOULE_BASSIN * echine)
+    # La tête se redresse un peu sur le flanc : le front vers le ciel, comme sur la photo.
+    tourner(pose["Tete"], (0, 1, 0), BOULE_TETE * roulis)
+    p = AXE_ECHINE
+    tourne = Matrix.Translation(p) @ Matrix.Rotation(math.radians(BOULE_ROULIS * roulis), 4, "Y") @ Matrix.Translation(-p)
+    return rz(BOULE_LACET * roulis) @ tourne
+
+
+# Les pattes repliées, en coordonnées DEBOUT, portées par l'os qui les tient
+# (la poitrine, la tête, le bassin) : la patte suit le corps qui se roule. La
+# patte avant du dessus (la gauche) passe sur le museau, comme sur la photo —
+# elle cache les yeux, que le modèle ne sait pas fermer.
+REPLI_BOULE = {
+    ("G", True): ("Poitrine", Vector((0.012, -0.21, 0.11)), 70),
+    ("D", True): ("Poitrine", Vector((-0.01, -0.20, 0.10)), 70),
+    ("G", False): ("Bassin", Vector((0.0, -0.06, 0.10)), -80),
+    ("D", False): ("Bassin", Vector((0.0, -0.06, 0.10)), -80),
+}
+
+
+def replier(arm, e):
+    """Chaque patte, de sa place au sol (e = 0) à repliée contre le corps (e = 1)."""
+    bpy.context.view_layer.update()
+    for c, avant, _, _ in PATTES:
+        porteur, cible, bascule = REPLI_BOULE[c, avant]
+        pb = arm.pose.bones[porteur]
+        C = pb.matrix @ pb.bone.matrix_local.inverted()
+        nom = f"Ctrl{'Main' if avant else 'Pied'}_{c}"
+        pointe = arm.data.bones[nom.replace("Ctrl", "")].tail_local
+        vers = C @ Matrix.Translation(Vector((pointe.x + cible.x, cible.y, cible.z)) - pointe)
+        placer(arm, nom, entre(Matrix.Identity(4), vers, e), bascule * e)
+
+
+BOULE_CENTRE = {}
+
+
+def enroule_pose(arm, e):
+    """Le corps enroulé à `e`, posé sur l'assise (le plus bas à z = 0), centré au fil de e."""
+    if "xy" not in BOULE_CENTRE:
+        BOULE_CENTRE["xy"] = (0.0, 0.0)
+        enroule_pose(arm, 1.0)
+        queue(arm, au_sol(arm, queue_boule()))
+        BOULE_CENTRE["xy"] = bas_du_corps(arm)[1:]
+        remettre(arm)
+    cx, cy = BOULE_CENTRE["xy"]
+    # Il plie d'abord les pattes et se voûte, puis bascule sur le flanc.
+    pattes, echine, roulis = lisse(e / 0.7), lisse(e / 0.8), lisse((e - 0.2) / 0.8)
+    porter(arm, boule(arm, echine, roulis))
+    porter(arm, Matrix.Translation((-cx * roulis, -cy * roulis, 0)))
+    replier(arm, pattes)
+    # Posé, ni enfoncé ni en l'air : les pattes suivent le corps en partie,
+    # d'où quelques passes.
+    for _ in range(10):
+        bas = bas_du_corps(arm)[0]
+        if abs(bas) < 2e-4:
+            break
+        porter(arm, Matrix.Translation((0, 0, -bas)))
+        replier(arm, pattes)
+
+
+def fermer(arm, f):
+    """Les yeux, de ouverts (f = 0) à fermés (f = 1)."""
+    for c in ("G", "D"):
+        arm.pose.bones[f"Paupiere_{c}"].scale = (OUVERTE + (FERMEE - OUVERTE) * f,) * 3
+
+
+def enroule(arm, u):
+    """
+    5,4 s, sans boucle, sur l'assise : il fait un tour complet sur lui-même en
+    piétinant, la queue dressée, puis se couche, bascule sur le flanc et
+    s'enroule — la queue vient se poser autour de lui.
+    """
+    tour = u / 0.45
+    if tour < 1:
+        tour_sur_place(arm, tour, 360)
+        queue(arm, queue_basse(QUEUE_HAUTE, u * 3, 4))
+        return
+    e = lisse((u - 0.45) / 0.55)
+    enroule_pose(arm, e)
+    fermer(arm, lisse((e - 0.6) / 0.4))
+    haute = queue_basse(QUEUE_HAUTE, 0.45 * 3, 4)
+    queue(arm, au_sol(arm, [a.lerp(b, lisse(e / 0.8)) for a, b in zip(haute, queue_boule())]))
+
+
+def dort(arm, t):
+    """
+    Enroulé, 12 s en boucle : il respire lentement (quatre souffles), le bout
+    de la queue bouge à peine, et une fois l'oreille du dessus frémit.
+    """
+    enroule_pose(arm, 1.0)
+    fermer(arm, 1.0)
+    pose = arm.pose.bones
+    souffle = math.sin(2 * math.pi * 4 * t)
+    pose["Poitrine"].scale = (1 + 0.022 * souffle, 1, 1 + 0.022 * souffle)
+    pose["Dos"].scale = (1 + 0.015 * souffle, 1, 1 + 0.015 * souffle)
+    frisson = bosse(t, 0.55, 0.58) + 0.7 * bosse(t, 0.60, 0.63)
+    tourner(pose["Oreille_G"], (1, 0, 0), 28 * frisson)
+    tourner(pose["Oreille_G"], (0, 0, 1), -18 * frisson)
+    queue(arm, au_sol(arm, queue_boule(t, 5)))
+
+
+def reveil(arm, u):
+    """
+    4 s, sans boucle : il se déroule et se lève (la queue se redresse), puis
+    s'étire — les mains filent devant, la poitrine descend, la croupe reste
+    haute — et revient debout.
+    """
+    pose = arm.pose.bones
+    if u < 0.4:
+        e = 1 - lisse(u / 0.4)
+        enroule_pose(arm, e)
+        fermer(arm, lisse((e - 0.6) / 0.4))
+        haute = queue_basse(QUEUE_HAUTE, 0.0, 4)
+        queue(arm, au_sol(arm, [b.lerp(a, lisse((1 - e) / 0.8)) for a, b in zip(haute, queue_boule())]))
+        return
+    s = (u - 0.4) / 0.6
+    etire = lisse(s / 0.35) * (1 - lisse((s - 0.72) / 0.28))
+    tourner(pose["Bassin"], (1, 0, 0), 16 * etire)
+    tourner(pose["Dos"], (1, 0, 0), 8 * etire)
+    tourner(pose["Poitrine"], (1, 0, 0), 8 * etire)
+    tourner(pose["Cou"], (1, 0, 0), -44 * etire)
+    tourner(pose["Tete"], (1, 0, 0), -12 * etire)
+    deplacer(pose["Bassin"], (0, 0.02 * etire, 0.012 * etire))
+    for c, avant, _, _ in PATTES:
+        nom = f"Ctrl{'Main' if avant else 'Pied'}_{c}"
+        if avant:
+            # Les mains avancent l'une après l'autre, puis reviennent.
+            aller = lisse((s - (0.0 if c == "G" else 0.08)) / 0.25)
+            retour = lisse((s - (0.55 if c == "G" else 0.62)) / 0.2)
+            pas_ = bosse(s, 0.0 if c == "G" else 0.08, 0.25 if c == "G" else 0.33) + bosse(s, 0.55 if c == "G" else 0.62, 0.75 if c == "G" else 0.82)
+            placer(arm, nom, Matrix.Translation((0, -0.13 * (aller - retour), 0.03 * pas_)), 15 * pas_)
+        else:
+            placer(arm, nom, Matrix.Identity(4))
+    queue(arm, queue_basse(QUEUE_HAUTE, s, 4))
+
+
+DESCENTE_PATTES = {True: (0.52, 0.78), False: (0.62, 0.86)}
+DESCENTE_VOL = (0.62, 0.78)
+
+
+def descente(arm, u):
+    """
+    2,4 s, sans boucle : un demi-tour sur l'assise, puis il saute au sol —
+    les mains d'abord, le museau vers le bas — et repart d'aplomb, la queue basse.
+    """
+    pose = arm.pose.bones
+    if u < 0.42:
+        tour_sur_place(arm, u / 0.42, 180, pas=3)
+        queue(arm, queue_basse(QUEUE_HAUTE, u * 2, 4))
+        return
+    R = rz(180)
+    ramasse = rampe(u, 0.42, 0.5) * (1 - rampe(u, 0.54, 0.62))
+    amorti = bosse(u, 0.78, 1.0)
+    deplacer(pose["Bassin"], (0, 0, -0.04 * ramasse - 0.025 * amorti))
+    tourner(pose["Cou"], (1, 0, 0), 12 * rampe(u, 0.42, 0.55) * (1 - rampe(u, 0.8, 0.98)))
+    M = trajet(arm, u, -SAUT_H, SAUT_D, DESCENTE_PATTES, lambda v: rampe(v, 0.58, 0.82), lambda v: rampe(v, 0.50, 0.84),
+               {True: Vector((0, -0.12, 0.04)), False: Vector((0, -0.02, 0.08))}, R, assise=(-BORD, 9, 0.0))
+    porter(arm, M)
+    q = rampe(u, 0.7, 1.0)
+    dirs = [a.lerp(b, q) for a, b in zip(queue_basse(QUEUE_HAUTE, 0.84, 4), queue_basse(QUEUE_REPOS, 0.0, 7))]
+    queue(arm, au_sol(arm, [R.to_3x3() @ d for d in dirs], -SAUT_H * rampe(u, 0.62, 0.8)))
+
+
+QUEUE_BOULE = (86, 126, 156, 176, 192, 206)
+
+
+def queue_boule(t=0.0, fremit=0.0):
+    """Couchée sur l'assise, elle fait le tour de ses pattes jusque sous le nez ; le bout frémit."""
+    return [direction(-60 if i == 0 else 0, cap - BOULE_LACET + fremit * (i / 5) ** 2 * (math.sin(2 * math.pi * t - 0.6 * i) + math.sin(0.6 * i)))
+            for i, cap in enumerate(QUEUE_BOULE)]
+
+
+def tour_sur_place(arm, s, total, pas=5, R=None):
+    """
+    Il tourne de `total` degrés (vers sa gauche) autour de l'origine, s ∈ [0, 1] :
+    le corps pivote en continu, se courbe du côté où il tourne, et chaque patte
+    suit par `pas` petits pas — posée, elle ne glisse pas. Rend la matrice du corps.
+    """
+    R = Matrix.Identity(4) if R is None else R
+    pose = arm.pose.bones
+    theta = total * lisse(s)
+    courbe = math.copysign(1, total) * math.sin(math.pi * s)
+    for nom, deg in (("Dos", 5), ("Poitrine", 6), ("Cou", 10), ("Tete", 8)):
+        tourner(pose[nom], (0, 0, 1), deg * courbe)
+    M = R @ rz(theta)
+    porter(arm, M)
+    for c, avant, decolle, _ in PATTES:
+        nom = f"Ctrl{'Main' if avant else 'Pied'}_{c}"
+        angle, vol = 0.0, 0.0
+        for j in range(pas):
+            f = (s - (j + decolle) / (pas + 1)) / (0.7 / (pas + 1))
+            if f <= 0:
+                break
+            vise = total if j == pas - 1 else total * lisse((j + decolle + 1) / (pas + 1))
+            if f < 1:
+                angle, vol = angle + (vise - angle) * lisse(f), math.sin(math.pi * f)
+                break
+            angle = vise
+        placer(arm, nom, R @ Matrix.Translation((0, 0, 0.035 * vol)) @ rz(angle), 20 * vol)
+    return M
 
 
 def exporter(corps, arm):
@@ -860,6 +1385,13 @@ def main():
     action(arm, "Repos", 4 * FPS, repos)
     action(arm, "Sasseoir", round(1.2 * FPS), sasseoir, boucle=False)
     action(arm, "Assis", 6 * FPS, assis)
+    # La sieste : durées recopiées dans `promenade.ts` (SIESTE).
+    action(arm, "Saut", round(1.4 * FPS), saut, boucle=False)
+    action(arm, "Enroule", round(5.4 * FPS), enroule, boucle=False)
+    action(arm, "Dort", 12 * FPS, dort)
+    action(arm, "Reveil", 4 * FPS, reveil, boucle=False)
+    action(arm, "Descente", round(2.4 * FPS), descente, boucle=False)
+    print(f"BAVETTE_SIESTE vol du saut {SAUT_VOL} · de la descente {DESCENTE_VOL} · H {SAUT_H} · D {SAUT_D} · bord {BORD}")
     exporter(corps, arm)
 
 

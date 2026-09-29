@@ -61,6 +61,19 @@ export const DIMENSIONS: Record<PieceMobilier, { largeur: number; profondeur: nu
   AbriVelos: { largeur: 4.6, profondeur: 2.3 },
 }
 
+/**
+ * Le dessus des bancs où Bavette fait la sieste : sa hauteur au-dessus du pied
+ * et sa demi-profondeur (selon le z du modèle), relevées au lancer de rayons
+ * sur `mobilier.glb`. Pas les bancs Batlló : deux assises de 30 cm séparées
+ * par le dossier, trop étroites pour un chat enroulé.
+ */
+export const ASSISES: Partial<Record<PieceMobilier, { hauteur: number; demiProfondeur: number }>> = {
+  Banquette: { hauteur: 0.46, demiProfondeur: 0.3 },
+  BancNef: { hauteur: 0.458, demiProfondeur: 0.28 },
+  BancJardin: { hauteur: 0.45, demiProfondeur: 0.2 },
+  BancPierre: { hauteur: 0.48, demiProfondeur: 0.25 },
+}
+
 export interface Meuble {
   piece: PieceMobilier
   /** La surface de `surfaceAt` où il est posé : `<niveau>:<salle>` ou `parc:terrain`. */

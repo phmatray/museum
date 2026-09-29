@@ -7,16 +7,24 @@
  * il se relève) et `Assis`. La marche est calée sur sa vitesse réelle — les
  * coussinets ne patinent pas —, il suit la pente des volées, et tourne la tête
  * vers le visiteur qui s'approche à moins de trois mètres.
+ *
+ * Et la sieste sur un banc : `Saut`, `Enroule`, `Dort`, `Reveil`, `Descente`,
+ * dont le déplacement est cuit. Leur temps est celui de `promenade.ts` (on ne
+ * les laisse pas courir) : le chat est posé au point d'appel pendant le saut,
+ * sur l'assise ensuite, et l'écart entre la hauteur cuite et le vrai banc se
+ * rattrape pendant le vol, quand aucune patte ne touche rien.
  */
 import { useEffect, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { GLTFLoader, type GLTF } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
+import { MOBILIER } from '../plan/mobilier'
 import { MUSEE } from '../plan/musee'
 import { parkPlacements } from '../plan/park'
 import {
-  avancerPromenade, lieuxCalmes, poser, posture, promenadeInitiale, regardeBavette, VITESSE_CHAT, type Lieu, type Promenade,
+  avancerPromenade, couchettes, lieuxCalmes, poser, posture, promenadeInitiale, rampe, regardeBavette, SIESTE, siesteForcee,
+  VITESSE_CHAT, type Lieu, type PhaseSieste, type Promenade,
 } from '../plan/promenade'
 import { surfaceAt } from '../plan/rules'
 import { useGameStore } from '../stores/gameStore'
@@ -28,7 +36,12 @@ const PORTEE_REGARD = 3
 const LACET_MAX = THREE.MathUtils.degToRad(70)
 const TANGAGE_MAX = THREE.MathUtils.degToRad(30)
 
-type Nom = 'Marche' | 'Repos' | 'Sasseoir' | 'Assis'
+const CLIPS_SIESTE = { saut: 'Saut', enroule: 'Enroule', dort: 'Dort', reveil: 'Reveil', descente: 'Descente' } as const
+type NomSieste = (typeof CLIPS_SIESTE)[PhaseSieste]
+type Nom = 'Marche' | 'Repos' | 'Sasseoir' | 'Assis' | NomSieste
+const EN_SIESTE = new Set<string>(Object.values(CLIPS_SIESTE))
+/** La tache d'ombre sous le chat, publiée pour `OmbresLayer` quand il n'est pas à l'aplomb du groupe. */
+export interface OmbreBavette { x: number; y: number; z: number; yaw: number; sx: number; sz: number }
 interface Forcage { gel: boolean; anim: Nom | null }
 interface Anim { mixer: THREE.AnimationMixer; actions: Record<Nom, THREE.AnimationAction>; courant: Nom; ensuite: Nom | null }
 
@@ -40,7 +53,7 @@ export function BavetteLayer() {
   const groupe = useRef<THREE.Group>(null)
   const promenade = useRef<Promenade | null>(null)
   const forcage = useRef<Forcage>({ gel: false, anim: null })
-  const lisse = useRef({ yaw: 0, tangage: 0, regard: 0, publie: 0 })
+  const lisse = useRef({ yaw: 0, tangage: 0, regard: 0, publie: 0, sieste: false })
   const anim = useRef<Anim | null>(null)
 
   // Le mixeur, une fois le modèle arrivé. Une promenade par session : Math.random suffit à la graine.
@@ -48,7 +61,7 @@ export function BavetteLayer() {
     if (!gltf) return
     const mixer = new THREE.AnimationMixer(gltf.scene)
     const actions = Object.fromEntries(gltf.animations.map((c) => [c.name, mixer.clipAction(c)])) as Record<Nom, THREE.AnimationAction>
-    if (!actions.Marche || !actions.Repos || !actions.Sasseoir || !actions.Assis) {
+    if (!actions.Marche || !actions.Repos || !actions.Sasseoir || !actions.Assis || Object.values(CLIPS_SIESTE).some((n) => !actions[n])) {
       console.warn('Bavette : actions manquantes', Object.keys(actions))
       return
     }
@@ -100,6 +113,17 @@ export function BavetteLayer() {
         a.mixer.update(0)
       },
       figer: (gel: boolean) => { forcage.current = { ...forcage.current, gel } },
+      /** Les points de sieste des bancs (index, banc, position). */
+      couchettes: () => couchettes(MUSEE).map((c, i) => ({ i, piece: MOBILIER[c.banc].piece, surface: c.surface, x: c.x, z: c.z })),
+      /**
+       * L'envoie dormir sur la couchette `i` : il y marche et saute ; `phase`
+       * donnée, il y est tout de suite, `t` secondes dans cette phase.
+       */
+      sieste: (i: number, phase?: PhaseSieste, t = 0) => {
+        const c = couchettes(MUSEE)[i]
+        if (c && promenade.current) promenade.current = siesteForcee(MUSEE, promenade.current, c, phase, t)
+        forcage.current = { gel: false, anim: null }
+      },
       liberer: () => { forcage.current = { gel: false, anim: null } },
     }
     return () => { delete w.__BAVETTE__ }
@@ -118,11 +142,20 @@ export function BavetteLayer() {
     const dt = Math.min(delta, 0.1)
     const { gel, anim: force } = forcage.current
     const visiteur = useGameStore.getState().visiteur
-    if (!gel) p = promenade.current = avancerPromenade(MUSEE, LIEUX, p, dt, visiteur?.surface)
+    if (!gel) p = promenade.current = avancerPromenade(MUSEE, LIEUX, p, dt, visiteur ?? undefined)
+    const s = p.sieste
 
+    // La sieste : l'action de la phase, à l'instant de la promenade. D'une
+    // phase à la suivante les poses se raccordent — on coupe sans fondu.
+    if (!force && s) {
+      const nom = CLIPS_SIESTE[s.phase]
+      if (a.courant !== nom) dormir(a, nom, gel || EN_SIESTE.has(a.courant) ? 0 : 0.25)
+      const act = a.actions[nom]
+      act.time = s.phase === 'dort' ? s.t % SIESTE.souffle : Math.min(s.t, act.getClip().duration)
+    }
     // L'action voulue, et le passage par `Sasseoir` pour s'asseoir ou se relever.
-    if (!force) {
-      const voulue = ANIMATION[posture(p)]
+    else if (!force) {
+      const voulue = ANIMATION[posture(p) as keyof typeof ANIMATION]
       if (a.courant === 'Sasseoir') a.ensuite = voulue === 'Assis' ? (a.actions.Sasseoir.timeScale > 0 ? 'Assis' : 'Repos') : voulue
       else if (voulue !== a.courant) {
         if (voulue === 'Assis') asseoir(a, 1)
@@ -138,7 +171,11 @@ export function BavetteLayer() {
     const w = p.walker
     const l = lisse.current
     const k = 1 - Math.exp(-6 * dt)
-    l.yaw += angle(w.yaw - l.yaw) * (gel ? 1 : k)
+    // En sieste le cap est celui du banc, et au sol il repart d'aplomb, dos au banc : sans lissage.
+    if (s) l.yaw = s.couchette.cap
+    else if (l.sieste) l.yaw = w.yaw
+    else l.yaw += angle(w.yaw - l.yaw) * (gel ? 1 : k)
+    l.sieste = !!s
     const f = w.surface.startsWith('volee:') ? MUSEE.flights.find((v) => `volee:${v.id}` === w.surface) : undefined
     let pente = 0
     if (f) {
@@ -148,11 +185,30 @@ export function BavetteLayer() {
       pente = Math.atan(((f.top - f.bottom) / long) * (-Math.sin(w.yaw) * ux - Math.cos(w.yaw) * uz))
     }
     l.tangage += (pente - l.tangage) * (gel ? 1 : k)
-    g.position.set(w.x, w.y, w.z)
+    if (s) {
+      const c = s.couchette
+      if (s.phase === 'saut') {
+        // Au point d'appel ; la différence de hauteur avec le vrai banc, pendant le vol.
+        const u = s.t / SIESTE.saut.duree
+        g.position.set(c.appel.x, c.appel.y + (c.y - c.appel.y - SIESTE.hauteur) * rampe(u, SIESTE.saut.vol), c.appel.z)
+      } else if (s.phase === 'descente') {
+        const u = s.t / SIESTE.descente.duree
+        g.position.set(c.x, c.y + (c.appel.y - c.y + SIESTE.hauteur) * rampe(u, SIESTE.descente.vol), c.z)
+      } else g.position.set(c.x, c.y, c.z)
+      // L'ombre : sous le corps, sur l'assise dès qu'il la surplombe ; ronde quand il est enroulé.
+      const surAssise = Math.hypot(w.x - c.appel.x, w.z - c.appel.z) > SIESTE.elan - SIESTE.bord
+      const rond = s.phase === 'enroule' || s.phase === 'dort' || s.phase === 'reveil'
+      g.userData.ombre = {
+        x: w.x, y: surAssise ? c.y : c.appel.y, z: w.z, yaw: l.yaw, sx: rond ? 0.46 : 0.34, sz: rond ? 0.46 : 0.62,
+      } satisfies OmbreBavette
+    } else {
+      g.position.set(w.x, w.y, w.z)
+      g.userData.ombre = undefined
+    }
     g.rotation.set(-l.tangage, l.yaw + Math.PI, 0, 'YXZ')
     g.updateMatrixWorld()
 
-    orienterTete(tete.current, g, camera, l, dt, posture(p) === 'marche' && !force)
+    orienterTete(tete.current, g, camera, l, dt, posture(p) === 'marche' && !force, !s)
 
     // La carte, quand on le regarde ; la minimap, quatre fois par seconde.
     const tetePos = tete.current.tete?.getWorldPosition(new THREE.Vector3()) ?? g.position
@@ -183,6 +239,23 @@ function jouer(a: Anim, nom: Nom, fondu: number) {
   a.ensuite = null
 }
 
+/** Une action de la sieste : son temps est posé de dehors, image par image. */
+function dormir(a: Anim, nom: Nom, fondu: number) {
+  const act = a.actions[nom]
+  act.reset()
+  act.setLoop(nom === 'Dort' ? THREE.LoopRepeat : THREE.LoopOnce, Infinity)
+  act.clampWhenFinished = true
+  act.timeScale = 0
+  act.setEffectiveWeight(1)
+  if (fondu > 0) {
+    act.fadeIn(fondu)
+    a.actions[a.courant].fadeOut(fondu)
+  } else for (const autre of Object.values(a.actions)) if (autre !== act) autre.stop()
+  act.play()
+  a.courant = nom
+  a.ensuite = null
+}
+
 /** S'asseoir (sens 1), ou se relever (sens −1) puis `ensuite`. */
 function asseoir(a: Anim, sens: 1 | -1, ensuite: Nom = 'Assis') {
   const s = a.actions.Sasseoir
@@ -207,7 +280,7 @@ const QG = new THREE.Quaternion()
  * douceur et dans des butées. Une rotation autour d'un axe du MONDE, ramenée
  * dans le repère du parent de l'os.
  */
-function orienterTete(os: { cou: THREE.Object3D | null; tete: THREE.Object3D | null }, g: THREE.Group, camera: THREE.Camera, l: { regard: number }, dt: number, enMarche: boolean) {
+function orienterTete(os: { cou: THREE.Object3D | null; tete: THREE.Object3D | null }, g: THREE.Group, camera: THREE.Camera, l: { regard: number }, dt: number, enMarche: boolean, eveille: boolean) {
   if (!os.cou || !os.tete) return
   os.tete.getWorldPosition(VERS)
   VERS.subVectors(camera.position, VERS)
@@ -216,7 +289,7 @@ function orienterTete(os: { cou: THREE.Object3D | null; tete: THREE.Object3D | n
   const local = VERS.clone().applyQuaternion(QG.clone().invert())
   const lacet = Math.atan2(local.x, local.z)
   const tangage = Math.atan2(local.y, Math.hypot(local.x, local.z))
-  const cible = d < PORTEE_REGARD && Math.abs(lacet) < THREE.MathUtils.degToRad(115) ? (enMarche ? 0.5 : 1) : 0
+  const cible = eveille && d < PORTEE_REGARD && Math.abs(lacet) < THREE.MathUtils.degToRad(115) ? (enMarche ? 0.5 : 1) : 0
   l.regard += (cible - l.regard) * (1 - Math.exp(-2.5 * dt))
   if (l.regard < 1e-3) return
   HAUT.set(0, 1, 0).applyQuaternion(QG)

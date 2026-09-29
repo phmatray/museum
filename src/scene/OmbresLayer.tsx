@@ -24,6 +24,7 @@ import * as THREE from 'three'
 import { regrouperEmprises, type Emprise } from '../domain/ombres'
 import { MUSEE } from '../plan/musee'
 import { hauteurDuParc } from '../plan/relief'
+import type { OmbreBavette } from './BavetteLayer'
 import { RefletsLayer } from './RefletsLayer'
 
 const ECLAIRE = (m: THREE.Material) => m instanceof THREE.MeshStandardMaterial || m instanceof THREE.MeshLambertMaterial || m instanceof THREE.MeshPhongMaterial
@@ -167,8 +168,17 @@ function OmbresDeContact() {
     if (t === null) return
     t.visible = b !== undefined
     if (!b) return
+    // En sieste, le corps n'est pas à l'aplomb du groupe : `BavetteLayer` dit où tombe l'ombre.
+    const o = b.userData.ombre as OmbreBavette | undefined
+    if (o) {
+      t.position.set(o.x, o.y + 0.012, o.z)
+      t.rotation.y = o.yaw + Math.PI
+      t.scale.set(o.sx, 1, o.sz)
+      return
+    }
     t.position.set(b.position.x, b.position.y + 0.012, b.position.z)
     t.rotation.y = b.rotation.y
+    t.scale.set(0.34, 1, 0.62)
   })
 
   if (texture === null) return null
