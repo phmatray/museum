@@ -158,4 +158,20 @@ describe('PlanPlayer', () => {
     expect(camera.position.z).toBeGreaterThan(36.9)
     await act(async () => useGameStore.setState({ tourActive: false }))
   })
+
+  it('rend la main au visiteur qui marche pendant la visite guidée', async () => {
+    const { renderer } = await monterPlanPlayer()
+    await act(async () => useGameStore.setState({ paused: false, tourActive: true }))
+    await act(async () => { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' })) })
+    expect(useGameStore.getState().tourActive).toBe(false)
+    expect(useGameStore.getState().paused).toBe(false)
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }))
+
+    // Au joystick aussi.
+    await act(async () => useGameStore.setState({ tourActive: true }))
+    toucher.forward = 1
+    await renderer.advanceFrames(1, PAS_FIXE)
+    toucher.forward = 0
+    expect(useGameStore.getState().tourActive).toBe(false)
+  })
 })

@@ -260,7 +260,7 @@ export function TourExitButton() {
         zIndex: 1000,
       }}
     >
-      Quitter la visite (Échap)
+      Quitter la visite (Échap) · ou marchez pour reprendre la main
     </button>
   )
 }
