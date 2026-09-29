@@ -337,6 +337,23 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
     if (!presDeLEau(x, z, 1.6) && !surUneAllee(allees, x, z, 1.3) && !dansRect(parvis, x, z, 1.3)) planter('petales', x, z, 0.8 + alea() * 0.6)
   }
 
+  // 6. Le long du mur d'enceinte (`enceinte.ts`), là où le rideau du jardin
+  //    ne va pas (ouest, nord, et le sud-ouest), une ligne de grands érables :
+  //    au-dessus du mur, une lisière, pas un ciel nu. Leur propre tirage, en
+  //    dernier : le reste du parc ne bouge pas d'un arbre.
+  const lisiere = generateur(`${graine}:lisiere`)
+  const bord = 5
+  const pieds: [number, number][] = []
+  for (let x = terrain.x + bord; x < xMax - bord; x += 8) pieds.push([x, terrain.z + bord])
+  for (let z = terrain.z + bord + 8; z < zMax - bord; z += 8) pieds.push([terrain.x + bord, z])
+  for (let x = terrain.x + bord + 8; x < JARDIN.zones[0].x; x += 8) pieds.push([x, zMax - bord])
+  for (let z = terrain.z + bord + 8; z < JARDIN.zones[1].z; z += 8) pieds.push([xMax - bord, z])
+  for (const [x, z] of pieds) {
+    const espece = lisiere() < 0.3 ? 'erable-rouge' : 'erable-vert'
+    const [rx, rz] = [x + (lisiere() - 0.5) * 3, z + (lisiere() - 0.5) * 3]
+    if (libre(rx, rz, RAYON[espece] * 0.8, 1.5, 0.6)) planter(espece, rx, rz, 1.2 + lisiere() * 0.35)
+  }
+
   // La pelouse s'arrête où commence le sol creusé du jardin (build-jardin.py).
   const sol = JARDIN.zones.reduce((rs, zone) => rs.flatMap((r) => couronne(r, zone)), couronne(terrain, parvis))
   return { terrain, parvis, sol, dalles: couronne(parvis, emprise), allees, plantations }

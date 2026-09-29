@@ -14,7 +14,9 @@ import type { Allee, Parc, PlantPlacement, EspeceParc } from '../plan/park'
 import { hauteurDuParc, masqueDuRelief } from '../plan/relief'
 import type { Rect } from '../plan/types'
 import { REGLAGE_MATIERE, repetitionMetrique, useCartes, useMatiere } from './materials'
-import { creerPierre } from './pierre'
+import { creerBrique, creerPierre } from './pierre'
+import { enceinte } from '../plan/enceinte'
+import { Boites } from './PlanBuilding'
 import { parkAssetsResource, type ParkAssets, type ParkPiece } from './parkAssets'
 import { creerMatieresJardin, preparerSol, uvBoite } from './jardinMatieres'
 import { brinsDeGazon, carteDuSol, matiereGazon, type ReglageGazon } from './gazon'
@@ -55,6 +57,8 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   useMemo(() => intemperer(gravier), [gravier])
 
   const sol = useMemo(() => pelouse(placements), [placements])
+  const campagne = useMemo(() => dehors(placements.terrain), [placements])
+  useEffect(() => () => campagne.dispose(), [campagne])
   // Le parvis est dallé de la pierre du hall, comme le seuil d'un vrai musée ; le
   // gravier est pour les allées du jardin.
   // Le dallage 1 cm au-dessus du gravier : à la même cote, les allées qui le
@@ -82,6 +86,8 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   return (
     <group name="parc">
       <mesh geometry={sol} material={herbe} />
+      <mesh geometry={campagne} material={herbe} />
+      <Enceinte parc={placements} />
       <mesh geometry={parvis} material={dallage} />
       <mesh geometry={allees} material={gravier} />
       <Gazon parc={placements} />
@@ -92,6 +98,69 @@ export function ParkLayer({ placements }: { placements: Parc }) {
           (assets.especes.get(espece) ?? []).map((lot, i) => <Instances key={`${espece}:${i}`} piece={lot} sujets={sujets} />))}
     </group>
   )
+}
+
+/** Le mur d'enceinte (`plan/enceinte.ts`) : brique et pierre du musée, grilles de fer. Trois appels de dessin. */
+function Enceinte({ parc }: { parc: Parc }) {
+  const mur = useMemo(() => enceinte(parc.terrain, parc.allees), [parc])
+  const mats = useMemo(() => {
+    const m = { brique: creerBrique(), pierre: creerPierre(), fer: new THREE.MeshStandardMaterial({ color: '#1c1e1d', metalness: 0.7, roughness: 0.45 }) }
+    for (const k of ['brique', 'pierre'] as const) intemperer(m[k])
+    return m
+  }, [])
+  useEffect(() => () => Object.values(mats).forEach((m) => { m.map?.dispose(); m.dispose() }), [mats])
+  return (
+    <>
+      <Boites boites={mur.brique} material={mats.brique} />
+      <Boites boites={mur.pierre} material={mats.pierre} />
+      <Boites boites={mur.fer} material={mats.fer} />
+    </>
+  )
+}
+
+/** Les pas de la campagne, du mur vers l'horizon : serrés près du mur, lâches au loin (en mètres, cumulés). */
+const AU_DELA = [2, 5, 9, 14, 20, 28, 38, 52, 70, 95, 130, 180, 250, 340, 460]
+
+/**
+ * La campagne, derrière le mur : le relief du parc continue, puis s'aplanit vers
+ * l'horizon. Sans elle, du haut d'une butte, on voyait par-dessus le mur le
+ * bord du monde : rien sous le ciel. Une grille à pas croissants, percée du
+ * terrain (la pelouse du parc y est), qui pâlit au loin comme dans l'air réel.
+ */
+function dehors(terrain: Rect): THREE.BufferGeometry {
+  const axe = (a0: number, a1: number) => {
+    const n = Math.round((a1 - a0) / 8)
+    return [...AU_DELA.map((d) => a0 - d).reverse(), ...Array.from({ length: n + 1 }, (_, i) => a0 + ((a1 - a0) * i) / n), ...AU_DELA.map((d) => a1 + d)]
+  }
+  const [xs, zs] = [axe(terrain.x, terrain.x + terrain.width), axe(terrain.z, terrain.z + terrain.depth)]
+  const pos: number[] = []
+  const couleur: number[] = []
+  const index: number[] = []
+  // Au-delà de 1 : la brume ÉCLAIRCIT et bleuit le vert au loin (la teinte multiplie la carte).
+  const brume = new THREE.Color(1.5, 1.5, 1.95)
+  for (const z of zs) {
+    for (const x of xs) {
+      const d = Math.hypot(Math.max(terrain.x - x, 0, x - terrain.x - terrain.width), Math.max(terrain.z - z, 0, z - terrain.z - terrain.depth))
+      pos.push(x, hauteurDuParc(x, z) * (1 - THREE.MathUtils.smoothstep(d, 20, 200)), z)
+      const c = new THREE.Color(0.95, 0.97, 0.93).lerp(brume, THREE.MathUtils.smoothstep(d, 40, 460))
+      couleur.push(c.r, c.g, c.b)
+    }
+  }
+  const nx = xs.length
+  const interieur = (x: number, z: number) => x > terrain.x && x < terrain.x + terrain.width && z > terrain.z && z < terrain.z + terrain.depth
+  for (let j = 0; j + 1 < zs.length; j++)
+    for (let i = 0; i + 1 < nx; i++) {
+      if (interieur((xs[i] + xs[i + 1]) / 2, (zs[j] + zs[j + 1]) / 2)) continue
+      const v = j * nx + i
+      index.push(v, v + nx, v + 1, v + 1, v + nx, v + nx + 1)
+    }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('color', new THREE.Float32BufferAttribute(couleur, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(pos.flatMap((c, i) => (i % 3 === 1 ? [] : [c])), 2))
+  g.setIndex(index)
+  g.computeVertexNormals()
+  return g
 }
 
 /** Les brins d'herbe, repliés autour de la caméra (`gazon.ts`). */
