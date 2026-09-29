@@ -37,6 +37,7 @@
  * l'image décodée et l'unique texture GPU.
  */
 import * as THREE from 'three'
+import { KTX2Loader } from 'three/examples/jsm/loaders/KTX2Loader.js'
 
 // ── Contrat public ───────────────────────────────────────────────────────
 
@@ -78,7 +79,75 @@ export interface ChargeurDeTextures {
     onLoad?: (texture: THREE.Texture) => void,
     onProgress?: (event: ProgressEvent) => void,
     onError?: (err: unknown) => void,
-  ): THREE.Texture
+  ): unknown
+}
+
+// ── KTX2 ─────────────────────────────────────────────────────────────────
+
+/*
+  Les cartes existent aussi en KTX2 (Basis Universal, `tools/encode-ktx2.ts`),
+  transcodées au chargement dans le format compressé que lit le GPU : quatre à
+  huit fois moins de mémoire vidéo qu'un JPG décompressé. Le transcodeur
+  (`public/basis/`) doit connaître le renderer pour choisir ce format : le site
+  attend donc `utiliserKTX2`, appelé à la création du canvas, avant de charger
+  la moindre carte — quatre secondes au plus, après quoi les JPG passent.
+
+  Tout échec d'une carte KTX2 (fichier absent, navigateur sans WebAssembly) la
+  fait retomber sur son JPG : le musée ne perd jamais une matière pour ça.
+*/
+let ktx2: KTX2Loader | null = null
+/** Au-delà, une carte KTX2 qui ne vient pas cède la place à son JPG. */
+const DELAI_KTX2 = 8000
+let signaler: () => void = () => {}
+const rendu = new Promise<void>((r) => {
+  signaler = r
+})
+
+/** Branche le transcodeur KTX2 sur le renderer. Une fois suffit. */
+export function utiliserKTX2(renderer: THREE.WebGLRenderer): void {
+  if (ktx2 === null) {
+    try {
+      ktx2 = new KTX2Loader().setTranscoderPath(`${import.meta.env.BASE_URL}basis/`).detectSupport(renderer)
+    } catch (erreur) {
+      console.warn('museum: KTX2 indisponible, cartes en JPG', erreur)
+    }
+  }
+  signaler()
+}
+
+/** Le chargeur du site : le KTX2 d'abord s'il est branché, le JPG sinon ou en cas d'échec. */
+async function chargeurDuSite(): Promise<ChargeurDeTextures> {
+  await Promise.race([rendu, new Promise((r) => setTimeout(r, 4000))])
+  const images = new THREE.TextureLoader()
+  const compresse = ktx2
+  if (compresse === null) return images
+  return {
+    load(url, onLoad, onProgress, onError) {
+      // Un transcodeur qui ne démarre pas (servi en HTML par un serveur de
+      // développement, par exemple) ne rappelle jamais : le délai tranche.
+      let fini = false
+      const repli = () => {
+        if (fini) return
+        fini = true
+        images.load(url, onLoad, onProgress, onError)
+      }
+      const delai = setTimeout(repli, DELAI_KTX2)
+      compresse.load(
+        url.replace(/\.jpg$/, '.ktx2'),
+        (t) => {
+          clearTimeout(delai)
+          if (fini) return t.dispose()
+          fini = true
+          onLoad?.(t)
+        },
+        undefined,
+        () => {
+          clearTimeout(delai)
+          repli()
+        },
+      )
+    },
+  }
 }
 
 // ── Emplacements ─────────────────────────────────────────────────────────
@@ -230,17 +299,17 @@ function chargerCarte(
  */
 export function chargerMatiere(
   id: MatiereId,
-  chargeur: ChargeurDeTextures = new THREE.TextureLoader(),
+  chargeur?: ChargeurDeTextures,
 ): Promise<JeuDeCartes> {
   const dejaEnVol = enCours.get(id)
   if (dejaEnVol) return dejaEnVol
 
   const chemins = cheminsDeMatiere(id)
-  const promesse = Promise.all([
+  const promesse = (chargeur ? Promise.resolve(chargeur) : chargeurDuSite()).then((chargeur) => Promise.all([
     chargerCarte(chargeur, chemins.couleur),
     chargerCarte(chargeur, chemins.normale),
     chargerCarte(chargeur, chemins.rugosite),
-  ]).then(([couleur, normale, rugosite]) => {
+  ])).then(([couleur, normale, rugosite]) => {
     const jeu = configurerJeu({ couleur, normale, rugosite })
     chargees.set(id, jeu)
     for (const ecouteur of abonnes) ecouteur()

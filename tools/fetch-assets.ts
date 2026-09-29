@@ -24,6 +24,7 @@ import { resolve, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
+import { encoderLesMatieres } from './encode-ktx2.ts'
 
 const execFileAsync = promisify(execFile)
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -343,6 +344,11 @@ async function main() {
     console.log(`  ${r.padEnd(6)} ${m.id.padEnd(20)} ${m.usage}`)
     journal.push(`| ${m.id} | ambientCG | CC0 | ${m.usage} |`)
   }
+
+  // Les mêmes cartes, compressées pour le GPU (encode-ktx2.ts) ; le site retombe sur les JPG sans elles.
+  console.log(`\nMatières en KTX2 — Basis Universal`)
+  const ktx2 = await encoderLesMatieres()
+  console.log(`  ${ktx2.faits} encodées, ${ktx2.ignores} à jour, ${ktx2.echecs} en échec`)
 
   console.log(`\nHDRI — Poly Haven, CC0`)
   console.log(`  ${(await recupererHdri()).padEnd(6)} ${HDRI.id} ${HDRI.resolution}`)
