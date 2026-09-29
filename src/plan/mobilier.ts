@@ -72,17 +72,22 @@ const dans = (piece: PieceMobilier, surface: string, x: number, z: number, lacet
  * se croisent au centre (salles 2).
  */
 const AILES: [string, string, number, number][] = [
-  ['r-o1', 'e-o1', 8, 4.7], ['r-o2', 'e-o2', 5.8, 20], ['r-o3', 'e-o3', 8, 35.3],
-  ['r-e2', 'e-e2', 42.2, 20], ['r-e3', 'e-e3', 40, 35.3],
+  ['r-o1', 'e-o1', 8, 4.7], ['r-e2', 'e-e2', 42.2, 20], ['r-e3', 'e-e3', 40, 35.3],
+  // Les galeries 2 de l'ouest ont leur cimaise dans la moitié ouest (cimaises.ts) :
+  // la banquette passe dans l'angle nord-est, hors des lignes de la porte du hall, et regarde la salle.
+  ['r-o2', 'e-o2', 12.6, 15.8],
 ]
 
 export const MOBILIER: Meuble[] = [
   ...AILES.flatMap(([rdc, etage, x, z]) => [dans('Banquette', `0:${rdc}`, x, z, SUD), dans('Banquette', `1:${etage}`, x, z, SUD)]),
+  // Là où un seul des deux niveaux a une cimaise (cimaises.ts), la banquette de
+  // l'autre garde sa place ; celle de la salle à cimaise se tourne vers elle.
+  dans('Banquette', '0:r-o3', 8, 35.3, SUD),
+  dans('Banquette', '1:e-o3', 5.5, 31, SUD),
   dans('Banquette', '1:e-e1', 40, 4.7, SUD),
-  // Au rez-de-chaussée, Trading & finance a deux cimaises (cimaises.ts) : la banquette va entre elles, face à celle du sud.
-  dans('Banquette', '0:r-e1', 43.8, 6.5, SUD),
-  // La galerie du nord, traversée d'ouest en est par z = 6 : la banquette au nord de l'axe.
-  dans('Banquette', '0:r-n', 24, 4.7, SUD),
+  dans('Banquette', '0:r-e1', 42.6, 8.4, NORD),
+  // La galerie du nord, traversée d'ouest en est par z = 6 : la cimaise au nord de l'axe, la banquette au sud, face à elle.
+  dans('Banquette', '0:r-n', 24, 8.4, NORD),
   // La nef : entre le filet de granit (x = 20, 28) et l'allée centrale (22,4–25,6),
   // dans les deux travées qui ne font face à aucune porte (z 26–29,5 et 29,5–33).
   // Entre les deux, sur la bande de granit, on traverse la nef d'un mur à l'autre.

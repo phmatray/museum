@@ -14,7 +14,7 @@
 import { clusterArtworks } from '../domain/clustering.ts'
 import { DEFAULT_ASPECT, hangRoom } from '../domain/hanging.ts'
 import { WALL_CORNER_MARGIN, type Artwork, type RepoKey, type Room as SalleDomaine, type Wall } from '../domain/types.ts'
-import { MARGE_BOUT, MODULE, cimaisesDe, faces } from './cimaises.ts'
+import { MARGE_BOUT, MODULE, cimaisesDe, faces, placesDesCimaises } from './cimaises.ts'
 import { edges } from './geometry.ts'
 import { capacity, NORMES } from './rules.ts'
 import { INT as DEMI_MUR } from './svg.ts'
@@ -81,7 +81,10 @@ export function assignRooms(plan: Plan, artworks: Artwork[], reservees: Readonly
   if (galeries.length === 0 || reste.length === 0) return out
 
   const parCle = new Map(reste.map((a) => [a.key, a]))
-  const maxSize = Math.min(...galeries.map((g) => g.cap))
+  // La taille des thèmes se règle sur les murs seuls : une cimaise donne du
+  // large à la salle chargée qui la reçoit, elle ne rebat pas les thèmes de
+  // tout le musée (sinon chaque cimaise déplacerait la charge qu'elle soulage).
+  const maxSize = Math.min(...galeries.map((g) => g.cap - placesDesCimaises(g.level.id, g.room.id, NORMES.pasAccrochage)))
   const groupes = clusterArtworks(reste, { minSize: 1, maxSize })
     .map((c) => ({ name: c.name, artworks: c.keys.map((k) => parCle.get(k)!) }))
 

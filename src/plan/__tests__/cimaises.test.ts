@@ -1,6 +1,6 @@
 /**
- * Les cimaises modulables : hors des portes et des passages, à distance des
- * murs, infranchissables, et accrochées comme un mur — sans qu'une toile, son
+ * Les cimaises modulables : dans chaque galerie chargée, hors des portes et
+ * des passages, à 3 m des murs, infranchissables, et accrochées comme un mur — sans qu'une toile, son
  * cadre ou son cartel déborde du panneau ni ne touche sa voisine.
  */
 /// <reference types="node" />
@@ -31,23 +31,23 @@ const distance = (a: Rect, b: Rect) =>
   Math.hypot(Math.max(0, a.x - b.x - b.width, b.x - a.x - a.width), Math.max(0, a.z - b.z - b.depth, b.z - a.z - a.depth))
 
 describe('CIMAISES', () => {
-  it('ne va que dans des galeries de 16 × 13 ou 14 m, une à trois lignes par salle', () => {
+  it('ne va que dans des galeries de 16 × 12 à 14 m, une à trois lignes par salle', () => {
     expect(CIMAISES.length).toBeGreaterThan(0)
     for (const c of CIMAISES) {
       const r = salle(c)
       expect(r.kind, nom(c)).toBe('gallery')
-      expect(r.width * r.depth, nom(c)).toBeGreaterThanOrEqual(16 * 13)
+      expect(r.width * r.depth, nom(c)).toBeGreaterThanOrEqual(16 * 12)
     }
     for (const c of CIMAISES) expect(CIMAISES.filter((d) => d.niveau === c.niveau && d.salle === c.salle).length, nom(c)).toBeLessThanOrEqual(3)
   })
 
-  it('laisse au moins 2 m entre chaque cimaise et chaque mur', () => {
+  it('laisse au moins 3 m entre chaque cimaise et chaque mur : de quoi reculer devant une toile de l’un comme de l’autre', () => {
     for (const c of CIMAISES) {
       const [r, e] = [salle(c), emprise(c)]
-      expect(e.x - (r.x + INT), nom(c)).toBeGreaterThanOrEqual(2)
-      expect(e.z - (r.z + INT), nom(c)).toBeGreaterThanOrEqual(2)
-      expect(r.x + r.width - INT - (e.x + e.width), nom(c)).toBeGreaterThanOrEqual(2)
-      expect(r.z + r.depth - INT - (e.z + e.depth), nom(c)).toBeGreaterThanOrEqual(2)
+      expect(e.x - (r.x + INT), nom(c)).toBeGreaterThanOrEqual(3)
+      expect(e.z - (r.z + INT), nom(c)).toBeGreaterThanOrEqual(3)
+      expect(r.x + r.width - INT - (e.x + e.width), nom(c)).toBeGreaterThanOrEqual(3)
+      expect(r.z + r.depth - INT - (e.z + e.depth), nom(c)).toBeGreaterThanOrEqual(3)
     }
   })
 
@@ -95,16 +95,26 @@ describe('CIMAISES', () => {
     }
   })
 
-  it('compte ses deux faces dans la capacité de sa salle : autant de plus que sa jumelle de l’autre aile, qui n’en a pas', () => {
+  it('compte ses deux faces dans la capacité de sa salle, en plus de ses murs', () => {
     for (const [niveau, id] of new Set(CIMAISES.map((c) => [c.niveau, c.salle] as const))) {
       const level = MUSEE.levels.find((l) => l.id === niveau)!
-      const jumelle = id.replace(/-[oe]/, (m) => (m === '-o' ? '-e' : '-o'))
-      const [r, j] = [id, jumelle].map((x) => level.rooms.find((s) => s.id === x)!)
-      expect(CIMAISES.some((c) => c.salle === jumelle), jumelle).toBe(false)
+      const r = level.rooms.find((s) => s.id === id)!
+      // La même salle sous un autre nom, que `cimaisesDe` ne trouve pas : ses murs seuls.
+      const nu = (x: string | null) => (x === id ? '_' : x)
+      const sans = { ...level, openings: level.openings.map((o) => ({ ...o, a: nu(o.a)!, b: nu(o.b) })) }
       const faces = CIMAISES.filter((c) => c.salle === id).reduce((s, c) => s + 2 * placesDeFace(c, NORMES.pasAccrochage), 0)
-      expect(faces, id).toBeGreaterThan(0)
-      expect(capacity(r, level), id).toBe(capacity(j, level) + faces)
+      expect(faces, id).toBeGreaterThanOrEqual(4)
+      expect(capacity(r, level), id).toBe(capacity({ ...r, id: '_' }, sans) + faces)
     }
+  })
+
+  it('va dans chaque galerie qui accroche plus de six dixièmes de ses murs', () => {
+    for (const level of MUSEE.levels)
+      for (const r of level.rooms.filter((r) => r.kind === 'gallery')) {
+        const n = accrochage.rooms.find((a) => a.level === level.id && a.id === r.id)!.placements.length
+        const murs = capacity(r, level) - CIMAISES.filter((c) => c.niveau === level.id && c.salle === r.id).reduce((s, c) => s + 2 * placesDeFace(c, NORMES.pasAccrochage), 0)
+        if (n > 0.6 * murs) expect(CIMAISES.some((c) => c.niveau === level.id && c.salle === r.id), `${r.id} : ${n} toiles pour ${murs} places`).toBe(true)
+      }
   })
 
   it('a des modules de 1 m, des jonctions d’aluminium à chaque joint et des pieds', () => {

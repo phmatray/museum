@@ -12,7 +12,7 @@
  * `checkPlan` rend la liste des violations, en français, avec leurs cotes. Une
  * liste vide veut dire que le plan est constructible.
  */
-import { cimaisesDe, placesDeFace } from './cimaises.ts'
+import { placesDesCimaises } from './cimaises.ts'
 import { isNordSud } from './geometry.ts'
 import { terrainDuParc } from './park.ts'
 import type { Flight, Level, Opening, Plan, Rect, Room } from './types.ts'
@@ -71,8 +71,7 @@ export function capacity(room: Room, level: Level): number {
     .filter((o) => o.a === room.id || o.b === room.id)
     .reduce((s, o) => s + o.width + 2 * NORMES.dégagement, 0)
   const utile = 2 * (room.width + room.depth) - perdu - 8 * NORMES.angle
-  const cimaises = cimaisesDe(level.id, room.id).reduce((s, c) => s + 2 * placesDeFace(c, NORMES.pasAccrochage), 0)
-  return Math.max(0, Math.floor(utile / NORMES.pasAccrochage)) + cimaises
+  return Math.max(0, Math.floor(utile / NORMES.pasAccrochage)) + placesDesCimaises(level.id, room.id, NORMES.pasAccrochage)
 }
 
 const exposes = (r: Room) => r.kind === 'gallery' || r.kind === 'honneur'
