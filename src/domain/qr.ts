@@ -57,41 +57,46 @@ export interface AtlasQr {
   cote: number
   /** RGBA, rangée 0 EN BAS (convention des `DataTexture` de three). */
   pixels: Uint8Array
-  /** Coin bas-gauche de la case `i`, en UV. La case `i` est le code de `adresses[i]`. */
+  /** Coin bas-gauche du code `i` (marges comprises), en UV. Le code `i` est celui de `adresses[i]`. */
   uv: [number, number][]
+  /** Côté du code `i` en texels, marges comprises (≤ `case`). */
+  tailles: number[]
 }
 
-/** Clair et sombre des codes : un blanc cassé qui rejoint la plaque, un noir d'encre. */
-const CLAIR = [244, 241, 234]
-const SOMBRE = [22, 20, 18]
+/** Blanc pur, noir pur : le contraste maximal, celui qu'un téléphone lit le mieux sur un écran. */
+const CLAIR = [255, 255, 255]
+const SOMBRE = [0, 0, 0]
 
 /**
- * Tous les codes dans un seul atlas, pour un seul lot d'instances. Une même
- * version pour tous (celle de l'adresse la plus longue) : des cases de même
- * taille, un module = un texel, net au filtre « nearest ».
+ * Tous les codes dans un seul atlas, pour un seul lot d'instances. Chaque code
+ * garde SA version, la plus petite qui tient : sur une plaque de taille fixe,
+ * moins de modules, ce sont des modules plus gros à l'écran. Des cases de même
+ * taille (celle du plus grand code), chaque code calé dans le coin haut-gauche
+ * de la sienne ; un module = un texel, net au filtre « nearest ».
  */
 export function atlasQr(adresses: string[]): AtlasQr {
-  const version = Math.max(1, ...adresses.map((a) => (matriceQr(a).length - 17) / 4))
-  const matrices = adresses.map((a) => matriceQr(a, version))
-  const n = 17 + 4 * version
-  const taille = n + 2 * QR_MARGE
+  const matrices = adresses.map((a) => matriceQr(a))
+  const taille = Math.max(21, ...matrices.map((m) => m.length)) + 2 * QR_MARGE
   const colonnes = Math.max(1, Math.ceil(Math.sqrt(adresses.length)))
   const cote = taille * colonnes
   const pixels = new Uint8Array(cote * cote * 4)
   for (let i = 0; i < pixels.length; i += 4) pixels.set([...CLAIR, 255], i)
   const uv: [number, number][] = []
+  const tailles: number[] = []
   matrices.forEach((m, i) => {
+    const n = m.length
     const [cx, cy] = [i % colonnes, Math.floor(i / colonnes)]
     // La case `cy` compte depuis le haut ; les rangées de texels, depuis le bas.
-    const bas = cote - (cy + 1) * taille
-    uv.push([(cx * taille) / cote, bas / cote])
+    const haut = cote - cy * taille
+    tailles.push(n + 2 * QR_MARGE)
+    uv.push([(cx * taille) / cote, (haut - n - 2 * QR_MARGE) / cote])
     for (let l = 0; l < n; l++)
       for (let c = 0; c < n; c++) {
         if (!m[l][c]) continue
         const x = cx * taille + QR_MARGE + c
-        const y = bas + taille - 1 - QR_MARGE - l
+        const y = haut - 1 - QR_MARGE - l
         pixels.set(SOMBRE, (y * cote + x) * 4)
       }
   })
-  return { case: taille, colonnes, cote, pixels, uv }
+  return { case: taille, colonnes, cote, pixels, uv, tailles }
 }

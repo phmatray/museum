@@ -75,7 +75,7 @@ export function rails(plan: Plan, accrochage: Accrochage): Box[] {
       const cle = `${p.normal[0]},${p.normal[1]},${Math.abs(p.normal[1]) > 0.5 ? p.z : p.x}`
       parMur.set(cle, [...(parMur.get(cle) ?? []), p])
     }
-    return [...parMur.values()].map((ps): Box => {
+    const lignes = [...parMur.values()].map((ps) => {
       const [nx, nz] = ps[0].normal
       const long = Math.abs(nz) > 0.5 // mur nord ou sud : le rail court selon x
       const us = ps.map((p) => (long ? p.x : p.z))
@@ -83,15 +83,29 @@ export function rails(plan: Plan, accrochage: Accrochage): Box[] {
       // les rails se croisaient dans les angles (signalé par Philippe).
       const salle = plan.levels.find((l) => l.id === r.level)?.rooms.find((s) => s.id === r.id)
       const [lo, hi] = salle ? (long ? [salle.x, salle.x + salle.width] : [salle.z, salle.z + salle.depth]) : [-Infinity, Infinity]
-      const [a, b] = [
-        Math.max(Math.min(...us) - ps[0].width / 2 - RAIL.debord, lo + RECUL + GARDE_ANGLE),
-        Math.min(Math.max(...us) + ps[0].width / 2 + RAIL.debord, hi - RECUL - GARDE_ANGLE),
-      ]
-      const at = (long ? ps[0].z + nz * RECUL : ps[0].x + nx * RECUL)
-      const y = plafond - RAIL.hauteur / 2
-      return long
-        ? { x: (a + b) / 2, y, z: at, w: b - a, h: RAIL.hauteur, d: RAIL.largeur, kind: 'railing' }
-        : { x: at, y, z: (a + b) / 2, w: RAIL.largeur, h: RAIL.hauteur, d: b - a, kind: 'railing' }
+      return {
+        long,
+        at: long ? ps[0].z + nz * RECUL : ps[0].x + nx * RECUL,
+        a: Math.max(Math.min(...us) - ps[0].width / 2 - RAIL.debord, lo + RECUL + GARDE_ANGLE),
+        b: Math.min(Math.max(...us) + ps[0].width / 2 + RAIL.debord, hi - RECUL - GARDE_ANGLE),
+        premier: Math.min(...us),
+        dernier: Math.max(...us),
+      }
     })
+    // Dans l'angle rentrant d'une cimaise en équerre (`cimaises.ts`), les rails des
+    // deux faces se croiseraient : chacun s'arrête avant l'autre, au-delà de son
+    // dernier projecteur.
+    for (const h of lignes.filter((l) => l.long))
+      for (const v of lignes.filter((l) => !l.long)) {
+        if (!(v.at > h.a && v.at < h.b && h.at > v.a && h.at < v.b)) continue
+        for (const [l, c] of [[h, v.at], [v, h.at]] as const) {
+          if (c > l.dernier) l.b = Math.min(l.b, c - GARDE_ANGLE)
+          else if (c < l.premier) l.a = Math.max(l.a, c + GARDE_ANGLE)
+        }
+      }
+    const y = plafond - RAIL.hauteur / 2
+    return lignes.map(({ long, at, a, b }): Box => long
+      ? { x: (a + b) / 2, y, z: at, w: b - a, h: RAIL.hauteur, d: RAIL.largeur, kind: 'railing' }
+      : { x: at, y, z: (a + b) / 2, w: RAIL.largeur, h: RAIL.hauteur, d: b - a, kind: 'railing' })
   })
 }

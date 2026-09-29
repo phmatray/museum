@@ -112,7 +112,9 @@ export const MOBILIER: Meuble[] = [
   dans('Banquette', '0:r-o3', 8, 35.3, SUD),
   dans('Banquette', '1:e-o3', 5.5, 31, SUD),
   dans('Banquette', '1:e-e1', 40, 4.7, SUD),
-  dans('Banquette', '0:r-e1', 42.6, 8.4, NORD),
+  // Trading & finance : l'équerre (cimaises.ts) tient l'angle nord-est ; la banquette
+  // passe au sud de sa branche, à l'est de l'axe x = 40 de la porte sud, et regarde l'équerre.
+  dans('Banquette', '0:r-e1', 43.3, 10.62, NORD),
   // La galerie du nord, traversée d'ouest en est par z = 6 : la cimaise au nord de l'axe, la banquette au sud, face à elle.
   dans('Banquette', '0:r-n', 24, 8.4, NORD),
   // La nef : entre le filet de granit (x = 20, 28) et l'allée centrale (22,4–25,6),

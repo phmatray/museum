@@ -12,17 +12,25 @@ import type { Artwork } from '../domain/types.ts'
 import { cimaiseSous } from './cimaises.ts'
 import type { Accrochage } from './hang.ts'
 
-/** 34 cm : 30 pour le texte d'avant, et de quoi loger le QR code à droite. */
-export const CARTEL_LARGEUR = 0.34
+/** 30 cm : le QR code a sa propre plaque, au-dessus (`CARTEL_QR`). */
+export const CARTEL_LARGEUR = 0.3
 export const CARTEL_HAUTEUR = 0.16
 /**
- * Le QR code du cartel (`domain/qr.ts`), dans le repère de la plaque (centre,
- * x vers la droite) : 4 cm marges blanches comprises, calé à droite et centré
- * en hauteur. Le texte s'arrête avant (`CARTEL_TEXTE`).
+ * Le QR code (`domain/qr.ts`) sur sa propre plaque carrée, au-dessus du cartel,
+ * alignée sur son bord gauche, à hauteur des yeux (le haut à 1,60 m). Repère du
+ * cartel (centre, x vers la droite). `cote` : le code, marges blanches
+ * comprises ; `plaque` : la plaque qui le borde d'un centimètre.
+ *
+ * 24 cm, pas 4 : le code de 4 cm d'avant ne se lisait que le nez sur le mur
+ * (signalé par Philippe). Un téléphone qui scanne l'écran d'un portable veut
+ * deux ou trois pixels par module, lissage de l'image (SMAA) compris : à 1,20 m
+ * sous un champ de 75° sur 800 px, un code de 37 modules marges comprises (la
+ * plupart des dépôts, version 3) en reçoit 2,8 ; décodé sur des captures à
+ * 1,20 m, et à 1,50 m sur un écran Retina.
  */
-export const CARTEL_QR = { cote: 0.04, x: CARTEL_LARGEUR / 2 - 0.012 - 0.02, y: 0 }
-/** La colonne du texte : de 2 cm du bord gauche à 1,5 cm du QR code. */
-export const CARTEL_TEXTE = { x: -CARTEL_LARGEUR / 2 + 0.02, largeur: CARTEL_QR.x - CARTEL_QR.cote / 2 - 0.015 - (-CARTEL_LARGEUR / 2 + 0.02) }
+export const CARTEL_QR = { cote: 0.24, plaque: 0.26, x: -CARTEL_LARGEUR / 2 + 0.13, y: 0.27 }
+/** La colonne du texte : 2 cm de blanc de chaque côté. */
+export const CARTEL_TEXTE = { x: -CARTEL_LARGEUR / 2 + 0.02, largeur: CARTEL_LARGEUR - 0.04 }
 /** Le cadre (6 cm) et 10 cm de blanc avant le cartel. */
 const ECART = 0.16
 /** Sous l'axe de la toile, à hauteur de lecture. */

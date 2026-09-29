@@ -65,11 +65,15 @@ export function CartelLayer() {
   )
 }
 
+/**
+ * Les plaques des cartels puis celles des QR codes (instances `n..2n-1`) : un
+ * seul lot, une boîte unité mise à l'échelle par instance.
+ */
 function Plaques({ placements }: { placements: CartelPlacement[] }) {
   const ref = useRef<THREE.InstancedMesh>(null)
   // Blanc : la teinte de chaque plaque passe par la couleur d'instance.
   const materiau = useMemo(() => new THREE.MeshStandardMaterial({ roughness: 0.9 }), [])
-  const geometrie = useMemo(() => new THREE.BoxGeometry(CARTEL_LARGEUR, PLAQUE.hauteur, PLAQUE.epaisseur), [])
+  const geometrie = useMemo(() => new THREE.BoxGeometry(1, 1, 1), [])
   useEffect(() => () => {
     materiau.dispose()
     geometrie.dispose()
@@ -78,20 +82,27 @@ function Plaques({ placements }: { placements: CartelPlacement[] }) {
     const mesh = ref.current
     if (mesh === null) return
     const [m, q] = [new THREE.Matrix4(), new THREE.Quaternion()]
-    const [haut, un] = [new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 1, 1)]
+    const haut = new THREE.Vector3(0, 1, 0)
+    const cartel = new THREE.Vector3(CARTEL_LARGEUR, PLAQUE.hauteur, PLAQUE.epaisseur)
+    const carre = new THREE.Vector3(CARTEL_QR.plaque, CARTEL_QR.plaque, PLAQUE.epaisseur)
     const [claire, sombre] = [new THREE.Color(PLAQUE.couleur), new THREE.Color(PLAQUE_PANNEAU.couleur)]
+    const n = placements.length
     placements.forEach((p, i) => {
       q.setFromAxisAngle(haut, p.rotation)
+      const origine = new THREE.Vector3(p.x, p.y, p.z)
       // Le centre de la plaque : décollée d'une demi-épaisseur, comme dans `Cartel`.
       const avant = new THREE.Vector3(0, 0, PLAQUE.epaisseur / 2).applyQuaternion(q)
-      mesh.setMatrixAt(i, m.compose(new THREE.Vector3(p.x, p.y, p.z).add(avant), q, un))
+      const qr = new THREE.Vector3(CARTEL_QR.x, CARTEL_QR.y, PLAQUE.epaisseur / 2).applyQuaternion(q)
+      mesh.setMatrixAt(i, m.compose(origine.clone().add(avant), q, cartel))
+      mesh.setMatrixAt(n + i, m.compose(origine.add(qr), q, carre))
       mesh.setColorAt(i, p.surPanneau ? sombre : claire)
+      mesh.setColorAt(n + i, p.surPanneau ? sombre : claire)
     })
     mesh.instanceMatrix.needsUpdate = true
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
     mesh.computeBoundingSphere()
   }, [placements])
-  return <instancedMesh key={placements.length} ref={ref} args={[geometrie, undefined, placements.length]} material={materiau} />
+  return <instancedMesh key={placements.length} ref={ref} args={[geometrie, undefined, 2 * placements.length]} material={materiau} />
 }
 
 /**
@@ -109,7 +120,9 @@ function QrCodes({ placements, oeuvres }: { placements: CartelPlacement[]; oeuvr
     const cles = [...oeuvres.keys()]
     const atlas = atlasQr(avecCode.map((p) => adresseQr(oeuvres.get(p.key)!, cles)))
     const g = new THREE.PlaneGeometry(CARTEL_QR.cote, CARTEL_QR.cote)
-    g.setAttribute('aCase', new THREE.InstancedBufferAttribute(new Float32Array(atlas.uv.flat()), 2))
+    // (u, v, côté) du code de chaque instance : chaque code remplit la plaque, quelle que soit sa version.
+    const cases = atlas.uv.flatMap(([u, v], i) => [u, v, atlas.tailles[i] / atlas.cote])
+    g.setAttribute('aCase', new THREE.InstancedBufferAttribute(new Float32Array(cases), 3))
     const t = new THREE.DataTexture(atlas.pixels, atlas.cote, atlas.cote)
     t.colorSpace = THREE.SRGBColorSpace
     // Net de près (un module = un texel), gris uni de loin plutôt qu'un moiré.
@@ -118,14 +131,14 @@ function QrCodes({ placements, oeuvres }: { placements: CartelPlacement[]; oeuvr
     t.generateMipmaps = true
     t.anisotropy = 4
     t.needsUpdate = true
-    const m = new THREE.MeshBasicMaterial({ map: t })
-    const echelle = (1 / atlas.colonnes).toFixed(8)
+    // Ni tone mapping : un blanc pur reste blanc, un noir reste noir.
+    const m = new THREE.MeshBasicMaterial({ map: t, toneMapped: false })
     m.onBeforeCompile = (shader) => {
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute vec2 aCase;')
-        .replace('#include <uv_vertex>', `#include <uv_vertex>\nvMapUv = vMapUv * ${echelle} + aCase;`)
+        .replace('#include <common>', '#include <common>\nattribute vec3 aCase;')
+        .replace('#include <uv_vertex>', '#include <uv_vertex>\nvMapUv = vMapUv * aCase.z + aCase.xy;')
     }
-    m.customProgramCacheKey = () => `cartel-qr-${echelle}`
+    m.customProgramCacheKey = () => 'cartel-qr'
     return [g, m]
   }, [avecCode, oeuvres])
   useEffect(() => () => {
@@ -140,7 +153,7 @@ function QrCodes({ placements, oeuvres }: { placements: CartelPlacement[]; oeuvr
     const [haut, un] = [new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 1, 1)]
     avecCode.forEach((p, i) => {
       q.setFromAxisAngle(haut, p.rotation)
-      // Sur la face de la plaque, un demi-millimètre devant, calé à droite.
+      // Sur la face de sa plaque, un demi-millimètre devant.
       const decale = new THREE.Vector3(CARTEL_QR.x, CARTEL_QR.y, PLAQUE.epaisseur + 0.0005).applyQuaternion(q)
       mesh.setMatrixAt(i, m.compose(new THREE.Vector3(p.x, p.y, p.z).add(decale), q, un))
     })
