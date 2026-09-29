@@ -47,6 +47,7 @@ import { plafonds } from '../plan/plafonds'
 import { creerGranit, creerPierre } from './pierre'
 import { LumiereLayer } from './LumiereLayer'
 import { rangsDeLumiere } from './lumiere'
+import { useGameStore } from '../stores/gameStore'
 
 const AUCUNE: Box[] = []
 const SCULPTURES = sculpturePlacements(MUSEE)
@@ -125,6 +126,16 @@ function Niveau({ level, verre, sansMarches }: { level: number; verre: THREE.Mat
   const platrePlafond = useMatiere('platre')
   const lanterneau = useMemo(() => new THREE.MeshStandardMaterial({ color: '#f4f1ea', emissive: '#fff6e6', emissiveIntensity: 0.55, roughness: 0.9 }), [])
   useEffect(() => () => lanterneau.dispose(), [lanterneau])
+  // Le verre dépoli ne luit que du ciel qu'il a au-dessus : la nuit, il s'éteint
+  // comme la verrière de la nef, et ce sont les projecteurs qui tiennent la salle.
+  const jour = useGameStore((s) => s.ciel.jour)
+  useEffect(() => {
+    /* eslint-disable react-hooks/immutability */
+    lanterneau.emissiveIntensity = 0.03 + 0.52 * jour
+    // Et sous un ciel noir, le dépoli n'est plus blanc : un gris de verre.
+    lanterneau.color.set('#f4f1ea').multiplyScalar(0.4 + 0.6 * jour)
+    /* eslint-enable react-hooks/immutability */
+  }, [lanterneau, jour])
   // Les balcons sont de pierre, comme la nef qu'ils bordent : pas de parquet vu d'en bas.
   const dalles = useMemo(() => {
     const niveau = MUSEE.levels.find((l) => l.id === level)
