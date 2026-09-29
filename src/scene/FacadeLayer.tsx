@@ -17,6 +17,7 @@ import { CARTEL_FONT } from './cartelStyle'
 import { useMatiere } from './materials'
 import { Boites } from './PlanBuilding'
 import { creerVitrage } from '../builders/glazing'
+import { intemperer } from './intemperies'
 import { creerBrique, creerCannelure, creerGranit, creerPierre } from './pierre'
 
 const FACADE = facade(MUSEE)
@@ -26,8 +27,8 @@ const MAT = 4
 const DRAPEAU: [number, number] = [1.5, 1]
 
 export function FacadeLayer() {
-  const mats = useMemo(
-    () => ({
+  const mats = useMemo(() => {
+    const m = {
       brique: creerBrique(),
       pierre: creerPierre(),
       cannelure: creerCannelure(),
@@ -35,9 +36,11 @@ export function FacadeLayer() {
       vitre: new THREE.MeshStandardMaterial({ color: '#1f2b31', metalness: 0.6, roughness: 0.12 }),
       // Le verre des portes : clair, on voit le hall au travers.
       clair: creerVitrage(),
-    }),
-    [],
-  )
+    }
+    // La brique fonce sous la pluie ; la neige tient sur les corniches et les appuis (`intemperies.ts`).
+    for (const k of ['brique', 'pierre', 'cannelure', 'metal'] as const) intemperer(m[k])
+    return m
+  }, [])
   useEffect(() => () => Object.values(mats).forEach((m) => { m.map?.dispose(); m.dispose() }), [mats])
   const acier = useMatiere('metal')
   // La nuit, les lettres s'allument, comme une enseigne rétroéclairée.

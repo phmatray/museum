@@ -20,6 +20,7 @@ import type { Allee, Parc } from '../plan/park'
 import { surUneAllee } from '../plan/park'
 import { JARDIN, TABLIER, distanceEtang, distanceRuisseau, presDeLEau } from '../plan/jardin'
 import { hauteurDuParc } from '../plan/relief'
+import { INTEMPERIES } from './intemperies'
 import type { Rect } from '../plan/types'
 
 /** Un texel de la carte du sol, en mètres. */
@@ -182,7 +183,7 @@ export function matiereGazon(sol: CarteDuSol, { cote, rayon, largeur, hauteur }:
     uHauteur: { value: new THREE.Vector2(...hauteur) },
   }
   material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms)
+    Object.assign(shader.uniforms, uniforms, INTEMPERIES)
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>
 uniform vec2 uCam;
@@ -190,6 +191,7 @@ uniform float uTemps, uCote, uRayon, uLargeur;
 uniform vec2 uHauteur;
 uniform vec4 uCadre;
 uniform sampler2D uSol;
+uniform float uEnneige, uVent;
 attribute vec4 aBrin;
 varying float vT;
 varying float vTeinte;`)
@@ -203,14 +205,15 @@ varying float vTeinte;`)
   // Plus clairsemé en bord de pelouse (le vert filtré descend vers 0) : pas de lisière au cordeau.
   float garde = smoothstep(aBrin.z * 0.7 + 0.15, aBrin.z * 0.7 + 0.3, sol.g) * dedans;
   float fondu = 1.0 - smoothstep(uRayon * 0.6, uRayon, distance(p, uCam));
-  float h = mix(uHauteur.x, uHauteur.y, aBrin.w * aBrin.w) * garde * fondu;
+  // Sous la neige, on ne voit plus que la pointe des plus hauts brins.
+  float h = mix(uHauteur.x, uHauteur.y, aBrin.w * aBrin.w) * garde * fondu * (1.0 - 0.85 * uEnneige);
   float t = position.y;
   float a = aBrin.z * 43.0;
   vec2 travers = vec2(cos(a), sin(a));
   vec2 face = vec2(-travers.y, travers.x);
   // Chaque brin penche un peu à sa façon ; le vent passe en vagues sur la pelouse.
   float vent = sin(uTemps * 1.3 + p.x * 0.31 + p.y * 0.17) * 0.6 + sin(uTemps * 2.9 + p.x * 1.1 - p.y * 0.7) * 0.25;
-  vec2 penche = face * (fract(aBrin.w * 17.0) - 0.5) * 0.9 + vec2(0.8, 0.45) * vent * 0.45;
+  vec2 penche = face * (fract(aBrin.w * 17.0) - 0.5) * 0.9 + vec2(0.8, 0.45) * vent * 0.45 * clamp(0.6 + 0.2 * uVent, 0.5, 3.0);
   float courbe = t * t;
   vec3 herbe = vec3(p.x, sol.r - 0.03 + t * h * (1.0 - 0.25 * courbe * dot(penche, penche)), p.y);
   herbe.xz += travers * position.x * uLargeur * min(1.0, h * 6.0) + penche * courbe * h;
@@ -221,13 +224,19 @@ varying float vTeinte;`)
       .replace('#include <begin_vertex>', 'vec3 transformed = herbe;')
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
+uniform float uEnneige, uMouille, uJaune, uTerne;
 varying float vT;
 varying float vTeinte;`)
       .replace('vec4 diffuseColor = vec4( diffuse, opacity );', `
   // Sombre au pied, à l'ombre des autres brins ; plus clair et plus jaune à la pointe.
   vec3 pointe = mix(vec3(0.12, 0.26, 0.05), vec3(0.23, 0.33, 0.07), vTeinte);
   pointe = mix(pointe, vec3(0.08, 0.2, 0.06), step(0.8, vTeinte));
-  vec4 diffuseColor = vec4(mix(vec3(0.045, 0.09, 0.022), pointe, smoothstep(0.0, 0.9, vT)), opacity);`)
+  vec4 diffuseColor = vec4(mix(vec3(0.045, 0.09, 0.022), pointe, smoothstep(0.0, 0.9, vT)), opacity);
+  // La saison (jaunie fin d'été, éteinte l'hiver), la pluie qui fonce, le givre des pointes.
+  float lum = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+  diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.45, 1.15, 0.45), uJaune * 0.6 * vT);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(lum) * vec3(1.2, 1.05, 0.6), uTerne * 0.65) * (1.0 - 0.15 * uTerne) * (1.0 - 0.3 * uMouille);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.88, 0.93), uEnneige * (0.45 + 0.5 * smoothstep(0.2, 1.0, vT)));`)
       // Double face, mais la normale reste celle du dessus : le revers d'un brin n'est pas noir.
       .replace('#include <normal_fragment_begin>', '#include <normal_fragment_begin>\n  normal = normalize( vNormal );')
   }

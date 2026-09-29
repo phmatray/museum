@@ -19,6 +19,8 @@ import { parkAssetsResource, type ParkAssets, type ParkPiece } from './parkAsset
 import { creerMatieresJardin, preparerSol, uvBoite } from './jardinMatieres'
 import { brinsDeGazon, carteDuSol, matiereGazon, type ReglageGazon } from './gazon'
 import { useGameStore } from '../stores/gameStore'
+import { presDeLEau } from '../plan/jardin'
+import { INTEMPERIES, intemperer } from './intemperies'
 
 /** Le bord du terrain descend d'autant : du bout du monde, pas une feuille de papier. */
 const EPAISSEUR_SOL = 0.4
@@ -42,11 +44,14 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   const assets = useParkAssets()
   const cartes = useCartes('herbe', repetitionMetrique(REGLAGE_MATIERE.herbe.motif))
   // Lambert : la pelouse est mate, sans le reflet de l'environnement ni le lustre d'un spéculaire.
-  const herbe = useMemo(
-    () => new THREE.MeshLambertMaterial({ name: 'parc:pelouse', map: cartes?.couleur ?? null, color: TEINTE_PELOUSE, vertexColors: true }),
-    [cartes],
-  )
+  const herbe = useMemo(() => {
+    const m = new THREE.MeshLambertMaterial({ name: 'parc:pelouse', map: cartes?.couleur ?? null, color: TEINTE_PELOUSE, vertexColors: true })
+    intemperer(m, { pelouse: true })
+    return m
+  }, [cartes])
   const gravier = useMatiere('gravier', repetitionMetrique(REGLAGE_MATIERE.gravier.motif))
+  // Mouillé sous la pluie, blanc sous la neige (`intemperies.ts`) : greffé sur chaque matière neuve.
+  useMemo(() => intemperer(gravier), [gravier])
 
   const sol = useMemo(() => pelouse(placements), [placements])
   // Le parvis est dallé de la pierre du hall, comme le seuil d'un vrai musée ; le
@@ -81,6 +86,7 @@ export function ParkLayer({ placements }: { placements: Parc }) {
       <mesh geometry={parvis} material={dallage} />
       <mesh geometry={allees} material={gravier} />
       <Gazon parc={placements} />
+      <FeuillesMortes parc={placements} />
       {assets !== null && <Jardin objets={assets.jardin} herbe={herbe} />}
       {assets !== null &&
         [...parEspece].map(([espece, sujets]) =>
@@ -233,6 +239,7 @@ function Jardin({ objets, herbe }: { objets: THREE.Object3D[]; herbe: THREE.Mate
   const bois = useMatiere('parquet', repetitionMetrique(REGLAGE_MATIERE.parquet.motif), { teinte: '#6b4a34' })
 
   useMemo(() => {
+    for (const m of [pierre, bois]) intemperer(m)
     const par: Record<string, THREE.Material> = { sol: herbe, eau: matieres.eau, cascade: matieres.cascade, granit: pierre, bois }
     for (const racine of objets) {
       racine.traverse((o) => {
@@ -255,6 +262,88 @@ function Jardin({ objets, herbe }: { objets: THREE.Object3D[]; herbe: THREE.Mate
   }, [objets, matieres, herbe, pierre, bois])
 
   return <>{objets.map((o) => <primitive key={o.uuid} object={o} />)}</>
+}
+
+/**
+ * Les feuilles mortes de l'automne, sous chaque érable : de petites cartes
+ * lobées couchées sur le relief, aux couleurs de l'arbre qui les a perdues,
+ * plus serrées sous le houppier. Un seul maillage, calculé une fois ; le shader
+ * n'en montre qu'une part (`uFeuillesSol`) : chacune tombe et disparaît à son tour.
+ */
+function FeuillesMortes({ parc }: { parc: Parc }) {
+  const geometrie = useMemo(() => feuillesMortes(parc), [parc])
+  const materiau = useMemo(() => {
+    const m = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide })
+    // `uFeuillesSol` est déclaré par la greffe d'`intemperer`, posée juste après.
+    m.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, INTEMPERIES)
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', '#include <common>\nattribute vec4 aFeuille;\nattribute vec2 aForme;\nvarying vec2 vFeuille;')
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\n  transformed = mix(aFeuille.xyz, transformed, step(aFeuille.w, uFeuillesSol));\n  vFeuille = aForme * 2.0 - 1.0;')
+      // Une feuille d'érable : cinq lobes découpés dans la carte.
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying vec2 vFeuille;')
+        .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+  float th = atan(vFeuille.y, vFeuille.x);
+  if (length(vFeuille) > 0.4 + 0.6 * pow(abs(cos(2.5 * th)), 1.5)) discard;`)
+    }
+    m.customProgramCacheKey = () => 'parc:feuilles-mortes'
+    intemperer(m)
+    return m
+  }, [])
+  useEffect(() => () => {
+    geometrie.dispose()
+    materiau.dispose()
+  }, [geometrie, materiau])
+  return <mesh geometry={geometrie} material={materiau} frustumCulled={false} />
+}
+
+const AUTOMNE = {
+  'erable-rouge': ['#8c1a12', '#a3230f', '#6e1410', '#5a2a18'].map((c) => new THREE.Color(c)),
+  'erable-vert': ['#c8641a', '#d4861c', '#b03a14', '#c9a227', '#7a4a22'].map((c) => new THREE.Color(c)),
+}
+
+function feuillesMortes(parc: Parc): THREE.BufferGeometry {
+  // Le même tirage à chaque chargement (mulberry32, comme `park.ts`).
+  let etat = 0x5eed
+  const alea = () => {
+    etat = (etat + 0x6d2b79f5) >>> 0
+    let t = etat
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+  const [pos, uv, couleur, feuille, index] = [[], [], [], [], []] as number[][]
+  for (const p of parc.plantations) {
+    if (p.espece !== 'erable-rouge' && p.espece !== 'erable-vert') continue
+    const palette = AUTOMNE[p.espece]
+    const rayon = 3 * p.scale
+    for (let k = 0; k < 320 * p.scale; k++) {
+      const [a, r] = [alea() * Math.PI * 2, rayon * Math.sqrt(alea()) * (0.35 + 0.65 * alea())]
+      const [x, z] = [p.x + Math.cos(a) * r, p.z + Math.sin(a) * r]
+      if (presDeLEau(x, z, 0.2)) continue
+      const y = hauteurDuParc(x, z) + 0.035 + alea() * 0.006
+      const [t, l] = [alea() * Math.PI * 2, 0.06 + alea() * 0.05]
+      const [c, s] = [Math.cos(t) * l, Math.sin(t) * l]
+      const [rang, w] = [pos.length / 3, alea()]
+      const teinte = palette[Math.floor(alea() * palette.length)].clone().multiplyScalar(0.75 + alea() * 0.4)
+      for (const [u, v] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        pos.push(x + u * c - v * s, y + (alea() - 0.5) * 0.01, z + u * s + v * c)
+        uv.push((u + 1) / 2, (v + 1) / 2)
+        couleur.push(teinte.r, teinte.g, teinte.b)
+        feuille.push(x, y, z, w)
+      }
+      index.push(rang, rang + 2, rang + 1, rang, rang + 3, rang + 2)
+    }
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(pos.map((_, i) => (i % 3 === 1 ? 1 : 0)), 3))
+  g.setAttribute('aForme', new THREE.Float32BufferAttribute(uv, 2))
+  g.setAttribute('color', new THREE.Float32BufferAttribute(couleur, 3))
+  g.setAttribute('aFeuille', new THREE.Float32BufferAttribute(feuille, 4))
+  g.setIndex(index)
+  return g
 }
 
 /** Sans suspendre : le bâtiment d'abord, les arbres ensuite. */
