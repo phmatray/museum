@@ -85,6 +85,27 @@ export default defineConfig({
   // domaine. La CI passe BASE_PATH ; en local on reste à la racine.
   base: process.env.BASE_PATH ?? '/',
   plugins: [react()],
+  build: {
+    rolldownOptions: {
+      output: {
+        // Des morceaux par bibliothèque, qui changent rarement : le cache du
+        // navigateur les garde d'une publication à l'autre, seul `app` bouge.
+        // L'accueil ne charge que React ; la 3D arrive ensuite (`Musee3D`).
+        codeSplitting: {
+          includeDependenciesRecursively: false,
+          groups: [
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store|zod)[\\/]/, priority: 40 },
+            { name: 'postprocessing', test: /node_modules[\\/](postprocessing|@react-three[\\/]postprocessing|n8ao)[\\/]/, priority: 30 },
+            { name: 'three', test: /node_modules[\\/]three[\\/]/, priority: 20 },
+            { name: 'r3f', test: /node_modules[\\/]/, priority: 10 },
+          ],
+        },
+      },
+    },
+    // three seul pèse ~700 ko minifié (180 ko gzip) et ne se découpe pas : c'est
+    // le plancher de la 3D. Le seuil par défaut (500 ko) avertirait à chaque build.
+    chunkSizeWarningLimit: 800,
+  },
   optimizeDeps: {
     rolldownOptions: {
       plugins: [upstreamDeprecationFixesRolldown()],
