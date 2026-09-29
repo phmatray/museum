@@ -67,6 +67,18 @@ const BUTTES: [number, number, number, number][] = [[-24, 64, 13, 2.2], [-27, 20
 /** Le fond du parc, au nord : il monte d'autant sur ses 30 derniers mètres. */
 const MONTEE_NORD = 1.2
 
+/** Le dessus des dalles du parvis et de l'axe (`ParkLayer`) : 4 cm au-dessus du sol plat, 1 cm au-dessus du gravier. */
+export const COTE_DALLAGE = 0.04
+
+/**
+ * Le sol sous le pied d'un meuble du dehors : le dessus des dalles sur le
+ * parvis, la pelouse ailleurs. Poser à `hauteurDuParc` sur le parvis enfonçait
+ * de 4 cm les vélos et les caisses dans le dallage (signalé par Philippe).
+ */
+export function solDuParc(x: number, z: number): number {
+  return distanceRect(PARVIS, x, z) === 0 ? COTE_DALLAGE : hauteurDuParc(x, z)
+}
+
 /** La cote de la pelouse en (x, z), en mètres : 0 au parvis, jusqu'à ~3,5 m aux confins. */
 export function hauteurDuParc(x: number, z: number): number {
   const m = masqueDuRelief(x, z)

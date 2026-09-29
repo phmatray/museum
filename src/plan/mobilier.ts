@@ -15,8 +15,8 @@
  *
  * Et ce qui fait un vrai musée, modelé par Meshy (`tools/blender/build-accessoires.py`) :
  * un cordon de velours devant les vitrines, la chaise du gardien, la table de
- * livres près de l'accueil, des extincteurs au mur ; dehors, des vélos à leurs
- * arceaux, des caisses de Versailles, le panneau des horaires et une fontaine.
+ * livres près de l'accueil, des extincteurs au mur ; dehors, un abri à vélos,
+ * des caisses de Versailles, le panneau des horaires et une fontaine.
  *
  * ── Hors des passages ──
  *
@@ -31,14 +31,15 @@
  * Pur : ni three ni React. Les emprises sont celles des modèles Blender.
  */
 import { cimaisesDe, emprise as empriseCimaise } from './cimaises.ts'
-import { hauteurDuParc } from './relief.ts'
+import { solDuParc } from './relief.ts'
 import type { Rect } from './types.ts'
 
 export type PieceMobilier =
   | 'Banquette' | 'BancNef' | 'Accueil' | 'BancBatllo' | 'BancPierre' | 'BancJardin'
   | 'ChaiseGardien' | 'Presentoir' | 'Extincteur' | 'PanneauHoraires' | 'Fontaine' | 'Versailles'
   // Les ensembles : une seule emprise pour la marche, plusieurs modèles posés (`garniture`).
-  | 'Cordon' | 'Velos'
+  | 'AbriVelos'
+  | 'Cordon'
 
 /** L'emprise au sol de chaque modèle, à plat : `largeur` selon son x, `profondeur` selon son z (son avant). */
 export const DIMENSIONS: Record<PieceMobilier, { largeur: number; profondeur: number }> = {
@@ -56,8 +57,8 @@ export const DIMENSIONS: Record<PieceMobilier, { largeur: number; profondeur: nu
   Versailles: { largeur: 0.83, profondeur: 0.83 },
   // Sept potelets de 32 cm de pied, à 2,20 m d'axe en axe.
   Cordon: { largeur: 6 * 2.2 + 0.32, profondeur: 0.32 },
-  // Quatre arceaux à 1,90 m d'axe en axe, un vélo de 1,78 m contre chacun (sauf un).
-  Velos: { largeur: 3 * 1.9 + 1.78, profondeur: 0.9 },
+  // Le toit de l'abri (4,60 × 2,30 m) couvre ses poteaux, ses cinq arceaux et ses vélos.
+  AbriVelos: { largeur: 4.6, profondeur: 2.3 },
 }
 
 export interface Meuble {
@@ -83,7 +84,7 @@ const PARC = 'parc:terrain'
 const dans = (piece: PieceMobilier, surface: string, x: number, z: number, lacet: number): Meuble => {
   const [niveau] = surface.split(':')
   const n = niveau === 'parc' ? RDC : Number(niveau)
-  return { piece, surface, niveau: n, x, z, lacet, y: surface === PARC ? hauteurDuParc(x, z) : n === 1 ? ETAGE : RDC }
+  return { piece, surface, niveau: n, x, z, lacet, y: surface === PARC ? solDuParc(x, z) : n === 1 ? ETAGE : RDC }
 }
 /** Le pied à 45 cm du sol, la poignée vers 1 m : à portée de main, sous les yeux sans les attirer. */
 const auMur = (surface: string, x: number, z: number, lacet: number): Meuble => ({ ...dans('Extincteur', surface, x, z, lacet), accroche: 0.45 })
@@ -149,8 +150,9 @@ export const MOBILIER: Meuble[] = [
   auMur('0:hall', 20.2, 40 - PIERRE - 0.07, NORD),
   auMur('0:hall', 32 - PIERRE - 0.07, 21.4, -EST),
   auMur('1:honneur', 32 - 0.15 - 0.07, 9.6, -EST),
-  // Dehors, sur le parvis : les vélos le long de l'aile est, à l'écart de l'axe…
-  dans('Velos', PARC, 40, 40.45 + 0.9, SUD),
+  // Dehors, sur le parvis : l'abri à vélos dos à l'aile est, entre sa bannière et
+  // l'angle du musée, à 25 cm de la brique ; 2 m de dalles devant, pour sortir un vélo…
+  dans('AbriVelos', PARC, 44.8, 40.45 + 0.25 + 2.3 / 2, SUD),
   // … deux caisses de Versailles de part et d'autre de l'entrée, deux aux angles du portique…
   ...[21.2, 26.8, 15.3, 32.7].map((x) => dans('Versailles', PARC, x, 42.25, SUD)),
   // … le panneau des horaires au bord de l'axe, tourné vers qui arrive du jardin…
@@ -161,7 +163,7 @@ export const MOBILIER: Meuble[] = [
 
 /** Un modèle d'un ensemble, en coordonnées monde. */
 export interface Garniture {
-  piece: 'Potelet' | 'Velo' | 'ArceauVelo'
+  piece: 'Potelet'
   x: number
   z: number
   lacet: number
@@ -169,18 +171,13 @@ export interface Garniture {
 
 /**
  * Les modèles d'un ensemble, le long de son grand axe (son x local) : les
- * potelets du cordon ; les arceaux, et un vélo contre chacun sauf le troisième.
+ * potelets du cordon.
  */
 export function garniture(m: Meuble): Garniture[] {
   const [c, s] = [Math.cos(m.lacet), Math.sin(m.lacet)]
   // Le x local tourné de θ autour de y : (cos θ, −sin θ).
-  const a = (u: number, v: number, piece: Garniture['piece'], lacet = m.lacet): Garniture => ({ piece, x: m.x + u * c + v * s, z: m.z - u * s + v * c, lacet })
+  const a = (u: number, v: number, piece: Garniture['piece']): Garniture => ({ piece, x: m.x + u * c + v * s, z: m.z - u * s + v * c, lacet: m.lacet })
   if (m.piece === 'Cordon') return Array.from({ length: 7 }, (_, i) => a((i - 3) * 2.2, 0, 'Potelet'))
-  if (m.piece === 'Velos')
-    return [-1.5, -0.5, 0.5, 1.5].flatMap((k, i) => [
-      a(k * 1.9, -0.25, 'ArceauVelo'),
-      ...(i === 2 ? [] : [a(k * 1.9, 0.08, 'Velo', m.lacet + (i % 2) * Math.PI)]),
-    ])
   return []
 }
 

@@ -11,7 +11,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 
 import { BORDURE, GALETS, amenagerAllees, type Pose, type Surface } from '../plan/allees'
 import type { Parc } from '../plan/park'
-import { hauteurDuParc } from '../plan/relief'
+import { COTE_DALLAGE, hauteurDuParc } from '../plan/relief'
 import { PARC } from '../plan/visibilite'
 import { intemperer } from './intemperies'
 import { REGLAGE_MATIERE, repetitionMetrique, useMatiere } from './materials'
@@ -38,7 +38,7 @@ export function AlleesDuParc({ parc, dallage }: { parc: Parc; dallage: THREE.Mat
   const geos = useMemo(() => ({
     gravier: draper(a.gravier, RELIEF_ALLEE),
     // À la cote du parvis (`ParkLayer`), 1 cm au-dessus du gravier qui file dessous.
-    dalles: draper(a.dalles, RELIEF_ALLEE + 0.01),
+    dalles: draper(a.dalles, COTE_DALLAGE),
     bordure: mergeGeometries([bande(a.bordures, () => PROFIL), bande(a.listels, () => ARASE)], false),
     galets: galets(a.bordures),
   }), [a])

@@ -1,6 +1,6 @@
 /**
  * Le mobilier (`plan/mobilier.ts`, modèles `mobilier.glb` et `accessoires.glb`) :
- * banquettes, bancs, banque d'accueil ; cordon, chaise, extincteurs, vélos,
+ * banquettes, bancs, banque d'accueil ; cordon, chaise, extincteurs, abri à vélos,
  * caisses de Versailles, panneau et fontaine.
  *
  * Une pièce est faite de plusieurs maillages — un par matière : chêne,
@@ -16,10 +16,10 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MOBILIER, garniture, type Garniture, type PieceMobilier } from '../plan/mobilier'
 
 /** Les nœuds des deux fichiers : les pièces simples, et les modèles des ensembles (`garniture`). */
-type Modele = Exclude<PieceMobilier, 'Cordon' | 'Velos'> | Garniture['piece']
+type Modele = Exclude<PieceMobilier, 'Cordon'> | Garniture['piece']
 const FICHIERS: [string, Modele[]][] = [
   ['mobilier', ['Banquette', 'BancNef', 'Accueil', 'BancBatllo', 'BancPierre', 'BancJardin']],
-  ['accessoires', ['ChaiseGardien', 'Presentoir', 'Extincteur', 'PanneauHoraires', 'Fontaine', 'Versailles', 'Potelet', 'Velo', 'ArceauVelo']],
+  ['accessoires', ['ChaiseGardien', 'Presentoir', 'Extincteur', 'PanneauHoraires', 'Fontaine', 'Versailles', 'Potelet', 'AbriVelos']],
 ]
 const PIECES = FICHIERS.flatMap(([, p]) => p)
 
@@ -35,7 +35,7 @@ function poses(): Map<Modele, Pose[]> {
   const out = new Map<Modele, Pose[]>()
   const ajouter = (nom: Modele, p: Pose) => out.set(nom, [...(out.get(nom) ?? []), p])
   for (const m of MOBILIER) {
-    if (m.piece === 'Cordon' || m.piece === 'Velos') for (const g of garniture(m)) ajouter(g.piece, { ...g, y: m.y })
+    if (m.piece === 'Cordon') for (const g of garniture(m)) ajouter(g.piece, { ...g, y: m.y })
     else ajouter(m.piece, { ...m, y: m.y + (m.accroche ?? 0) })
   }
   return out

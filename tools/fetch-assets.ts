@@ -242,12 +242,13 @@ const ARCHITECTURE = [
       'image Nano Banana puis image → 3D : « a museum bookshop display table, walnut wood with turned legs and a lower shelf, stacks of colourful art books and exhibition catalogues » ; ' +
       '« a red fire extinguisher, 6 kg, black handle and hose, pressure gauge » ; ' +
       '« a freestanding museum information sign, blank dark green enamel panel between two black cast iron posts » ; ' +
-      '« a classic European city bicycle, dark green frame, mudguards, rear rack » ; ' +
+      '« a classic European city bicycle, dark green frame, mudguards, rear rack » (cadre repeint en noir par le script) ; ' +
+      'images Nano Banana puis image → 3D : « a classic red steel road bike, slim horizontal top tube, drop handlebars wrapped in bar tape, thin 700c wheels » et ' +
+      '« a Dutch ladies’ city bike, low step-through frame painted pastel light blue, wicker basket on the front, brown sprung leather saddle, full chain guard » ; ' +
       '« a classical French garden fountain, round low limestone basin, central pedestal holding an upper bowl » ; ' +
-      'image Nano Banana puis image → 3D : « a square Versailles orangery planter box, pale grey painted oak panels, cast iron corner posts with ball finials, one clipped boxwood topiary ball on a short trunk ». ' +
-      'L’arceau à vélos est modelé par le script',
+      'Modelés par le script : la caisse de Versailles et son buis (texture de feuilles calculée), l’abri à vélos, ses arceaux et les antivols',
     licence: 'généré pour le dépôt (conditions de Meshy)',
-    usage: "cordon de velours des vitrines, chaise du gardien, table de livres, extincteurs, vélos et arceaux, panneau des horaires, fontaine, caisses de Versailles",
+    usage: "cordon de velours des vitrines, chaise du gardien, table de livres, extincteurs, abri à vélos et ses trois vélos, panneau des horaires, fontaine, caisses de Versailles",
   },
 ] as const
 
