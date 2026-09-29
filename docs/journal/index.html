@@ -67,6 +67,114 @@
     <p class="chapeau">Chaque étape ajoute une capture prise dans le vrai moteur du site, les plus récentes en haut. Chaque étape vérifiée part en ligne sur <a href="https://phmatray.github.io/museum/">phmatray.github.io/museum</a>.</p>
   </header>
 
+  <section class="etape" aria-labelledby="t-67">
+    <div class="entete"><h2 id="t-67">67. L’atelier en coupe</h2><span class="statut fait">en ligne · PR #141</span></div>
+    <div class="texte">
+      <p>Au rez-de-chaussée, dans la galerie nord, juste sous la salle d’honneur, trois vitrines montrent comment sont construits tes projets phares. En haut, le projet fini ; en bas, son atelier. Les couches du logiciel sont posées sur des plaques de verre : socle, extensions, démonstrations, tests. Chaque projet .NET y est un bloc, dont la taille suit la quantité de code, et les références entre projets sont des fils lumineux parcourus d’une impulsion.</p>
+      <p>Tout est réel : à chaque publication, un script lit l’arborescence et les fichiers <code>.csproj</code> de chaque dépôt sur GitHub. Le cartel indique le commit lu. Pour FormCraft, par exemple, on voit le socle FormCraft, ses deux extensions MudBlazor et Fluent UI, leurs applications de démonstration et leurs tests.</p>
+      <p class="note">À revoir : les tableaux lumineux du mur nord, derrière les vitrines, brouillent un peu la lecture, et les noms de couches sont génériques. Seuls les projets .NET sont gérés pour l’instant.</p>
+    </div>
+    <figure><img src="img/67-atelier.jpg" width="1280" height="800" alt="Trois vitrines de verre et de laiton, des blocs colorés sur des plaques reliés par des fils lumineux."><figcaption>La galerie de l’atelier, FormCraft, TaLibStandard de près, VirtualFileSystem la nuit.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-66">
+    <div class="entete"><h2 id="t-66">66. Un abri à vélos, et de vrais buis</h2><span class="statut fait">en ligne · PR #140</span></div>
+    <div class="texte">
+      <p>Tu avais raison sur les trois points. Les vélos étaient identiques, enfoncés dans le sol et sans cadenas. Et les buis n’étaient qu’une coquille creuse de quelques feuilles.</p>
+      <ul>
+        <li><strong>Enfoncés :</strong> le mobilier extérieur était posé au niveau de la pelouse, alors que les dalles du parvis sont 4 cm plus haut. La hauteur du sol vient maintenant d’une seule source, et un test vérifie que chaque vélo touche exactement le sol.</li>
+        <li><strong>L’abri :</strong> celui de ta photo, avec ses poteaux galvanisés, son toit de polycarbonate et ses cinq arceaux, contre l’aile est.</li>
+        <li><strong>Trois vélos différents :</strong> un hollandais noir, un vélo de route rouge et un vélo de dame bleu ciel à panier. Les deux nouveaux sont passés par Nano Banana puis par Meshy. Chacun est appuyé contre son arceau avec un antivol en U jaune.</li>
+        <li><strong>Les buis :</strong> une boule pleine et dense de petites feuilles, dans une caisse Versailles en bois peint gris-vert à montants de fonte.</li>
+      </ul>
+    </div>
+    <figure><img src="img/66-velos.jpg" width="1280" height="1200" alt="L’abri à vélos vu de biais et de face, vue basse sur les roues posées, les antivols, et un buis de près et à 10 m."><figcaption>L’abri, les vélos et leurs antivols, les buis de près et à 10 m.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-65">
+    <div class="entete"><h2 id="t-65">65. Un QR code sur chaque cartel</h2><span class="statut fait">en ligne · PR #139</span></div>
+    <div class="texte">
+      <p>Chaque cartel porte maintenant un petit QR code qui ouvre le dépôt GitHub sur un téléphone. C’est utile quand le musée est projeté sur grand écran, lors d’une conférence ou sur un stand. Les bornes de la salle d’honneur en ont un plus grand. Les 116 codes sont dessinés en une seule fois et restent lisibles la nuit. J’ai vérifié qu’ils se scannent vraiment, en décodant des captures du musée de jour et de nuit : sur un mur peint, sur une cimaise et sur une borne.</p>
+      <p class="note">À 4 cm, il faut s’approcher tout près du cartel pour scanner. Celui des bornes se lit plus facilement.</p>
+    </div>
+    <figure><img src="img/65-qr.jpg" width="1280" height="800" alt="Quatre vues : un QR code sur un cartel clair, sur un cartel sombre de cimaise, un cartel à distance, et le QR code d’une borne."><figcaption>Sur un mur, sur une cimaise, de loin, sur une borne.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-64">
+    <div class="entete"><h2 id="t-64">64. Un lien qui mène droit devant un tableau</h2><span class="statut fait">en ligne · PR #138</span></div>
+    <div class="texte">
+      <p><code>phmatray.github.io/museum/?p=FormCraft</code> ouvre le musée directement devant le tableau ou la vitrine. L’accueil annonce « Vous êtes attendu devant FormCraft », puis la carte du projet s’ouvre et son spot s’allume. Le bouton « Partager ce tableau », ou la touche <strong>P</strong>, copie le lien, ou ouvre le partage natif sur un téléphone.</p>
+      <p>Chaque projet a aussi sa propre page de partage, <code>…/museum/p/FormCraft/</code>, qui mène ensuite dans le musée. Sur un réseau social, le lien montre alors la capture et la description du projet, et non l’image générale du musée.</p>
+    </div>
+    <figure><img src="img/64-partage.jpg" width="1280" height="1200" alt="L’accueil « Vous êtes attendu devant FormCraft », le lien copié, l’arrivée devant un tableau et devant une cimaise, un projet absent."><figcaption>L’accueil, le lien copié, l’arrivée devant un tableau, un projet absent.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-63">
+    <div class="entete"><h2 id="t-63">63. Une sculpture pour chaque projet phare</h2><span class="statut fait">en ligne · PR #137 et #136</span></div>
+    <div class="texte">
+      <p>Devant chaque vitrine de la salle d’honneur, une sculpture de bronze incarne son projet, sur un socle de pierre avec son cartel et un halo de lumière au sol :</p>
+      <ul>
+        <li><strong>« Formulaire »</strong>, pour FormCraft : une spirale de champs de saisie et de cases à cocher, dont une cochée ;</li>
+        <li><strong>« Arborescence »</strong>, pour VirtualFileSystem : un arbre à angles droits dont chaque branche finit par un dossier ;</li>
+        <li><strong>« Chandelles »</strong>, pour TaLibStandard : un graphique en chandeliers japonais qui monte.</li>
+      </ul>
+      <p>Il a fallu trois essais. Les deux premiers, en 3D directe, étaient petits, sombres et peu lisibles, et je ne les ai pas publiés. Ta suggestion de passer par Nano Banana a tout changé : d’abord une image de concept, qu’on transforme ensuite en 3D (les concepts ci-dessous). Si tes projets phares changent, les sculptures suivent les vitrines.</p>
+      <p>Au passage, le panneau « Sortie » est devenu un vrai luminaire : pictogramme normalisé et flèche, sans texte coupé.</p>
+      <p class="note">« Chandelles » reste la plus faible : sa surface est un peu marbrée de près et elle manque d’épaisseur vue de biais.</p>
+    </div>
+    <figure><img src="img/63-salle.jpg" width="1280" height="800" alt="La salle d’honneur la nuit : trois sculptures dorées sur leurs socles devant les vitrines rouges."><figcaption>La salle d’honneur, la nuit.</figcaption></figure>
+    <figure><img src="img/63-pieces.jpg" width="1280" height="400" alt="Formulaire, Arborescence et Chandelles de près."><figcaption>Formulaire, Arborescence, Chandelles.</figcaption></figure>
+    <figure><img src="img/63-concepts.jpg" width="1280" height="640" alt="Huit images de concept Nano Banana : arbres de dossiers, chandeliers, spirales de cases à cocher."><figcaption>Les concepts Nano Banana.</figcaption></figure>
+    <figure><img src="img/63-sortie.jpg" width="1280" height="800" alt="Un panneau de sortie vert : un homme qui court vers une porte et une flèche."><figcaption>Le nouveau panneau de sortie.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-62">
+    <div class="entete"><h2 id="t-62">62. Du vrai mobilier de musée, avec Meshy</h2><span class="statut fait">en ligne · PR #135</span></div>
+    <div class="texte">
+      <p>Des objets générés avec Meshy, à l’échelle réelle et allégés. Pour le présentoir et les caisses Versailles, je suis passé par une image Nano Banana, comme tu l’as suggéré : c’est nettement plus fidèle.</p>
+      <ul>
+        <li><strong>Dedans :</strong> un cordon de velours sur poteaux de laiton devant les vitrines de la salle d’honneur, une chaise de gardien dans la nef, un présentoir de livres d’art près de l’accueil, des extincteurs muraux et des panneaux « Sortie » éclairés au-dessus des portes.</li>
+        <li><strong>Dehors :</strong> des vélos garés le long de l’aile est, une fontaine de pierre à l’eau animée sur la pelouse ouest, quatre caisses Versailles avec leurs boules de buis devant l’entrée, et un panneau d’horaires. Il affiche « du lever au coucher du soleil » avec les vraies heures du jour à Bruxelles, calculées comme le reste du ciel.</li>
+      </ul>
+      <p>Personne ne les traverse, ni toi, ni la visite guidée, ni Bavette. Environ 376 crédits Meshy.</p>
+      <p class="note">Les sculptures de la salle d’honneur arrivent à part : la première version ne méritait pas d’être publiée.</p>
+    </div>
+    <figure><img src="img/62-cordons.jpg" width="1280" height="398" alt="Avant et après : un cordon de velours sur poteaux de laiton devant les vitrines."><figcaption>Le cordon devant les vitrines de la salle d’honneur.</figcaption></figure>
+    <figure><img src="img/62-accueil.jpg" width="1280" height="398" alt="Avant et après : le présentoir de livres près de l’accueil."><figcaption>Le présentoir près de l’accueil.</figcaption></figure>
+    <figure><img src="img/62-versailles.jpg" width="1280" height="800" alt="Deux caisses Versailles à buis de part et d’autre de l’entrée."><figcaption>Les caisses Versailles de l’entrée.</figcaption></figure>
+    <figure><img src="img/62-fontaine.jpg" width="1280" height="398" alt="Avant et après : une fontaine de pierre sur la pelouse ouest."><figcaption>La fontaine.</figcaption></figure>
+    <figure><img src="img/62-velos.jpg" width="1280" height="398" alt="Avant et après : des vélos garés contre la façade."><figcaption>Les vélos.</figcaption></figure>
+    <figure><img src="img/62-horaires.jpg" width="1280" height="398" alt="Avant et après : le panneau d’horaires à l’entrée."><figcaption>Le panneau d’horaires.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-61">
+    <div class="entete"><h2 id="t-61">61. Plus de saut de lumière en passant une porte</h2><span class="statut fait">en ligne · PR #134</span></div>
+    <div class="texte">
+      <p>Chaque salle avait sa propre capture de reflets. Celle de la salle où tu te trouvais servait aussi à éclairer toute la scène, si bien qu’en franchissant une porte tout changeait d’un coup : de 3 à 22 % le jour, et jusqu’à 84 % la nuit sur certains sols de l’étage. Un bref creux sombre s’y ajoutait pendant la transition.</p>
+      <p>Maintenant, ces captures ne servent plus qu’aux reflets, sur le laiton, le verre et le marbre, et elles se mélangent selon ta position dans l’embrasure. La lumière ambiante ne dépend plus de l’endroit où tu te tiens. Au seuil, le saut tombe sous 2 %, de jour comme de nuit.</p>
+      <p>La lueur dorée de la nef la nuit venait justement de ces captures. Elle est maintenant attachée aux murs et au sol du hall, et on la retrouve telle qu’avant.</p>
+    </div>
+    <figure><img src="img/61-seuil.jpg" width="1280" height="216" alt="Quatre images juste après avoir franchi une porte : avant, les deux côtés diffèrent ; après, ils sont identiques."><figcaption>Le même mur, de part et d’autre du seuil : avant (à gauche), après (à droite).</figcaption></figure>
+    <figure><img src="img/61-nuit.jpg" width="1280" height="424" alt="La nef la nuit, avant et après : la même lueur dorée."><figcaption>La nef la nuit : elle garde sa lueur dorée.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-60">
+    <div class="entete"><h2 id="t-60">60. Les jonctions des allées, et l’angle de la façade</h2><span class="statut fait">en ligne · PR #133</span></div>
+    <div class="texte">
+      <p>Tu voyais encore des défauts là où l’axe dallé croise l’allée de ceinture. Il y en avait cinq :</p>
+      <ol>
+        <li><strong>Des coins d’herbe entre les dalles et le gravier.</strong> Les deux surfaces étaient découpées chacune de leur côté et laissaient un triangle vide entre elles. Elles se chevauchent maintenant sous leurs bordures.</li>
+        <li><strong>Des bordures facettées et coudées.</strong> Elles suivaient une ligne faite de segments inégaux. Elles sont maintenant lissées tous les 20 cm, avec des angles nets aux coins du parvis.</li>
+        <li><strong>Un axe sans bordure au croisement.</strong> Un filet de pierre affleurant le sépare désormais du gravier, sans marche où trébucher. L’axe fait maintenant 3,60 m, trois dalles du parvis, dont les joints se prolongent sans coupe.</li>
+        <li><strong>Un liseré pointillé au pied de la bordure du parvis.</strong> C’était la bande de galets écrasée contre la bordure ; elle s’enfonce maintenant sous la pelouse.</li>
+        <li><strong>Le bandeau de pierre qui s’arrêtait avant l’angle du bâtiment.</strong> Il disparaissait derrière les pilastres. Il passe maintenant devant eux et tourne l’angle.</li>
+      </ol>
+    </div>
+    <figure><img src="img/60-jonction.jpg" width="1280" height="400" alt="Avant : herbe entre l’axe dallé et le gravier ; après : l’axe bordé d’un filet de pierre, plus d’herbe."><figcaption>Ton point de vue, avant et après.</figcaption></figure>
+    <figure><img src="img/60-bordure.jpg" width="1280" height="400" alt="Avant : une bordure coudée ; après : une courbe lisse."><figcaption>Une bordure, avant et après.</figcaption></figure>
+    <figure><img src="img/60-bandeau.jpg" width="1280" height="400" alt="Avant : le bandeau de pierre s’arrête avant l’angle ; après : il tourne l’angle."><figcaption>L’angle sud-est du bâtiment.</figcaption></figure>
+  </section>
+
   <section class="etape" aria-labelledby="t-59">
     <div class="entete"><h2 id="t-59">59. Un écran de chargement</h2><span class="statut fait">en ligne · PR #128 et #129</span></div>
     <div class="texte">
