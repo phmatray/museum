@@ -5,7 +5,8 @@
  *
  * Ici : les uniformes partagés (`intemperies.ts`) lissés à chaque image — le
  * sol se mouille puis sèche, la neige tient puis fond —, la brume de la scène,
- * la pluie et la neige qui tombent autour du visiteur (dehors seulement), la
+ * la pluie et la neige qui tombent autour du visiteur (ou, du dedans, là où
+ * il les voit : par la porte, sous la verrière), la
  * brume sur l'étang et l'éclair d'orage (jamais sous `prefers-reduced-motion`).
  */
 import { useEffect, useMemo, useRef } from 'react'
@@ -15,6 +16,7 @@ import * as THREE from 'three'
 import config from '../../museum.config.json'
 import { meteoDemandee, meteoDuReleve, urlOpenMeteo, type Releve } from '../domain/meteo'
 import { JARDIN, distanceEtang } from '../plan/jardin'
+import { centreDesChutes, toitsGlsl } from '../plan/toits'
 import { suivre } from '../stores/chargementStore'
 import { useGameStore } from '../stores/gameStore'
 import { INTEMPERIES } from './intemperies'
@@ -25,8 +27,32 @@ const BRUME_JOUR = new THREE.Color('#b4bcc2')
 const BRUME_NUIT = new THREE.Color('#161c28')
 const BRUME_SOIR = new THREE.Color('#c9a78e')
 
-/** La caméra est-elle sous les toits du musée ? Alors ni pluie ni neige à l'écran. */
-const sousLesToits = (p: THREE.Vector3) => p.x > -0.3 && p.x < 48.3 && p.z > -0.3 && p.z < 40.3 && p.y < 11
+/** Sous les toits, l'air ne porte qu'un quart de la brume du dehors. */
+const BRUME_DEDANS = 0.25
+
+/*
+ * La brume tient au LIEU du fragment, pas au regard (comme `lueurs.ts`) : vu
+ * de la nef, le jardin par la porte est aussi noyé que quand on y est ; les
+ * murs du hall, eux, restent nets. Le chemin de la vue n'est pas suivi : un
+ * fragment dehors prend la brume du dehors sur toute sa profondeur.
+ */
+const C = THREE.ShaderChunk
+// Une seule fois, même si le module est réévalué (rechargement à chaud).
+if (!C.fog_vertex.includes('vFogMonde')) {
+  C.fog_pars_vertex = C.fog_pars_vertex.replace('varying float vFogDepth;', 'varying float vFogDepth;\n\tvarying vec3 vFogMonde;')
+  C.fog_vertex = C.fog_vertex.replace(
+    'vFogDepth = - mvPosition.z;',
+    'vFogDepth = - mvPosition.z;\n\tvFogMonde = (mvPosition.xyz - viewMatrix[3].xyz) * mat3(viewMatrix);',
+  )
+  C.fog_pars_fragment = C.fog_pars_fragment.replace(
+    'varying float vFogDepth;',
+    `varying float vFogDepth;\n\tvarying vec3 vFogMonde;\n${toitsGlsl('brumeToit')}`,
+  )
+  C.fog_fragment = C.fog_fragment
+    .replace('#ifdef USE_FOG', `#ifdef USE_FOG\n\tfloat fogProfondeur = vFogDepth * mix(${BRUME_DEDANS.toFixed(2)}, 1.0, step(brumeToit(vFogMonde.xz), vFogMonde.y));`)
+    .replaceAll('vFogDepth * vFogDepth', 'fogProfondeur * fogProfondeur')
+    .replace('smoothstep( fogNear, fogFar, vFogDepth )', 'smoothstep( fogNear, fogFar, fogProfondeur )')
+}
 
 export function MeteoLayer() {
   useReleve()
@@ -38,16 +64,21 @@ export function MeteoLayer() {
 
   /* eslint-disable react-hooks/immutability -- les uniformes et la brume sont l'état de la scène three */
   // Au montage, le temps déjà publié tient d'emblée : un `?meteo=neige` arrive enneigé.
+  // La brume est posée une fois pour toutes, même par beau temps (densité nulle) :
+  // l'ôter et la remettre change le programme de TOUTES les matières, et passer
+  // du clair à la pluie en recompilait d'un coup soixante-cinq — le musée gelait
+  // près d'une seconde.
   useEffect(() => {
     const { meteo } = useGameStore.getState()
     INTEMPERIES.uPluie.value = INTEMPERIES.uMouille.value = meteo.pluie
     INTEMPERIES.uEnneige.value = meteo.neige
+    scene.fog = brume
     return () => {
       if (scene.fog === brume) scene.fog = null
     }
   }, [scene, brume])
 
-  useFrame(({ camera, clock }, dt) => {
+  useFrame(({ clock }, dt) => {
     const { meteo, saison, ciel } = useGameStore.getState()
     const I = INTEMPERIES
     const pas = Math.min(dt, 0.1)
@@ -72,14 +103,11 @@ export function MeteoLayer() {
     I.uBrumeCouleur.value.copy(BRUME_NUIT).lerp(BRUME_JOUR, ciel.jour).lerp(BRUME_SOIR, ciel.crepuscule * ciel.jour * 0.4)
 
     // La brume de la scène : le brouillard, et l'air chargé de la pluie ou de la neige.
-    // Sous les toits, à peine : il ne pleut pas dans la nef.
+    // Sous les toits, à peine (`BRUME_DEDANS`, par fragment) : il ne pleut pas dans la nef.
     const densite = I.uBrume.value * 0.055 + I.uPluie.value * 0.012 + meteo.neige * 0.02
-    const dedans = sousLesToits(camera.position)
-    brume.density = densite * (dedans ? 0.25 : 1)
+    // Par beau temps, nulle : le rendu reste celui d'avant.
+    brume.density = densite > 0.002 ? densite : 0
     brume.color.copy(I.uBrumeCouleur.value)
-    // Pas de brume par beau temps : le rendu reste celui d'avant, sans programme recompilé.
-    const voulu = densite > 0.002 ? brume : null
-    if (scene.fog !== voulu) scene.fog = voulu
 
     // L'orage : un double éclair toutes les 4 à 14 s.
     const t = clock.elapsedTime
@@ -138,7 +166,8 @@ function useReleve() {
 
 const SOMMETS_CHUTE = /* glsl */ `
   uniform float uTemps, uVent, uTaille;
-  uniform vec3 uBoite, uCam;
+  uniform vec3 uBoite, uCam, uCentre;
+  ${toitsGlsl('toit')}
   attribute vec4 aGoutte;
   varying float vAlpha;
   varying vec2 vUv;
@@ -152,12 +181,13 @@ const SOMMETS_CHUTE = /* glsl */ `
       vec3 vit = vec3(0.35 * uVent, -9.0, 0.12 * uVent);
       vec3 p = aGoutte.xyz * uBoite + vit * uTemps * (0.85 + 0.3 * aGoutte.w);
     #endif
-    // Replié autour de la caméra : chaque goutte garde sa place, le nuage suit le visiteur.
-    vec3 coin = uCam - 0.5 * uBoite;
+    // Replié autour du centre (le visiteur, ou devant lui s'il est dedans) :
+    // chaque goutte garde sa place, le nuage suit le visiteur.
+    vec3 coin = uCentre - 0.5 * uBoite;
     p = coin + mod(p - coin, uBoite);
-    // Pas sous les toits : ni dans les salles ni dans la nef.
-    float dedans = step(-0.3, p.x) * step(p.x, 48.3) * step(-0.3, p.z) * step(p.z, 40.3) * step(p.y, 11.5);
-    float d = length(p.xz - uCam.xz) / (0.5 * uBoite.x);
+    // Pas sous les toits : ni dans les salles ni sous la verrière de la nef.
+    float dedans = step(p.y, toit(p.xz));
+    float d = length(p.xz - uCentre.xz) / (0.5 * uBoite.x);
     vAlpha = (1.0 - smoothstep(0.6, 1.0, d)) * smoothstep(0.8, 3.0, distance(p, uCam)) * (1.0 - dedans);
     #ifdef NEIGE
       vec3 droite = vec3(viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0]);
@@ -194,7 +224,9 @@ const FRAGMENTS_CHUTE = /* glsl */ `
 /**
  * La pluie (des traits) ou la neige (des flocons) : des milliers de quads en UN
  * appel de dessin, repliés dans une boîte qui suit la caméra. Le nombre dessiné
- * suit l'intensité ; rien sous les toits.
+ * suit l'intensité ; rien sous les toits. Du dedans, la boîte passe devant le
+ * regard (`centreDesChutes`) : la pluie vue par la porte ou la verrière tombe
+ * dehors, pas dans le hall.
  */
 const CHUTES = {
   pluie: { n: 16000, boite: new THREE.Vector3(26, 16, 26), taille: 0.012, opacite: 0.26 },
@@ -227,6 +259,7 @@ function Chute({ neige }: { neige: boolean }) {
           uTaille: { value: reglage.taille },
           uBoite: { value: reglage.boite },
           uCam: { value: new THREE.Vector3() },
+          uCentre: { value: new THREE.Vector3() },
           uJour: { value: 1 },
           uOpacite: { value: reglage.opacite },
         },
@@ -242,14 +275,22 @@ function Chute({ neige }: { neige: boolean }) {
     materiau.dispose()
   }, [geometrie, materiau])
   const mesh = useRef<THREE.Mesh>(null)
+  const regard = useMemo(() => new THREE.Vector3(), [])
   /* eslint-disable react-hooks/immutability -- le nombre d'instances et le jour sont l'état three de la chute */
-  useFrame(({ camera }) => {
+  useFrame(({ camera }, dt) => {
     const { meteo, ciel } = useGameStore.getState()
     const intensite = neige ? meteo.neige : INTEMPERIES.uPluie.value
-    geometrie.instanceCount = sousLesToits(camera.position) ? 0 : Math.round(reglage.n * Math.min(1, intensite))
+    // Sous les toits aussi : c'est le shader qui efface les gouttes du dedans.
+    geometrie.instanceCount = Math.round(reglage.n * Math.min(1, intensite))
     materiau.uniforms.uJour.value = ciel.jour
     if (mesh.current) mesh.current.visible = geometrie.instanceCount > 0
     ;(materiau.uniforms.uCam.value as THREE.Vector3).copy(camera.position)
+    camera.getWorldDirection(regard)
+    const c = centreDesChutes(camera.position, regard, 0.45 * reglage.boite.x, 0.5 * reglage.boite.y)
+    // Glissé en un quart de seconde : passer la porte ne fait pas sauter l'averse.
+    const centre = materiau.uniforms.uCentre.value as THREE.Vector3
+    if (centre.lengthSq() === 0) centre.set(c.x, c.y, c.z)
+    else centre.lerp(regard.set(c.x, c.y, c.z), Math.min(1, dt * 4))
   })
   /* eslint-enable react-hooks/immutability */
   // Dessinée après le décor transparent : les traits passent devant la verrière.

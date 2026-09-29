@@ -9,15 +9,16 @@
  *                                         └► salle 3,5 s
  *   eau, oiseaux ► 3D ─┐                              ├─► maître 0,6 ► limiteur ► sortie
  *   vent, grillons ────┴► dehors (jour / nuit) ──────┤
- *   ronron ► 3D ─────────────────────────────────────┘
+ *   ronron ► 3D ─────────────────────────────────────┤
+ *   pluie ► passe-bas (selon le lieu) ───────────────┘
  *
  * Les poids viennent de `mixage()` (domain/son.ts) et sont rejoints en douceur :
  * passer la porte est un fondu d'une seconde.
  */
-import { mixage, volumeRonron, type Coup, type Lieu, type Matiere } from '../domain/son'
+import { mixage, pluieEntendue, volumeRonron, type Coup, type Lieu, type Matiere } from '../domain/son'
 import { TRACE_RUISSEAU, LEVRE } from '../plan/jardin'
 import type { PlantPlacement } from '../plan/park'
-import { cloche, eau, grillons, oiseau, pas, ronron, salle, tic, vent, volets } from './synthe'
+import { cloche, eau, grillons, oiseau, pas, pluie, ronron, salle, tic, vent, volets } from './synthe'
 
 /** Sous la verrière, le cadran nord (`build-nef.py`) et le tableau des départs dessous. */
 const HORLOGE: Vec = [24, 14.8, 12.6]
@@ -39,6 +40,8 @@ export interface Ecoute {
   jour: number
   /** Bavette, s'il est au même étage. */
   bavette: Vec | null
+  /** La pluie qui tombe, 0..1 (`meteo.pluie`). */
+  pluie: number
 }
 
 export class Moteur {
@@ -52,6 +55,7 @@ export class Moteur {
   private readonly jour: GainNode
   private readonly nuit: GainNode
   private readonly ronronneur: { panner: PannerNode; gain: GainNode }
+  private readonly averse: { filtre: BiquadFilterNode; gain: GainNode }
   private readonly horloge: PannerNode
   private readonly tableau: PannerNode
   private readonly erables: PlantPlacement[]
@@ -114,6 +118,12 @@ export class Moteur {
     const gainRonron = g(0, this.maitre)
     this.ronronneur = { panner: this.panner([0, -100, 0], gainRonron, 0.4), gain: gainRonron }
     this.sources.push(ronron(ctx, this.ronronneur.panner))
+
+    const filtre = ctx.createBiquadFilter()
+    filtre.type = 'lowpass'
+    this.averse = { filtre, gain: g(0, this.maitre) }
+    filtre.connect(this.averse.gain)
+    this.sources.push(pluie(ctx, filtre))
   }
 
   /** Une source placée : distance inverse, HRTF (ou panoramique simple pour les nappes). */
@@ -171,6 +181,11 @@ export class Moteur {
       p.positionX.value = b[0]; p.positionY.value = b[1]; p.positionZ.value = b[2]
     }
     vers(this.ronronneur.gain.gain, 0.9 * volumeRonron(d))
+
+    // La pluie, étouffée par la verrière ou les murs.
+    const p = pluieEntendue(e.lieu, e.pluie)
+    vers(this.averse.gain.gain, 0.5 * p.gain)
+    vers(this.averse.filtre.frequency, p.coupure)
 
     // Le tic-tac, programmé un peu d'avance ; recalé après une suspension.
     if (this.prochainTic < t) this.prochainTic = t + 0.05

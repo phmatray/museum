@@ -50,6 +50,7 @@ import { plafonds } from '../plan/plafonds'
 import { creerGranit, creerPierre } from './pierre'
 import { LumiereLayer } from './LumiereLayer'
 import { rangsDeLumiere } from './lumiere'
+import { ruisseler } from './intemperies'
 import { useGameStore } from '../stores/gameStore'
 
 const AUCUNE: Box[] = []
@@ -132,7 +133,12 @@ function Niveau({ level, verre, sansMarches }: { level: number; verre: THREE.Mat
   const parquet = useMatiere('parquet')
   const plafond = useMemo(() => plafonds(MUSEE, level), [level])
   const platrePlafond = useMatiere('platre')
-  const lanterneau = useMemo(() => new THREE.MeshStandardMaterial({ color: '#f4f1ea', emissive: '#fff6e6', emissiveIntensity: 0.55, roughness: 0.9 }), [])
+  const lanterneau = useMemo(() => {
+    const m = new THREE.MeshStandardMaterial({ color: '#f4f1ea', emissive: '#fff6e6', emissiveIntensity: 0.55, roughness: 0.9 })
+    // Sous le ciel, à l'étage, la pluie s'y écrase : on la voit d'en dessous.
+    if (level === MUSEE.levels[MUSEE.levels.length - 1].id) ruisseler(m)
+    return m
+  }, [level])
   useEffect(() => () => lanterneau.dispose(), [lanterneau])
   // Le verre dépoli ne luit que du ciel qu'il a au-dessus : sous le toit, la
   // nuit, il s'éteint comme la verrière de la nef et ce sont les projecteurs qui
