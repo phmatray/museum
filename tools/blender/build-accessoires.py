@@ -17,6 +17,9 @@ d'après UNE cote connue, l'origine au sol au centre de l'emprise, un plafond
 de triangles, des textures ramenées à 1024 (512 pour les petits objets), en WebP.
 
 Modelés ici, sans IA :
+- la caisse de Versailles et son buis : panneaux de bois peint, montants de
+  fonte noire, une boule PLEINE de petites feuilles (texture calculée), un
+  tronc court, un paillis d'écorce ;
 - l'abri à vélos : poteaux galvanisés, toit de polycarbonate, cinq arceaux
   « Sheffield », trois vélos différents appuyés et cadenassés (antivol en U).
 """
@@ -28,7 +31,7 @@ from pathlib import Path
 import bmesh
 import bpy
 import numpy as np
-from mathutils import Matrix, Vector
+from mathutils import Matrix, Vector, noise
 
 try:
     ROOT = Path(__file__).resolve().parents[2]
@@ -44,7 +47,6 @@ PIECES = {
     "Extincteur": ("extincteur.glb", "z", 0.55, 0, 1500, 512),
     "PanneauHoraires": ("panneau.glb", "x", 1.6, 0, 3000, 1024),
     "Fontaine": ("fontaine.glb", "x", 3.0, 0, 15000, 1024),
-    "Versailles": ("versailles.glb", "z", 1.4, 0, 8000, 1024),
 }
 # Les vélos de l'abri, même traitement (leur long axe selon x, l'avant vers +x).
 VELOS = {
@@ -116,8 +118,8 @@ def importer(nom, fichier, axe, cote, rot, plafond, tex, source):
 
 # ── Petits outils de modelage ────────────────────────────────────────────────
 
-def matiere(nom, rgb, metal=0.0, rugosite=0.6, alpha=1.0):
-    """Une matière PBR unie."""
+def matiere(nom, rgb, metal=0.0, rugosite=0.6, alpha=1.0, couleur=None, relief=None):
+    """Une matière PBR ; `couleur` et `relief` sont des images (couleur de base, carte de normales)."""
     m = bpy.data.materials.new(nom)
     m.use_nodes = True
     t = m.node_tree
@@ -128,6 +130,16 @@ def matiere(nom, rgb, metal=0.0, rugosite=0.6, alpha=1.0):
     if alpha < 1:
         b.inputs["Alpha"].default_value = alpha
         m.surface_render_method = "BLENDED"
+    if couleur is not None:
+        n = t.nodes.new("ShaderNodeTexImage")
+        n.image = couleur
+        t.links.new(n.outputs["Color"], b.inputs["Base Color"])
+    if relief is not None:
+        n = t.nodes.new("ShaderNodeTexImage")
+        n.image = relief
+        nm = t.nodes.new("ShaderNodeNormalMap")
+        t.links.new(n.outputs["Color"], nm.inputs["Color"])
+        t.links.new(nm.outputs["Normal"], b.inputs["Normal"])
     return m
 
 
@@ -175,6 +187,133 @@ def polyligne(bm, pts, r, seg=12, m=Matrix()):
         tube(bm, a, b, r, seg, m)
     for p in pts[1:-1]:
         rotule(bm, p, r, m)
+
+
+def uv_cube(bm, echelle):
+    """Des UV par projection sur la face dominante : assez pour une texture sans direction."""
+    uv = bm.loops.layers.uv.verify()
+    for f in bm.faces:
+        n = f.normal
+        i = max(range(3), key=lambda k: abs(n[k]))
+        a, b = [k for k in range(3) if k != i]
+        for lp in f.loops:
+            lp[uv].uv = (lp.vert.co[a] / echelle, lp.vert.co[b] / echelle)
+
+
+# ── Textures calculées ───────────────────────────────────────────────────────
+
+def image(nom, rgb, donnees=False):
+    h, w, _ = rgb.shape
+    img = bpy.data.images.new(nom, w, h, alpha=False)
+    if donnees:
+        img.colorspace_settings.name = "Non-Color"
+    px = np.concatenate([rgb, np.ones((h, w, 1))], axis=2).astype(np.float32)
+    img.pixels.foreach_set(px.astype(np.float32).ravel())
+    img.pack()
+    return img
+
+
+def jonchee(nom, n, fond, teintes, taille, nombre, graine, allongement=0.55):
+    """
+    Une texture raccordable de petites pièces ovales qui se recouvrent — feuilles
+    de buis ou éclats d'écorce : chacune a sa teinte, sa profondeur (les plus
+    enfouies plus sombres : l'ombre au creux du feuillage) et son dôme, dont on
+    tire la carte de normales.
+    """
+    rng = np.random.default_rng(graine)
+    coul = np.tile(np.array(fond, float), (n, n, 1))
+    haut = np.zeros((n, n))
+    profondeurs = np.sort(rng.random(nombre))
+    for p in profondeurs:
+        cx, cy = rng.random(2) * n
+        L = rng.uniform(*taille)
+        a, b = L / 2, L * allongement / 2
+        th = rng.random() * math.pi
+        R = int(a) + 2
+        ys, xs = np.mgrid[-R:R + 1, -R:R + 1]
+        u = (xs + (cx % 1)) * math.cos(th) + (ys + (cy % 1)) * math.sin(th)
+        v = -(xs + (cx % 1)) * math.sin(th) + (ys + (cy % 1)) * math.cos(th)
+        d = (u / a) ** 2 + (v / b) ** 2
+        dedans = d < 1
+        dome = np.sqrt(np.clip(1 - d, 0, 1))
+        iy = (ys + int(cy)) % n
+        ix = (xs + int(cx)) % n
+        t = np.array(teintes[rng.integers(len(teintes))], float) * rng.uniform(0.85, 1.15)
+        lum = (0.35 + 0.65 * p) * (0.8 + 0.2 * dome)
+        c = t[None, None, :] * lum[..., None]
+        coul[iy[dedans], ix[dedans]] = c[dedans]
+        haut[iy[dedans], ix[dedans]] = (p + 0.6 * dome)[dedans]
+    gx = np.roll(haut, -1, 1) - np.roll(haut, 1, 1)
+    gy = np.roll(haut, -1, 0) - np.roll(haut, 1, 0)
+    nrm = np.stack([-gx * 1.5, -gy * 1.5, np.ones_like(haut)], axis=2)
+    nrm /= np.linalg.norm(nrm, axis=2, keepdims=True)
+    return image(f"{nom}-couleur", np.clip(coul, 0, 1)), image(f"{nom}-relief", nrm * 0.5 + 0.5, donnees=True)
+
+
+# ── La caisse de Versailles ──────────────────────────────────────────────────
+
+def versailles():
+    """
+    La caisse d'orangerie : 0,83 m de côté, panneaux de chêne peint gris-vert
+    pâle entre quatre montants de fonte noire coiffés d'une boule ; un buis
+    taillé en boule de 64 cm, plein, sur un tronc court, dans un paillis d'écorce.
+    """
+    racine = vide("Versailles")
+    C, H, P = 0.83, 0.78, 0.075  # côté, hauteur de la caisse, section des montants
+    peinture = matiere("Versailles-peinture", (0.36, 0.42, 0.36), rugosite=0.78)
+    fonte = matiere("Versailles-fonte", (0.018, 0.018, 0.018), metal=0.35, rugosite=0.55)
+
+    bois, fer = bmesh.new(), bmesh.new()
+    e = C / 2 - P / 2
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            pave(fer, (sx * e, sy * e, H / 2), (P, P, H))
+            pave(fer, (sx * e, sy * e, H + 0.012), (P + 0.012, P + 0.012, 0.024))
+            rotule(fer, (sx * e, sy * e, H + 0.06), 0.034)
+    # Chaque face : un panneau en retrait dans son cadre de bois, deux bandes de fer.
+    L = C - 2 * P
+    for k in range(4):
+        m = Matrix.Rotation(k * math.pi / 2, 4, "Z")
+        f = C / 2 - 0.035
+        pave(bois, (0, -f + 0.01, H / 2 + 0.03), (L, 0.02, H - 0.1), m)  # le panneau
+        for z in (0.1, H - 0.05):
+            pave(bois, (0, -f - 0.006, z), (L, 0.02, 0.07), m)  # traverses du cadre
+        for x in (-L / 2 + 0.035, L / 2 - 0.035):
+            pave(bois, (x, -f - 0.006, H / 2 + 0.025), (0.07, 0.02, H - 0.15), m)  # montants du cadre
+        for z in (0.055, H - 0.012):
+            pave(fer, (0, -f - 0.02, z), (L + 0.004, 0.012, 0.024), m)  # bandes de fer
+    objet("Versailles-bois", bois, peinture, racine)
+    objet("Versailles-fer", fer, fonte, racine)
+
+    # Le paillis, un peu sous le bord.
+    ecorce_c, ecorce_n = jonchee("Versailles-paillis", 256, (0.05, 0.035, 0.025),
+                                 [(0.30, 0.19, 0.11), (0.22, 0.14, 0.08), (0.36, 0.25, 0.16)], (10, 26), 900, 3, 0.4)
+    sol = bmesh.new()
+    pave(sol, (0, 0, H - 0.07), (C - 0.09, C - 0.09, 0.02))
+    uv_cube(sol, 0.25)
+    objet("Versailles-paillis", sol, matiere("Versailles-paillis", (1, 1, 1), rugosite=0.95, couleur=ecorce_c, relief=ecorce_n), racine)
+
+    # Le tronc, qu'on devine sous la boule.
+    R, zc = 0.32, 1.40 - 0.32
+    tr = bmesh.new()
+    tube(tr, (0, 0, H - 0.07), (0, 0, zc - R + 0.08), 0.028, 10)
+    objet("Versailles-tronc", tr, matiere("Versailles-tronc", (0.12, 0.09, 0.06), rugosite=0.9), racine)
+
+    # La boule : une icosphère un peu cabossée par la cisaille, texturée de feuilles serrées.
+    feuille_c, feuille_n = jonchee("Versailles-buis", 1024, (0.03, 0.06, 0.02),
+                                   [(0.17, 0.33, 0.07), (0.21, 0.39, 0.09), (0.13, 0.27, 0.06), (0.27, 0.41, 0.11)],
+                                   (26, 42), 7000, 11)
+    boule = bmesh.new()
+    bmesh.ops.create_icosphere(boule, subdivisions=4, radius=R)
+    for v in boule.verts:
+        n = v.co.normalized()
+        v.co = n * (R + 0.012 * noise.noise(n * 3.5) + 0.006 * noise.noise(n * 11 + Vector((5, 1, 2))))
+    bmesh.ops.translate(boule, verts=boule.verts, vec=(0, 0, zc))
+    bmesh.ops.recalc_face_normals(boule, faces=boule.faces)
+    uv_cube(boule, 0.3)
+    objet("Versailles-buis", boule, matiere("Versailles-buis", (1, 1, 1), rugosite=0.85, couleur=feuille_c, relief=feuille_n),
+          racine, lisse=True)
+    print("ACCESSOIRE Versailles        procédural")
 
 
 # ── L'abri à vélos ───────────────────────────────────────────────────────────
@@ -353,6 +492,7 @@ def main():
     repartir()
     for nom, p in PIECES.items():
         importer(nom, *p, source)
+    versailles()
     abri(source)
     bpy.ops.object.select_all(action="SELECT")
     SORTIE.parent.mkdir(parents=True, exist_ok=True)
