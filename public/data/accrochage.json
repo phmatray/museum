@@ -271,7 +271,7 @@
             1,
             0
           ],
-          "width": 1.939
+          "width": 2.617
         },
         {
           "key": "Atypical-Consulting/htmx-samples",
@@ -303,19 +303,8 @@
       "name": "Game / Webassembly",
       "placements": [
         {
-          "key": "phmatray/G3.TreasuresMonsters.Java",
-          "x": 18.791,
-          "y": 1.55,
-          "z": 11.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
           "key": "Atypical-Consulting/YendorSupport",
-          "x": 21.283,
+          "x": 20.037,
           "y": 1.55,
           "z": 11.85,
           "normal": [
@@ -337,18 +326,7 @@
         },
         {
           "key": "phmatray/G3.TreasuresMonsters",
-          "x": 26.717,
-          "y": 1.55,
-          "z": 11.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/MineSweeper",
-          "x": 29.209,
+          "x": 27.963,
           "y": 1.55,
           "z": 11.85,
           "normal": [
@@ -508,48 +486,26 @@
           "width": 2.049
         },
         {
-          "key": "stephaneweg/MusicTracker",
-          "x": 38.757,
-          "y": 1.55,
-          "z": 4.22,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
           "key": "Atypical-Consulting/NFT",
-          "x": 41.684,
+          "x": 40.28,
           "y": 1.55,
           "z": 4.22,
           "normal": [
             0,
             1
           ],
-          "width": 1.939
-        },
-        {
-          "key": "phmatray/PipeException",
-          "x": 38.883,
-          "y": 1.55,
-          "z": 4.18,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
+          "width": 1.96
         },
         {
           "key": "phmatray/CCross.ThrowIf",
-          "x": 41.966,
+          "x": 40.5,
           "y": 1.55,
           "z": 4.18,
           "normal": [
             0,
             -1
           ],
-          "width": 2.001
+          "width": 2.4
         },
         {
           "key": "phmatray/music-dotnet",
@@ -633,7 +589,7 @@
             1,
             0
           ],
-          "width": 1.851
+          "width": 2.498
         },
         {
           "key": "phmatray/hexagonal-architecture-acerola",
@@ -739,7 +695,7 @@
             -1,
             0
           ],
-          "width": 1.7
+          "width": 2.295
         }
       ]
     },
@@ -1024,7 +980,7 @@
             1,
             0
           ],
-          "width": 1.851
+          "width": 2.498
         },
         {
           "key": "phmatray/Metatrader5-Docker",
@@ -1129,8 +1085,19 @@
       "name": "Parser / Vat",
       "placements": [
         {
+          "key": "phmatray/WispLang",
+          "x": 37.825,
+          "y": 6.35,
+          "z": 0.15,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.7
+        },
+        {
           "key": "phmatray/Antlr4Library",
-          "x": 40,
+          "x": 42.1,
           "y": 6.35,
           "z": 0.15,
           "normal": [
@@ -1162,7 +1129,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/WispLang",
+          "key": "phmatray/VatBe",
           "x": 32.15,
           "y": 6.35,
           "z": 2.775,
@@ -1173,7 +1140,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/VatBe",
+          "key": "phmatray/MineSweeper",
           "x": 32.15,
           "y": 6.35,
           "z": 9.725,
@@ -1192,7 +1159,7 @@
             -1,
             0
           ],
-          "width": 1.851
+          "width": 2.498
         }
       ]
     },
@@ -1297,7 +1264,7 @@
       "name": "Doji / Hackathon",
       "placements": [
         {
-          "key": "phmatray/IFAPME-OMD",
+          "key": "phmatray/G3.TreasuresMonsters.Java",
           "x": 35.775,
           "y": 6.35,
           "z": 27.15,
@@ -1308,7 +1275,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/hackathon-backend",
+          "key": "phmatray/IFAPME-OMD",
           "x": 44.225,
           "y": 6.35,
           "z": 27.15,
@@ -1319,8 +1286,19 @@
           "width": 1.7
         },
         {
+          "key": "stephaneweg/MusicTracker",
+          "x": 37.825,
+          "y": 6.35,
+          "z": 39.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
           "key": "phmatray/doji",
-          "x": 40,
+          "x": 42.1,
           "y": 6.35,
           "z": 39.85,
           "normal": [
@@ -1328,6 +1306,28 @@
             -1
           ],
           "width": 1.851
+        },
+        {
+          "key": "phmatray/PipeException",
+          "x": 32.15,
+          "y": 6.35,
+          "z": 30.175,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/hackathon-backend",
+          "x": 32.15,
+          "y": 6.35,
+          "z": 37.325,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.7
         },
         {
           "key": "phmatray/dots-2.0",
@@ -1338,7 +1338,7 @@
             -1,
             0
           ],
-          "width": 1.851
+          "width": 2.498
         }
       ]
     }

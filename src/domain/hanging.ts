@@ -81,6 +81,13 @@ export interface HangEntry {
 export interface HangOptions {
   /** Hauteur d'axe imposée. Par défaut `MUSEUM_HANG_HEIGHT` (§ 7.4). */
   centerHeight?: number
+  /**
+   * Agrandissement permis à une toile SEULE sur son segment, quand l'écart
+   * maximal la laisse flotter (1 = jamais, par défaut). Plafonné à
+   * `MAX_ARTWORK_HEIGHT` : une petite toile isolée sur un long mur se perd,
+   * agrandie elle le tient — sans dépasser la taille de la plus étoilée.
+   */
+  ampleur?: number
 }
 
 /** Intervalle le long du mur, en mètres depuis l'extrémité `a`. */
@@ -205,7 +212,7 @@ export function hangWall(wall: Wall, entries: HangEntry[], options: HangOptions 
   const autos = entries.filter((e) => !e.pinned).sort(byStarsDesc)
   const buckets = allocate(free, autos)
   for (let i = 0; i < free.length; i++) {
-    placements.push(...layoutSegment(free[i], buckets[i], centerHeight))
+    placements.push(...layoutSegment(free[i], buckets[i], centerHeight, options.ampleur ?? 1))
   }
 
   return placements.sort((a, b) => a.u - b.u || compareKeys(a.key, b.key))
@@ -391,7 +398,7 @@ function allocate(segments: Segment[], entries: HangEntry[]): HangEntry[][] {
  * étoilée et on reprend — la fonction se termine donc toujours, éventuellement
  * sur un tableau vide.
  */
-function layoutSegment(segment: Segment, entries: HangEntry[], centerHeight: number): Placement[] {
+function layoutSegment(segment: Segment, entries: HangEntry[], centerHeight: number, ampleur = 1): Placement[] {
   const length = segment.end - segment.start
   const kept = [...entries]
 
@@ -399,7 +406,12 @@ function layoutSegment(segment: Segment, entries: HangEntry[], centerHeight: num
     const row = centerOutward(kept)
     let shrink = 1
     for (let step = 0; step <= MAX_SHRINK_STEPS; step++) {
-      const sizes = row.map((e) => artworkSize(e, shrink))
+      let sizes = row.map((e) => artworkSize(e, shrink))
+      // Seule et flottante : on l'agrandit, sans jamais resserrer l'écart sous le plafond.
+      if (row.length === 1 && shrink === 1 && ampleur > 1 && length - sizes[0].width > 2 * MAX_ARTWORK_GAP) {
+        const f = Math.min(ampleur, MAX_ARTWORK_HEIGHT / sizes[0].height, (length - 2 * MAX_ARTWORK_GAP) / sizes[0].width)
+        if (f > 1) sizes = [{ width: sizes[0].width * f, height: sizes[0].height * f }]
+      }
       const sum = sizes.reduce((total, s) => total + s.width, 0)
       const gap = (length - sum) / (row.length + 1)
       if (gap >= MIN_ARTWORK_GAP - EPS) {
