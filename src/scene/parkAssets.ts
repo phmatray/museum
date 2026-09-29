@@ -14,11 +14,12 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { EspeceParc } from '../plan/park'
 import { cartesDeFeuillage, intemperer, saisonnerAzalee, saisonnerErable, saisonnerPetales } from './intemperies'
 import { mousser } from './jardinMatieres'
-import { centrer } from './propAssets'
 
 export interface ParkPiece {
   geometry: THREE.BufferGeometry
   material: THREE.Material
+  /** Le même sujet allégé, dessiné de loin avec le même matériau (`erables-loin.glb`). */
+  loin?: THREE.BufferGeometry
 }
 
 export interface ParkAssets {
@@ -45,6 +46,10 @@ const NOEUDS: Record<EspeceParc, [fichier: string, noeud: string]> = {
   'rocher-5': ['jardin/jardin.glb', 'src_rocher_5'],
 }
 
+/** Les sujets vus de loin (`build-erables-loin.py`) : même nœud, autre fichier. */
+const LOIN: Partial<Record<EspeceParc, string>> = { 'erable-rouge': 'src_erable_rouge', 'erable-vert': 'src_erable_vert' }
+const FICHIER_LOIN = 'jardin/erables-loin.glb'
+
 let promesse: Promise<ParkAssets> | null = null
 
 /** Chargé une fois, sous `BASE_URL` : le site est servi sous `/museum/`. */
@@ -62,14 +67,20 @@ async function charger(base: string): Promise<ParkAssets> {
   const draco = new DRACOLoader()
   draco.setDecoderPath(`${base}draco/`)
   gltf.setDRACOLoader(draco)
-  const fichiers = [...new Set(Object.values(NOEUDS).map(([f]) => f))]
+  const fichiers = [...new Set([...Object.values(NOEUDS).map(([f]) => f), FICHIER_LOIN])]
   const scenes = new Map(await Promise.all(fichiers.map(async (f) => [f, (await gltf.loadAsync(`${base}assets/${f}`)).scene] as const)))
   draco.dispose()
   const especes = new Map<EspeceParc, readonly ParkPiece[]>()
   for (const [id, [fichier, nom]] of Object.entries(NOEUDS) as [EspeceParc, [string, string]][]) {
     const noeud = scenes.get(fichier)?.getObjectByName(nom)
-    if (noeud === undefined) console.warn(`${fichier} : nœud « ${nom} » introuvable`)
-    else especes.set(id, lotsParMateriau(noeud))
+    if (noeud === undefined) {
+      console.warn(`${fichier} : nœud « ${nom} » introuvable`)
+      continue
+    }
+    const { lots, cale } = lotsParMateriau(noeud)
+    const loin = LOIN[id] === undefined ? undefined : scenes.get(FICHIER_LOIN)?.getObjectByName(LOIN[id])
+    if (loin !== undefined) accrocherLoin(lots, loin, cale)
+    especes.set(id, lots)
   }
   for (const [id, lots] of especes) if (id.startsWith('rocher')) for (const l of lots) mousser(l.material)
   // La saison et le temps sur chaque essence (`intemperies.ts`) : après la mousse, qu'ils chaînent.
@@ -79,6 +90,7 @@ async function charger(base: string): Promise<ParkAssets> {
       if (id === 'petales') saisonnerPetales(l.material)
       else if (feuilles && id.startsWith('erable')) {
         cartesDeFeuillage(l.geometry)
+        if (l.loin) cartesDeFeuillage(l.loin)
         saisonnerErable(l.material, id === 'erable-rouge')
       } else if (feuilles && id === 'azalee') saisonnerAzalee(l.material)
       if (id !== 'petales') intemperer(l.material)
@@ -88,11 +100,8 @@ async function charger(base: string): Promise<ParkAssets> {
   return { especes, jardin }
 }
 
-/**
- * Regroupe par matériau, cuit les transformations et ramène le pied à y = 0 :
- * `plan/park.ts` pose les sujets sur le terrain sans connaître le pivot des modèles.
- */
-function lotsParMateriau(noeud: THREE.Object3D): ParkPiece[] {
+/** Les maillages de `noeud` fusionnés par matériau, transformations cuites dans son repère. */
+function fusionParMateriau(noeud: THREE.Object3D): Map<THREE.Material, THREE.BufferGeometry> {
   noeud.updateWorldMatrix(true, true)
   const racine = new THREE.Matrix4().copy(noeud.matrixWorld).invert()
   const parMateriau = new Map<THREE.Material, THREE.BufferGeometry[]>()
@@ -104,21 +113,34 @@ function lotsParMateriau(noeud: THREE.Object3D): ParkPiece[] {
     g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(racine, objet.matrixWorld))
     parMateriau.set(materiau, [...(parMateriau.get(materiau) ?? []), g])
   })
-  // Le pied commun, mesuré avant la fusion : tronc et feuillage descendent ensemble.
-  let pied = Infinity
-  for (const g of [...parMateriau.values()].flat()) {
-    g.computeBoundingBox()
-    pied = Math.min(pied, g.boundingBox!.min.y)
-  }
-  if (!Number.isFinite(pied)) pied = 0
-
-  const lots: ParkPiece[] = []
+  const fusions = new Map<THREE.Material, THREE.BufferGeometry>()
   for (const [materiau, geometries] of parMateriau) {
     const fusion = geometries.length === 1 ? geometries[0] : mergeGeometries(geometries, false)
-    if (fusion === null) continue
     for (const g of geometries) if (g !== fusion) g.dispose()
-    fusion.translate(0, -pied, 0)
-    fusion.computeBoundingSphere()
+    if (fusion !== null) fusions.set(materiau, fusion)
+  }
+  return fusions
+}
+
+/**
+ * Regroupe par matériau et ramène le pied à y = 0, centré en x et z :
+ * `plan/park.ts` pose les sujets sur le terrain sans connaître le pivot des
+ * modèles. Tronc et feuillage bougent ensemble (une seule boîte pour tous) ;
+ * `cale` est ce déplacement, que la géométrie de loin reprend.
+ */
+function lotsParMateriau(noeud: THREE.Object3D): { lots: ParkPiece[]; cale: THREE.Vector3 } {
+  const fusions = fusionParMateriau(noeud)
+  const boite = new THREE.Box3()
+  for (const g of fusions.values()) {
+    g.computeBoundingBox()
+    boite.union(g.boundingBox!)
+  }
+  const cale = boite.isEmpty() ? new THREE.Vector3() : boite.getCenter(new THREE.Vector3()).setY(boite.min.y).negate()
+  const lots: ParkPiece[] = []
+  for (const [materiau, g] of fusions) {
+    g.translate(cale.x, cale.y, cale.z)
+    g.computeBoundingBox()
+    g.computeBoundingSphere()
     const m = materiau.clone()
     // Le feuillage se voit des deux côtés ; découpe binaire plutôt que tri
     // (des milliers de feuilles instanciées ne se trient pas). À 0,35 l'arbre
@@ -127,9 +149,27 @@ function lotsParMateriau(noeud: THREE.Object3D): ParkPiece[] {
     m.alphaTest = 0.15
     m.transparent = false
     m.depthWrite = true
-    lots.push({ geometry: fusion, material: m })
+    lots.push({ geometry: g, material: m })
   }
-  // Le pivot d'un arbuste n'est pas son centre (`shrub_01_a` s'étend à 2,45 m
-  // d'un côté) : recentré, il tient dans le rayon que `plan/park.ts` lui réserve.
-  return centrer(lots)
+  return { lots, cale }
+}
+
+/**
+ * Accroche à chaque lot sa géométrie de loin (celle du matériau de même nom),
+ * calée comme la proche : l'arbre ne bouge pas d'un centimètre quand l'une
+ * remplace l'autre. Les deux partagent une sphère englobante qui les couvre.
+ */
+function accrocherLoin(lots: ParkPiece[], noeud: THREE.Object3D, cale: THREE.Vector3) {
+  for (const [materiau, g] of fusionParMateriau(noeud)) {
+    const lot = lots.find((l) => l.material.name === materiau.name)
+    if (lot === undefined) {
+      g.dispose()
+      continue
+    }
+    g.translate(cale.x, cale.y, cale.z)
+    g.computeBoundingSphere()
+    lot.geometry.boundingSphere!.union(g.boundingSphere!)
+    g.boundingSphere = lot.geometry.boundingSphere!.clone()
+    lot.loin = g
+  }
 }
