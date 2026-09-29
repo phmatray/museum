@@ -1,7 +1,7 @@
 /**
- * Le mobilier (`plan/mobilier.ts`, modèles `mobilier.glb` et `accessoires.glb`) :
+ * Le mobilier (`plan/mobilier.ts`, modèles `mobilier.glb`, `accessoires.glb`, `lampadaire.glb`) :
  * banquettes, bancs, banque d'accueil ; cordon, chaise, extincteurs, abri à vélos,
- * caisses de Versailles, panneau et fontaine.
+ * caisses de Versailles, panneau et fontaine ; les lampadaires du parc.
  *
  * Une pièce est faite de plusieurs maillages — un par matière : chêne,
  * velours, laiton… Chacun devient un lot d'instances, une par meuble posé :
@@ -9,17 +9,20 @@
  * se charge une fois, sans suspendre : les murs n'attendent pas les bancs.
  */
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 import { MOBILIER, garniture, type Garniture, type PieceMobilier } from '../plan/mobilier'
+import { LAMPES } from './lueurs'
 
-/** Les nœuds des deux fichiers : les pièces simples, et les modèles des ensembles (`garniture`). */
+/** Les nœuds des fichiers : les pièces simples, et les modèles des ensembles (`garniture`). */
 type Modele = Exclude<PieceMobilier, 'Cordon'> | Garniture['piece']
 const FICHIERS: [string, Modele[]][] = [
   ['mobilier', ['Banquette', 'BancNef', 'Accueil', 'BancBatllo', 'BancPierre', 'BancJardin']],
   ['accessoires', ['ChaiseGardien', 'Presentoir', 'Extincteur', 'PanneauHoraires', 'Fontaine', 'Versailles', 'Potelet', 'AbriVelos']],
+  ['lampadaire', ['Lampadaire']],
 ]
 const PIECES = FICHIERS.flatMap(([, p]) => p)
 
@@ -86,6 +89,16 @@ function chargerModele(): Promise<Map<Modele, Maillage[]> | null> {
 
 export function MobilierLayer() {
   const [pieces, setPieces] = useState<Map<Modele, Maillage[]> | null>(null)
+  // Le globe des lampadaires s'allume avec eux (`EclairageLayer`) : éteint, un verre dépoli blanc.
+  const globe = useMemo(() => {
+    const m = pieces?.get('Lampadaire')?.find((x) => x.material.name === 'Lampadaire_Globe')?.material
+    return m instanceof THREE.MeshStandardMaterial ? m : null
+  }, [pieces])
+  useFrame(() => {
+    /* eslint-disable react-hooks/immutability */
+    if (globe) globe.emissiveIntensity = 1.5 * LAMPES.x
+    /* eslint-enable */
+  })
   useEffect(() => {
     let vivant = true
     void chargerModele().then((p) => vivant && setPieces(p))

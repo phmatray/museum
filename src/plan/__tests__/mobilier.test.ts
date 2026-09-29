@@ -138,6 +138,19 @@ describe('contourner', () => {
   it('va droit quand rien ne gêne', () => {
     expect(contourner('0:hall', [24, 38], [24, 22])).toEqual([[24, 22]])
   })
+
+  it('sort de la marge d’un banc où il se tient, et le contourne au lieu de le traverser', () => {
+    // Au pied du banc du jardin (36,5 ; 47,6), dans sa marge, et l'arbre de l'autre côté.
+    const banc = emprise(MOBILIER.find((m) => m.piece === 'BancJardin' && m.x === 36.5)!)
+    const [a, b]: [number, number][] = [[36.75, 48.15], [36.3, 46.3]]
+    const pts = contourner(PARC, a, b)
+    expect(pts.length).toBeGreaterThan(1)
+    let ici = a
+    for (const p of pts) {
+      expect(coupe(ici, p, banc), `${ici} → ${p}`).toBe(false)
+      ici = p
+    }
+  })
 })
 
 describe('les lieux de Bavette', () => {

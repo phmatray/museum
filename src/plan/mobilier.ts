@@ -37,6 +37,7 @@ import type { Rect } from './types.ts'
 export type PieceMobilier =
   | 'Banquette' | 'BancNef' | 'Accueil' | 'BancBatllo' | 'BancPierre' | 'BancJardin'
   | 'ChaiseGardien' | 'Presentoir' | 'Extincteur' | 'PanneauHoraires' | 'Fontaine' | 'Versailles'
+  | 'Lampadaire'
   // Les ensembles : une seule emprise pour la marche, plusieurs modèles posés (`garniture`).
   | 'AbriVelos'
   | 'Cordon'
@@ -55,6 +56,8 @@ export const DIMENSIONS: Record<PieceMobilier, { largeur: number; profondeur: nu
   PanneauHoraires: { largeur: 1.6, profondeur: 0.24 },
   Fontaine: { largeur: 3, profondeur: 3 },
   Versailles: { largeur: 0.83, profondeur: 0.83 },
+  // Le pied du lampadaire, 21 cm ; la crosse passe au-dessus des têtes (`build-lampadaire.py`).
+  Lampadaire: { largeur: 0.25, profondeur: 0.25 },
   // Sept potelets de 32 cm de pied, à 2,20 m d'axe en axe.
   Cordon: { largeur: 6 * 2.2 + 0.32, profondeur: 0.32 },
   // Le toit de l'abri (4,60 × 2,30 m) couvre ses poteaux, ses cinq arceaux et ses vélos.
@@ -111,6 +114,36 @@ const PIERRE = 0.15 + 0.03
  * le nord (salles 1), le sud (salles 3), ou vers le dehors quand trois portes
  * se croisent au centre (salles 2).
  */
+/**
+ * Les lampadaires du parc : « ça manque de lumière à l'extérieur » (Philippe).
+ * Un Lindby « Daphne » de 2,20 m (`build-lampadaire.py`), sa crosse tendue
+ * au-dessus de l'allée : le lacet envoie son x local — la crosse — vers
+ * (cos θ, −sin θ). Un tous les 12 à 14 m, sur le gazon au bord du gravier :
+ *
+ * - la ceinture, côté musée, à 2,40 m de son axe : quatre par côté, un par
+ *   angle, symétriques autour des accès ;
+ * - les quatre accès, deux chacun, en quinconce, à 2,10 m de leur axe ;
+ * - l'axe de l'entrée, par paires, à 2,60 m : la dernière encadre la grille.
+ *
+ * Relevés par projection sur le tracé des allées (`park.ts`) ; les tests
+ * vérifient qu'aucun ne mord une allée, l'eau, un arbre ni un banc.
+ */
+const LAMPADAIRES: [number, number, number][] = [
+  // La ceinture : le sud, le nord…
+  [3.32, 49.14, -1.74], [16.71, 49.51, -1.38], [31, 48.6, -1.571], [45, 48.6, -1.571],
+  [3.32, -9.14, 1.74], [16.71, -9.51, 1.38], [31.29, -9.51, 1.761], [44.68, -9.14, 1.402],
+  // … l'ouest, l'est…
+  [-9.09, 2.37, 2.952], [-9.53, 13.66, -2.918], [-9.53, 26.34, 2.918], [-9.09, 37.63, -2.952],
+  [56.6, 2, 0], [56.6, 14, 0], [56.6, 26, 0], [56.6, 38, 0],
+  // … et ses quatre angles.
+  [-6.59, -6.74, 2.4], [54.74, -6.59, 0.829], [54.59, 46.74, -0.742], [-6.74, 46.59, -2.313],
+  // Les accès : nord, ouest, est (de part et d'autre du pont).
+  [24.61, -24.35, -2.619], [23.07, -34.78, 0.23], [-22.25, 23.03, 2.094], [-35.74, 16.84, -1.341],
+  [65.77, 21.7, 1.438], [81.38, 17.69, -1.31],
+  // L'axe de l'entrée, par paires.
+  ...[57, 68, 78.4].flatMap((z): [number, number, number][] => [[21.4, z, 0], [26.6, z, Math.PI]]),
+]
+
 const AILES: [string, string, number, number][] = [
   ['r-o1', 'e-o1', 8, 4.7], ['r-e2', 'e-e2', 42.2, 20], ['r-e3', 'e-e3', 40, 35.3],
   // Les galeries 2 de l'ouest ont leur cimaise dans la moitié ouest (cimaises.ts) :
@@ -174,6 +207,8 @@ export const MOBILIER: Meuble[] = [
   dans('PanneauHoraires', PARC, 20.9, 46.2, 0.35),
   // … et la fontaine sur la pelouse ouest, au-delà de la ceinture : l'étang est à l'est.
   dans('Fontaine', PARC, 17.5, 56, SUD),
+  // Les lampadaires du parc (`LAMPADAIRES`).
+  ...LAMPADAIRES.map(([x, z, lacet]) => dans('Lampadaire', PARC, x, z, lacet)),
 ]
 
 /** Un modèle d'un ensemble, en coordonnées monde. */
@@ -220,6 +255,9 @@ const MARGE = 0.3 + 0.15
  */
 const COIN = MARGE + 0.35
 
+/** Ce qu'on rogne d'un bloc pour en sortir : moins que toute marge (`MARGE`, les 60 cm du bâtiment dans `promenade.ts`). */
+const SORTIE = 0.4
+
 const gonfler = (r: Rect, m: number): Rect => ({ x: r.x - m, z: r.z - m, width: r.width + 2 * m, depth: r.depth + 2 * m })
 const coins = (r: Rect): Point[] => [[r.x, r.z], [r.x + r.width, r.z], [r.x + r.width, r.z + r.depth], [r.x, r.z + r.depth]]
 
@@ -247,7 +285,11 @@ export function coupe(a: Point, b: Point, r: Rect): boolean {
  * `[b]` si la ligne droite est libre, ou si rien ne passe.
  */
 export function contournement(a: Point, b: Point, blocs: Rect[], noeuds: Point[]): Point[] {
-  const libre = (p: Point, q: Point) => blocs.every((r) => !coupe(p, q, r))
+  // Parti de la marge d'un bloc — au pied d'un banc, au sortir d'une sieste —,
+  // on en sort : pour le premier pas, seul son cœur arrête. Sans quoi tout
+  // chemin coupait ce bloc, et la ligne droite de secours traversait le banc.
+  const dedans = (p: Point, r: Rect) => p[0] > r.x && p[0] < r.x + r.width && p[1] > r.z && p[1] < r.z + r.depth
+  const libre = (p: Point, q: Point) => blocs.every((r) => !coupe(p, q, p === a && dedans(a, r) ? gonfler(r, -SORTIE) : r))
   if (libre(a, b)) return [b]
   const n = [a, b, ...noeuds]
   const dist = n.map(() => Infinity)

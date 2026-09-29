@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import { describe, expect, it } from 'vitest'
 
 import '../RefletsLayer'
-import { LUEURS } from '../lueurs'
+import { LAMPES, LUEURS } from '../lueurs'
 
 describe('RefletsLayer', () => {
   it("retire l'environnement du diffus : la clarté ne dépend pas de la pièce où se tient le visiteur", () => {
@@ -15,5 +15,10 @@ describe('RefletsLayer', () => {
     expect(THREE.ShaderLib.standard.uniforms.uLueurs.value).toBe(LUEURS)
     expect(THREE.ShaderLib.physical.uniforms.uLueurs.value).toBe(LUEURS)
     expect(THREE.UniformsUtils.clone(THREE.ShaderLib.lambert.uniforms).uLueurs.value).toBe(LUEURS)
+  })
+  it('éclaire lampadaires, spots et façade par fragment, sans une seule lumière de three', () => {
+    for (const nom of ['LAMPADAIRES', 'SPOTS_BALCON', 'PROJECTEURS_FACADE']) expect(THREE.ShaderChunk.lights_pars_begin).toContain(`const vec3 ${nom}[`)
+    expect(THREE.ShaderChunk.lights_fragment_maps).toContain('uLampes.x')
+    expect(THREE.UniformsUtils.clone(THREE.ShaderLib.standard.uniforms).uLampes.value).toBe(LAMPES)
   })
 })
