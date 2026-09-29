@@ -29,6 +29,11 @@ interface GameState {
   tourEtape: number
   /** La toile que le visiteur regarde (clé du dépôt), publiée par `EveilLayer`. */
   toile: string | null
+  /**
+   * Le projet que l'adresse demande (`?p=`, `domain/lien.ts`), une fois le
+   * catalogue lu par `PlanPlayer` : `cle` nulle s'il n'est pas exposé ici.
+   */
+  rendezVous: { demande: string; cle: string | null } | null
   /** Le dépôt de la borne que le visiteur consulte, en salle d'honneur, publié par `VitrinesLayer`. */
   borne: string | null
   /** Le visiteur regarde Bavette de près : `CarteBavette` s'ouvre. Publié par `BavetteLayer`. */
@@ -64,6 +69,7 @@ export const useGameStore = create<GameState>((set) => ({
   visiteur: null,
   tourEtape: 0,
   toile: null,
+  rendezVous: null,
   borne: null,
   bavetteRegarde: false,
   bavette: null,
