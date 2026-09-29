@@ -24,29 +24,29 @@
     {
       "id": "chandelles",
       "file": "chandelles.glb",
-      "height": 0.85,
+      "height": 1.0,
       "facing": "south",
-      "plinth": { "width": 0.78, "depth": 0.4, "height": 0.8 },
+      "plinth": { "width": 0.8, "depth": 0.45, "height": 1.0 },
       "project": "phmatray/TaLibStandard",
-      "cartel": { "author": "Philippe Matray", "title": "Chandelles", "year": 2026, "medium": "Bronze patiné — un graphique en chandeliers devenu ligne d'horizon", "credit": "Modèle généré par IA (Meshy)" }
+      "cartel": { "author": "Philippe Matray", "title": "Chandelles", "year": 2026, "medium": "Bronze poli et patiné — un graphique en chandeliers qui monte", "credit": "Modèle généré par IA (Meshy)" }
     },
     {
       "id": "formulaire",
       "file": "formulaire.glb",
-      "height": 1.3,
+      "height": 1.1,
       "facing": "south",
-      "plinth": { "width": 0.42, "depth": 0.42, "height": 0.8 },
+      "plinth": { "width": 0.6, "depth": 0.55, "height": 1.0 },
       "project": "phmatray/FormCraft",
-      "cartel": { "author": "Philippe Matray", "title": "Formulaire", "year": 2026, "medium": "Bronze patiné — champs et cases à cocher montés en colonne", "credit": "Modèle généré par IA (Meshy)" }
+      "cartel": { "author": "Philippe Matray", "title": "Formulaire", "year": 2026, "medium": "Bronze poli — champs et cases à cocher en spirale", "credit": "Modèle généré par IA (Meshy)" }
     },
     {
       "id": "arborescence",
       "file": "arborescence.glb",
       "height": 1.2,
       "facing": "south",
-      "plinth": { "width": 0.5, "depth": 0.5, "height": 0.8 },
+      "plinth": { "width": 0.6, "depth": 0.55, "height": 1.0 },
       "project": "Atypical-Consulting/VirtualFileSystem",
-      "cartel": { "author": "Philippe Matray", "title": "Arborescence", "year": 2026, "medium": "Bronze patiné — un arbre de dossiers coulé dans le métal", "credit": "Modèle généré par IA (Meshy)" }
+      "cartel": { "author": "Philippe Matray", "title": "Arborescence", "year": 2026, "medium": "Bronze poli — un arbre coulé dans le métal", "credit": "Modèle généré par IA (Meshy)" }
     }
   ]
 }

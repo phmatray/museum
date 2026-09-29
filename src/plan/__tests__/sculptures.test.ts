@@ -103,10 +103,23 @@ describe('sculpturesDesVitrines', () => {
     }
   })
 
-  it('tient chaque pièce à l’échelle d’un bronze de musée : 0,8 à 1,4 m', () => {
+  it('tient chaque pièce à l’échelle d’un bronze de musée : 0,8 à 1,4 m, 1,6 à 2,2 m socle compris', () => {
     for (const p of pieces) {
       expect(p.height).toBeGreaterThanOrEqual(0.8)
       expect(p.height).toBeLessThanOrEqual(1.4)
+      expect(p.height + p.plinth.height).toBeGreaterThanOrEqual(1.6)
+      expect(p.height + p.plinth.height).toBeLessThanOrEqual(2.2)
     }
+  })
+
+  it('la pose devant son panneau, à 1,5–2 m, et laisse le passage vers les bancs', () => {
+    pieces.forEach((p, rang) => {
+      const recul = p.z - VITRINES[rang].z
+      expect(recul).toBeGreaterThanOrEqual(1.5)
+      expect(recul).toBeLessThanOrEqual(2.3)
+      // Du devant du socle au dossier des bancs Batlló : bien plus que 2 m.
+      const bancs = MUSEE.levels[1].obstacles.filter((o) => o.z > 6 && o.z < 10 && o.x > 16 && o.x < 32)
+      for (const b of bancs) expect(b.z - (p.z + p.plinth.depth / 2)).toBeGreaterThan(2)
+    })
   })
 })

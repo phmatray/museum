@@ -64,9 +64,10 @@ PIECES = {
         "front_yaw": 0.0,
     },
     # Les pièces des vitrines de la salle d'honneur (`plan/sculptures.ts`) : Meshy
-    # texte → 3D, bronze patiné. 15 000 triangles, cartes 1024 (`meshy/REGLES`).
-    "chandelles": {"triangles": 15_000, "textures": 1024, "hauteur": 0.85, "front_yaw": 180.0},
-    "formulaire": {"triangles": 15_000, "textures": 1024, "hauteur": 1.3, "front_yaw": 0.0},
+    # (texte → 3D, ou Nano Banana → image → 3D), bronze poli et patiné. 15 000
+    # triangles, cartes 1024 (`meshy/REGLES`).
+    "chandelles": {"triangles": 15_000, "textures": 1024, "hauteur": 1.0, "front_yaw": 0.0},
+    "formulaire": {"triangles": 15_000, "textures": 1024, "hauteur": 1.1, "front_yaw": 45.0},
     "arborescence": {"triangles": 15_000, "textures": 1024, "hauteur": 1.2, "front_yaw": 0.0},
 }
 
@@ -189,6 +190,8 @@ def construire(identifiant: str, source: Path) -> None:
         export_draco_mesh_compression_enable=True,
         export_draco_mesh_compression_level=6,
         export_yup=True,
+        # Les cartes en JPEG : une source livrée en PNG pesait cinq fois plus.
+        export_image_format="JPEG",
     )
 
     arrive = sum(triangles(o) for o in objets)
