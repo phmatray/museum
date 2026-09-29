@@ -67,6 +67,44 @@
     <p class="chapeau">Chaque étape ajoute une capture prise dans le vrai moteur du site, les plus récentes en haut. Chaque étape vérifiée part en ligne sur <a href="https://phmatray.github.io/museum/">phmatray.github.io/museum</a>.</p>
   </header>
 
+  <section class="etape" aria-labelledby="t-59">
+    <div class="entete"><h2 id="t-59">59. Un écran de chargement</h2><span class="statut fait">en ligne · PR #128 et #129</span></div>
+    <div class="texte">
+      <p>Au démarrage, un écran sombre au nom du musée s’affiche, avec l’horloge de la gare dont les aiguilles tournent au fil du chargement et une barre dorée qui ne recule jamais. Il attend les modèles, les textures, le ciel, la lumière, les tableaux, les polices et la première météo. Ensuite il prépare l’affichage (compilation des shaders, capture des reflets) avant de s’effacer en fondu. Rien n’apparaît plus par à-coups : je l’ai mesuré, aucune requête n’arrive après le fondu, même sur une connexion 3G simulée.</p>
+      <p>Deux retouches : une copie figée de cet écran s’affiche dès la première seconde, au lieu d’une page noire pendant que le code arrive. Et sur un réseau lent, une texture compressée qui arrive lentement n’est plus doublée de sa version JPG ; avant, on téléchargeait les deux. L’écran d’accueil passe aussi en français : « Cliquer pour entrer », « Visite guidée ».</p>
+    </div>
+    <figure><img src="img/59-chargement.jpg" width="1280" height="400" alt="Trois temps : le pré-écran, l’écran de chargement avec l’horloge et la barre, puis l’accueil en français sur la nef complète."><figcaption>Le pré-écran, le chargement, puis l’accueil.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-58">
+    <div class="entete"><h2 id="t-58">58. Les tableaux ne clignotent plus</h2><span class="statut fait">en ligne · PR #130</span></div>
+    <div class="texte">
+      <p>C’était une régression de l’étape 56. Le passage en haute définition des tableaux proches se battait avec le tri qui ne dessine que les salles visibles. Pendant une fraction de seconde, un tableau montrait l’image d’un autre ou disparaissait. Et comme ce passage se faisait sans marge, marcher le long d’un mur le déclenchait en boucle.</p>
+      <p>Désormais, un tableau passe en haute définition à moins de 8 m et n’en revient qu’au-delà de 11 m. L’image basse définition est cachée par le shader, sans toucher aux données que le tri réorganise. Pour le prouver, j’ai enregistré 8 parcours de 30 images à travers les galeries. Avant : 24 images avec un mauvais tableau, 26 trous, 12 allers-retours. Après : zéro partout.</p>
+    </div>
+    <figure><img src="img/58-clignote-avant.jpg" width="1800" height="375" alt="Avant : trois images successives ; au milieu, le tableau vert est remplacé par un autre."><figcaption>Avant : au milieu, le tableau vert devient un autre tableau le temps d’une image.</figcaption></figure>
+    <figure><img src="img/58-clignote-apres.jpg" width="1800" height="375" alt="Après : les trois mêmes images, le tableau reste vert."><figcaption>Après.</figcaption></figure>
+  </section>
+
+  <section class="etape" aria-labelledby="t-57">
+    <div class="entete"><h2 id="t-57">57. Des allées de vrai jardin</h2><span class="statut fait">en ligne · PR #131</span></div>
+    <div class="texte">
+      <p>Tu trouvais que les allées à angle droit faisaient jeu vidéo. D’après tes inspirations, elles sont refaites :</p>
+      <ul>
+        <li>plus aucun angle droit : des courbes douces, des jonctions évasées aux coins arrondis de 2 à 3 m ;</li>
+        <li>une bordure de pierre à dessus arrondi le long de chaque allée, avec une bande de galets sombres entre la bordure et la pelouse ;</li>
+        <li>une hiérarchie de revêtements : grandes dalles sur l’axe d’entrée, gravier fin sur les allées secondaires, dalles irrégulières posées dans le gravier près de l’eau ;</li>
+        <li>des poteaux reliés par une corde côté étang, et des touffes de graminées aux courbes ;</li>
+        <li>l’herbe ne pousse plus au travers des allées.</li>
+      </ul>
+      <p class="note">Encore perfectible : les dalles près de l’eau manquent un peu de texture de pierre, et les coins du parvis devant l’entrée restent droits (ils font partie du socle du bâtiment).</p>
+    </div>
+    <figure><img src="img/57-jonction.jpg" width="1280" height="400" alt="Avant : une jonction en T à angle droit ; après : une courbe bordée de pierre et de galets."><figcaption>La jonction de ta capture, avant et après.</figcaption></figure>
+    <figure><img src="img/57-axe.jpg" width="1280" height="400" alt="Avant : un axe de gravier ; après : un axe dallé entre deux bordures."><figcaption>L’axe d’entrée.</figcaption></figure>
+    <figure><img src="img/57-etang.jpg" width="1280" height="400" alt="Avant : une allée de gravier nue ; après : des dalles dans le gravier, poteaux et corde côté étang."><figcaption>Au bord de l’étang.</figcaption></figure>
+    <figure><img src="img/57-ensemble.jpg" width="1280" height="400" alt="Une courbe de l’allée de ceinture, et le réseau vu d’en haut."><figcaption>L’allée de ceinture, et l’ensemble vu d’en haut.</figcaption></figure>
+  </section>
+
   <section class="etape" aria-labelledby="t-56">
     <div class="entete"><h2 id="t-56">56. Sept bugs dans les galeries — 20 sur 20</h2><span class="statut fait">en ligne · PR #126</span></div>
     <div class="texte">
