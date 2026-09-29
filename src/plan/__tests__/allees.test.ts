@@ -70,6 +70,22 @@ describe('allées', () => {
     }
   })
 
+  it('ne laisse aucun jour de gazon entre le gravier et les dalles, là où l’axe traverse la ceinture', () => {
+    const couvre = (s: { xz: number[]; index: number[] }, x: number, z: number) => {
+      for (let i = 0; i < s.index.length; i += 3) {
+        const [a, b, c] = [0, 1, 2].map((k) => [s.xz[2 * s.index[i + k]], s.xz[2 * s.index[i + k] + 1]])
+        const d = (p: number[], q: number[]) => (q[0] - p[0]) * (z - p[1]) - (q[1] - p[1]) * (x - p[0])
+        const [u, v, w] = [d(a, b), d(b, c), d(c, a)]
+        if ((u >= -1e-9 && v >= -1e-9 && w >= -1e-9) || (u <= 1e-9 && v <= 1e-9 && w <= 1e-9)) return true
+      }
+      return false
+    }
+    // Tout ce que borde la bordure (à 4 cm près, sa face intérieure) est pavé ou gravillonné.
+    for (let x = 18; x <= 30; x += 0.1)
+      for (let z = 46; z <= 56; z += 0.1)
+        if (champ.reseau(x, z) < -0.04) expect(couvre(a.gravier, x, z) || couvre(a.dalles, x, z), `${x.toFixed(1)}, ${z.toFixed(1)}`).toBe(true)
+  })
+
   it('est déterministe', () => {
     expect(amenagerAllees(parc)).toEqual(a)
   })

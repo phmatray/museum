@@ -28,7 +28,8 @@ export function AlleesDuParc({ parc, dallage }: { parc: Parc; dallage: THREE.Mat
   const a = useMemo(() => amenagerAllees(parc), [parc])
   const geos = useMemo(() => ({
     gravier: draper(a.gravier, RELIEF_ALLEE),
-    dalles: draper(a.dalles, RELIEF_ALLEE),
+    // À la cote du parvis (`ParkLayer`), 1 cm au-dessus du gravier qui file dessous.
+    dalles: draper(a.dalles, RELIEF_ALLEE + 0.01),
     bordure: bordure(a.bordures),
     galets: galets(a.bordures),
   }), [a])

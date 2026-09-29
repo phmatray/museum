@@ -36,6 +36,10 @@ const PLAFOND = 6
 export const BORDURE = { dedans: -0.04, dehors: 0.11 }
 /** Le lit de galets, au-delà de la bordure. */
 export const GALETS = 0.32
+/** Le gravier file sous la bordure de tant au-delà de son axe, et sous les dalles de tant en deçà de leur bord. */
+const BORE = 0.03
+const SOUS_DALLES = 0.5
+const SUR_PARVIS = 0.3
 /** Les piquets et leur corde : à moins de tant de l'eau, un tous les tant. */
 const PRES_DE_L_EAU = 4.2
 const PAS_POTEAUX = 2.2
@@ -353,9 +357,15 @@ export function amenagerAllees(parc: Parc): Amenagement {
     const p = noeud(k)
     return distanceRect(parvis, p.x, p.z)
   })
-  // Le gravier hors des dalles et du tablier ; les dalles hors du parvis (déjà pavé) et du tablier.
-  const gravier = remplir({ ...R, v: R.v.map((v, k) => Math.max(v, -D.v[k], -T[k])) })
-  const dalles = remplir({ ...R, v: D.v.map((v, k) => Math.max(v, -P[k], -T[k])) })
+  // Le gravier file SOUS la bordure (`BORE`) et SOUS le bord des dalles (`SOUS_DALLES`),
+  // les dalles posées 1 cm plus haut : deux sols qui se recouvrent au lieu de se
+  // partager un bord. Découpés l'un par l'autre, leurs « marching squares »
+  // tranchaient chacun le coin à sa façon, et le gazon passait entre les deux.
+  const gravier = remplir({ ...R, v: R.v.map((v, k) => Math.max(v - BORE, -D.v[k] - SOUS_DALLES, -T[k], -P[k])) })
+  // Les dalles mordent de `SUR_PARVIS` sur le parvis, à sa cote et de sa pierre : coupées
+  // pile sur son bord (le zéro tombait sur une rangée de nœuds), le congé s'y
+  // tranchait en biais et laissait un coin de gazon.
+  const dalles = remplir({ ...R, v: D.v.map((v, k) => Math.max(v, -P[k] - SUR_PARVIS, -T[k])) })
 
   // La bordure suit tout le bord, sauf le long du pont (le tablier a ses poutres).
   const e = 0.05
