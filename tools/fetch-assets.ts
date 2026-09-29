@@ -264,6 +264,19 @@ const ARCHITECTURE = [
     licence: 'généré pour le dépôt (conditions de Meshy)',
     usage: 'le bébé hérisson du jardin japonais',
   },
+  {
+    id: 'plantes',
+    source:
+      'Jardinières : Meshy (généré par IA), image Nano Banana 2 puis image → 3D (textures PBR) ; prompts : ' +
+      '« A large heavy round museum planter in cast bronze with a dark brown-green antique patina and slightly worn golden highlights on the rim, classical Beaux-Arts style, wide rolled rim, gently tapered bowl on a short round foot… filled to the rim with dark soil » et ' +
+      '« A large tall cylindrical museum planter carved in pale warm limestone, Beaux-Arts station hall style, simple moulded rim and plinth band at the base, subtle vertical fluting… filled to the rim with dark soil ». ' +
+      'Feuillage : cartes découpées à l’alpha dans des planches botaniques Nano Banana 2 (fond retiré), prompts : ' +
+      '« A single real kentia palm frond (Howea forsteriana)… photographed perfectly flat from directly above, orthographic top-down botanical scan… » ; ' +
+      '« A single real fiddle-leaf fig leaf (Ficus lyrata)… » ; « A single real olive tree twig (Olea europaea) with about thirty narrow silvery grey-green lanceolate leaves… ». ' +
+      'Kentia, figuier lyre et olivier modelés, mis à l’échelle et allégés par `tools/blender/build-plantes.py`',
+    licence: 'généré pour le dépôt (conditions de Meshy)',
+    usage: 'kentias de la nef, figuiers lyres de la salle d’honneur, figuiers lyres et oliviers des angles des galeries',
+  },
 ] as const
 
 interface Telechargement {
