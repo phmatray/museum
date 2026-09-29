@@ -138,8 +138,10 @@ const RAYON_FRAG = /* glsl */ `
     vec3 q = milieu - uSoleil * dot(milieu, uSoleil);
     float stries = 0.15 + 1.5 * smoothstep(0.3, 0.8, bruit(q * 0.9 + vec3(0.0, uTemps * 0.03, uTemps * 0.02))) * (0.7 + 0.3 * bruit(q * 4.0 - uTemps * 0.05));
     // La diffusion vers l'avant : face au soleil, l'air s'illumine.
-    float phase = 0.6 + 1.4 * pow(max(dot(v, uSoleil), 0.0), 4.0);
-    float a = uForce * (1.0 - exp(-l * 0.22)) * trajet * stries * phase;
+    float phase = 0.7 + 1.1 * pow(max(dot(v, uSoleil), 0.0), 4.0);
+    // Discrets, comme à Orsay : un voile qu'on devine, jamais un mur de lumière —
+    // même face au soleil, au plus dense des stries, le fond reste lisible.
+    float a = 0.45 * uForce * (1.0 - exp(-l * 0.15)) * trajet * stries * phase;
     gl_FragColor = vec4(uCouleur, a);
   }
 `
@@ -204,7 +206,7 @@ const BRUME_FRAG = /* glsl */ `
     float traverse = max(fin - entree, 0.0);
     // Plus dense en montant vers la verrière, où la lumière s'accroche.
     float hauteur = mix(0.7, 1.3, clamp(vMonde.y / uMax.y, 0.0, 1.0));
-    float voile = (1.0 - exp(-traverse * 0.02 * hauteur)) * mix(0.06, 0.5, uJour) * (0.7 + 0.5 * uForce);
+    float voile = (1.0 - exp(-traverse * 0.02 * hauteur)) * mix(0.06, 0.22, uJour) * (0.7 + 0.4 * uForce);
     vec3 teinte = mix(vec3(0.12, 0.11, 0.1), mix(vec3(0.82, 0.84, 0.86), uCouleur, 0.35 * uForce), uJour);
     gl_FragColor = vec4(teinte, voile);
     #include <colorspace_fragment>
