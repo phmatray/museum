@@ -25,7 +25,13 @@
  * mènent la visite et Bavette. Il n'y a donc qu'une place par forme de salle :
  * dans la bande que ne traverse aucune ligne, parallèle au plus long côté libre.
  *
-  * Le plan reste la seule source : les emprises sont des obstacles du niveau
+ * Une ligne plus longue n'y gagnerait rien : 3 m de chaque mur laissent 9 m au
+ * plus dans une salle de 16, deux toiles par face encore. Là où il faut plus de
+ * mur, une seconde ligne perpendiculaire s'appuie sur la première et forme une
+ * équerre (`faces` raccourcit la face qu'elle touche et marque l'angle rentrant,
+ * où l'on garde `MARGE_ANGLE` de panneau nu) : Trading & finance.
+ *
+ * Le plan reste la seule source : les emprises sont des obstacles du niveau
  * (`musee.ts`) que `step()` arrête et que les chemins contournent (`mobilier.ts`).
  *
  * Pur : ni three ni React.
@@ -69,10 +75,23 @@ export interface Cimaise {
  * - Simulation (16 × 13, portes au nord et à l'est) : d'ouest en est, dans la
  *   bande sud, face nord tournée vers le centre.
  */
-const ligne = (niveau: number, salle: string, x: number, z: number, axe: 'x' | 'z'): Cimaise => ({ niveau, salle, x, z, axe, modules: 7 })
+const ligne = (niveau: number, salle: string, x: number, z: number, axe: 'x' | 'z', modules = 7): Cimaise => ({ niveau, salle, x, z, axe, modules })
+
+/**
+ * Trading & finance, la salle la plus chargée (plus de toiles que ses murs n'en
+ * portent) : une équerre. La ligne du nord passe à huit modules (3,3 m du mur
+ * est), et une branche de quatre modules descend de son bout est vers le sud, le
+ * long du mur est, dans le quart que ne traverse aucune ligne (la porte sud et
+ * le centre sont sur x = 40). Deux faces de plus : six places au lieu de quatre.
+ * La branche s'appuie sur la face sud de la ligne, sa face est dans le
+ * prolongement du bout de la ligne : un angle vif dehors, un angle rentrant dedans.
+ */
+const EQUERRE_E1 = { x: 40.5, z: 4.2, ligne: 8, branche: 4 }
+const BOUT_EST = EQUERRE_E1.x + EQUERRE_E1.ligne / 2
 
 export const CIMAISES: Cimaise[] = [
-  ligne(0, 'r-e1', 40, 4.2, 'x'),
+  ligne(0, 'r-e1', EQUERRE_E1.x, EQUERRE_E1.z, 'x', EQUERRE_E1.ligne),
+  ligne(0, 'r-e1', BOUT_EST - MODULE.epaisseur / 2, EQUERRE_E1.z + MODULE.epaisseur / 2 + EQUERRE_E1.branche / 2, 'z', EQUERRE_E1.branche),
   ligne(0, 'r-o2', 5, 20, 'z'),
   ligne(1, 'e-o2', 5, 20, 'z'),
   ligne(1, 'e-o3', 8, 35.9, 'x'),
@@ -97,18 +116,61 @@ export interface Face {
   a: { x: number; z: number }
   b: { x: number; z: number }
   normal: { x: number; z: number }
+  /** Le bout `a`, le bout `b` finit-il dans un angle rentrant (une autre ligne perpendiculaire) ? */
+  angles: [boolean, boolean]
 }
 
-/** Les deux faces d'une ligne, sur toute sa longueur de panneau. */
-export function faces(c: Cimaise): Face[] {
+/**
+ * Le panneau nu laissé dans un angle rentrant, avant l'écart minimal d'une
+ * toile : le cartel (46 cm, cadre compris 52) y tient avec 18 cm d'air avant
+ * l'autre branche.
+ */
+export const MARGE_ANGLE = 0.7
+
+const EPS = 1e-6
+
+/**
+ * Les deux faces d'une ligne. Une ligne perpendiculaire de la même salle qui
+ * s'appuie sur une face la raccourcit jusqu'à elle ; celle sur laquelle la
+ * ligne s'appuie fait un angle rentrant au bout de la face qui la regarde.
+ */
+export function faces(c: Cimaise, autres: Cimaise[] = cimaisesDe(c.niveau, c.salle)): Face[] {
   const demi = longueur(c) / 2
+  const e = MODULE.epaisseur / 2
+  // Dans le repère de la ligne : `u` le long, `v` en travers.
+  const repere = (x: number, z: number) => (c.axe === 'x' ? [x - c.x, z - c.z] : [z - c.z, x - c.x])
+  const perpendiculaires = autres.filter((d) => d !== c && d.axe !== c.axe).map((d) => {
+    const dl = longueur(d) / 2
+    const [u0, v0] = repere(d.axe === 'x' ? d.x - dl : d.x - e, d.axe === 'x' ? d.z - e : d.z - dl)
+    const [u1, v1] = repere(d.axe === 'x' ? d.x + dl : d.x + e, d.axe === 'x' ? d.z + e : d.z + dl)
+    return { u0: Math.min(u0, u1), u1: Math.max(u0, u1), v0: Math.min(v0, v1), v1: Math.max(v0, v1) }
+  })
   return [1, -1].map((s) => {
-    const off = (s * MODULE.epaisseur) / 2
-    return c.axe === 'x'
-      ? { a: { x: c.x - demi, z: c.z + off }, b: { x: c.x + demi, z: c.z + off }, normal: { x: 0, z: s } }
-      : { a: { x: c.x + off, z: c.z - demi }, b: { x: c.x + off, z: c.z + demi }, normal: { x: s, z: 0 } }
+    const v = s * e
+    let [ua, ub] = [-demi, demi]
+    const angles: [boolean, boolean] = [false, false]
+    for (const d of perpendiculaires) {
+      if (v < d.v0 - EPS || v > d.v1 + EPS) continue
+      if (d.u0 < ub - EPS && d.u1 > ua + EPS) {
+        // Elle s'appuie sur cette face : la face s'arrête contre elle, du côté du bout le plus proche.
+        if (d.u0 + d.u1 > 0) [ub, angles[1]] = [d.u0, true]
+        else [ua, angles[0]] = [d.u1, true]
+      } else if (v > d.v0 + EPS && v < d.v1 - EPS) {
+        // Cette ligne s'appuie sur elle : le bout qui la touche est dans l'angle.
+        if (Math.abs(d.u1 - ua) < 1e-3) angles[0] = true
+        if (Math.abs(d.u0 - ub) < 1e-3) angles[1] = true
+      }
+    }
+    const point = (u: number) => (c.axe === 'x' ? { x: c.x + u, z: c.z + v } : { x: c.x + v, z: c.z + u })
+    return { a: point(ua), b: point(ub), normal: c.axe === 'x' ? { x: 0, z: s } : { x: s, z: 0 }, angles }
   })
 }
+
+/** La longueur d'une face. */
+export const longueurDeFace = (f: Face): number => Math.hypot(f.b.x - f.a.x, f.b.z - f.a.z)
+
+/** Le panneau nu laissé à chaque bout d'une face : `MARGE_BOUT`, ou `MARGE_ANGLE` dans un angle. */
+export const margesDeFace = (f: Face): [number, number] => [f.angles[0] ? MARGE_ANGLE : MARGE_BOUT, f.angles[1] ? MARGE_ANGLE : MARGE_BOUT]
 
 /** La cimaise dont (x, z) est sur une face, s'il y en a une. */
 export const cimaiseSous = (niveau: number, salle: string, x: number, z: number): Cimaise | undefined =>
@@ -118,11 +180,14 @@ export const cimaiseSous = (niveau: number, salle: string, x: number, z: number)
   })
 
 /** Ce qu'une face accroche au pas de `pas` mètres, ses bouts laissés libres. */
-export const placesDeFace = (c: Cimaise, pas: number): number => Math.max(0, Math.floor((longueur(c) - 2 * MARGE_BOUT) / pas))
+export const placesDeFace = (f: Face, pas: number): number => {
+  const [ma, mb] = margesDeFace(f)
+  return Math.max(0, Math.floor((longueurDeFace(f) - ma - mb) / pas + 1e-9))
+}
 
 /** Ce qu'accrochent toutes les faces des cimaises d'une salle, au pas de `pas` mètres. */
 export const placesDesCimaises = (niveau: number, salle: string, pas: number): number =>
-  cimaisesDe(niveau, salle).reduce((s, c) => s + 2 * placesDeFace(c, pas), 0)
+  cimaisesDe(niveau, salle).reduce((s, c) => s + faces(c).reduce((t, f) => t + placesDeFace(f, pas), 0), 0)
 
 /** Les boîtes d'un niveau : le stratifié des modules, et l'aluminium des jonctions, de la plinthe et des pieds. */
 export function boitesDesCimaises(plan: Plan, niveau: number): { panneaux: Box[]; alu: Box[] } {

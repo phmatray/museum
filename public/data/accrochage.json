@@ -409,19 +409,8 @@
       "name": "Music / Nuget",
       "placements": [
         {
-          "key": "stephaneweg/MusicTracker",
-          "x": 35.302,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "Atypical-Consulting/MarkdownInk",
-          "x": 38.304,
+          "key": "Atypical-Consulting/nuke",
+          "x": 36.053,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -432,7 +421,7 @@
         },
         {
           "key": "phmatray/MasterCommander",
-          "x": 41.501,
+          "x": 40,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -442,8 +431,8 @@
           "width": 2.089
         },
         {
-          "key": "Atypical-Consulting/nuke",
-          "x": 44.698,
+          "key": "phmatray/Monads",
+          "x": 43.947,
           "y": 1.55,
           "z": 0.15,
           "normal": [
@@ -475,7 +464,7 @@
           "width": 1.851
         },
         {
-          "key": "phmatray/music-dotnet",
+          "key": "Atypical-Consulting/MarkdownInk",
           "x": 32.15,
           "y": 1.55,
           "z": 2.775,
@@ -483,7 +472,7 @@
             1,
             0
           ],
-          "width": 1.851
+          "width": 1.7
         },
         {
           "key": "phmatray/dotnet-toolbelt",
@@ -497,10 +486,10 @@
           "width": 1.851
         },
         {
-          "key": "Atypical-Consulting/StaticWGen",
+          "key": "phmatray/CentralisedPackageConverter",
           "x": 47.85,
           "y": 1.55,
-          "z": 3.313,
+          "z": 4.317,
           "normal": [
             -1,
             0
@@ -511,7 +500,7 @@
           "key": "phmatray/MusicTheory",
           "x": 47.85,
           "y": 1.55,
-          "z": 6.5,
+          "z": 8.508,
           "normal": [
             -1,
             0
@@ -519,59 +508,70 @@
           "width": 2.049
         },
         {
-          "key": "phmatray/PipeException",
-          "x": 47.85,
-          "y": 1.55,
-          "z": 9.687,
-          "normal": [
-            -1,
-            0
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/Monads",
-          "x": 38.55,
+          "key": "stephaneweg/MusicTracker",
+          "x": 38.757,
           "y": 1.55,
           "z": 4.22,
           "normal": [
             0,
             1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/CCross.ThrowIf",
-          "x": 41.3,
-          "y": 1.55,
-          "z": 4.22,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 2.001
-        },
-        {
-          "key": "phmatray/CentralisedPackageConverter",
-          "x": 38.57,
-          "y": 1.55,
-          "z": 4.18,
-          "normal": [
-            0,
-            -1
           ],
           "width": 1.7
         },
         {
           "key": "Atypical-Consulting/NFT",
-          "x": 41.31,
+          "x": 41.684,
+          "y": 1.55,
+          "z": 4.22,
+          "normal": [
+            0,
+            1
+          ],
+          "width": 1.939
+        },
+        {
+          "key": "phmatray/PipeException",
+          "x": 38.883,
           "y": 1.55,
           "z": 4.18,
           "normal": [
             0,
             -1
           ],
-          "width": 1.939
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/CCross.ThrowIf",
+          "x": 41.966,
+          "y": 1.55,
+          "z": 4.18,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 2.001
+        },
+        {
+          "key": "phmatray/music-dotnet",
+          "x": 44.5,
+          "y": 1.55,
+          "z": 6.22,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.851
+        },
+        {
+          "key": "Atypical-Consulting/StaticWGen",
+          "x": 44.46,
+          "y": 1.55,
+          "z": 6.42,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.7
         }
       ]
     },

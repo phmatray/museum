@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest'
 import { FRAME_BORDER } from '../../builders/artwork.ts'
 import { SALLE_ATELIERS } from '../ateliers.ts'
 import { CARTEL_LARGEUR, cartelPlacements } from '../cartels.ts'
-import { CIMAISES, MODULE, boitesDesCimaises, cimaiseSous, emprise, placesDeFace, type Cimaise } from '../cimaises.ts'
+import { CIMAISES, MARGE_ANGLE, MODULE, boitesDesCimaises, cimaiseSous, emprise, faces, placesDesCimaises, type Cimaise } from '../cimaises.ts'
 import type { Accrochage } from '../hang.ts'
 import { coupe, emprise as empriseMeuble, MOBILIER } from '../mobilier.ts'
 import { MUSEE } from '../musee.ts'
@@ -54,8 +54,10 @@ describe('CIMAISES', () => {
 
   it('laisse au moins 2 m de circulation autour des autres cimaises et des bancs', () => {
     for (const c of CIMAISES) {
+      // Deux lignes perpendiculaires qui se touchent ne font qu'une cimaise en équerre.
+      const equerre = (d: Cimaise) => d.axe !== c.axe && distance(emprise(c), emprise(d)) === 0
       const autres = [
-        ...CIMAISES.filter((d) => d !== c && d.niveau === c.niveau && d.salle === c.salle).map(emprise),
+        ...CIMAISES.filter((d) => d !== c && d.niveau === c.niveau && d.salle === c.salle && !equerre(d)).map(emprise),
         ...MOBILIER.filter((m) => m.surface === `${c.niveau}:${c.salle}`).map(empriseMeuble),
       ]
       for (const o of autres) expect(distance(emprise(c), o), nom(c)).toBeGreaterThanOrEqual(2)
@@ -103,9 +105,9 @@ describe('CIMAISES', () => {
       // La même salle sous un autre nom, que `cimaisesDe` ne trouve pas : ses murs seuls.
       const nu = (x: string | null) => (x === id ? '_' : x)
       const sans = { ...level, openings: level.openings.map((o) => ({ ...o, a: nu(o.a)!, b: nu(o.b) })) }
-      const faces = CIMAISES.filter((c) => c.salle === id).reduce((s, c) => s + 2 * placesDeFace(c, NORMES.pasAccrochage), 0)
-      expect(faces, id).toBeGreaterThanOrEqual(4)
-      expect(capacity(r, level), id).toBe(capacity({ ...r, id: '_' }, sans) + faces)
+      const places = placesDesCimaises(niveau, id, NORMES.pasAccrochage)
+      expect(places, id).toBeGreaterThanOrEqual(4)
+      expect(capacity(r, level), id).toBe(capacity({ ...r, id: '_' }, sans) + places)
     }
   })
 
@@ -114,9 +116,32 @@ describe('CIMAISES', () => {
       // Sauf la galerie des ateliers en coupe : ils occupent la bande où irait la cimaise (ateliers.ts).
       for (const r of level.rooms.filter((r) => r.kind === 'gallery' && !(level.id === 0 && r.id === SALLE_ATELIERS))) {
         const n = accrochage.rooms.find((a) => a.level === level.id && a.id === r.id)!.placements.length
-        const murs = capacity(r, level) - CIMAISES.filter((c) => c.niveau === level.id && c.salle === r.id).reduce((s, c) => s + 2 * placesDeFace(c, NORMES.pasAccrochage), 0)
+        const murs = capacity(r, level) - placesDesCimaises(level.id, r.id, NORMES.pasAccrochage)
         if (n > 0.6 * murs) expect(CIMAISES.some((c) => c.niveau === level.id && c.salle === r.id), `${r.id} : ${n} toiles pour ${murs} places`).toBe(true)
       }
+  })
+
+  it('raccourcit la face contre la branche d’une équerre et marque ses angles rentrants', () => {
+    const e = MODULE.epaisseur / 2
+    const ligne: Cimaise = { niveau: 0, salle: 't', x: 0, z: 0, axe: 'x', modules: 8 }
+    const branche: Cimaise = { niveau: 0, salle: 't', x: 4 - e, z: e + 2, axe: 'z', modules: 4 }
+    const [sud, nord] = faces(ligne, [ligne, branche])
+    expect(sud).toMatchObject({ a: { x: -4, z: e }, normal: { x: 0, z: 1 }, angles: [false, true] })
+    expect(sud.b.x).toBeCloseTo(4 - 2 * e)
+    expect(nord).toMatchObject({ a: { x: -4 }, b: { x: 4 }, angles: [false, false] })
+    const [est, ouest] = faces(branche, [ligne, branche])
+    // La face est prolonge le bout de la ligne : un angle vif, pas d'angle rentrant.
+    expect(est).toMatchObject({ normal: { x: 1, z: 0 }, angles: [false, false] })
+    expect(ouest).toMatchObject({ normal: { x: -1, z: 0 }, angles: [true, false] })
+    expect(ouest.a.z).toBeCloseTo(e)
+    // Seule, chaque ligne a ses deux faces entières.
+    for (const f of [...faces(ligne, [ligne]), ...faces(branche, [branche])]) expect(f.angles).toEqual([false, false])
+  })
+
+  it('donne plus de mur à la salle la plus chargée : une équerre de six places à Trading & finance', () => {
+    expect(CIMAISES.filter((c) => c.niveau === 0 && c.salle === 'r-e1').map((c) => c.axe).sort()).toEqual(['x', 'z'])
+    expect(placesDesCimaises(0, 'r-e1', NORMES.pasAccrochage)).toBe(6)
+    expect(MARGE_ANGLE).toBeGreaterThan(0.5)
   })
 
   it('a des modules de 1 m, des jonctions d’aluminium à chaque joint et des pieds', () => {
@@ -170,10 +195,12 @@ describe('l’accrochage sur les cimaises', () => {
         const uk = le(c, k.x, k.z)
         return [Math.min(u - p.width / 2 - FRAME_BORDER, uk - CARTEL_LARGEUR / 2), Math.max(u + p.width / 2 + FRAME_BORDER, uk + CARTEL_LARGEUR / 2)]
       }).sort((a, b) => a[0] - b[0])
-      const demi = (c.modules * MODULE.largeur) / 2
+      // La face, raccourcie contre l'autre branche d'une équerre : 10 cm de panneau au bout, 15 dans un angle.
+      const f = faces(c).find((f) => (c.axe === 'x' ? f.normal.z : f.normal.x) === s)!
+      const [fa, fb] = [le(c, f.a.x, f.a.z), le(c, f.b.x, f.b.z)]
       for (const [a, b] of etendues) {
-        expect(a, nom(c)).toBeGreaterThanOrEqual(-demi + 0.1)
-        expect(b, nom(c)).toBeLessThanOrEqual(demi - 0.1)
+        expect(a, nom(c)).toBeGreaterThanOrEqual(fa + (f.angles[0] ? 0.15 : 0.1))
+        expect(b, nom(c)).toBeLessThanOrEqual(fb - (f.angles[1] ? 0.15 : 0.1))
       }
       for (let i = 1; i < etendues.length; i++) expect(etendues[i][0], nom(c)).toBeGreaterThan(etendues[i - 1][1])
     }
