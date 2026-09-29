@@ -354,6 +354,15 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
     if (libre(rx, rz, RAYON[espece] * 0.8, 1.5, 0.6)) planter(espece, rx, rz, 1.2 + lisiere() * 0.35)
   }
 
+  // 7. La source du ruisseau : l'eau naissait d'un bout carré dans la pelouse,
+  //    à quatre mètres du mur. Un gros rocher la couvre, deux autres la tiennent :
+  //    le ruisseau sourd d'entre les pierres. En dernier, comme la lisière.
+  const [[sx, sz, sw], [tx, tz]] = TRACE_RUISSEAU
+  const ls = Math.hypot(tx - sx, tz - sz)
+  const [vx, vz] = [(tx - sx) / ls, (tz - sz) / ls]
+  planter('rocher-1', sx - vx * 0.5, sz - vz * 0.5, 0.95, -0.25)
+  for (const s of [-1, 1]) planter(s < 0 ? 'rocher-3' : 'rocher-5', sx + vx * 0.7 - vz * s * (sw / 2 + 0.5), sz + vz * 0.7 + vx * s * (sw / 2 + 0.5), 0.6, -0.15)
+
   // La pelouse s'arrête où commence le sol creusé du jardin (build-jardin.py).
   const sol = JARDIN.zones.reduce((rs, zone) => rs.flatMap((r) => couronne(r, zone)), couronne(terrain, parvis))
   return { terrain, parvis, sol, dalles: couronne(parvis, emprise), allees, plantations }
