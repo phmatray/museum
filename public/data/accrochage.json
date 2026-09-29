@@ -7,7 +7,7 @@
       "name": "Typescript / Blockchain",
       "placements": [
         {
-          "key": "phmatray/museum",
+          "key": "phmatray/Platformer2D_Brackeys",
           "x": 5.705,
           "y": 1.55,
           "z": 0.15,
@@ -51,10 +51,21 @@
           "width": 1.7
         },
         {
+          "key": "phmatray/museum",
+          "x": 0.15,
+          "y": 1.55,
+          "z": 4.383,
+          "normal": [
+            1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
           "key": "Atypical-Consulting/FlowForge",
           "x": 0.15,
           "y": 1.55,
-          "z": 6.5,
+          "z": 8.542,
           "normal": [
             1,
             0
@@ -230,8 +241,19 @@
           "width": 1.851
         },
         {
+          "key": "phmatray/java-teaching-materials",
+          "x": 5.781,
+          "y": 1.55,
+          "z": 39.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
           "key": "Atypical-Consulting/FastComponents",
-          "x": 8,
+          "x": 10.1,
           "y": 1.55,
           "z": 39.85,
           "normal": [
@@ -281,52 +303,8 @@
       "name": "Game / Webassembly",
       "placements": [
         {
-          "key": "phmatray/java-teaching-materials",
-          "x": 19.29,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
           "key": "phmatray/G3.TreasuresMonsters.Java",
-          "x": 22.279,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/webassembly-demo",
-          "x": 25.495,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 2.152
-        },
-        {
-          "key": "phmatray/Platformer2D_Brackeys",
-          "x": 28.71,
-          "y": 1.55,
-          "z": 0.15,
-          "normal": [
-            0,
-            1
-          ],
-          "width": 1.7
-        },
-        {
-          "key": "phmatray/Raga",
-          "x": 19.32,
+          "x": 18.791,
           "y": 1.55,
           "z": 11.85,
           "normal": [
@@ -336,8 +314,41 @@
           "width": 1.7
         },
         {
+          "key": "Atypical-Consulting/YendorSupport",
+          "x": 21.283,
+          "y": 1.55,
+          "z": 11.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/webassembly-demo",
+          "x": 24,
+          "y": 1.55,
+          "z": 11.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 2.152
+        },
+        {
           "key": "phmatray/G3.TreasuresMonsters",
-          "x": 22.34,
+          "x": 26.717,
+          "y": 1.55,
+          "z": 11.85,
+          "normal": [
+            0,
+            -1
+          ],
+          "width": 1.7
+        },
+        {
+          "key": "phmatray/MineSweeper",
+          "x": 29.209,
           "y": 1.55,
           "z": 11.85,
           "normal": [
@@ -348,31 +359,20 @@
         },
         {
           "key": "phmatray/lenia",
-          "x": 25.51,
+          "x": 16.15,
           "y": 1.55,
-          "z": 11.85,
+          "z": 2.775,
           "normal": [
-            0,
-            -1
+            1,
+            0
           ],
           "width": 2.001
-        },
-        {
-          "key": "phmatray/MineSweeper",
-          "x": 28.68,
-          "y": 1.55,
-          "z": 11.85,
-          "normal": [
-            0,
-            -1
-          ],
-          "width": 1.7
         },
         {
           "key": "phmatray/lenia-godot",
           "x": 16.15,
           "y": 1.55,
-          "z": 2.775,
+          "z": 9.225,
           "normal": [
             1,
             0
@@ -381,17 +381,6 @@
         },
         {
           "key": "phmatray/godot-games",
-          "x": 16.15,
-          "y": 1.55,
-          "z": 9.225,
-          "normal": [
-            1,
-            0
-          ],
-          "width": 1.851
-        },
-        {
-          "key": "Atypical-Consulting/Filament",
           "x": 31.85,
           "y": 1.55,
           "z": 2.775,
@@ -399,10 +388,10 @@
             -1,
             0
           ],
-          "width": 1.7
+          "width": 1.851
         },
         {
-          "key": "Atypical-Consulting/YendorSupport",
+          "key": "Atypical-Consulting/Filament",
           "x": 31.85,
           "y": 1.55,
           "z": 9.225,
@@ -625,7 +614,7 @@
           "width": 1.7
         },
         {
-          "key": "phmatray/hexagonal-architecture-acerola",
+          "key": "phmatray/Raga",
           "x": 44.225,
           "y": 1.55,
           "z": 26.85,
@@ -647,10 +636,21 @@
           "width": 1.851
         },
         {
+          "key": "phmatray/hexagonal-architecture-acerola",
+          "x": 47.85,
+          "y": 1.55,
+          "z": 17.749,
+          "normal": [
+            -1,
+            0
+          ],
+          "width": 1.7
+        },
+        {
           "key": "phmatray/SudokuSolver",
           "x": 47.85,
           "y": 1.55,
-          "z": 20,
+          "z": 22.1,
           "normal": [
             -1,
             0

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { deriverAtelier, resoudre, type FichierArbre } from '../atelier'
+import { deriverAtelier, manifestesNpm, resoudre, type FichierArbre } from '../atelier'
 import { disposerCoupe, OBSTACLES_ATELIERS } from '../../plan/ateliers'
 import { MUSEE } from '../../plan/musee'
 
@@ -30,13 +30,30 @@ describe('deriverAtelier', () => {
   const a = deriverAtelier('moi/app', 'abc1234', ARBRE, CSPROJS)!
 
   it('range les bibliothèques par profondeur de dépendance, puis les démos, puis les tests', () => {
-    expect(a.couches.map((c) => [c.nom, c.modules.map((m) => m.nom)])).toEqual([
-      ['Socle', ['Core']],
-      ['Extensions', ['Abstractions']],
-      ['Assemblages', ['Ftp']],
-      ['Démonstrations', ['Demo']],
-      ['Tests', ['UnitTests']],
+    expect(a.couches.map((c) => [c.id, c.modules.map((m) => m.nom)])).toEqual([
+      ['socle', ['Core']],
+      ['extensions', ['Abstractions']],
+      ['assemblages', ['Ftp']],
+      ['demonstrations', ['Demo']],
+      ['tests', ['UnitTests']],
     ])
+  })
+
+  it('nomme chaque couche d’après ce qu’elle contient, son rôle dessous', () => {
+    expect(a.couches.map((c) => c.nom)).toEqual(['Core', 'Abstractions', 'Ftp', 'Démos MudBlazor', 'Tests unitaires'])
+    expect(a.couches[0].role).toBe('Socle · ne dépend d’aucun autre projet')
+  })
+
+  it('nomme une extension par le paquet qu’elle habille, comme FormCraft', () => {
+    const f = deriverAtelier('moi/form', 'x', [fichier('src/FormCraft/F.cs')], new Map([
+      ['src/FormCraft/FormCraft.csproj', csproj('Microsoft.NET.Sdk.Razor', [], '<PackageReference Include="FluentValidation" />')],
+      ['src/FormCraft.ForMudBlazor/FormCraft.ForMudBlazor.csproj', csproj('Microsoft.NET.Sdk.Razor', ['../FormCraft/FormCraft.csproj'], '<PackageReference Include="MudBlazor" />')],
+      ['src/FormCraft.ForFluentUI/FormCraft.ForFluentUI.csproj', csproj('Microsoft.NET.Sdk.Razor', ['../FormCraft/FormCraft.csproj'], '<PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />')],
+      ['samples/Demo/Demo.csproj', csproj('Microsoft.NET.Sdk', ['../../src/FormCraft/FormCraft.csproj'], '<OutputType>Exe</OutputType>')],
+      ['tests/FormCraft.UnitTests/FormCraft.UnitTests.csproj', csproj('Microsoft.NET.Sdk', ['../../src/FormCraft/FormCraft.csproj'])],
+      ['tests/FormCraft.Benchmarks/FormCraft.Benchmarks.csproj', csproj('Microsoft.NET.Sdk', ['../../src/FormCraft/FormCraft.csproj'])],
+    ]))!
+    expect(f.couches.map((c) => c.nom)).toEqual(['FormCraft', 'Fluent UI · MudBlazor', 'Démos console', 'Tests unitaires · Benchmarks'])
   })
 
   it('laisse l’outillage du build hors de l’architecture', () => {
@@ -76,6 +93,49 @@ describe('deriverAtelier', () => {
 
   it('résout un chemin relatif', () => {
     expect(resoudre('tests/B/', '..\\..\\src\\A\\A.csproj')).toBe('src/A/A.csproj')
+  })
+})
+
+describe('un dépôt JavaScript', () => {
+  const pkg = (o: object) => JSON.stringify(o)
+  const RACINE = pkg({ name: 'acme', private: true, workspaces: ['packages/*', 'apps/*'] })
+  const PAQUETS = new Map([
+    ['packages/core/package.json', pkg({ name: '@acme/core' })],
+    ['packages/react/package.json', pkg({ name: '@acme/react', dependencies: { '@acme/core': 'workspace:*' }, peerDependencies: { react: '^19' } })],
+    ['packages/vue/package.json', pkg({ name: '@acme/vue', dependencies: { '@acme/core': '^1.0.0', vue: '^3' } })],
+    ['apps/playground/package.json', pkg({ name: 'playground', private: true, dependencies: { '@acme/react': '*', react: '^19' } })],
+    ['packages/e2e/package.json', pkg({ name: '@acme/e2e', private: true, devDependencies: { '@acme/react': '*' } })],
+  ])
+  const ARBRE_JS: FichierArbre[] = [
+    fichier('package.json'),
+    ...[...PAQUETS.keys()].map((p) => fichier(p)),
+    fichier('packages/core/src/index.ts', 3000),
+    fichier('packages/core/dist/index.js', 9999),
+    fichier('packages/core/node_modules/x/package.json'),
+    fichier('packages/react/src/Bouton.tsx', 800),
+    fichier('packages/vue/src/Bouton.vue', 600),
+    fichier('apps/playground/src/main.tsx', 500),
+    fichier('packages/e2e/src/a.spec.ts', 200),
+  ]
+
+  it('trouve les paquets des espaces de travail, sans node_modules', () => {
+    expect(manifestesNpm(RACINE, null, ARBRE_JS)).toEqual([...PAQUETS.keys()].sort())
+    expect(manifestesNpm(pkg({ name: 'x' }), 'packages:\n  - "libs/**"\n', [fichier('libs/a/b/package.json')])).toEqual(['libs/a/b/package.json'])
+    expect(manifestesNpm(pkg({ name: 'seul' }), null, [fichier('package.json'), fichier('src/a.ts')])).toEqual(['package.json'])
+  })
+
+  it('en tire les mêmes couches et les fils des dépendances internes', () => {
+    const j = deriverAtelier('moi/acme', 'x', ARBRE_JS, PAQUETS)!
+    expect(j.couches.map((c) => [c.id, c.nom, c.modules.map((m) => m.nom)])).toEqual([
+      ['socle', 'core', ['core']],
+      ['extensions', 'React · Vue', ['react', 'vue']],
+      ['demonstrations', 'Démos React', ['playground']],
+      ['tests', 'Tests de bout en bout', ['e2e']],
+    ])
+    expect(j.couches[0].modules[0]).toMatchObject({ role: 'Paquet npm', fichiers: 1, octets: 3000 })
+    expect(j.liens).toContainEqual({ de: '@acme/react', vers: '@acme/core' })
+    expect(j.liens).toContainEqual({ de: 'playground', vers: '@acme/react' })
+    expect(j.liens).toHaveLength(4)
   })
 })
 

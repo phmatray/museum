@@ -18,7 +18,7 @@ npx vitest run -t "gravit une butte"                # one test by name
 npm run build                # tsc -b && vite build  (CI sets BASE_PATH=/museum/)
 
 npm run fetch                # GitHub API -> public/data/catalogue.json (needs GITHUB_TOKEN)
-npm run ateliers             # flagship repos' .csproj graph -> public/data/ateliers.json (committed; kept if the API fails)
+npm run ateliers             # flagship repos' .csproj (or npm workspaces) graph -> public/data/ateliers.json (committed; kept if the API fails)
 npm run captures             # screenshots of project sites/READMEs (needs Chrome)
 npm run media                # catalogue -> painting textures in public/media (gitignored)
 npm run accrocher            # hang the collection -> public/data/accrochage.json (committed)

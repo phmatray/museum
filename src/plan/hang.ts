@@ -19,6 +19,7 @@ import { edges } from './geometry.ts'
 import { capacity, NORMES } from './rules.ts'
 import { INT as DEMI_MUR } from './svg.ts'
 import type { Level, Plan, Room } from './types.ts'
+import { SALLE_ATELIERS } from './ateliers.ts'
 import { SALLE_VITRINES } from './vitrines.ts'
 
 export interface Salle {
@@ -46,12 +47,20 @@ export function exposedRooms(plan: Plan): { room: Room; level: Level }[] {
 const MUR_NORD = 0
 
 /**
- * La capacité d'une salle, moins le mur nord de la salle d'honneur quand il
- * porte les vitrines : ses toiles ne peuvent plus y aller.
+ * Les salles dont le mur nord ne porte pas de toiles quand il y a des vitrines :
+ * la salle d'honneur (les vitrines y sont adossées) et, juste dessous, la
+ * galerie des ateliers en coupe — un mur nu derrière le verre, pour que les
+ * couches se lisent sans tableaux vifs en fond.
+ */
+const MURS_NORD_NUS = new Set([SALLE_VITRINES, SALLE_ATELIERS])
+
+/**
+ * La capacité d'une salle, moins son mur nord quand il reste nu : ses toiles
+ * ne peuvent plus y aller.
  */
 function capaciteAccrochable(room: Room, level: Level, avecVitrines: boolean): number {
   const cap = capacity(room, level)
-  if (!avecVitrines || room.id !== SALLE_VITRINES) return cap
+  if (!avecVitrines || !MURS_NORD_NUS.has(room.id)) return cap
   // Arrondi par défaut : le mur nord n'accroche que ⌊14 / 3⌋ = 4 toiles, et la
   // baie pleine largeur, que `capacity` compte avec ses dégagements, mange déjà
   // plus que le mur sud — il reste les deux toiles de chaque mur latéral.
@@ -84,7 +93,9 @@ export function assignRooms(plan: Plan, artworks: Artwork[], reservees: Readonly
   // La taille des thèmes se règle sur les murs seuls : une cimaise donne du
   // large à la salle chargée qui la reçoit, elle ne rebat pas les thèmes de
   // tout le musée (sinon chaque cimaise déplacerait la charge qu'elle soulage).
-  const maxSize = Math.min(...galeries.map((g) => g.cap - placesDesCimaises(g.level.id, g.room.id, NORMES.pasAccrochage)))
+  // Sur tous les murs, même laissés nus : le mur des ateliers ne rebat pas les
+  // thèmes non plus, son excédent déborde chez les voisines.
+  const maxSize = Math.min(...galeries.map((g) => capacity(g.room, g.level) - placesDesCimaises(g.level.id, g.room.id, NORMES.pasAccrochage)))
   const groupes = clusterArtworks(reste, { minSize: 1, maxSize })
     .map((c) => ({ name: c.name, artworks: c.keys.map((k) => parCle.get(k)!) }))
 
@@ -117,17 +128,21 @@ export function assignRooms(plan: Plan, artworks: Artwork[], reservees: Readonly
   })
 
   // Débordement : l'excédent d'une galerie (ses moins étoilés) passe dans la
-  // galerie de la même aile la plus proche qui a de la place. À défaut, dans la
-  // plus proche tout court : la capacité d'une salle ne se négocie pas.
+  // galerie de la même aile la plus proche qui a de la place. À défaut, une
+  // toile à la fois dans la galerie la moins remplie d'une autre aile du même
+  // niveau, puis d'un autre niveau (l'ordre du plan ne dit rien de leur
+  // distance) : l'excédent se partage au lieu d'en charger une. La capacité
+  // d'une salle ne se négocie pas.
   galeries.forEach((g, i) => {
     const salle = out.get(g.room.id)!
     const proches = galeries
-      .map((h, j) => ({ h, d: Math.abs(i - j) + (aile(h.room.id) === aile(g.room.id) ? 0 : galeries.length) }))
+      .map((h, j) => ({ h, d: aile(h.room.id) === aile(g.room.id) ? Math.abs(i - j) : galeries.length * (h.level === g.level ? 1 : 2) }))
       .filter(({ h }) => h !== g)
-      .sort((a, b) => a.d - b.d)
-      .map(({ h }) => h)
+    const remplie = (h: Exposee) => out.get(h.room.id)!.artworks.length / h.cap
     while (salle.artworks.length > g.cap) {
-      const cible = proches.find((h) => out.get(h.room.id)!.artworks.length < h.cap)
+      const cible = proches
+        .filter(({ h }) => out.get(h.room.id)!.artworks.length < h.cap)
+        .sort((a, b) => a.d - b.d || remplie(a.h) - remplie(b.h))[0]?.h
       // ponytail: collection plus grande que le musée entier — l'excédent reste, hangRoom le laissera tomber.
       if (!cible) break
       const dest = out.get(cible.room.id)!
@@ -230,7 +245,7 @@ export function hangPlan(plan: Plan, salles: Map<string, Salle>, generatedAt: st
       footprint: { x: room.x, z: room.z, width: room.width, depth: room.depth },
       theme: 'classic',
       walls: [
-        ...murs(room, level, hauteur).filter((_, i) => !(avecVitrines && room.id === SALLE_VITRINES && i === MUR_NORD)),
+        ...murs(room, level, hauteur).filter((_, i) => !(avecVitrines && MURS_NORD_NUS.has(room.id) && i === MUR_NORD)),
         ...facesDeCimaises(room, level),
       ],
       topics: [],

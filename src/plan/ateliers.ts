@@ -146,3 +146,13 @@ export function disposerCoupe(atelier: Atelier): Coupe {
   const hauteur = SOCLE_ATELIER.hauteur + PAS_PLAQUES.premiere + (atelier.couches.length - 1) * PAS_PLAQUES.pas + 0.2
   return { plaques, blocs, fils, hauteur }
 }
+
+/**
+ * Le mur d'atelier : derrière les ateliers, le mur nord de la galerie ne porte
+ * pas de toiles (`hang.ts`) — des tableaux vifs brouillaient la lecture des
+ * couches à travers le verre. Il est habillé d'un lambris bleu d'épure, fin
+ * quadrillage de dessinateur, de la plinthe jusqu'à une lisse de laiton ; le
+ * nom de la salle reste au-dessus, sur la peinture. En coordonnées du monde :
+ * la galerie va de x 16 à 32, son mur nord est en z 0 (demi-mur de 15 cm).
+ */
+export const MUR_ATELIER = { x0: 16.15, x1: 31.85, z: 0.156, bas: 0.12, haut: 2.4 }
