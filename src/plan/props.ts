@@ -1,5 +1,5 @@
 /**
- * Les props du plan : une plante dans chaque angle des salles qui exposent.
+ * Les props du plan : une grande plante dans chaque angle des salles qui exposent.
  *
  * ── Les angles, et rien d'autre ──
  *
@@ -9,17 +9,24 @@
  * ouvertures loin des angles — ni un mur d'accrochage — `hangPlan` y laisse un
  * mètre libre. Une plante y donne l'échelle de la salle sans rien gêner.
  *
- * ── Le thème choisit les espèces ──
+ * ── Le thème choisit l'espèce ──
+ *
+ * Une seule espèce par salle, dans ses quatre angles : un musée assortit ses
+ * bacs, il ne fait pas une jardinerie. Figuier lyre ou olivier, chacun dans sa
+ * cuve de pierre (`tools/blender/build-plantes.py`) — 2,40 à 2,90 m, à
+ * l'échelle de salles de 5 m sous plafond. Le kentia, trop large pour un angle,
+ * reste dans la nef (`mobilier.ts`).
  *
  * Le tirage est semé par le nom du thème attribué à la salle (`assignRooms`,
  * écrit dans `accrochage.json`), à défaut par son nom de plan : une salle garde
  * ses plantes tant que son thème ne change pas.
  */
 import { exposedRooms } from './hang.ts'
+import { SALLE_ATELIERS } from './ateliers.ts'
 import { SALLE_VITRINES } from './vitrines.ts'
 import type { Level, Opening, Plan, Rect } from './types.ts'
 
-export type PropId = 'jardiniere' | 'plante-01' | 'plante-02' | 'plante-03' | 'plante-04'
+export type PropId = 'lyrata' | 'olivier'
 
 export interface PropPlacement {
   id: PropId
@@ -33,26 +40,16 @@ export interface PropPlacement {
   scale: number
 }
 
-/** Rayon d'encombrement à l'échelle 1, mesuré sur les GLB (ancien `PROP_METRICS`). */
+/** Rayon d'encombrement à l'échelle 1, feuillage compris, mesuré sur `plantes.glb`. */
 export const PROP_RAYON: Record<PropId, number> = {
-  jardiniere: 0.495,
-  'plante-01': 0.807,
-  'plante-02': 0.44,
-  'plante-03': 0.578,
-  'plante-04': 0.131,
+  lyrata: 0.7,
+  olivier: 0.84,
 }
 
-/** Les deux planches botaniques s'arrêtent à la motte : elles vont en jardinière. */
-const ESPECES: { id: PropId; autoportante: boolean; echelle: [number, number] }[] = [
-  { id: 'plante-01', autoportante: false, echelle: [1, 1.2] },
-  { id: 'plante-02', autoportante: false, echelle: [1.4, 1.7] },
-  { id: 'plante-03', autoportante: true, echelle: [1, 1.2] },
-  { id: 'plante-04', autoportante: false, echelle: [2, 2.4] },
+const ESPECES: { id: PropId; echelle: [number, number] }[] = [
+  { id: 'lyrata', echelle: [0.85, 1] },
+  { id: 'olivier', echelle: [0.85, 1] },
 ]
-
-const HAUTEUR_JARDINIERE = 0.5
-/** Sous la margelle : le disque de terre du modèle ne flotte pas au ras du bord. */
-const ENFONCEMENT = 0.06
 /** Du centre de la plante à l'axe des deux murs de l'angle. */
 const RECUL_ANGLE = 1.2
 
@@ -89,27 +86,18 @@ export function propPlacements(plan: Plan, rooms: readonly { id: string; name: s
   return exposedRooms(plan).flatMap(({ room, level }) => {
     const theme = rooms.find((r) => r.id === room.id)?.name ?? room.name
     const alea = generateur(theme)
+    const e = ESPECES[Math.floor(alea() * ESPECES.length)]
     const [x0, x1] = [room.x + RECUL_ANGLE, room.x + room.width - RECUL_ANGLE]
     const [z0, z1] = [room.z + RECUL_ANGLE, room.z + room.depth - RECUL_ANGLE]
     const passages = level.openings.map((o) => passage(level, o))
     return [[x0, z0], [x1, z0], [x1, z1], [x0, z1]].flatMap(([x, z]): PropPlacement[] => {
-      const e = ESPECES[Math.floor(alea() * ESPECES.length)]
       const scale = e.echelle[0] + alea() * (e.echelle[1] - e.echelle[0])
-      // Les angles du mur des vitrines : les panneaux y vont presque jusqu'aux murs.
-      if (room.id === SALLE_VITRINES && z === z0) return []
-      const base = { roomId: room.id, level: level.id, x, z }
+      const rotation = alea() * Math.PI * 2
+      // Les angles du mur des vitrines, et ceux des ateliers en coupe : leurs vitrines y vont presque jusqu'aux murs.
+      if ((room.id === SALLE_VITRINES || room.id === SALLE_ATELIERS) && z === z0) return []
       // Un angle trop près d'une porte reste vide : une salle un peu nue plutôt qu'un passage encombré.
-      const rayon = Math.max(PROP_RAYON[e.id] * scale, e.autoportante ? 0 : PROP_RAYON.jardiniere)
-      if (passages.some((r) => touche(r, x, z, rayon))) return []
-      const plante = {
-        ...base,
-        id: e.id,
-        y: level.elevation + (e.autoportante ? 0 : HAUTEUR_JARDINIERE - ENFONCEMENT),
-        rotation: alea() * Math.PI * 2,
-        scale,
-      }
-      if (e.autoportante) return [plante]
-      return [{ ...base, id: 'jardiniere', y: level.elevation, rotation: 0, scale: 1 }, plante]
+      if (passages.some((r) => touche(r, x, z, PROP_RAYON[e.id] * scale))) return []
+      return [{ id: e.id, roomId: room.id, level: level.id, x, y: level.elevation, z, rotation, scale }]
     })
   })
 }

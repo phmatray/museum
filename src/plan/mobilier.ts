@@ -18,6 +18,12 @@
  * livres près de l'accueil, des extincteurs au mur ; dehors, un abri à vélos,
  * des caisses de Versailles, le panneau des horaires et une fontaine.
  *
+ * Et les grandes plantes (`tools/blender/build-plantes.py`) : deux kentias en
+ * vasque de bronze au pied du grand escalier — le palmier des halls 1900 —, et
+ * deux figuiers lyres qui encadrent la baie de la salle d'honneur. Jamais
+ * devant une toile ni dans une allée ; les oliviers et d'autres figuiers vont
+ * dans les angles des galeries (`props.ts`).
+ *
  * ── Hors des passages ──
  *
  * La visite (`tour.ts`) et Bavette (`promenade.ts`) marchent en ligne droite
@@ -38,6 +44,7 @@ export type PieceMobilier =
   | 'Banquette' | 'BancNef' | 'Accueil' | 'BancBatllo' | 'BancPierre' | 'BancJardin'
   | 'ChaiseGardien' | 'Presentoir' | 'Extincteur' | 'PanneauHoraires' | 'Fontaine' | 'Versailles'
   | 'Lampadaire'
+  | 'Kentia' | 'Lyrata'
   // Les ensembles : une seule emprise pour la marche, plusieurs modèles posés (`garniture`).
   | 'AbriVelos'
   | 'Cordon'
@@ -58,6 +65,9 @@ export const DIMENSIONS: Record<PieceMobilier, { largeur: number; profondeur: nu
   Versailles: { largeur: 0.83, profondeur: 0.83 },
   // Le pied du lampadaire, 21 cm ; la crosse passe au-dessus des têtes (`build-lampadaire.py`).
   Lampadaire: { largeur: 0.25, profondeur: 0.25 },
+  // Les plantes : l'emprise de leur bac ; le feuillage passe au-dessus des têtes, ou contre le mur.
+  Kentia: { largeur: 0.87, profondeur: 0.87 },
+  Lyrata: { largeur: 0.65, profondeur: 0.65 },
   // Sept potelets de 32 cm de pied, à 2,20 m d'axe en axe.
   Cordon: { largeur: 6 * 2.2 + 0.32, profondeur: 0.32 },
   // Le toit de l'abri (4,60 × 2,30 m) couvre ses poteaux, ses cinq arceaux et ses vélos.
@@ -198,6 +208,15 @@ export const MOBILIER: Meuble[] = [
   auMur('0:hall', 20.2, 40 - PIERRE - 0.07, NORD),
   auMur('0:hall', 32 - PIERRE - 0.07, 21.4, -EST),
   auMur('1:honneur', 32 - 0.15 - 0.07, 9.6, -EST),
+  // Les kentias encadrent le pied du grand escalier (volée centrale x 21–27, départ z = 20),
+  // à un mètre et demi de la première marche, entre l'allée centrale (22,4–25,6) et les
+  // passages qui longent les volées (x = 20 et 28) : les palmes passent au-dessus des têtes.
+  // Un bac carré se tourne d'un quart de tour au plus : de biais, son emprise déborderait.
+  dans('Kentia', '0:hall', 21.25, 21.8, 0),
+  dans('Kentia', '0:hall', 26.75, 21.8, EST),
+  // Les figuiers lyres dans les angles sud de la salle d'honneur, de part et d'autre de la baie sur la nef.
+  dans('Lyrata', '1:honneur', 17.25, 10.6, 0),
+  dans('Lyrata', '1:honneur', 30.75, 10.6, NORD),
   // Dehors, sur le parvis : l'abri à vélos dos à l'aile est, entre sa bannière et
   // l'angle du musée, à 25 cm de la brique ; 2 m de dalles devant, pour sortir un vélo…
   dans('AbriVelos', PARC, 44.8, 40.45 + 0.25 + 2.3 / 2, SUD),

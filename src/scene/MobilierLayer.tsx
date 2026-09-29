@@ -1,7 +1,9 @@
 /**
- * Le mobilier (`plan/mobilier.ts`, modèles `mobilier.glb`, `accessoires.glb`, `lampadaire.glb`) :
- * banquettes, bancs, banque d'accueil ; cordon, chaise, extincteurs, abri à vélos,
- * caisses de Versailles, panneau et fontaine ; les lampadaires du parc.
+ * Le mobilier (`plan/mobilier.ts`, modèles `mobilier.glb`, `accessoires.glb`,
+ * `lampadaire.glb` et `plantes.glb`) : banquettes, bancs, banque d'accueil ;
+ * cordon, chaise, extincteurs, abri à vélos, caisses de Versailles, panneau et
+ * fontaine ; les lampadaires du parc, les kentias de la nef et les figuiers lyres
+ * de la salle d'honneur.
  *
  * Une pièce est faite de plusieurs maillages — un par matière : chêne,
  * velours, laiton… Chacun devient un lot d'instances, une par meuble posé :
@@ -11,11 +13,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 import { MOBILIER, garniture, type Garniture, type PieceMobilier } from '../plan/mobilier'
 import { LAMPES } from './lueurs'
+import { chargerGlb } from './propAssets'
 
 /** Les nœuds des fichiers : les pièces simples, et les modèles des ensembles (`garniture`). */
 type Modele = Exclude<PieceMobilier, 'Cordon'> | Garniture['piece']
@@ -23,6 +24,8 @@ const FICHIERS: [string, Modele[]][] = [
   ['mobilier', ['Banquette', 'BancNef', 'Accueil', 'BancBatllo', 'BancPierre', 'BancJardin']],
   ['accessoires', ['ChaiseGardien', 'Presentoir', 'Extincteur', 'PanneauHoraires', 'Fontaine', 'Versailles', 'Potelet', 'AbriVelos']],
   ['lampadaire', ['Lampadaire']],
+  // Le même fichier que les plantes des angles (`propAssets.ts`) : chargé une fois.
+  ['plantes', ['Kentia', 'Lyrata']],
 ]
 const PIECES = FICHIERS.flatMap(([, p]) => p)
 
@@ -56,15 +59,11 @@ let modele: Promise<Map<Modele, Maillage[]> | null> | null = null
 function chargerModele(): Promise<Map<Modele, Maillage[]> | null> {
   const base = import.meta.env.BASE_URL
   modele ??= (async () => {
-    const gltf = new GLTFLoader()
-    const draco = new DRACOLoader()
-    draco.setDecoderPath(`${base}draco/`)
-    gltf.setDRACOLoader(draco)
     const pieces = new Map<Modele, Maillage[]>()
     // Un fichier qui manque n'emporte pas l'autre : les bancs sans les accessoires, plutôt que rien.
     await Promise.all(FICHIERS.map(async ([fichier, noms]) => {
       try {
-        const { scene } = await gltf.loadAsync(`${base}assets/architecture/${fichier}.glb`)
+        const { scene } = await chargerGlb(`${base}assets/architecture/${fichier}.glb`)
         scene.updateMatrixWorld(true)
         for (const nom of noms) {
           const racine = scene.getObjectByName(nom)
@@ -81,7 +80,6 @@ function chargerModele(): Promise<Map<Modele, Maillage[]> | null> {
         console.error(`${fichier} indisponible`, erreur)
       }
     }))
-    draco.dispose()
     return pieces.size > 0 ? pieces : null
   })()
   return modele
