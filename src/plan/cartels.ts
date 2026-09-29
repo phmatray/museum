@@ -9,6 +9,7 @@
  * mètre dans chaque angle : un cartel de 30 cm à côté du cadre tient toujours.
  */
 import type { Artwork } from '../domain/types.ts'
+import { cimaiseSous } from './cimaises.ts'
 import type { Accrochage } from './hang.ts'
 
 export const CARTEL_LARGEUR = 0.3
@@ -27,6 +28,12 @@ export interface CartelPlacement {
   z: number
   /** Lacet qui tourne la face +Z du cartel selon la normale du mur. */
   rotation: number
+  /**
+   * Sur le stratifié blanc d'une cimaise (`cimaises.ts`) : une plaque crème y
+   * disparaissait, il n'en restait qu'une arête qui semblait flotter. Le cartel
+   * y est sombre, en lettres claires.
+   */
+  surPanneau: boolean
 }
 
 export function cartelPlacements(accrochage: Accrochage): CartelPlacement[] {
@@ -41,6 +48,7 @@ export function cartelPlacements(accrochage: Accrochage): CartelPlacement[] {
         y: p.y - SOUS_AXE,
         z: p.z - nx * d + nz * DECOLLEMENT,
         rotation: Math.atan2(nx, nz),
+        surPanneau: cimaiseSous(r.level, r.id, p.x, p.z) !== undefined,
       }
     }))
 }

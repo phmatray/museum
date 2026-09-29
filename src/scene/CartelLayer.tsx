@@ -14,7 +14,7 @@ import { useAccrochage } from '../hooks/useAccrochage'
 import { useCatalogue } from '../hooks/useCatalogue'
 import { cartelPlacements, cartelTexte, type CartelPlacement } from '../plan/cartels'
 import { Cartel } from './Cartel'
-import { PLAQUE } from './cartelStyle'
+import { PLAQUE, PLAQUE_PANNEAU } from './cartelStyle'
 import { CARTEL_LARGEUR } from '../plan/cartels'
 
 const PORTEE = 6
@@ -64,7 +64,8 @@ export function CartelLayer() {
 
 function Plaques({ placements }: { placements: CartelPlacement[] }) {
   const ref = useRef<THREE.InstancedMesh>(null)
-  const materiau = useMemo(() => new THREE.MeshStandardMaterial({ color: PLAQUE.couleur, roughness: 0.9 }), [])
+  // Blanc : la teinte de chaque plaque passe par la couleur d'instance.
+  const materiau = useMemo(() => new THREE.MeshStandardMaterial({ roughness: 0.9 }), [])
   const geometrie = useMemo(() => new THREE.BoxGeometry(CARTEL_LARGEUR, PLAQUE.hauteur, PLAQUE.epaisseur), [])
   useEffect(() => () => {
     materiau.dispose()
@@ -75,13 +76,16 @@ function Plaques({ placements }: { placements: CartelPlacement[] }) {
     if (mesh === null) return
     const [m, q] = [new THREE.Matrix4(), new THREE.Quaternion()]
     const [haut, un] = [new THREE.Vector3(0, 1, 0), new THREE.Vector3(1, 1, 1)]
+    const [claire, sombre] = [new THREE.Color(PLAQUE.couleur), new THREE.Color(PLAQUE_PANNEAU.couleur)]
     placements.forEach((p, i) => {
       q.setFromAxisAngle(haut, p.rotation)
       // Le centre de la plaque : décollée d'une demi-épaisseur, comme dans `Cartel`.
       const avant = new THREE.Vector3(0, 0, PLAQUE.epaisseur / 2).applyQuaternion(q)
       mesh.setMatrixAt(i, m.compose(new THREE.Vector3(p.x, p.y, p.z).add(avant), q, un))
+      mesh.setColorAt(i, p.surPanneau ? sombre : claire)
     })
     mesh.instanceMatrix.needsUpdate = true
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
     mesh.computeBoundingSphere()
   }, [placements])
   return <instancedMesh key={placements.length} ref={ref} args={[geometrie, undefined, placements.length]} material={materiau} />
