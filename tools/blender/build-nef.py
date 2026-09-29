@@ -258,7 +258,9 @@ def attique(pierre, fonte, verre):
         for z in ARCS:
             x0, x1 = sorted((xm, xm + sens * 0.22))
             g.boite(x0, x1, -(z + ARC_L / 2), -(z - ARC_L / 2), MURS, S, pierre)
-        for h0, h1, saillie in ((MURS - 0.25, MURS, 0.18), (MURS, MURS + 0.12, 0.32), (S - 0.2, S, 0.3)):
+        # Saillies comptées depuis l'axe du mur (xm) : le parement du hall arrive à
+        # 0,15 + 0,03 = 0,18 m ; une corniche à 0,18 tombait dans son plan (scintillement).
+        for h0, h1, saillie in ((MURS - 0.25, MURS, 0.24), (MURS, MURS + 0.12, 0.34), (S - 0.2, S, 0.3)):
             x0, x1 = sorted((xm - sens * ep, xm + sens * saillie))
             g.boite(x0, x1, -Z1, -Z0, h0, h1, pierre)
     return g.objet("Nef_Attique", [pierre, fonte], lisse=math.radians(20)), vit.objet("Nef_Baies", [verre])
