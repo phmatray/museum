@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { COTE, PAS, dateDuJour, indexDuJour, moisDeLaMosaique, panneau, tesselles, texteDePlaque, type Contributions, niveauLog } from '../mosaique'
+import { COTE, PAS, dateDuJour, indexDuJour, moisDeLaMosaique, panneau, tesselles, texteDePlaque, type Contributions, niveauLog, semainesDuLundi } from '../mosaique'
 import { bandesDuSol } from '../parement'
 import { MUSEE } from '../musee'
 
@@ -35,18 +35,20 @@ describe('mosaïque des contributions', () => {
     }
   })
 
-  it('va de la plus vieille semaine, au pied, à la plus récente, vers l’escalier ; du dimanche à l’ouest au samedi à l’est', () => {
+  it('va de la plus vieille semaine, au pied, à la plus récente, vers l’escalier ; du lundi à l’ouest au dimanche à l’est', () => {
     const [premier, dernier] = [t[0], t[t.length - 1]]
     expect(premier.date < dernier.date).toBe(true)
     expect(premier.z).toBeGreaterThan(dernier.z)
-    const semaine = tesselles([REEL.weeks[1]])
+    const semaine = tesselles([semainesDuLundi(REEL.weeks)[1]])
+    expect(new Date(`${semaine[0].date}T00:00:00Z`).getUTCDay()).toBe(1)
+    expect(new Set(semaine.map((j) => j.z)).size).toBe(1)
     expect(semaine.map((j) => j.x)).toEqual([...semaine.map((j) => j.x)].sort((a, b) => a - b))
   })
 
   it('cale une semaine partielle sur ses vrais jours', () => {
     const [mercredi] = tesselles([[{ date: '2026-09-30', count: 1, level: 1 }]])
     const [dimanche] = tesselles([[{ date: '2026-09-27', count: 1, level: 1 }]])
-    expect(mercredi.x - dimanche.x).toBeCloseTo(3 * PAS)
+    expect(dimanche.x - mercredi.x).toBeCloseTo(4 * PAS)
   })
 
   it('écrit l’initiale de chaque mois en face de la semaine de son 1er', () => {

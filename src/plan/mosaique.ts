@@ -4,9 +4,10 @@
  *
  * Le graphe se lit d'ordinaire de gauche à droite ; ici on le parcourt en
  * marchant. La plus vieille semaine est au pied, côté entrée ; la plus récente
- * au bout, vers l'escalier. Les jours vont du dimanche (ouest) au samedi (est) :
- * c'est le graphe de GitHub tourné d'un quart de tour, tel qu'on le verrait en
- * le posant à plat devant soi. Pur : des semaines entrent, des positions sortent.
+ * au bout, vers l'escalier. Les jours vont du lundi (ouest) au dimanche (est),
+ * comme en Belgique : GitHub commence ses semaines le dimanche, on les regroupe
+ * (`semainesDuLundi`). C'est son graphe tourné d'un quart de tour, tel qu'on le
+ * verrait en le posant à plat devant soi. Pur : des semaines entrent, des positions sortent.
  */
 
 export interface JourDeContribution {
@@ -37,9 +38,24 @@ const SUD = 35.25
 /** La bande de granit autour des tesselles : les initiales des mois à l'ouest, les jours au sud, l'année au nord. */
 const MARGE = 0.4
 
-/** Le jour de la semaine d'une date « AAAA-MM-JJ », 0 pour dimanche, sans fuseau. */
+/** Le jour de la semaine d'une date « AAAA-MM-JJ », 0 pour lundi, 6 pour dimanche, sans fuseau. */
 function jourDeSemaine(date: string): number {
-  return new Date(`${date}T00:00:00Z`).getUTCDay()
+  return (new Date(`${date}T00:00:00Z`).getUTCDay() + 6) % 7
+}
+
+/** Le rang de la semaine (du lundi) d'une date : le 1er janvier 1970 était un jeudi. */
+const semaineDe = (date: string) => Math.floor((Date.parse(`${date}T00:00:00Z`) / 86_400_000 + 3) / 7)
+
+/** Les jours, dans l'ordre, regroupés en semaines du lundi au dimanche. */
+export function semainesDuLundi(weeks: JourDeContribution[][]): JourDeContribution[][] {
+  const out: JourDeContribution[][] = []
+  let courante = NaN
+  for (const j of weeks.flat()) {
+    if (semaineDe(j.date) !== courante) out.push([])
+    courante = semaineDe(j.date)
+    out[out.length - 1].push(j)
+  }
+  return out
 }
 
 /**
@@ -56,7 +72,7 @@ export function niveauLog(count: number, max: number): number {
 /** Une tesselle par jour du calendrier, semaine après semaine en remontant l'allée. */
 export function tesselles(weeks: JourDeContribution[][]): Tesselle[] {
   const max = Math.max(0, ...weeks.flat().map((j) => j.count))
-  return weeks.flatMap((semaine, w) =>
+  return semainesDuLundi(weeks).flatMap((semaine, w) =>
     semaine.map((j) => ({ ...j, level: niveauLog(j.count, max), x: AXE + (jourDeSemaine(j.date) - 3) * PAS, z: SUD - (w + 0.5) * PAS })),
   )
 }
@@ -75,7 +91,7 @@ const INITIALES = 'JFMAMJJASOND'
  */
 export function moisDeLaMosaique(weeks: JourDeContribution[][]): { lettre: string; z: number }[] {
   const out: { lettre: string; z: number }[] = []
-  weeks.forEach((semaine, w) => {
+  semainesDuLundi(weeks).forEach((semaine, w) => {
     const premier = semaine.find((j) => j.date.endsWith('-01'))
     if (premier === undefined || (w === 0 && semaine[0] !== premier)) return
     out.push({ lettre: INITIALES[Number(premier.date.slice(5, 7)) - 1], z: SUD - (w + 0.5) * PAS })

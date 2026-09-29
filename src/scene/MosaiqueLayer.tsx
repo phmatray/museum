@@ -13,10 +13,11 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
 import { canevasEnMetres } from './canevas'
-import { COTE, dateDuJour, indexDuJour, moisDeLaMosaique, panneau, tesselles, texteDePlaque, type Contributions } from '../plan/mosaique'
+import { COTE, dateDuJour, semainesDuLundi, indexDuJour, moisDeLaMosaique, panneau, tesselles, texteDePlaque, type Contributions } from '../plan/mosaique'
 
 /** Du marbre crème au bronze : niveau 0 à 4. */
-const TEINTES = ['#ece5d4', '#e8c56c', '#dba43a', '#c2821d', '#9c5f0e']
+// Un jour sans activité est une pierre grise, nettement à part de l'or le plus pâle.
+const TEINTES = ['#8a847b', '#e8c56c', '#dba43a', '#c2821d', '#9c5f0e']
 const LAITON = '#c9a04e'
 const GRANIT = '#2f2c29'
 const PPM = 200 // pixels par mètre du panneau
@@ -49,7 +50,7 @@ export function MosaiqueLayer() {
   const mosaique = useMemo(() => {
     if (donnees === null || donnees.weeks.length === 0) return null
     const t = tesselles(donnees.weeks)
-    const p = panneau(donnees.weeks.length)
+    const p = panneau(semainesDuLundi(donnees.weeks).length)
     const [l, h] = [p.x1 - p.x0, p.z1 - p.z0]
     const tx0 = Math.min(...t.map((j) => j.x)) - COTE / 2
     const tx1 = Math.max(...t.map((j) => j.x)) + COTE / 2
@@ -72,7 +73,7 @@ export function MosaiqueLayer() {
       ctx.font = '600 0.17px Georgia, "Times New Roman", serif'
       for (const m of mois) ctx.fillText(m.lettre, (tx0 - p.x0 - 0.05) / 2 + 0.02, m.z - p.z0)
       ctx.font = '600 0.12px Georgia, "Times New Roman", serif'
-      ;[...'DLMMJVS'].forEach((j, d) => ctx.fillText(j, tx0 - p.x0 + (d + 0.5) * 0.25, tz1 - p.z0 + 0.2))
+      ;[...'LMMJVSD'].forEach((j, d) => ctx.fillText(j, tx0 - p.x0 + (d + 0.5) * 0.25, tz1 - p.z0 + 0.2))
       ctx.font = '600 0.16px Georgia, "Times New Roman", serif'
       ctx.fillText(annees, l / 2, (tz0 - p.z0) / 2 + 0.03)
     }
