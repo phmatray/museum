@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import { MUSEE } from '../../plan/musee'
 import { surfaceAt } from '../../plan/rules'
-import { FONDU_REFLET, cadrerOmbre, melangeDeReflets, regrouperEmprises, sondeDeReflet } from '../ombres'
+import { FONDU_REFLET, RAFRAICHIR, cadrerOmbre, ecartDeMatrice, melangeDeReflets, redessinerOmbre, regrouperEmprises, sondeDeReflet } from '../ombres'
 
 describe('sondeDeReflet', () => {
   it('lit la sonde sur la surface du marcheur', () => {
@@ -77,5 +77,46 @@ describe('regrouperEmprises', () => {
     ])
     expect(g).toHaveLength(3)
     expect(g).toContainEqual({ minX: 0, maxX: 2.1, minY: 0, minZ: 0, maxZ: 0.6 })
+  })
+})
+
+describe('redessinerOmbre', () => {
+  const image = 1 / 120
+  it('ne redessine rien quand rien ne change', () => {
+    expect(redessinerOmbre(false, Infinity, false, 1)).toEqual({ dessiner: false, enAttente: false })
+    // Sauf, par précaution, de loin en loin.
+    expect(redessinerOmbre(false, Infinity, false, RAFRAICHIR.garde).dessiner).toBe(true)
+  })
+  it('redessine quand la boîte glisse ou quand un porteur bouge tout près', () => {
+    expect(redessinerOmbre(true, Infinity, false, 0).dessiner).toBe(true)
+    expect(redessinerOmbre(false, RAFRAICHIR.pres - 1, false, image).dessiner).toBe(true)
+  })
+  it('un mouvement lointain attend la cadence, sans être oublié', () => {
+    const r = redessinerOmbre(false, RAFRAICHIR.pres + 10, false, image)
+    expect(r).toEqual({ dessiner: false, enAttente: true })
+    // Il s'est arrêté depuis, mais la carte le montre encore à l'ancienne place.
+    expect(redessinerOmbre(false, Infinity, r.enAttente, 2 * image).dessiner).toBe(false)
+    expect(redessinerOmbre(false, Infinity, r.enAttente, 1 / RAFRAICHIR.cadence)).toEqual({ dessiner: true, enAttente: false })
+  })
+  it('hors de la boîte, un mouvement ne compte pas', () => {
+    expect(redessinerOmbre(false, RAFRAICHIR.loin + 1, false, 1).dessiner).toBe(false)
+  })
+})
+
+describe('ecartDeMatrice', () => {
+  const identite = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]
+  it('mesure une translation', () => {
+    const m = [...identite]
+    m[12] = 0.03
+    m[14] = 0.04
+    expect(ecartDeMatrice(identite, 0, m, 1)).toBeCloseTo(0.05)
+  })
+  it('majore le chemin du bord d’un objet qui tourne', () => {
+    const a = 0.01
+    const m = [Math.cos(a), 0, -Math.sin(a), 0, 0, 1, 0, 0, Math.sin(a), 0, Math.cos(a), 0, 0, 0, 0, 1]
+    const e = ecartDeMatrice([0, 0, ...identite], 2, m, 2)
+    expect(e).toBeGreaterThanOrEqual(2 * a)
+    expect(e).toBeLessThan(10 * a)
+    expect(ecartDeMatrice(identite, 0, identite, 5)).toBe(0)
   })
 })

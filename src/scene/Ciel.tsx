@@ -13,12 +13,13 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 
-import { cadrerOmbre } from '../domain/ombres'
+import { cadrerOmbre, redessinerOmbre } from '../domain/ombres'
 import { directionDuSoleil } from '../domain/soleil'
 import { useGameStore } from '../stores/gameStore'
 import { INTEMPERIES } from './intemperies'
 import { AMBIANCE, CIEL, SOLEIL } from './lighting'
 import { LUEURS } from './lueurs'
+import { VeilleDesPorteurs } from './porteurs'
 
 const JOUR = 'assets/ciel/kloofendal_48d_partly_cloudy_puresky.jpg'
 const NUIT = 'assets/ciel/rogland_clear_night.jpg'
@@ -59,6 +60,31 @@ const FRAGMENTS = /* glsl */ `
   }
 `
 
+/** À combien de degrés de l'horizon on va chercher la photo de l'autre ciel (≈ 1 h avant le crépuscule). */
+const VEILLE = 12
+
+function useCielCharge(materiau: THREE.ShaderMaterial, uniforme: 'jourTex' | 'nuitTex', fichier: string, utile: boolean) {
+  const voulu = useRef(false)
+  useEffect(() => {
+    if (!utile || voulu.current) return
+    voulu.current = true
+    new THREE.TextureLoader()
+      .loadAsync(`${import.meta.env.BASE_URL}${fichier}`)
+      .then((t) => {
+        t.colorSpace = THREE.SRGBColorSpace
+        // Sans mipmaps : au raccord de la projection (atan saute de −π à π), le
+        // GPU prenait le plus petit niveau de mipmap sur une colonne de pixels,
+        // d'où une ligne pointillée verticale dans le ciel.
+        t.generateMipmaps = false
+        t.minFilter = THREE.LinearFilter
+        materiau.uniforms[uniforme].value = t
+        materiau.uniforms.charge.value = 1
+      })
+      .catch((erreur: unknown) => console.warn('ciel indisponible, fond uni', erreur))
+  }, [materiau, uniforme, fichier, utile])
+  useEffect(() => () => (materiau.uniforms[uniforme].value as THREE.Texture | null)?.dispose(), [materiau, uniforme])
+}
+
 export function Ciel() {
   const scene = useThree((s) => s.scene)
   const { jour, crepuscule } = useGameStore((s) => s.ciel)
@@ -80,32 +106,15 @@ export function Ciel() {
     [],
   )
 
-  useEffect(() => {
-    let vivant = true
-    const chargeur = new THREE.TextureLoader()
-    const base = import.meta.env.BASE_URL
-    Promise.all([chargeur.loadAsync(`${base}${JOUR}`), chargeur.loadAsync(`${base}${NUIT}`)])
-      .then((textures) => {
-        if (!vivant) return textures.forEach((t) => t.dispose())
-        for (const t of textures) {
-          t.colorSpace = THREE.SRGBColorSpace
-          // Sans mipmaps : au raccord de la projection (atan saute de −π à π), le
-          // GPU prenait le plus petit niveau de mipmap sur une colonne de pixels,
-          // d'où une ligne pointillée verticale dans le ciel.
-          t.generateMipmaps = false
-          t.minFilter = THREE.LinearFilter
-        }
-        materiau.uniforms.jourTex.value = textures[0]
-        materiau.uniforms.nuitTex.value = textures[1]
-        materiau.uniforms.charge.value = 1
-      })
-      .catch((erreur: unknown) => console.warn('ciel indisponible, fond uni', erreur))
-    return () => {
-      vivant = false
-      for (const k of ['jourTex', 'nuitTex']) (materiau.uniforms[k].value as THREE.Texture | null)?.dispose()
-      materiau.dispose()
-    }
-  }, [materiau])
+  // Chaque photo n'est chargée que quand elle peut servir : le ciel étoilé
+  // (32 Mo de carte graphique) une fois le soleil sous `VEILLE` degrés, bien
+  // avant que le crépuscule civil (6°) ne commence à le fondre ; le ciel de
+  // jour, symétriquement, dès l'aube. Une fois là, elle reste.
+  const avecJour = useGameStore((s) => s.ciel.elevation > -VEILLE)
+  const avecNuit = useGameStore((s) => s.ciel.elevation < VEILLE)
+  useCielCharge(materiau, 'jourTex', JOUR, avecJour)
+  useCielCharge(materiau, 'nuitTex', NUIT, avecNuit)
+  useEffect(() => () => materiau.dispose(), [materiau])
 
   /* eslint-disable react-hooks/immutability -- le matériau et le fond sont des états de la scène three */
   useEffect(() => {
@@ -147,9 +156,30 @@ const DEHORS_NUIT = 0.8 / AMBIANCE_NUIT.intensite
  * Le biais est réglé à l'écran : `normalBias` décolle l'acné des pentes du
  * parc et des murs rasés par le couchant, `bias` reste minuscule pour que le
  * pied d'un banc touche son ombre (pas de « peter-panning »).
+ *
+ * La boîte ne suit le visiteur que par pas de `OMBRE.pas` mètres : entre deux
+ * pas, rien ne glisse et la carte peut rester telle quelle (`redessinerOmbre`).
  */
-const OMBRE = { demi: 55, carte: 4096, avance: 25, recul: 150, bias: -0.0004, normalBias: 0.035, rayon: 2.5 }
+const OMBRE = { demi: 55, carte: 4096, avance: 25, recul: 150, bias: -0.0004, normalBias: 0.035, rayon: 2.5, pas: 3 }
 const AVANT = new THREE.Vector3()
+
+/**
+ * La carte d'ombre, telle que three la créerait (`WebGLShadowMap`, PCF), sauf
+ * sa couleur : three y accroche une texture RGBA de 4096² (64 Mo) que la
+ * passe d'ombre n'écrit ni ne lit jamais — seule la profondeur compte. Il faut
+ * une couleur au tampon ; un seul octet par texel suffit (16 Mo).
+ */
+function carteDOmbre(inverse: boolean): THREE.WebGLRenderTarget {
+  const carte = new THREE.WebGLRenderTarget(OMBRE.carte, OMBRE.carte, { format: THREE.RedFormat })
+  const p = new THREE.DepthTexture(OMBRE.carte, OMBRE.carte, THREE.UnsignedIntType)
+  Object.assign(p, {
+    name: 'soleil.shadowMap', format: THREE.DepthFormat, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter,
+    compareFunction: inverse ? THREE.GreaterEqualCompare : THREE.LessEqualCompare,
+  })
+  carte.depthTexture = p
+  return carte
+}
+
 /** `?ombres=0` : le soleil sans ombre, pour mesurer ce qu'elle coûte. */
 const SANS_OMBRE = typeof location !== 'undefined' && new URLSearchParams(location.search).get('ombres') === '0'
 
@@ -174,6 +204,7 @@ export function LumiereDuJour() {
   }, [jour])
 
   const lumiere = useRef<THREE.DirectionalLight>(null)
+  const gl = useThree((s) => s.gl)
   useLayoutEffect(() => {
     const l = lumiere.current
     if (l === null) return
@@ -181,17 +212,36 @@ export function LumiereDuJour() {
     ;[cam.left, cam.right, cam.top, cam.bottom, cam.near, cam.far] = [-OMBRE.demi, OMBRE.demi, OMBRE.demi, -OMBRE.demi, 1, OMBRE.recul * 2]
     cam.updateProjectionMatrix()
     l.shadow.mapSize.set(OMBRE.carte, OMBRE.carte)
-    Object.assign(l.shadow, { bias: OMBRE.bias, normalBias: OMBRE.normalBias, radius: OMBRE.rayon })
-  }, [])
-  // La boîte suit le visiteur, recalée au texel près (`cadrerOmbre`).
-  useFrame(({ camera }) => {
+    Object.assign(l.shadow, { bias: OMBRE.bias, normalBias: OMBRE.normalBias, radius: OMBRE.rayon, autoUpdate: false })
+    l.shadow.map?.dispose()
+    l.shadow.map = carteDOmbre(gl.state.buffers.depth.getReversed())
+  }, [gl])
+
+  // La boîte suit le visiteur par pas de `OMBRE.pas`, recalée au texel près
+  // (`cadrerOmbre`) ; la carte n'est redessinée que si elle a glissé, si le
+  // soleil a tourné ou si un porteur d'ombre a bougé de plus d'un demi-texel
+  // (`VeilleDesPorteurs`, `redessinerOmbre`).
+  const veille = useMemo(() => new VeilleDesPorteurs(), [])
+  const dessin = useRef({ cle: '', d: soleil.d, depuis: 0, enAttente: false })
+  useFrame(({ camera, scene }, dt) => {
     const l = lumiere.current
-    if (l === null) return
+    if (l === null || SANS_OMBRE) return
+    const s = dessin.current
+    s.depuis += dt
     camera.getWorldDirection(AVANT).setY(0).normalize().multiplyScalar(OMBRE.avance).add(camera.position)
+    AVANT.divideScalar(OMBRE.pas).round().multiplyScalar(OMBRE.pas)
+    const cle = `${AVANT.x},${AVANT.y},${AVANT.z}`
+    const cadre = cle !== s.cle || soleil.d !== s.d
+    const r = redessinerOmbre(cadre, veille.bouge(scene, camera, soleil.d, dt, OMBRE.demi / OMBRE.carte), s.enAttente, s.depuis)
+    s.enAttente = r.enAttente
+    if (!r.dessiner) return
+    Object.assign(s, { cle, d: soleil.d, depuis: 0 })
+    veille.dessinee()
     const [x, y, z] = cadrerOmbre([AVANT.x, AVANT.y, AVANT.z], soleil.d, (2 * OMBRE.demi) / OMBRE.carte)
     l.target.position.set(x, y, z)
     l.target.updateMatrixWorld()
     l.position.set(x + soleil.d[0] * OMBRE.recul, y + soleil.d[1] * OMBRE.recul, z + soleil.d[2] * OMBRE.recul)
+    l.shadow.needsUpdate = true
   })
   return (
     <>
