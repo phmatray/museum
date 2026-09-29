@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest'
 
-import { ENTREE, facade, OBSTACLES_PORTES_ENTREE, OBSTACLES_PORTIQUE } from '../facade'
+import { ENTREE, facade, lignesDeBanniere, OBSTACLES_PORTES_ENTREE, OBSTACLES_PORTIQUE } from '../facade'
 import { MUSEE } from '../musee'
 
 it('centre le portique sur l’entrée et laisse sa baie du milieu libre', () => {
@@ -36,4 +36,11 @@ it('ouvre les portes de l’entrée sur l’entrée du plan, sans rétrécir le 
 it('attache les battants à la face intérieure du mur : aucun battant ne flotte', () => {
   // Le mur de façade déborde de INT (0,15 m) côté hall.
   for (const r of OBSTACLES_PORTES_ENTREE) expect(r.z + r.depth).toBeCloseTo(ENTREE.z - 0.15, 3)
+})
+
+it('coupe le nom d’une bannière aux majuscules et aux tirets, en lignes courtes', () => {
+  expect(lignesDeBanniere('TaLibStandard')).toEqual(['TaLib', 'Standard'])
+  expect(lignesDeBanniere('FormCraft')).toEqual(['FormCraft'])
+  expect(lignesDeBanniere('RoselineMCP')).toEqual(['Roseline', 'MCP'])
+  expect(lignesDeBanniere('aspire-app-with-n8n').join('')).toBe('aspire-app-with-n8n')
 })

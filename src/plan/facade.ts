@@ -77,6 +77,23 @@ const BATTANTS = [ENTREE.x - ENTREE.width / 2 + 0.06, ENTREE.x + ENTREE.width / 
 })
 export const OBSTACLES_PORTES_ENTREE: Rect[] = BATTANTS.map((b) => ({ x: b.x - 0.05, z: b.z0, width: 0.1, depth: b.z1 - b.z0 }))
 
+/**
+ * Le nom d'un dépôt en lignes courtes, pour le titre d'une bannière : coupé
+ * aux tirets et aux majuscules (`TaLibStandard` → `TaLib` / `Standard`), des
+ * lignes d'au plus `max` signes. Sur une seule ligne, un nom de treize lettres
+ * tombait à 38 cm de corps : illisible depuis le jardin.
+ */
+export function lignesDeBanniere(nom: string, max = 9): string[] {
+  const mots = nom.match(/[^A-Z_-]*(?:[A-Z]+(?![a-z])|[A-Z][^A-Z_-]*)?[_-]?/g)?.filter(Boolean) ?? [nom]
+  const lignes: string[] = []
+  for (const m of mots) {
+    const l = lignes.length - 1
+    if (l >= 0 && lignes[l].length + m.length <= max) lignes[l] += m
+    else lignes.push(m)
+  }
+  return lignes
+}
+
 export interface Facade {
   /** Le parement de brique des murs de façade et le parapet. */
   brique: Box[]
