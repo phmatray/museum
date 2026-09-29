@@ -8,6 +8,8 @@
  * - `cadrerOmbre` : la carte d'ombre du soleil suit le visiteur, mais ne glisse
  *   que d'un texel entier à la fois ; sans quoi chaque pas ferait scintiller le
  *   bord de toutes les ombres.
+ * - `redessinerOmbre` : cette carte n'est redessinée que si quelque chose a
+ *   changé — la boîte, le soleil, un porteur d'ombre qui bouge.
  * - `regrouperEmprises` : les pièces d'un même meuble (bois, cuir, laiton…) ne
  *   font qu'une ombre de contact, pas trois superposées.
  *
@@ -85,6 +87,41 @@ export function cadrerOmbre(c: V3, d: V3, texel: number): [number, number, numbe
   const dot = (a: V3, b: V3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
   const [cu, cv, cd] = [Math.round(dot(c, u) / texel) * texel, Math.round(dot(c, v) / texel) * texel, dot(c, d)]
   return [0, 1, 2].map((i) => u[i] * cu + v[i] * cv + d[i] * cd) as [number, number, number]
+}
+
+/**
+ * Quand redessiner la carte d'ombre. Un porteur qui bouge à moins de `pres`
+ * mètres du visiteur (Bavette qui passe, une aiguille) la redessine à chaque
+ * image ; plus loin, jusqu'à `loin` (le bout de la boîte), `cadence` fois par
+ * seconde : là-bas, un pas de chat entre deux dessins tient dans un pixel.
+ * Et quoi qu'il arrive, toutes les `garde` secondes : ce qu'aucune veille ne
+ * voit (une texture de feuillage qui arrive, un matériau changé) finit dessiné.
+ */
+export const RAFRAICHIR = { pres: 25, loin: 110, cadence: 15, garde: 2 }
+
+/**
+ * `cadre` : la boîte a glissé ou le soleil a tourné. `bouge` : la distance au
+ * visiteur du plus proche porteur qui a bougé (`Infinity` : aucun).
+ * `enAttente` : un mouvement lointain pas encore dessiné. `depuis` : secondes
+ * écoulées depuis le dernier dessin.
+ */
+export function redessinerOmbre(cadre: boolean, bouge: number, enAttente: boolean, depuis: number): { dessiner: boolean; enAttente: boolean } {
+  const attente = enAttente || bouge < RAFRAICHIR.loin
+  const dessiner = cadre || bouge < RAFRAICHIR.pres || (attente && depuis >= 1 / RAFRAICHIR.cadence) || depuis >= RAFRAICHIR.garde
+  return { dessiner, enAttente: attente && !dessiner }
+}
+
+/**
+ * De combien (m) a pu se déplacer un point d'un objet de rayon `rayon` entre
+ * deux matrices monde (4 × 4, par colonnes) : `ref` lue à partir de `k`, et
+ * `m`. La translation, plus ce que la rotation ou l'échelle font parcourir au
+ * bord de l'objet — une majoration, pas une mesure exacte.
+ */
+export function ecartDeMatrice(ref: ArrayLike<number>, k: number, m: ArrayLike<number>, rayon: number): number {
+  let base = 0
+  for (const i of [0, 1, 2, 4, 5, 6, 8, 9, 10]) base += (m[i] - ref[k + i]) ** 2
+  // La norme de Frobenius de la différence majore ce qu'elle fait à un vecteur de longueur 1.
+  return Math.hypot(m[12] - ref[k + 12], m[13] - ref[k + 13], m[14] - ref[k + 14]) + Math.sqrt(base) * rayon
 }
 
 /** Une boîte englobante posée au sol, en coordonnées monde. */
