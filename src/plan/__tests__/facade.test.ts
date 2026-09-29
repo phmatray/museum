@@ -44,3 +44,18 @@ it('coupe le nom d’une bannière aux majuscules et aux tirets, en lignes court
   expect(lignesDeBanniere('RoselineMCP')).toEqual(['Roseline', 'MCP'])
   expect(lignesDeBanniere('aspire-app-with-n8n').join('')).toBe('aspire-app-with-n8n')
 })
+
+it('pose un soubassement et une corniche de pierre sur les quatre façades, sans barrer l’entrée', () => {
+  const f = facade(MUSEE)
+  const [W, D] = [MUSEE.width, MUSEE.depth]
+  const socles = f.pierre.filter((b) => Math.abs(b.y - b.h / 2) < 1e-6 && b.h > 0.5)
+  const corniches = f.pierre.filter((b) => Math.abs(b.y + b.h / 2 - (MUSEE.levels.length * MUSEE.storey - MUSEE.slab)) < 1e-6)
+  for (const lot of [socles, corniches]) {
+    expect(lot.some((b) => b.z < 0 && b.w > W)).toBe(true)
+    expect(lot.some((b) => b.z > D && b.w > 10)).toBe(true)
+    expect(lot.some((b) => b.x < 0 && b.d >= D)).toBe(true)
+    expect(lot.some((b) => b.x > W && b.d >= D)).toBe(true)
+  }
+  // Le socle s'arrête aux jambages du portique : rien ne se dresse devant l'entrée.
+  for (const b of socles) expect(b.x + b.w / 2 <= ENTREE.x - ENTREE.width || b.x - b.w / 2 >= ENTREE.x + ENTREE.width || b.z < D).toBe(true)
+})
