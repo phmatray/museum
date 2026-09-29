@@ -6,6 +6,7 @@ import { saisonA, type Saison } from '../domain/saisons'
 import { cielA, heureDemandee, type Ciel } from '../domain/soleil'
 import type { Museum } from '../domain/types'
 import type { Walker } from '../plan/walk'
+import { recherche } from './reglagesStore'
 
 interface GameState {
   paused: boolean
@@ -76,8 +77,8 @@ export const useGameStore = create<GameState>((set) => ({
   ciel: cielDuMoment(),
   volets: null,
   annonce: null,
-  meteo: (typeof location === 'undefined' ? null : meteoDemandee(location.search)) ?? CLAIR,
-  saison: saisonA(new Date(), typeof location === 'undefined' ? '' : location.search),
+  meteo: meteoDemandee(recherche()) ?? CLAIR,
+  saison: saisonA(new Date(), recherche()),
   setPaused: (paused) => set({ paused }),
   setCurrentRoomId: (id) => set({ currentRoomId: id }),
   setTourActive: (active) => set({ tourActive: active }),
@@ -99,6 +100,6 @@ export const toucher = { forward: 0, strafe: 0, lookX: 0, lookY: 0 }
 /** Le ciel à l'instant, ou à l'heure demandée par `?heure=HH:MM`, au lieu du musée. */
 export function cielDuMoment(): Ciel {
   const maintenant = new Date()
-  const quand = (typeof location === 'undefined' ? null : heureDemandee(location.search, maintenant)) ?? maintenant
+  const quand = heureDemandee(recherche(), maintenant) ?? maintenant
   return cielA(quand, config.location.latitude, config.location.longitude)
 }

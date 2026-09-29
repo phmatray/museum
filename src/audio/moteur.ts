@@ -198,6 +198,11 @@ export class Moteur {
   }
 
   /** Un pas sur ce sol. */
+  /** Le volume général du réglage, de 0 à 1 : 0,6 à fond, la marge du limiteur. */
+  volume(v: number) {
+    this.maitre.gain.setTargetAtTime(0.6 * v, this.ctx.currentTime, 0.05)
+  }
+
   pas(matiere: Matiere, force = 1) {
     pas(this.ctx, this.pasBus, this.ctx.currentTime + 0.01, matiere, force)
   }

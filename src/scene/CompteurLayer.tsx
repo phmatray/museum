@@ -15,6 +15,7 @@ import * as THREE from 'three'
 import { FACES, TAILLE, TIRET, chiffres, dureeDuCompteur, faceDuTambour } from '../domain/compteur'
 import { laVisite } from '../io/visite'
 import { canevasEnMetres } from './canevas'
+import { useCalme } from '../stores/reglagesStore'
 
 /** Au mur sud du hall (face à z 39,85), entre l'angle et les vantaux de l'entrée (x 22,4). */
 const CENTRE: [number, number, number] = [20, 1.5, 39.84]
@@ -102,7 +103,7 @@ export function CompteurLayer() {
   }, [])
 
   const tambours = useRef<THREE.InstancedMesh>(null)
-  const calme = useMemo(() => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches, [])
+  const calme = useCalme()
   const m = useMemo(() => ({ mat: new THREE.Matrix4(), rot: new THREE.Matrix4(), axe: new THREE.Matrix4().makeRotationZ(-Math.PI / 2) }), [])
   const fini = useRef(-1)
   useFrame(() => {

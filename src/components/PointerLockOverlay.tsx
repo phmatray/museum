@@ -22,6 +22,7 @@ import { useAccrochage } from '../hooks/useAccrochage'
 import { useVitrines } from '../hooks/useCatalogue'
 import { laVisite } from '../io/visite'
 import { useGameStore } from '../stores/gameStore'
+import { mouvementReduit, recherche } from '../stores/reglagesStore'
 
 /** Le temps du coup de composteur, puis celui du billet qui s'efface (ms). */
 const COUP = 260
@@ -29,7 +30,6 @@ const EFFACEMENT = 520
 /** Le temps de lire le coup de tampon avant que le billet ne s'efface (ms). */
 const LECTURE = 380
 
-const mouvementReduit = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
 const auDoigt = () => typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
 
 const STYLE = `
@@ -109,7 +109,7 @@ export function PointerLockOverlay() {
   const vitrines = useVitrines()
   const [visite, setVisite] = useState<number | null>(null)
   const [sortie, setSortie] = useState<'entree' | 'visite' | null>(null)
-  const [quand] = useState(() => (typeof location === 'undefined' ? null : heureDemandee(location.search, new Date())) ?? new Date())
+  const [quand] = useState(() => heureDemandee(recherche(), new Date()) ?? new Date())
   const [doigt] = useState(auDoigt)
 
   useEffect(() => {

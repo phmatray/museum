@@ -16,6 +16,7 @@ import { MUSEE } from '../plan/musee'
 import { projectForMinimap, zoomer, type Cadrage } from '../plan/minimap'
 import { S, renderLevel } from '../plan/svg'
 import { useGameStore } from '../stores/gameStore'
+import { useReglages } from '../stores/reglagesStore'
 
 const LARGEUR = 220
 /** Longueur et demi-ouverture du cône de visée, en mètres et en radians. */
@@ -28,10 +29,11 @@ export function Minimap() {
   const visiteur = useGameStore((s) => s.visiteur)
   const chat = useGameStore((s) => s.bavette)
   const [ouvert, setOuvert] = useState(false)
+  const affiche = useReglages((s) => s.plan)
   const vue = visiteur && projectForMinimap(MUSEE, visiteur)
   const level = vue?.level ?? MUSEE.spawn.level
   const fond = useMemo(() => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(renderLevel(MUSEE, level))}`, [level])
-  if (!vue) return null
+  if (!vue || !affiche) return null
 
   const { player: p, room, viewBox } = vue
   const cone = [0, OUVERTURE, -OUVERTURE].map((d, i) => {

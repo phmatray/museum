@@ -16,6 +16,7 @@ import * as THREE from 'three'
 import { cadrerOmbre, redessinerOmbre } from '../domain/ombres'
 import { directionDuSoleil } from '../domain/soleil'
 import { useGameStore } from '../stores/gameStore'
+import { recherche, useReglages } from '../stores/reglagesStore'
 import { INTEMPERIES } from './intemperies'
 import { AMBIANCE, CIEL, SOLEIL } from './lighting'
 import { LUEURS } from './lueurs'
@@ -180,8 +181,6 @@ function carteDOmbre(inverse: boolean): THREE.WebGLRenderTarget {
   return carte
 }
 
-/** `?ombres=0` : le soleil sans ombre, pour mesurer ce qu'elle coûte. */
-const SANS_OMBRE = typeof location !== 'undefined' && new URLSearchParams(location.search).get('ombres') === '0'
 
 /**
  * Le soleil de la scène, là où il est vraiment au-dessus du musée, doré quand
@@ -190,6 +189,8 @@ const SANS_OMBRE = typeof location !== 'undefined' && new URLSearchParams(locati
  * verres (verrière, vitraux, garde-corps) le laissent passer (`OmbresLayer`).
  */
 export function LumiereDuJour() {
+  // `?ombres=0` (ou le réglage « Ombres ») : le soleil sans ombre, pour mesurer ce qu'elle coûte.
+  const sansOmbre = useReglages(() => new URLSearchParams(recherche()).get('ombres') === '0')
   const { jour, crepuscule, elevation, azimut } = useGameStore((s) => s.ciel)
   // Sous un ciel couvert ou dans le brouillard, le soleil ne porte plus d'ombre franche : il s'efface.
   const voile = useGameStore((s) => Math.min(0.85, s.meteo.nuages * 0.75 + s.meteo.brouillard * 0.4))
@@ -223,9 +224,13 @@ export function LumiereDuJour() {
   // (`VeilleDesPorteurs`, `redessinerOmbre`).
   const veille = useMemo(() => new VeilleDesPorteurs(), [])
   const dessin = useRef({ cle: '', d: soleil.d, depuis: 0, enAttente: false })
+  // Les ombres rallumées : la carte d'avant est périmée, on la redessine.
+  useEffect(() => {
+    dessin.current.cle = ''
+  }, [sansOmbre])
   useFrame(({ camera, scene }, dt) => {
     const l = lumiere.current
-    if (l === null || SANS_OMBRE) return
+    if (l === null || sansOmbre) return
     const s = dessin.current
     s.depuis += dt
     camera.getWorldDirection(AVANT).setY(0).normalize().multiplyScalar(OMBRE.avance).add(camera.position)
@@ -247,7 +252,7 @@ export function LumiereDuJour() {
     <>
       {/* En props, pas en `args` : changer d'heure ne reconstruit pas la lumière. */}
       <hemisphereLight color={ciel} groundColor={AMBIANCE.sol} intensity={AMBIANCE_NUIT.intensite + (AMBIANCE.intensite - AMBIANCE_NUIT.intensite) * jour} />
-      <directionalLight ref={lumiere} castShadow={!SANS_OMBRE} color={soleil.couleur} intensity={soleil.intensite} />
+      <directionalLight ref={lumiere} castShadow={!sansOmbre} color={soleil.couleur} intensity={soleil.intensite} />
     </>
   )
 }
