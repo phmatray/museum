@@ -60,7 +60,12 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   // Le dallage 1 cm au-dessus du gravier : à la même cote, les allées qui le
   // rejoignent se battaient avec lui (deux textures entremêlées, signalé par Philippe).
   const parvis = useMemo(() => dalles(placements.dalles.map((r) => pave(r, 0, COTE_DALLAGE))), [placements])
-  const dallage = useMemo(() => creerPierre(), [])
+  const dallage = useMemo(() => {
+    // Mouillé et semé de flaques sous l'averse, comme le gravier qu'il traverse.
+    const m = creerPierre()
+    intemperer(m, { flaques: true })
+    return m
+  }, [])
   useEffect(() => () => {
     parvis.dispose()
     dallage.map?.dispose()

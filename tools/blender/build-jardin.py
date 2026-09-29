@@ -650,6 +650,34 @@ def courbe(p0, direction, longueur, montee, rng, n=4):
     return pts
 
 
+def brindilles(g, rng, nuages, ecorce):
+    """
+    Le chevelu d'un érable nu : de chaque bout de branche (le cœur d'un nuage de
+    feuilles) partent des rameaux fins, en éventail, presque à plat et relevés
+    du bout, qui se fourchent encore une fois. Ils remplissent le nuage : l'hiver,
+    l'érable garde sa silhouette en étages, en dentelle au lieu de feuilles.
+    L'été ils disparaissent dans le feuillage. Prismes à trois pans, même écorce :
+    aucun appel de dessin de plus.
+    """
+    for c, R in nuages:
+        dehors = math.atan2(c[1], c[0]) if c[0] * c[0] + c[1] * c[1] > 0.04 else rng.uniform(0, 2 * math.pi)
+        for _ in range(int(6 * R) + 2):
+            # Surtout vers le dehors, un peu tout autour ; à peine relevés, pour
+            # rester dans le nuage (large et plat) que le feuillage habille.
+            a = dehors + rng.gauss(0, 1.0)
+            h = rng.uniform(-0.05, 0.25)
+            longueur = R * rng.uniform(0.5, 0.8)
+            r = courbe(c, (math.cos(a), math.sin(a), h), longueur, h + 0.1, rng, n=2)
+            tube(g, r, [0.012, 0.007, 0.0035], ecorce, n=3)
+            # Une fourche au coude, deux au bout : le rameau se ramifie en zigzag.
+            # Jamais symétriques : l'une courte, l'autre longue, des angles inégaux.
+            cote = rng.choice((-1, 1))
+            for k, s, l in ((1, cote, (0.22, 0.38)), (2, -cote, (0.22, 0.38)), (2, cote, (0.1, 0.2))):
+                a2 = a + s * rng.uniform(0.25, 1.0)
+                fin = courbe(r[k], (math.cos(a2), math.sin(a2), h + rng.uniform(0.0, 0.25)), R * rng.uniform(*l), 0.15, rng, n=1)
+                tube(g, fin, [0.006, 0.003], ecorce, n=3)
+
+
 def erable(nom, tuile, graine, ecorce, feuilles):
     """
     Un érable du Japon (Acer palmatum) : un tronc court qui se divise bas en
@@ -681,6 +709,12 @@ def erable(nom, tuile, graine, ecorce, feuilles):
             nuages.append((rameau[-1], rng.uniform(0.75, 1.0)))
     haut = max(p[2] for p, _ in nuages)
     nuages.append(((0.15, 0.05, haut + 0.35), 1.0))
+    # Tirés d'un aléa à part : le feuillage reste celui d'avant. La flèche porte le
+    # nuage du sommet (l'hiver le laissait en l'air), puis les rameaux fins.
+    rng_nu = random.Random(graine * 7 + 1)
+    fleche = courbe(tronc[-1], (0.02, 0.0, 1.0), haut + 0.3 - tronc[-1][2], 1.0, rng_nu, n=3)
+    tube(g, fleche, [0.07, 0.05, 0.035, 0.02], ecorce, n=5)
+    brindilles(g, rng_nu, nuages, ecorce)
     centre = [sum(p[k] for p, _ in nuages) / len(nuages) for k in range(3)]
     for c, R in nuages:
         for _ in range(int(60 * R * R) + 10):
