@@ -18,6 +18,7 @@ import * as THREE from 'three'
 
 import type { Allee, Parc } from '../plan/park'
 import { surUneAllee } from '../plan/park'
+import { BORDURE, GALETS, champDesAllees } from '../plan/allees'
 import { JARDIN, TABLIER, distanceEtang, distanceRuisseau, presDeLEau } from '../plan/jardin'
 import { hauteurDuParc } from '../plan/relief'
 import { INTEMPERIES } from './intemperies'
@@ -58,11 +59,10 @@ function solNu(parc: Parc, x: number, z: number): boolean {
   return d < BERGE - 0.71 || (d < BERGE + 0.71 && presDeLEau(x, z, BERGE))
 }
 
-/** Ce qui dégarnit le gazon, en bandes (un disque est une bande de longueur nulle). */
+/** Ce qui dégarnit le gazon, hors des allées, en bandes (un disque est une bande de longueur nulle). */
 function pelades(parc: Parc): Allee[] {
   const disque = (x: number, z: number, r: number): Allee => ({ a: { x, z }, b: { x, z }, largeur: 2 * r })
   return [
-    ...parc.allees.map((a) => ({ ...a, largeur: a.largeur + 0.2 })),
     ...parc.plantations.map((p) => {
       const r = p.espece.startsWith('rocher') ? p.rayon * 0.6 : (PIED[p.espece] ?? 0) * (p.espece.startsWith('erable') ? p.scale : p.rayon)
       return disque(p.x, p.z, r)
@@ -90,12 +90,16 @@ export function carteDuSol(parc: Parc): CarteDuSol {
   const data = new Uint16Array(nx * nz * 4)
   const [un, zero] = [THREE.DataUtils.toHalfFloat(1), THREE.DataUtils.toHalfFloat(0)]
   const centre = (i: number, j: number) => [terrain.x + (i + 0.5) * TEXEL, terrain.z + (j + 0.5) * TEXEL] as const
+  // Pas un brin dans l'allée, sur sa bordure ni dans son lit de galets (`allees.ts`) :
+  // la pelouse s'arrête net au bord, et le filtrage éclaircit les brins qui le touchent.
+  const { reseau } = champDesAllees(parc)
+  const bord = BORDURE.dehors + GALETS - 0.1
   for (let j = 0; j < nz; j++) {
     for (let i = 0; i < nx; i++) {
       const [x, z] = centre(i, j)
       const k = (j * nx + i) * 4
       data[k] = THREE.DataUtils.toHalfFloat(hauteurDuParc(x, z))
-      data[k + 1] = solNu(parc, x, z) ? zero : un
+      data[k + 1] = solNu(parc, x, z) || reseau(x, z) < bord ? zero : un
       data[k + 3] = un
     }
   }

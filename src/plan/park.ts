@@ -41,6 +41,8 @@ export interface Allee {
   a: { x: number; z: number }
   b: { x: number; z: number }
   largeur: number
+  /** Le revêtement : du gravier bordé, par défaut ; les grandes dalles de pierre de l'axe d'entrée. */
+  sol?: 'dalles'
 }
 
 export interface Parc {
@@ -60,6 +62,13 @@ const DEBORD_PARVIS = 5
 const RETRAIT_PERIPHERIQUE = 6
 const LARGEUR_PERIPHERIQUE = 3
 const LARGEUR_ACCES = 2.4
+/** L'axe de l'entrée, le plus large : la hiérarchie des allées se lit d'abord à leur largeur. */
+const LARGEUR_AXE = 3.2
+/** Le rayon des angles de la ceinture, et l'écart de ses côtés au parvis, au plus. */
+const ARRONDI = 9
+const ECART_CEINTURE = 1.6
+/** La bordure et son lit de galets (`allees.ts`) : ni tronc ni boule n'y pousse. */
+const BORD = 0.6
 /** Un sujet par maille, quand la maille le permet : des arbres isolés, pas un rideau. */
 /** Le parc hors jardin : ses bosquets, leur écart minimal, ses sujets isolés. */
 const BOSQUETS = 14
@@ -125,48 +134,97 @@ export function couronne(e: Rect, trou: Rect): Rect[] {
 /**
  * Un accès qui serpente : il part et arrive dans l'axe, et ondule entre les
  * deux d'une amplitude `a`. Le jardin japonais ne trace pas de ligne droite
- * — sauf l'axe de l'entrée, qui doit se lire depuis le portique.
+ * — sauf l'axe de l'entrée, qui doit se lire depuis le portique. Un tronçon par
+ * mètre : à deux mètres, les coudes se voyaient (« trop jeu vidéo », Philippe).
  */
-function serpenter(a: Allee['a'], b: Allee['b'], amplitude: number, largeur: number, n = 14): Allee[] {
+function serpenter(a: Allee['a'], b: Allee['b'], amplitude: number, largeur: number): Allee[] {
   const [dx, dz] = [b.x - a.x, b.z - a.z]
   const l = Math.hypot(dx, dz)
+  const n = Math.ceil(l)
   const pt = (t: number) => {
     const e = amplitude * Math.sin(Math.PI * t) * Math.sin(3 * Math.PI * t)
     return { x: a.x + t * dx - (dz / l) * e, z: a.z + t * dz + (dx / l) * e }
   }
-  return Array.from({ length: n }, (_, i) => ({ a: pt(i / n), b: pt((i + 1) / n), largeur }))
+  // Le dernier point tel quel : la grille du mur d'enceinte (`enceinte.ts`) se pose au bout exact.
+  return Array.from({ length: n }, (_, i) => ({ a: pt(i / n), b: i + 1 === n ? b : pt((i + 1) / n), largeur }))
 }
 
-/** Une allée droite, coupée là où elle passe le pont : le tablier prend le relais. */
-function coupee(a: Allee['a'], b: Allee['b'], largeur: number): Allee[] {
-  const [x0, x1] = [TABLIER.x - 0.8, TABLIER.x + TABLIER.width + 0.8]
-  const croise = Math.abs(a.z - b.z) < 1e-9 && a.z > TABLIER.z && a.z < TABLIER.z + TABLIER.depth
-    && Math.min(a.x, b.x) < x0 && Math.max(a.x, b.x) > x1
-  if (!croise) return [{ a, b, largeur }]
-  const [g, d] = a.x < b.x ? [a, b] : [b, a]
-  return [{ a: g, b: { x: x0, z: g.z }, largeur }, { a: { x: x1, z: g.z }, b: d, largeur }]
+const smoothstep = (x: number, a: number, b: number) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)))
+  return t * t * (3 - 2 * t)
 }
 
-/** Une boucle fermée autour du parvis, et un accès au milieu de chaque côté. */
+/** De la boîte `r` au point, négative dedans. */
+export function distanceRect(r: Rect, x: number, z: number): number {
+  const [dx, dz] = [Math.max(r.x - x, x - r.x - r.width), Math.max(r.z - z, z - r.z - r.depth)]
+  return Math.hypot(Math.max(dx, 0), Math.max(dz, 0)) + Math.min(Math.max(dx, dz), 0)
+}
+
+/**
+ * Le chemin de ceinture : un rectangle aux angles arrondis (rayon `ARRONDI`),
+ * dont chaque demi-côté s'écarte doucement du parvis, en sin² : il part tangent
+ * de l'arc de l'angle et revient tangent au milieu du côté, là où l'accès
+ * s'embranche. Près du sol creusé du jardin, l'écart s'éteint : le chemin ne
+ * mord ni l'étang ni le ruisseau.
+ */
+function ceinture(x0: number, z0: number, x1: number, z1: number): Allee['a'][] {
+  const coins = [{ x: x0, z: z0 }, { x: x1, z: z0 }, { x: x1, z: z1 }, { x: x0, z: z1 }]
+  const unite = (p: Allee['a'], q: Allee['a']) => {
+    const l = Math.hypot(q.x - p.x, q.z - p.z)
+    return { x: (q.x - p.x) / l, z: (q.z - p.z) / l, l }
+  }
+  const pts: Allee['a'][] = []
+  coins.forEach((p, k) => {
+    const [q, r] = [coins[(k + 1) % 4], coins[(k + 2) % 4]]
+    const [t, t2] = [unite(p, q), unite(q, r)]
+    // Vers le dehors : dans ce sens (x à l'est, z au sud), le parc est à gauche de la marche.
+    const n = { x: t.z, z: -t.x }
+    const droit = t.l - 2 * ARRONDI
+    const m = Math.ceil(droit)
+    for (let i = 0; i < m; i++) {
+      const s = (droit * i) / m
+      const [bx, bz] = [p.x + t.x * (ARRONDI + s), p.z + t.z * (ARRONDI + s)]
+      const loin = Math.min(...JARDIN.zones.map((z) => distanceRect(z, bx, bz)))
+      const e = ECART_CEINTURE * Math.sin((2 * Math.PI * s) / droit) ** 2 * smoothstep(loin, 2, 9)
+      pts.push({ x: bx + n.x * e, z: bz + n.z * e })
+    }
+    // L'arc de l'angle, tangent aux deux côtés, un point tous les 80 cm.
+    const c = { x: q.x - t.x * ARRONDI + t2.x * ARRONDI, z: q.z - t.z * ARRONDI + t2.z * ARRONDI }
+    const a0 = Math.atan2(-t2.z, -t2.x)
+    const da = Math.atan2(t.z, t.x) - a0
+    const d = da > Math.PI ? da - 2 * Math.PI : da < -Math.PI ? da + 2 * Math.PI : da
+    const na = Math.ceil((Math.abs(d) * ARRONDI) / 0.8)
+    for (let i = 0; i < na; i++) pts.push({ x: c.x + Math.cos(a0 + (d * i) / na) * ARRONDI, z: c.z + Math.sin(a0 + (d * i) / na) * ARRONDI })
+  })
+  return pts
+}
+
+/**
+ * Une boucle arrondie autour du parvis, un accès au milieu de chaque côté. Les
+ * accès partent du bord extérieur de la ceinture : le congé de leur jonction
+ * (`allees.ts`) s'évase côté parc, sans gonfler le bord intérieur où attendent
+ * les bancs.
+ */
 function tracerAllees(parvis: Rect, terrain: Rect): Allee[] {
   const [x0, x1] = [parvis.x - RETRAIT_PERIPHERIQUE, parvis.x + parvis.width + RETRAIT_PERIPHERIQUE]
   const [z0, z1] = [parvis.z - RETRAIT_PERIPHERIQUE, parvis.z + parvis.depth + RETRAIT_PERIPHERIQUE]
-  const coins = [{ x: x0, z: z0 }, { x: x1, z: z0 }, { x: x1, z: z1 }, { x: x0, z: z1 }]
   const [cx, cz] = [parvis.x + parvis.width / 2, parvis.z + parvis.depth / 2]
-  // Seule l'entrée (au sud) est reliée au PARVIS : sans ce raccord, il fallait
-  // traverser une bande de gazon pour entrer au musée. Les trois autres accès
-  // s'arrêtent au chemin de ceinture, qui fait le tour : ils filaient droit
-  // dans un mur aveugle, sans porte (audit du jardin).
-  const raccords: Allee[] = [{ a: { x: cx, z: parvis.z + parvis.depth }, b: { x: cx, z: z1 }, largeur: LARGEUR_ACCES }]
+  const boucle = ceinture(x0, z0, x1, z1)
+  // Les accès partent à 30 cm en deçà du bord extérieur de la ceinture, bout coupé net (`allees.ts`).
+  const bord = LARGEUR_PERIPHERIQUE / 2 - 0.3
+  // L'accès est franchit le ruisseau sur le pont du jardin : il s'arrête de part
+  // et d'autre du tablier, qui prend le relais. Il mord de 30 cm sur le bois :
+  // son bout arrondi laissait une encoche de gazon au pied du pont.
+  const [p0, p1] = [TABLIER.x + 0.3, TABLIER.x + TABLIER.width - 0.3]
   return [
-    ...raccords,
-    ...coins.map((a, i) => ({ a, b: coins[(i + 1) % 4], largeur: LARGEUR_PERIPHERIQUE })),
-    ...serpenter({ x: cx, z: z0 }, { x: cx, z: terrain.z }, 2.2, LARGEUR_ACCES),
-    // L'axe de l'entrée : droit, du portique au bord du terrain.
-    { a: { x: cx, z: z1 }, b: { x: cx, z: terrain.z + terrain.depth }, largeur: LARGEUR_ACCES },
-    ...serpenter({ x: x0, z: cz }, { x: terrain.x, z: cz }, 2.2, LARGEUR_ACCES),
-    // L'accès est franchit le ruisseau sur le pont du jardin.
-    ...coupee({ x: x1, z: cz }, { x: terrain.x + terrain.width, z: cz }, LARGEUR_ACCES),
+    // L'axe de l'entrée, dallé : droit, du parvis au bord du terrain. Il se lit
+    // depuis le portique, et on entre au musée sans traverser de gazon.
+    { a: { x: cx, z: parvis.z + parvis.depth }, b: { x: cx, z: terrain.z + terrain.depth }, largeur: LARGEUR_AXE, sol: 'dalles' },
+    ...boucle.map((a, i) => ({ a, b: boucle[(i + 1) % boucle.length], largeur: LARGEUR_PERIPHERIQUE })),
+    ...serpenter({ x: cx, z: z0 - bord }, { x: cx, z: terrain.z }, 2.2, LARGEUR_ACCES),
+    ...serpenter({ x: x0 - bord, z: cz }, { x: terrain.x, z: cz }, 2.2, LARGEUR_ACCES),
+    ...serpenter({ x: x1 + bord, z: cz }, { x: p0, z: cz }, 0.4, LARGEUR_ACCES),
+    ...serpenter({ x: p1, z: cz }, { x: terrain.x + terrain.width, z: cz }, 0.4, LARGEUR_ACCES),
   ]
 }
 
@@ -190,7 +248,7 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
 
   /** Libre : hors du parvis et des allées, sur le terrain, au sec, sans chevaucher. */
   const libre = (x: number, z: number, rayon: number, eau = 0.8, serre = 1) =>
-    !dansRect(parvis, x, z, rayon) && dansRect(terrain, x, z, -rayon) && !surUneAllee(allees, x, z, rayon)
+    !dansRect(parvis, x, z, rayon) && dansRect(terrain, x, z, -rayon) && !surUneAllee(allees, x, z, rayon + BORD)
     && !presDeLEau(x, z, rayon + eau) && !dansRect(TABLIER, x, z, rayon + 1)
     && Math.hypot(x - lanterne.x, z - lanterne.z) > rayon + 1.2
     && !JARDIN.pas.some(([px, pz]) => Math.hypot(x - px, z - pz) < rayon + 0.6)
@@ -202,7 +260,7 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
     const sol = Math.min(...[[0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5]].map(([dx, dz]) => hauteurDuParc(x + dx, z + dz)))
     if (y !== undefined || sol > 0) p.y = (y ?? 0) + sol
     // Le dernier mot, houppier compris, quel que soit le tirage qui a proposé le sujet.
-    if (surUneAllee(allees, x, z, p.rayon) || dansRect(parvis, x, z, p.rayon) || !dansRect(terrain, x, z, -p.rayon)) return
+    if (surUneAllee(allees, x, z, p.rayon + BORD) || dansRect(parvis, x, z, p.rayon) || !dansRect(terrain, x, z, -p.rayon)) return
     plantations.push(p)
   }
   const rocher = () => ROCHERS[Math.floor(alea() * ROCHERS.length)]

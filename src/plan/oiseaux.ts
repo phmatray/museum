@@ -82,11 +82,15 @@ export function perchoirs(parc: Parc, branches?: Partial<Record<string, Point3[]
       out.push({ x: a.x + Math.cos(th) * r, y: y0 + (3.35 - 0.3 * (r / a.scale - 1.9)) * a.scale, z: a.z + Math.sin(th) * r, sol: false })
     }
     // Au sol, sur le gravier de l'allée la plus proche : dans le gazon haut, on ne les verrait pas.
-    for (const al of parc.allees) {
+    // La seule plus proche : les allées courbes sont faites de tronçons d'un mètre, un arbre en a des dizaines à 8 m.
+    const proches = parc.allees.map((al) => {
       const [dx, dz] = [al.b.x - al.a.x, al.b.z - al.a.z]
       const t = Math.max(0, Math.min(1, ((a.x - al.a.x) * dx + (a.z - al.a.z) * dz) / (dx * dx + dz * dz)))
       const [px, pz] = [al.a.x + dx * t, al.a.z + dz * t]
-      if (Math.hypot(px - a.x, pz - a.z) > 8) continue
+      return { al, dx, dz, px, pz, d: Math.hypot(px - a.x, pz - a.z) }
+    }).sort((p, q) => p.d - q.d).slice(0, 1)
+    for (const { al, dx, dz, px, pz, d } of proches) {
+      if (d > 8) continue
       const l = Math.hypot(dx, dz)
       for (let k = 0; k < 2; k++) {
         const [u, v] = [(alea() - 0.5) * 4, (alea() - 0.5) * al.largeur * 0.7]

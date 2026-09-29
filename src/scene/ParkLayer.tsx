@@ -10,13 +10,14 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 
-import type { Allee, Parc, PlantPlacement, EspeceParc } from '../plan/park'
+import type { Parc, PlantPlacement, EspeceParc } from '../plan/park'
 import { hauteurDuParc, masqueDuRelief } from '../plan/relief'
 import type { Rect } from '../plan/types'
 import { REGLAGE_MATIERE, repetitionMetrique, useCartes, useMatiere } from './materials'
 import { creerBrique, creerPierre } from './pierre'
 import { enceinte } from '../plan/enceinte'
 import { Boites } from './PlanBuilding'
+import { AlleesDuParc } from './AlleesDuParc'
 import { parkAssetsResource, type ParkAssets, type ParkPiece } from './parkAssets'
 import { creerMatieresJardin, preparerSol, uvBoite } from './jardinMatieres'
 import { brinsDeGazon, carteDuSol, matiereGazon, type ReglageGazon } from './gazon'
@@ -52,15 +53,12 @@ export function ParkLayer({ placements }: { placements: Parc }) {
     intemperer(m, { pelouse: true })
     return m
   }, [cartes])
-  const gravier = useMatiere('gravier', repetitionMetrique(REGLAGE_MATIERE.gravier.motif))
-  // Mouillé sous la pluie, blanc sous la neige (`intemperies.ts`) : greffé sur chaque matière neuve.
-  useMemo(() => intemperer(gravier), [gravier])
 
   const sol = useMemo(() => pelouse(placements), [placements])
   const campagne = useMemo(() => dehors(placements.terrain), [placements])
   useEffect(() => () => campagne.dispose(), [campagne])
-  // Le parvis est dallé de la pierre du hall, comme le seuil d'un vrai musée ; le
-  // gravier est pour les allées du jardin.
+  // Le parvis est dallé de la pierre du hall, comme le seuil d'un vrai musée, et
+  // l'axe de l'entrée avec lui ; le gravier est pour les allées du jardin.
   // Le dallage 1 cm au-dessus du gravier : à la même cote, les allées qui le
   // rejoignent se battaient avec lui (deux textures entremêlées, signalé par Philippe).
   const parvis = useMemo(() => dalles(placements.dalles.map((r) => pave(r, 0, RELIEF_ALLEE + 0.01))), [placements])
@@ -70,11 +68,7 @@ export function ParkLayer({ placements }: { placements: Parc }) {
     dallage.map?.dispose()
     dallage.dispose()
   }, [parvis, dallage])
-  const allees = useMemo(() => dalles(chaines(placements.allees).map(ruban)), [placements])
-  useEffect(() => () => {
-    sol.dispose()
-    allees.dispose()
-  }, [sol, allees])
+  useEffect(() => () => sol.dispose(), [sol])
   useEffect(() => () => herbe.dispose(), [herbe])
 
   const parEspece = useMemo(() => {
@@ -89,7 +83,7 @@ export function ParkLayer({ placements }: { placements: Parc }) {
       <mesh geometry={campagne} material={herbe} />
       <Enceinte parc={placements} />
       <mesh geometry={parvis} material={dallage} />
-      <mesh geometry={allees} material={gravier} />
+      <AlleesDuParc parc={placements} dallage={dallage} />
       <Gazon parc={placements} />
       <FeuillesMortes parc={placements} />
       {assets !== null && <Jardin objets={assets.jardin} herbe={herbe} />}
@@ -223,76 +217,6 @@ function pelouse(parc: Parc): THREE.BufferGeometry {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
   g.setAttribute('color', new THREE.Float32BufferAttribute(couleur, 3))
   g.setAttribute('uv', new THREE.Float32BufferAttribute(pos.flatMap((c, i) => (i % 3 === 1 ? [] : [c])), 2))
-  g.setIndex(index)
-  g.computeVertexNormals()
-  return g
-}
-
-/**
- * Les allées bout à bout (l'arrivée de l'une est le départ de la suivante, même
- * largeur) : une allée qui serpente, la boucle de ceinture. Dessinées une à une,
- * chaque bande rallongée à ses bouts, leurs coins carrés dépassaient au dehors
- * des virages et mordaient la pelouse : des bords en dents de scie.
- */
-function chaines(allees: Allee[]): Allee[][] {
-  const out: Allee[][] = []
-  for (const a of allees) {
-    const c = out[out.length - 1]
-    const d = c?.[c.length - 1]
-    if (d && d.largeur === a.largeur && Math.hypot(d.b.x - a.a.x, d.b.z - a.a.z) < 1e-6) c.push(a)
-    else out.push([a])
-  }
-  return out
-}
-
-/**
- * Un ruban d'allée drapé sur le relief : les bords sont joints en onglet à
- * chaque coude, et la bande est subdivisée au mètre pour suivre la pelouse.
- * Une chaîne ouverte est rallongée d'une demi-largeur à ses bouts (elle se
- * glisse sous l'allée qu'elle rejoint) ; une boucle se referme sur elle-même.
- */
-function ruban(chaine: Allee[]): THREE.BufferGeometry {
-  const w = chaine[0].largeur / 2
-  const pts = [chaine[0].a, ...chaine.map((s) => s.b)].map((p) => ({ ...p }))
-  const fermee = Math.hypot(pts[0].x - pts[pts.length - 1].x, pts[0].z - pts[pts.length - 1].z) < 1e-6
-  const dir = (a: { x: number; z: number }, b: { x: number; z: number }) => {
-    const l = Math.hypot(b.x - a.x, b.z - a.z) || 1
-    return { x: (b.x - a.x) / l, z: (b.z - a.z) / l }
-  }
-  const n = pts.length
-  if (!fermee) {
-    const [d0, d1] = [dir(pts[0], pts[1]), dir(pts[n - 2], pts[n - 1])]
-    pts[0] = { x: pts[0].x - d0.x * w, z: pts[0].z - d0.z * w }
-    pts[n - 1] = { x: pts[n - 1].x + d1.x * w, z: pts[n - 1].z + d1.z * w }
-  }
-  // Les deux bords à chaque sommet : la normale moyenne, allongée pour garder la largeur (onglet).
-  const bords = pts.map((p, i) => {
-    const avant = i > 0 ? dir(pts[i - 1], p) : fermee ? dir(pts[n - 2], p) : null
-    const apres = i < n - 1 ? dir(p, pts[i + 1]) : fermee ? dir(pts[0], pts[1]) : null
-    const [a, b] = [avant ?? apres!, apres ?? avant!]
-    const t = dir({ x: 0, z: 0 }, { x: a.x + b.x, z: a.z + b.z })
-    const k = w / Math.max(0.5, t.x * a.x + t.z * a.z)
-    return [{ x: p.x + t.z * k, z: p.z - t.x * k }, { x: p.x - t.z * k, z: p.z + t.x * k }]
-  })
-  const pos: number[] = []
-  const index: number[] = []
-  let rang = 0
-  for (let i = 0; i + 1 < n; i++) {
-    const [[g0, d0], [g1, d1]] = [bords[i], bords[i + 1]]
-    const m = Math.max(1, Math.ceil(Math.hypot(pts[i + 1].x - pts[i].x, pts[i + 1].z - pts[i].z)))
-    for (let k = i === 0 ? 0 : 1; k <= m; k++) {
-      const u = k / m
-      const [g, d] = [{ x: g0.x + (g1.x - g0.x) * u, z: g0.z + (g1.z - g0.z) * u }, { x: d0.x + (d1.x - d0.x) * u, z: d0.z + (d1.z - d0.z) * u }]
-      for (const [x, z] of [[g.x, g.z], [(g.x + d.x) / 2, (g.z + d.z) / 2], [d.x, d.z]]) pos.push(x, hauteurDuParc(x, z) + RELIEF_ALLEE, z)
-      if (rang > 0) for (const j of [1, 2]) {
-        const q = 3 * rang + j
-        index.push(q - 4, q - 3, q - 1, q - 1, q - 3, q)
-      }
-      rang++
-    }
-  }
-  const g = new THREE.BufferGeometry()
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
   g.setIndex(index)
   g.computeVertexNormals()
   return g
