@@ -113,5 +113,5 @@ describe('promenade au jardin', () => {
     // Ni cloîtré dans les salles, ni perdu au jardin.
     expect(dehors / 72000).toBeGreaterThan(0.2)
     expect(dehors / 72000).toBeLessThan(0.8)
-  }, 30_000) // deux heures simulées : 2 à 7 s selon la charge de la suite, au-delà des 5 s par défaut
+  }) // deux heures simulées : 2 à 7 s selon la charge ; le délai global (vite.config.ts) s'applique
 })
