@@ -15,6 +15,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 import { useGameStore } from '../stores/gameStore'
+import { eclairerMatiere, eclairerModele } from './lumiere'
 import { useMatiere } from './materials'
 
 /** La lampe, au centre de la voûte (`SOMMET` du script Blender). */
@@ -31,7 +32,11 @@ export function SalleHonneurLayer() {
     gltf.setDRACOLoader(draco)
     gltf
       .loadAsync(`${base}assets/architecture/salle-honneur.glb`)
-      .then(({ scene }) => vivant && setSalle(scene))
+      .then(({ scene }) => {
+        if (!vivant) return
+        eclairerModele(scene, 'salle-honneur') // la lumière cuite de la salle (`lumiere.ts`)
+        setSalle(scene)
+      })
       .catch((erreur: unknown) => console.error('salle d’honneur indisponible', erreur))
       .finally(() => draco.dispose())
     return () => {
@@ -46,6 +51,7 @@ export function SalleHonneurLayer() {
   useEffect(() => {
     if (salle === null) return
     parquet.vertexColors = true
+    eclairerMatiere(parquet)
     parquet.needsUpdate = true
     const lames = salle.getObjectByName('Parquet')
     if (lames instanceof THREE.Mesh) lames.material = parquet

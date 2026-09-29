@@ -50,6 +50,7 @@ def _module(nom, fichier):
 
 nef = _module("nef", "build-nef.py")
 batllo = _module("batllo", "build-batllo.py")
+lumiere_uv = _module("lumiere_uv", "lumiere_uv.py")
 SORTIE = ICI.parents[1] / "public" / "assets" / "architecture" / "salle-honneur.glb"
 
 # ── La salle, lue dans src/plan/musee.ts ──────────────────────────────────
@@ -520,6 +521,10 @@ def construire():
     bpy.ops.object.join()
     bpy.context.view_layer.objects.active.name = "Portes"
     parquet(dessous, lames)
+    # La couche où `bake-lumiere.py` cuit la lumière de la salle : ni la lampe (elle
+    # brille d'elle-même), ni le dessous noir du parquet (jamais vu).
+    lumiere_uv.deplier([o for o in bpy.data.objects if o.type == "MESH" and o.name not in ("Soleil", "Parquet_Joints", "Parquet")],
+                       sol=bpy.data.objects["Parquet"])
 
 
 def exporter():

@@ -14,6 +14,10 @@
  * d'instance, `aLumiere`, porte son rang dans une petite table flottante (six
  * rectangles par rang, un par face). Rang 0 : pas de lumière cuite, facteur 1 —
  * c'est aussi ce que lit un maillage qui n'a pas l'attribut.
+ *
+ * Les modèles Blender cuits eux aussi — l'escalier, la salle d'honneur — ont
+ * leur région de l'atlas et une couche UV de lumière (`eclairerModele`) : le
+ * même facteur, sur la même ambiance.
  */
 import * as THREE from 'three'
 
@@ -37,6 +41,8 @@ interface Donnees {
   largeur: number
   hauteur: number
   boites: Record<string, (number[] | 0)[]>
+  /** Par modèle (ou `modèle/pièce`) : sa région de l'atlas, en texels. */
+  modeles?: Record<string, number[]>
 }
 const DONNEES = LUMIERE_JSON as Donnees
 const CLES = Object.keys(DONNEES.boites)
@@ -75,6 +81,8 @@ export function rangsDeLumiere(boites: readonly Box[]): Float32Array {
  * `onBeforeCompile`, comme `appliquerEchelleInstance` qui l'appelle.
  */
 export function appliquerLumiere(material: THREE.Material): void {
+  if (material.userData.lumiere) return
+  material.userData.lumiere = true
   const precedent = material.onBeforeCompile
   material.onBeforeCompile = (shader, renderer) => {
     precedent.call(material, shader, renderer)
@@ -84,6 +92,9 @@ export function appliquerLumiere(material: THREE.Material): void {
         '#include <common>',
         `#include <common>
          varying vec3 vLumiere;
+         #ifdef LUMIERE_MODELE
+         attribute vec2 aLumiereUV;
+         #endif
          #ifdef USE_INSTANCING
          attribute float aLumiere;
          uniform highp sampler2D uLumiereTable;
@@ -103,6 +114,9 @@ export function appliquerLumiere(material: THREE.Material): void {
            vec2 st = face < 2 ? p.zy : face < 4 ? p.xz : p.xy;
            vLumiere = vec3(mix(r.xy, r.zw, st), r.z > 0.0 ? 1.0 : 0.0);
          }
+         #endif
+         #ifdef LUMIERE_MODELE
+         vLumiere = vec3(aLumiereUV, 1.0);
          #endif`,
       )
     shader.fragmentShader = shader.fragmentShader
@@ -127,4 +141,41 @@ export function appliquerLumiere(material: THREE.Material): void {
          }`,
       )
   }
+}
+
+/**
+ * Pose la lumière cuite sur un modèle Blender : chaque maillage qui a sa couche
+ * UV de lumière — la dernière, `uv1` derrière les UV de matière, sinon `uv`
+ * (`tools/blender/lumiere_uv.py`) — la reçoit, étirée sur la région du modèle
+ * (ou de la pièce, `modèle/nom`) dans l'atlas. Sans région, rien ne change.
+ */
+export function eclairerModele(racine: THREE.Object3D, modele: string): void {
+  const regions = DONNEES.modeles ?? {}
+  racine.traverse((o) => {
+    if (!(o instanceof THREE.Mesh)) return
+    const g = o.geometry as THREE.BufferGeometry
+    const uv = g.getAttribute('uv1') ?? g.getAttribute('uv')
+    const r = regions[`${modele}/${o.name}`] ?? regions[modele]
+    if (!uv || !r) return
+    if (!g.getAttribute('aLumiereUV')) {
+      // glTF compte v depuis le HAUT ; l'atlas, comme Blender, depuis le bas.
+      const a = new Float32Array(uv.count * 2)
+      for (let i = 0; i < uv.count; i++) {
+        a[2 * i] = (r[0] + uv.getX(i) * (r[2] - r[0])) / DONNEES.largeur
+        a[2 * i + 1] = (r[1] + (1 - uv.getY(i)) * (r[3] - r[1])) / DONNEES.hauteur
+      }
+      g.setAttribute('aLumiereUV', new THREE.BufferAttribute(a, 2))
+    }
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) eclairerMatiere(m)
+  })
+}
+
+/** Une matière de modèle : la lumière cuite, lue sur `aLumiereUV`. */
+export function eclairerMatiere(m: THREE.Material): void {
+  if (m.defines?.LUMIERE_MODELE !== undefined) return
+  const cle = m.customProgramCacheKey()
+  appliquerLumiere(m)
+  m.defines = { ...m.defines, LUMIERE_MODELE: '' }
+  m.customProgramCacheKey = () => `${cle}|lumiere-modele`
+  m.needsUpdate = true
 }

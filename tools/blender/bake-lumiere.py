@@ -15,6 +15,9 @@ lanterneaux, le mobilier et les modèles du bâtiment. Sortie : `atlas.png`,
 l'éclairement DIFFUS (direct + rebonds, sans l'albédo du récepteur) divisé par
 `PLAFOND` et encodé en sRGB — la scène le relit en `SRGBColorSpace`.
 
+L'escalier et la salle d'honneur, modèles Blender, cuisent aussi : chacun a sa
+région d'atlas (`modeles` du JSON) où se range sa couche UV de lumière.
+
 Ce que la cuisson contient : le ciel de jour (couvert, sans soleil — le soleil
 reste en temps réel), les lanterneaux des galeries, les lanternes de la nef et
 la lampe-soleil de la salle d'honneur. La verrière et les vitres laissent passer
@@ -153,13 +156,28 @@ bpy.context.object.data.materials.append(matiere("Parc", (0.16, 0.18, 0.12)))
 
 # ── Les modèles du bâtiment ───────────────────────────────────────────────
 racines = {}
+modeles = []  # les modèles cuits eux aussi : l'escalier, la salle d'honneur
 for chemin in D["glb"]:
     avant = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=chemin)
+    nouveaux = sorted(set(bpy.data.objects) - avant, key=lambda o: o.name)
     if chemin.endswith("mobilier.glb"):
-        for o in set(bpy.data.objects) - avant:
+        for o in nouveaux:
             if o.parent is None:
                 racines[o.name] = o
+    # Leur dernière couche UV est celle de la lumière (`lumiere_uv.py`), dans [0, 1]² :
+    # on la range dans la région d'atlas du modèle, ou de la pièce qui a la sienne.
+    cle = Path(chemin).stem
+    for o in nouveaux:
+        r = D["modeles"].get(f"{cle}/{o.name.split('.')[0]}") or D["modeles"].get(cle)
+        if o.type != "MESH" or r is None or not o.data.uv_layers:
+            continue
+        couche = o.data.uv_layers[-1]
+        for uv in couche.uv:
+            s, t = uv.vector
+            uv.vector = ((r[0] + s * (r[2] - r[0])) / W, (r[1] + t * (r[3] - r[1])) / H)
+        o.data.uv_layers.active = couche  # la cuisson écrit sur la couche ACTIVE ; le rendu garde la sienne
+        modeles.append(o)
 
 # Le verre laisse passer le ciel : la verrière entièrement, les vitraux teintés à moitié.
 for m in bpy.data.materials:
@@ -239,15 +257,26 @@ scene.cycles.diffuse_bounces = 4
 scene.cycles.transparent_max_bounces = 8
 scene.cycles.use_denoising = False
 
+# Le parquet de la salle d'honneur est blanc dans le fichier (la teinte est dans ses
+# sommets, three pose la matière du musée) : il rebondit comme le parquet du plan.
+parquet = bpy.data.materials.get("Honneur_Parquet")
+if parquet:
+    p = next(n for n in parquet.node_tree.nodes if n.type == "BSDF_PRINCIPLED")
+    for lien in list(p.inputs["Base Color"].links):
+        parquet.node_tree.links.remove(lien)
+    p.inputs["Base Color"].default_value = (*ALBEDO["parquet"], 1)
+
+recepteurs = [ob_recepteurs, *modeles]
 atlas = bpy.data.images.new("Atlas", W, H, float_buffer=True, alpha=False)
-for m in ob_recepteurs.data.materials:
+for m in dict.fromkeys(m for o in recepteurs for m in o.data.materials if m):
     nt = m.node_tree
     img = nt.nodes.new("ShaderNodeTexImage")
     img.image = atlas
     nt.nodes.active = img
 
 bpy.ops.object.select_all(action="DESELECT")
-ob_recepteurs.select_set(True)
+for o in recepteurs:
+    o.select_set(True)
 bpy.context.view_layer.objects.active = ob_recepteurs
 bake = scene.render.bake
 bake.margin = 2

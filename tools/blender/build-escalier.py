@@ -32,6 +32,14 @@ import bpy
 import numpy as np
 
 try:
+    import importlib.util as _iu
+    _spec = _iu.spec_from_file_location("lumiere_uv", Path(__file__).resolve().parent / "lumiere_uv.py")
+    lumiere_uv = _iu.module_from_spec(_spec)
+    _spec.loader.exec_module(lumiere_uv)
+except NameError:  # exécuté depuis le MCP, sans __file__ : pas d'UV de lumière
+    lumiere_uv = None
+
+try:
     ROOT = Path(__file__).resolve().parents[2]
 except NameError:  # exécuté depuis le MCP, sans __file__
     ROOT = Path(bpy.path.abspath("//")).resolve()
@@ -447,6 +455,8 @@ def construire():
               # Le palier n'est pas un solide fermé (ses côtés sont dans les murs) : saisi dans le bon sens.
               p.objet("Escalier_Palier", [blanc, rouge], orienter=False)]
     print(f"escalier : {sum(len(q.vertices) - 2 for o in objets for q in o.data.polygons)} triangles")
+    if lumiere_uv:  # la couche où `bake-lumiere.py` cuit la lumière du hall
+        lumiere_uv.deplier(objets)
 
 
 def exporter():

@@ -41,6 +41,8 @@ guardrails and obstacles — not from meshes), `rules.ts` (architectural validat
 `mobilier.ts`, `park.ts`/`relief.ts`/`enceinte.ts` (garden), `visibilite.ts` (room zones), `lumiere.ts` (lightmap
 atlas packing). Changing the plan means regenerating `accrochage`, the plan SVGs and, if boxes or furniture moved,
 the lightmap (`lumiere.json` keys boxes by position+size; unmatched boxes silently fall back to no lightmap).
+The staircase and Hall of Honour GLBs are baked too, through a last "Lumiere" UV layer (`tools/blender/lumiere_uv.py`)
+stretched over their own atlas region (`MODELES` in `tools/bake-lumiere.ts`): re-bake after rebuilding either GLB.
 
 Coordinates: x east, z south, y up, metres. Walls are centred on room edges: interior partitions are ±`INT` (0.15),
 façade `-EXT/+INT` (0.45/0.15) — see `svg.ts`. Skins stack on the wall face (hall stone 0.03, gallery paint 0.002).
