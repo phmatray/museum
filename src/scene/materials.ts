@@ -56,6 +56,7 @@ import * as THREE from 'three'
 import type { ThemeId, WallKind } from '../domain/types'
 import type { JeuDeCartes, MatiereId } from '../io/textures'
 import { abonnerAuxMatieres, chargerMatiere, matiereEnCache } from '../io/textures'
+import { appliquerLumiere } from './lumiere'
 
 export type { JeuDeCartes, MatiereId } from '../io/textures'
 
@@ -564,6 +565,8 @@ export function appliquerEchelleInstance(material: THREE.MeshStandardMaterial): 
          #endif`,
       )
   }
+  // Toute matière de Boites passe ici : la lumière cuite de Blender la suit (`lumiere.ts`).
+  appliquerLumiere(material)
 }
 
 // ── Accès React ──────────────────────────────────────────────────────────

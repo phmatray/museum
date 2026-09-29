@@ -87,6 +87,13 @@ public/assets/fonts/*
 !public/assets/architecture/
 !public/assets/architecture/nef.glb
 
+# La lumière précalculée exige Blender (`npm run bake`) : l'atlas est commité ;
+# `.lumiere/` n'est que la scène intermédiaire et l'atlas brut.
+!public/assets/lumiere/
+public/assets/lumiere/*
+!public/assets/lumiere/atlas.webp
+.lumiere/
+
 # Le jardin japonais exige Blender (`tools/blender/build-jardin.py`) : commité, comme la nef.
 !public/assets/jardin/
 public/assets/jardin/*
