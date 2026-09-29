@@ -13,6 +13,8 @@ import type * as THREE from 'three'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
+import { eclairerModele } from './lumiere'
+
 export function EscalierLayer({ onPret }: { onPret: () => void }) {
   const [escalier, setEscalier] = useState<THREE.Object3D | null>(null)
   useEffect(() => {
@@ -26,6 +28,8 @@ export function EscalierLayer({ onPret }: { onPret: () => void }) {
       .loadAsync(`${base}assets/architecture/escalier.glb`)
       .then(({ scene }) => {
         if (!vivant) return
+        // La lumière du hall cuite sur le marbre (`lumiere.ts`) : il ne sort plus du mur.
+        eclairerModele(scene, 'escalier')
         setEscalier(scene)
         onPret()
       })

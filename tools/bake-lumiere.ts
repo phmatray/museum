@@ -4,7 +4,8 @@
  *  1. Décrit la scène en JSON (`.lumiere/scene.json`, non versionné) : les
  *     boîtes du plan et leur rectangle d'atlas (`src/plan/lumiere.ts`), les
  *     obstacles (façade, résille, mobilier), les lanterneaux qui éclairent, et
- *     les modèles Blender du bâtiment.
+ *     les modèles Blender du bâtiment — l'escalier et la salle d'honneur cuits
+ *     eux aussi, chacun dans sa région (`MODELES`).
  *  2. Lance Blender : `tools/blender/bake-lumiere.py` cuit l'éclairement du ciel
  *     (Cycles, rebonds compris, débruité) dans l'atlas → `.lumiere/atlas.png`.
  *  3. Compresse l'atlas en WebP (`public/assets/lumiere/atlas.webp`) et écrit
@@ -23,7 +24,7 @@ import sharp from 'sharp'
 
 import { boitesDesCimaises } from '../src/plan/cimaises.ts'
 import { facade } from '../src/plan/facade.ts'
-import { cleDeBoite, emballer, facesVisibles, surfacesCuites } from '../src/plan/lumiere.ts'
+import { cleDeBoite, emballer, facesVisibles, MARGE, surfacesCuites } from '../src/plan/lumiere.ts'
 import { MOBILIER } from '../src/plan/mobilier.ts'
 import { MUSEE } from '../src/plan/musee.ts'
 import { plafonds } from '../src/plan/plafonds.ts'
@@ -43,8 +44,24 @@ let densite = Number(process.env.DENSITE ?? 14)
 let atlas = emballer(surfaces, visibles, densite, LARGEUR, HAUTEUR_MAX)
 while (atlas === null && densite > 4) atlas = emballer(surfaces, visibles, --densite, LARGEUR, HAUTEUR_MAX)
 if (atlas === null) throw new Error('atlas impossible')
+// Les modèles Blender cuits eux aussi, chacun sa région (en texels) sur une bande
+// au-dessus des étagères : sa couche UV de lumière (`tools/blender/lumiere_uv.py`)
+// s'y étire. ~30 texels/m — des marches de 16 cm veulent plus que les murs. Le
+// parquet de la salle d'honneur, projeté d'en haut, a la sienne, à ses proportions.
+const MODELES: [string, number, number][] = [
+  ['escalier', 1024, 1024],
+  ['salle-honneur', 1024, 1024],
+  ['salle-honneur/Parquet', 512, 384],
+]
+const modeles: Record<string, number[]> = {}
+let xModele = 0
+for (const [cle, w, h] of MODELES) {
+  modeles[cle] = [xModele + MARGE, atlas.hauteur + MARGE, xModele + MARGE + w, atlas.hauteur + MARGE + h]
+  xModele += w + 2 * MARGE
+}
+const hautModeles = atlas.hauteur + 2 * MARGE + Math.max(...MODELES.map(([, , h]) => h))
 // Hauteur arrondie au multiple de 256 : un atlas moins haut que large, pas de texels perdus.
-const hauteur = Math.ceil(atlas.hauteur / 256) * 256
+const hauteur = Math.ceil(hautModeles / 256) * 256
 const nFaces = visibles.reduce((s, v) => s + v.length, 0)
 console.log(`${surfaces.length} boîtes, ${nFaces} faces visibles, ${densite} texels/m, atlas ${LARGEUR}×${hauteur}`)
 
@@ -62,6 +79,7 @@ writeFileSync(
     obstacles: [...obstacles, ...residus, ...cimaises],
     lanterneaux,
     mobilier: MOBILIER.filter((m) => m.surface !== 'parc:terrain'),
+    modeles,
     glb: ['nef', 'escalier', 'salle-honneur', 'batllo', 'mobilier'].map((n) => resolve(ROOT, `public/assets/architecture/${n}.glb`)),
     sortie: resolve(TRAVAIL, 'atlas.png'),
     echantillons: Number(process.env.ECHANTILLONS ?? 128),
@@ -83,5 +101,5 @@ const boites: Record<string, (number[] | 0)[]> = {}
 surfaces.forEach((s, i) => {
   if (atlas.rects[i].some((r) => r !== null)) boites[cleDeBoite(s.boite)] = atlas.rects[i].map((r) => r ?? 0)
 })
-writeFileSync(resolve(ROOT, 'src/plan/lumiere.json'), JSON.stringify({ largeur: LARGEUR, hauteur, densite, boites }) + '\n')
+writeFileSync(resolve(ROOT, 'src/plan/lumiere.json'), JSON.stringify({ largeur: LARGEUR, hauteur, densite, modeles, boites }) + '\n')
 console.log('src/plan/lumiere.json écrit')
