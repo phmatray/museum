@@ -5,8 +5,8 @@
  * L'atlas contient l'éclairement DIFFUS du ciel couvert — direct et rebonds —
  * sur chaque face visible du bâtiment : le coin sombre, le mur qui s'éclaire
  * sous un lanterneau, le sol de la nef sous sa verrière, l'ombre douce d'une
- * banquette. On en fait le facteur de l'éclairage AMBIANT (l'hémisphérique, et
- * demain l'environnement) : l'hémisphérique suppose un ciel entier au-dessus de
+ * banquette. On en fait le facteur de l'éclairage AMBIANT (l'hémisphérique ;
+ * l'environnement ne sert qu'au spéculaire, voir `RefletsLayer`) : l'hémisphérique suppose un ciel entier au-dessus de
  * chaque point, la cuisson dit combien il en voit vraiment. Les lumières
  * directes — le soleil, la lampe, les projecteurs — restent en temps réel.
  *

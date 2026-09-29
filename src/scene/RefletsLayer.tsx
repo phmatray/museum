@@ -10,8 +10,19 @@
  *
  * Rien n'est rendu à chaque image : une sonde par image, en file, au montage,
  * une seconde fois quand les modèles sont arrivés, puis quand le soleil a
- * tourné d'environ une heure. En changeant de pièce, l'environnement bascule
- * sur la sonde voulue et son intensité remonte en un éclair (pas de saut franc).
+ * tourné d'environ une heure.
+ *
+ * L'environnement ne sert QU'AU spéculaire. Three s'en sert aussi pour le
+ * diffus (l'irradiance IBL), et c'était la moitié de la lumière d'un mur :
+ * passer une porte changeait de sonde, donc la clarté de TOUT ce qu'on voyait,
+ * la pièce quittée comme celle où l'on entre — mesuré, 3 à 24 % sur un même
+ * pan de mur ou de sol en un pas, plus un creux de 5 à 20 % le temps du fondu.
+ * Le diffus ambiant vient désormais de l'hémisphérique, modulée par la lumière
+ * cuite (`lumiere.ts`) : rien qui dépende d'où se tient le visiteur.
+ *
+ * Et le reflet lui-même passe la porte en glissant : sur le seuil, les deux
+ * sondes se mêlent selon la place (`melangeDeReflets`), moitié-moitié sur la
+ * ligne du mur, une seule à 1,5 m. Le marbre poli ne saute plus d'un pas.
  *
  * Toutes les cartes ont la même taille : changer de carte ne recompile aucun
  * matériau.
@@ -20,7 +31,9 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 
-import { sondeDeReflet } from '../domain/ombres'
+import { FullScreenQuad } from 'three/examples/jsm/postprocessing/Pass.js'
+
+import { melangeDeReflets } from '../domain/ombres'
 import { MUSEE } from '../plan/musee'
 import { useChargement } from '../stores/chargementStore'
 import { useGameStore } from '../stores/gameStore'
@@ -28,12 +41,7 @@ import { sansTri } from './tri'
 
 /** Côté d'une face de sonde : les reflets sont flous, 128 suffit. */
 const TAILLE = 128
-/**
- * L'intensité des reflets, dehors (le ciel éclaire déjà par l'hémisphérique) et
- * dedans, et la part qui en reste la nuit. L'environnement éclaire AUSSI le
- * diffus de toute la scène : la sonde de la nef, pleine de lampes, rendait le
- * parc vu par la porte aussi clair qu'en plein jour à 23 h.
- */
+/** L'intensité des reflets, dehors et dedans, et la part qui en reste la nuit. */
 const INTENSITE = { ciel: 0.6, dedans: 0.8, nuit: 0.25 }
 /** La seconde passe, quand les modèles et les textures sont arrivés (ms). */
 const RATTRAPAGE = 9000
@@ -47,6 +55,24 @@ for (const l of MUSEE.levels)
     else if (r.kind !== 'balcony') SONDES.set(`${l.id}:${r.id}`, centre)
   }
 const TOUTES = ['ciel', ...SONDES.keys()]
+const NIVEAUX = new Map(MUSEE.levels.map((l) => [l.id, l]))
+
+/** Deux cartes pré-filtrées de même taille se mêlent texel à texel : même disposition des mips. */
+const FONDU = {
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+  fragmentShader: `
+    uniform sampler2D a, b;
+    uniform float part;
+    varying vec2 vUv;
+    void main() { gl_FragColor = mix(texture2D(a, vUv), texture2D(b, vUv), part); }`,
+  depthTest: false,
+  depthWrite: false,
+  toneMapped: false,
+  blending: THREE.NoBlending,
+}
+
+// Le diffus ne lit plus l'environnement (voir plus haut) : avant toute compilation de matériau.
+THREE.ShaderChunk.lights_fragment_maps = THREE.ShaderChunk.lights_fragment_maps.replace('iblIrradiance += getIBLIrradiance( geometryNormal );', '')
 
 export function RefletsLayer() {
   const gl = useThree((s) => s.gl)
@@ -54,7 +80,11 @@ export function RefletsLayer() {
   const pmrem = useMemo(() => new THREE.PMREMGenerator(gl), [gl])
   const cartes = useRef(new Map<string, THREE.WebGLRenderTarget>())
   const file = useRef<string[]>([])
-  const courante = useRef<string | null>(null)
+  // Le mélange de deux sondes, sur le seuil d'une porte : une passe plein écran, seulement quand il change.
+  const melange = useRef<THREE.WebGLRenderTarget | null>(null)
+  const dernier = useRef('')
+  const uniformes = useMemo(() => ({ a: { value: null as THREE.Texture | null }, b: { value: null as THREE.Texture | null }, part: { value: 0 } }), [])
+  const fondu = useMemo(() => new FullScreenQuad(new THREE.ShaderMaterial({ ...FONDU, uniforms: uniformes })), [uniformes])
   // Le ciel seul, dans sa propre scène : même géométrie, même matériau que `Ciel`.
   const cielSeul = useMemo(() => new THREE.Scene(), [])
 
@@ -79,11 +109,15 @@ export function RefletsLayer() {
       for (const c of toutes.values()) c.dispose()
       toutes.clear()
       pmrem.dispose()
+      melange.current?.dispose()
+      melange.current = null
+      fondu.material.dispose()
+      fondu.dispose()
     }
-  }, [pmrem])
+  }, [pmrem, fondu])
 
   /* eslint-disable react-hooks/immutability -- l'environnement est un état de la scène three */
-  useFrame((_, dt) => {
+  useFrame(() => {
     const cle = file.current[0]
     if (cle !== undefined) {
       let carte: THREE.WebGLRenderTarget | null = null
@@ -109,21 +143,37 @@ export function RefletsLayer() {
       if (carte) {
         cartes.current.get(cle)?.dispose()
         cartes.current.set(cle, carte)
-        if (courante.current === cle) scene.environment = carte.texture
       } else file.current.push(cle) // le ciel n'est pas encore chargé : plus tard
       if (file.current.length === 0 && finition) useChargement.setState({ sondes: true })
     }
 
-    const voulue = sondeDeReflet(useGameStore.getState().visiteur?.surface)
-    const carte = cartes.current.get(voulue) ?? cartes.current.get('ciel')
-    if (carte && courante.current !== voulue && (cartes.current.has(voulue) || courante.current === null)) {
-      courante.current = cartes.current.has(voulue) ? voulue : 'ciel'
-      scene.environment = carte.texture
-      scene.environmentIntensity *= 0.3
+    // Près d'une porte, les deux sondes se mêlent selon la place, pas selon l'horloge.
+    const v = useGameStore.getState().visiteur
+    const m = melangeDeReflets(NIVEAUX.get(v?.level ?? 0), v?.x ?? 0, v?.z ?? 0, v?.surface)
+    const a = cartes.current.get(m.sonde) ?? cartes.current.get('ciel')
+    const b = cartes.current.get(m.voisine) ?? a
+    if (a && b) {
+      if (a === b || m.part < 0.005) scene.environment = a.texture
+      else {
+        const cle = `${a.texture.id}:${b.texture.id}:${m.part.toFixed(3)}`
+        if (melange.current === null) melange.current = a.clone()
+        if (cle !== dernier.current) {
+          uniformes.a.value = a.texture
+          uniformes.b.value = b.texture
+          uniformes.part.value = m.part
+          const avant = gl.getRenderTarget()
+          gl.setRenderTarget(melange.current)
+          fondu.render(gl)
+          gl.setRenderTarget(avant)
+          dernier.current = cle
+        }
+        scene.environment = melange.current.texture
+      }
     }
     const jour = useGameStore.getState().ciel.jour
-    const cible = (voulue === 'ciel' ? INTENSITE.ciel : INTENSITE.dedans) * (INTENSITE.nuit + (1 - INTENSITE.nuit) * jour)
-    scene.environmentIntensity += (cible - scene.environmentIntensity) * (1 - Math.exp(-6 * dt))
+    const intensite = (k: string) => (k === 'ciel' ? INTENSITE.ciel : INTENSITE.dedans)
+    const part = a && b && a !== b ? m.part : 0
+    scene.environmentIntensity = (intensite(m.sonde) * (1 - part) + intensite(m.voisine) * part) * (INTENSITE.nuit + (1 - INTENSITE.nuit) * jour)
   })
   /* eslint-enable react-hooks/immutability */
   return null
