@@ -86,6 +86,19 @@ describe('allées', () => {
         if (champ.reseau(x, z) < -0.04) expect(couvre(a.gravier, x, z) || couvre(a.dalles, x, z), `${x.toFixed(1)}, ${z.toFixed(1)}`).toBe(true)
   })
 
+  it('tourne d’équerre aux coins du parvis, et suit le bord pas à pas, à 20 cm (40 au plus, près d’un angle)', () => {
+    const { x, z } = parc.parvis
+    const pres = a.bordures.flat().filter((p) => Math.hypot(p.x - x, p.z - z) < 0.01)
+    expect(pres.length).toBeGreaterThan(0)
+    // La normale en onglet : √2 le long de la bissectrice.
+    expect(Math.hypot(pres[0].nx, pres[0].nz)).toBeCloseTo(Math.SQRT2, 2)
+    for (const l of a.bordures)
+      for (let i = 1; i < l.length; i++) {
+        expect(Math.hypot(l[i].x - l[i - 1].x, l[i].z - l[i - 1].z)).toBeLessThan(0.4)
+        expect(Math.abs(champ.reseau(l[i].x, l[i].z))).toBeLessThan(0.005)
+      }
+  })
+
   it('est déterministe', () => {
     expect(amenagerAllees(parc)).toEqual(a)
   })
