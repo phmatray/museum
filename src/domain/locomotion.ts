@@ -152,6 +152,27 @@ export function chuter(vy: number, h: number): number {
   return Math.max(vy + GRAVITE * h, -VITESSE_CHUTE_MAX)
 }
 
+// ── Saut ────────────────────────────────────────────────────────────────
+
+/** 45 cm : le saut sur place d'un adulte, assez pour le sentir, pas pour franchir un garde-corps. */
+export const HAUTEUR_SAUT = 0.45
+
+/** La hauteur au-dessus du sol (m) et la vitesse verticale (m/s) d'un visiteur qui saute. */
+export interface Saut { h: number; v: number }
+export const AU_SOL: Saut = { h: 0, v: 0 }
+
+/**
+ * Un pas de temps de saut. On ne s'élance que du sol ; en l'air, la gravité.
+ * Le saut ne soulève que l'œil : les collisions (`walk.ts`) restent celles du
+ * sol, on ne passe donc ni un mur ni une rambarde en sautant.
+ */
+export function sauter(s: Saut, veut: boolean, dt: number): Saut {
+  const v = s.h === 0 && veut ? Math.sqrt(-2 * GRAVITE * HAUTEUR_SAUT) : s.v
+  if (s.h === 0 && v === 0) return AU_SOL
+  const h = s.h + v * dt
+  return h <= 0 ? AU_SOL : { h, v: chuter(v, dt) }
+}
+
 // ── Direction ────────────────────────────────────────────────────────────
 
 export interface Touches {

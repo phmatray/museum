@@ -67,7 +67,7 @@ export function PointerLockOverlay() {
       )}
       <p style={{ fontSize: '1.2rem', opacity: 0.8 }}>Cliquer pour entrer</p>
       <p style={{ fontSize: '0.9rem', opacity: 0.6 }}>
-        ZQSD (WASD) ou flèches pour marcher · souris pour regarder · Échap pour la pause
+        ZQSD (WASD) ou flèches pour marcher · Espace pour sauter · souris pour regarder · Échap pour la pause
       </p>
       <button
         onClick={handleStartTour}

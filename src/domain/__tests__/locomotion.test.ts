@@ -9,8 +9,10 @@ import { describe, expect, it } from 'vitest'
 
 import {
   AMPLITUDE_LATERALE,
+  AU_SOL,
   DELTA_MAX,
   ECART_OEIL_MAX,
+  HAUTEUR_SAUT,
   LONGUEUR_PAS,
   PAS_FIXE,
   TAUX_ACCELERATION,
@@ -23,6 +25,7 @@ import {
   chuter,
   directionMarche,
   enfoncementImpact,
+  sauter,
   suivreOeil,
 } from '../locomotion'
 
@@ -261,5 +264,24 @@ describe('balancement', () => {
       max = Math.max(max, Math.abs(balancement(d, 3.8).y))
     }
     expect(max).toBeLessThan(0.02)
+  })
+})
+
+describe('sauter', () => {
+  it('monte à 45 cm, retombe au sol, et ne repart que du sol', () => {
+    let s = sauter(AU_SOL, true, PAS_FIXE)
+    let haut = 0
+    let pas = 1
+    while (s.h > 0 && pas < 1000) {
+      haut = Math.max(haut, s.h)
+      // Garder la touche en l'air ne relance pas le saut.
+      s = sauter(s, true, PAS_FIXE)
+      pas++
+    }
+    expect(haut).toBeCloseTo(HAUTEUR_SAUT, 1)
+    expect(pas * PAS_FIXE).toBeGreaterThan(0.5)
+    expect(pas * PAS_FIXE).toBeLessThan(0.7)
+    expect(s).toEqual(AU_SOL)
+    expect(sauter(AU_SOL, false, PAS_FIXE)).toEqual(AU_SOL)
   })
 })

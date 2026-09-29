@@ -11,7 +11,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import config from '../../museum.config.json'
 import { projetDemande, resoudre } from '../domain/lien'
-import { PAS_FIXE, VITESSE_VISITE, cadencer } from '../domain/locomotion'
+import { AU_SOL, PAS_FIXE, VITESSE_VISITE, cadencer, sauter } from '../domain/locomotion'
 import { useAccrochage } from '../hooks/useAccrochage'
 import { useVitrines } from '../hooks/useCatalogue'
 import { arriveeDevant, cibleDe } from '../plan/arrivee'
@@ -53,6 +53,7 @@ export function PlanPlayer() {
   const reste = useRef(0)
   const curseur = useRef<Curseur | null>(null)
   const attente = useRef(0)
+  const saut = useRef(AU_SOL)
 
   /**
    * L'entrée d'un pas de visite guidée : marcher vers le prochain point de
@@ -134,7 +135,7 @@ export function PlanPlayer() {
   /* eslint-disable react-hooks/immutability -- la caméra, réglée en place à chaque image */
   useFrame((_, delta) => {
     if (paused) return
-    const t = getKeys() as { forward: boolean; backward: boolean; left: boolean; right: boolean; hate?: boolean }
+    const t = getKeys() as { forward: boolean; backward: boolean; left: boolean; right: boolean; hate?: boolean; saut?: boolean }
     const { pas, reste: r } = cadencer(reste.current, delta)
     reste.current = r
     if (toucher.lookX || toucher.lookY) {
@@ -161,6 +162,7 @@ export function PlanPlayer() {
         break
       }
       w = step(MUSEE, w, entree, PAS_FIXE)
+      saut.current = sauter(saut.current, !tourActive && Boolean(t.saut), PAS_FIXE)
     }
     walker.current = w
     if (tourActive) {
@@ -174,7 +176,7 @@ export function PlanPlayer() {
     // Publié seulement s'il a bougé ou tourné : à l'arrêt, la minimap ne se redessine pas.
     const v = useGameStore.getState().visiteur
     if (!v || v.x !== w.x || v.z !== w.z || v.yaw !== w.yaw || v.surface !== w.surface) useGameStore.setState({ visiteur: w })
-    camera.position.set(w.x, w.y + HAUTEUR_OEIL, w.z)
+    camera.position.set(w.x, w.y + HAUTEUR_OEIL + saut.current.h, w.z)
   })
   /* eslint-enable react-hooks/immutability */
 
