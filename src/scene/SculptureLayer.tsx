@@ -5,7 +5,7 @@
  * déjà, ou à côté de la vitrine de son projet, une fois le catalogue chargé.
  * Ici on ne fait que dessiner.
  */
-import { Suspense, useEffect, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Text } from '@react-three/drei'
 import * as THREE from 'three'
 
@@ -37,17 +37,6 @@ export function SculptureLayer({ placements: niches }: { placements: SculpturePl
               <boxGeometry args={[p.plinth.width, p.plinth.height, p.plinth.depth]} />
             </mesh>
             {objet !== undefined && <primitive object={objet} position={[0, p.plinth.height, 0]} />}
-            {/* La flaque du projecteur : au sol, un peu en avant, et le long de la face du socle. */}
-            {halo && (
-              <>
-                <mesh position={[0, HALO.sol, HALO.avance]} rotation={[-Math.PI / 2, 0, 0]} material={halo.sol}>
-                  <planeGeometry args={[HALO.diametre, HALO.diametre]} />
-                </mesh>
-                <mesh position={[0, p.plinth.height / 2, p.plinth.depth / 2 + 0.002]} material={halo.face}>
-                  <planeGeometry args={[p.plinth.width, p.plinth.height]} />
-                </mesh>
-              </>
-            )}
             {/* Le cartel, une plaque crème en haut de la face avant du socle —
                 celle des vitrines. Sa propre attente : la police ne retient ni
                 le socle ni la pièce. */}
@@ -73,7 +62,44 @@ export function SculptureLayer({ placements: niches }: { placements: SculpturePl
           </group>
         )
       })}
+      {halo && <Halos placements={placements} halo={halo} />}
     </group>
+  )
+}
+
+/**
+ * La flaque de chaque projecteur — au sol, un peu en avant, et le long de la face
+ * du socle — en deux lots d'instances pour toutes les pièces : un plan unité, mis
+ * à l'échelle par instance.
+ */
+function Halos({ placements, halo }: { placements: SculpturePlacement[]; halo: { sol: THREE.Material; face: THREE.Material } }) {
+  const sol = useRef<THREE.InstancedMesh>(null)
+  const face = useRef<THREE.InstancedMesh>(null)
+  const plans = useMemo(() => [new THREE.PlaneGeometry(1, 1), new THREE.PlaneGeometry(1, 1)], [])
+  useEffect(() => () => plans.forEach((g) => g.dispose()), [plans])
+  useEffect(() => {
+    if (sol.current === null || face.current === null) return
+    const socle = new THREE.Matrix4()
+    const local = new THREE.Matrix4()
+    const couche = new THREE.Matrix4().makeRotationX(-Math.PI / 2)
+    placements.forEach((p, i) => {
+      socle.makeRotationY(p.rotation).setPosition(p.x, p.y, p.z)
+      local.makeTranslation(0, HALO.sol, HALO.avance).multiply(couche).scale(new THREE.Vector3(HALO.diametre, HALO.diametre, 1))
+      sol.current!.setMatrixAt(i, local.premultiply(socle))
+      local.makeTranslation(0, p.plinth.height / 2, p.plinth.depth / 2 + 0.002).scale(new THREE.Vector3(p.plinth.width, p.plinth.height, 1))
+      face.current!.setMatrixAt(i, local.premultiply(socle))
+    })
+    for (const m of [sol.current, face.current]) {
+      m.instanceMatrix.needsUpdate = true
+      m.computeBoundingSphere()
+    }
+  }, [placements])
+  // Les matériaux en prop, jamais dans `args` (#35).
+  return (
+    <>
+      <instancedMesh key={`sol-${placements.length}`} ref={sol} args={[plans[0], undefined, placements.length]} material={halo.sol} />
+      <instancedMesh key={`face-${placements.length}`} ref={face} args={[plans[1], undefined, placements.length]} material={halo.face} />
+    </>
   )
 }
 
