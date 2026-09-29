@@ -19,6 +19,7 @@
  * l'ancien bâtiment. 15 contremarches de 16 cm par volée, giron de 32 cm :
  * 2h + g = 0,64 m, au milieu de la fourchette de Blondel.
  */
+import { OBSTACLES_ATELIERS } from './ateliers.ts'
 import { obstaclesDesCimaises } from './cimaises.ts'
 import { OBSTACLES_PORTES_ENTREE, OBSTACLES_PORTIQUE } from './facade.ts'
 import { OBSTACLES_JARDIN } from './jardin.ts'
@@ -85,6 +86,8 @@ export const MUSEE: Plan = {
         ...obstaclesDuMobilier(0),
         // Les cimaises modulables des galeries les plus chargées (cimaises.ts).
         ...obstaclesDesCimaises(0),
+        // Les trois ateliers en coupe de la galerie du nord (ateliers.ts).
+        ...OBSTACLES_ATELIERS,
       ],
     },
     {

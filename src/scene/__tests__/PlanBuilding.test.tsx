@@ -31,6 +31,8 @@ vi.mock('../EscalierLayer', async () => {
 })
 // La faune du jardin (carpes, oiseaux, lucioles) a ses propres instances : hors du compte des boîtes.
 vi.mock('../FauneLayer', () => ({ FauneLayer: () => null }))
+// Les ateliers en coupe aussi : leurs socles, laitons, verres et blocs sont des lots à eux.
+vi.mock('../AteliersLayer', () => ({ AteliersLayer: () => null }))
 import { Color } from 'three'
 import type * as THREE from 'three'
 

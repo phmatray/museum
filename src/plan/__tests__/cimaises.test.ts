@@ -9,6 +9,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 import { FRAME_BORDER } from '../../builders/artwork.ts'
+import { SALLE_ATELIERS } from '../ateliers.ts'
 import { CARTEL_LARGEUR, cartelPlacements } from '../cartels.ts'
 import { CIMAISES, MODULE, boitesDesCimaises, cimaiseSous, emprise, placesDeFace, type Cimaise } from '../cimaises.ts'
 import type { Accrochage } from '../hang.ts'
@@ -110,7 +111,8 @@ describe('CIMAISES', () => {
 
   it('va dans chaque galerie qui accroche plus de six dixièmes de ses murs', () => {
     for (const level of MUSEE.levels)
-      for (const r of level.rooms.filter((r) => r.kind === 'gallery')) {
+      // Sauf la galerie des ateliers en coupe : ils occupent la bande où irait la cimaise (ateliers.ts).
+      for (const r of level.rooms.filter((r) => r.kind === 'gallery' && !(level.id === 0 && r.id === SALLE_ATELIERS))) {
         const n = accrochage.rooms.find((a) => a.level === level.id && a.id === r.id)!.placements.length
         const murs = capacity(r, level) - CIMAISES.filter((c) => c.niveau === level.id && c.salle === r.id).reduce((s, c) => s + 2 * placesDeFace(c, NORMES.pasAccrochage), 0)
         if (n > 0.6 * murs) expect(CIMAISES.some((c) => c.niveau === level.id && c.salle === r.id), `${r.id} : ${n} toiles pour ${murs} places`).toBe(true)

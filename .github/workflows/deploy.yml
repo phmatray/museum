@@ -101,6 +101,14 @@ jobs:
             exit 1
           }
 
+      # L'architecture des projets phares, relevée dans leurs dépôts, pour les
+      # ateliers en coupe. Jamais un blocage : en échec, le fichier versionné reste.
+      - name: Relever les ateliers
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run ateliers
+
       # Ce que le public VOIT d'un projet : la page de son site, photographiée par
       # le Chrome du runner, ou la première vraie image de son README. AVANT les
       # médias, qui en font les toiles. Sous `public/media/`, donc dans le cache
