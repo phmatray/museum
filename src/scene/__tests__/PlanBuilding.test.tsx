@@ -41,6 +41,7 @@ import { plafonds } from '../../plan/plafonds'
 import { facade } from '../../plan/facade'
 import { enceinte } from '../../plan/enceinte'
 import { parkPlacements } from '../../plan/park'
+import { amenagerAllees } from '../../plan/allees'
 import { portes } from '../../plan/portes'
 import { boitesDesCimaises } from '../../plan/cimaises'
 import { meshLevel, type Box } from '../../plan/mesh'
@@ -104,6 +105,9 @@ describe('PlanBuilding', () => {
     const parc = parkPlacements(MUSEE)
     const mur = enceinte(parc.terrain, parc.allees)
     attendus.push(mur.brique.length, mur.pierre.length, mur.fer.length)
+    // Puis le décor des allées (AlleesDuParc) : les dalles près de l'eau en trois formes, piquets, cordes, touffes.
+    const al = amenagerAllees(parc)
+    attendus.push(...[0, 1, 2].map((v) => al.pierres.filter((_, i) => i % 3 === v).length), al.poteaux.length, al.cordes.length, al.touffes.length + al.couvreSol.length)
 
     expect(meshes).toHaveLength(attendus.length)
     expect(meshes.map((m) => m.count)).toEqual(attendus)
