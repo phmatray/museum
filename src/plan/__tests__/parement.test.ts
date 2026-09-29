@@ -23,6 +23,14 @@ describe('parementDuHall', () => {
     const bas = parementDuHall(MUSEE, 0).filter((b) => b.x < hall.x + 0.5 && b.y - b.h / 2 < 1)
     expect(bas.some((b) => b.z - b.d / 2 < 24 && b.z + b.d / 2 > 24)).toBe(false)
   })
+
+  it('couvre la tranche de la dalle de l’étage, au-dessus des volées latérales', () => {
+    // x = 16, z = 17 : le mur ouest au-dessus de la volée ouest, où aucun balcon ne s'appuie.
+    const y = MUSEE.storey - MUSEE.slab / 2
+    const couvre = parementDuHall(MUSEE, 0).some((b) =>
+      Math.abs(b.x - b.w / 2 - hall.x) < 0.2 && Math.abs(b.z - 17) < b.d / 2 && Math.abs(b.y - y) < b.h / 2)
+    expect(couvre).toBe(true)
+  })
 })
 
 describe('bandesDuSol', () => {
