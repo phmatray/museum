@@ -17,6 +17,9 @@ const TRAVEE = 3.5
 const BANDE = 0.18
 const EP_BANDE = 0.006
 const EPS = 1e-6
+/** La plinthe : 12 cm de haut, 12 mm devant la pierre ou la peinture. */
+const PLINTHE_H = 0.12
+const PLINTHE_EP = 0.012
 
 function hallDe(plan: Plan): Rect {
   const hall = plan.levels.flatMap((l) => l.rooms).find((r) => r.kind === 'hall')
@@ -50,12 +53,29 @@ export function peintureDesSalles(plan: Plan, levelId: number): { couleur: strin
   return [...parCouleur].map(([couleur, boites]) => ({ couleur, boites }))
 }
 
+/**
+ * Les plinthes : au pied de chaque mur, dans les galeries, le hall et le long
+ * des balcons, interrompues aux portes (les murs de `meshLevel` y sont déjà
+ * coupés). Elles passent devant le parement du hall et la peinture des salles.
+ * La salle d'honneur a son propre décor. Dans le hall, granit sombre sur la
+ * pierre claire ; dans les salles, pierre claire sur les murs de couleur.
+ */
+export function plinthes(plan: Plan, levelId: number): { hall: Box[]; salles: Box[] } {
+  const level = plan.levels.find((l) => l.id === levelId)
+  const pour = (hall: boolean) =>
+    (level?.rooms ?? [])
+      .filter((r) => r.kind !== 'honneur' && (r.kind === 'hall') === hall)
+      .flatMap((r) => peauInterieure(plan, levelId, r, (hall ? PEAU : PEINTURE) + PLINTHE_EP, false))
+      .map((b) => ({ ...b, y: (level?.elevation ?? 0) + PLINTHE_H / 2, h: PLINTHE_H }))
+  return { hall: pour(true), salles: pour(false) }
+}
+
 /** Une peau d'épaisseur `ep` sur la face des murs et linteaux qui regarde l'intérieur de `r`. */
-function peauInterieure(plan: Plan, levelId: number, r: Rect, ep: number): Box[] {
+function peauInterieure(plan: Plan, levelId: number, r: Rect, ep: number, linteaux = true): Box[] {
   const [x0, x1, z0, z1] = [r.x, r.x + r.width, r.z, r.z + r.depth]
   const out: Box[] = []
   for (const b of meshLevel(plan, levelId)) {
-    if (b.kind !== 'wall' && b.kind !== 'lintel') continue
+    if (b.kind !== 'wall' && (b.kind !== 'lintel' || !linteaux)) continue
     const [bx0, bx1, bz0, bz1] = [b.x - b.w / 2, b.x + b.w / 2, b.z - b.d / 2, b.z + b.d / 2]
     if (b.d < b.w) {
       // Un mur courant selon x, sur le nord ou le sud du hall.

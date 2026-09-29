@@ -37,7 +37,7 @@ import { PortesLayer } from './PortesLayer'
 import { MobilierLayer } from './MobilierLayer'
 import { ConstellationLayer } from './ConstellationLayer'
 import { FacadeLayer } from './FacadeLayer'
-import { bandesDuSol, parementDuHall, peintureDesSalles } from '../plan/parement'
+import { bandesDuSol, parementDuHall, peintureDesSalles, plinthes } from '../plan/parement'
 import { plafonds } from '../plan/plafonds'
 import { creerGranit, creerPierre } from './pierre'
 import { LumiereLayer } from './LumiereLayer'
@@ -109,6 +109,7 @@ function Niveau({ level, verre, sansMarches }: { level: number; verre: THREE.Mat
   const acier = useMatiere('metal')
   const parement = useMemo(() => parementDuHall(MUSEE, level), [level])
   const peintures = useMemo(() => peintureDesSalles(MUSEE, level), [level])
+  const plinthesDuNiveau = useMemo(() => plinthes(MUSEE, level), [level])
   const parquet = useMatiere('parquet')
   const plafond = useMemo(() => plafonds(MUSEE, level), [level])
   const platrePlafond = useMatiere('platre')
@@ -153,6 +154,8 @@ function Niveau({ level, verre, sansMarches }: { level: number; verre: THREE.Mat
       <Boites boites={de.get('handrail') ?? AUCUNE} material={acier} />
       <Boites boites={baies} material={verre} />
       <Boites boites={parement} material={taille} />
+      <Boites boites={plinthesDuNiveau.hall} material={granit} />
+      <Boites boites={plinthesDuNiveau.salles} material={taille} />
       <Boites boites={plafond.platre} material={platrePlafond} />
       <Boites boites={plafond.verre} material={lanterneau} />
       <Boites boites={plafond.resille} material={granit} />
