@@ -51,7 +51,9 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   const sol = useMemo(() => pelouse(placements), [placements])
   // Le parvis est dallé de la pierre du hall, comme le seuil d'un vrai musée ; le
   // gravier est pour les allées du jardin.
-  const parvis = useMemo(() => dalles(placements.dalles.map((r) => pave(r, 0, RELIEF_ALLEE))), [placements])
+  // Le dallage 1 cm au-dessus du gravier : à la même cote, les allées qui le
+  // rejoignent se battaient avec lui (deux textures entremêlées, signalé par Philippe).
+  const parvis = useMemo(() => dalles(placements.dalles.map((r) => pave(r, 0, RELIEF_ALLEE + 0.01))), [placements])
   const dallage = useMemo(() => creerPierre(), [])
   useEffect(() => () => {
     parvis.dispose()

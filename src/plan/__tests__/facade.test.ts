@@ -32,3 +32,8 @@ it('ouvre les portes de l’entrée sur l’entrée du plan, sans rétrécir le 
   const [g, d] = [...OBSTACLES_PORTES_ENTREE].sort((a, b) => a.x - b.x)
   expect(d.x - (g.x + g.width)).toBeGreaterThan(2.8)
 })
+
+it('attache les battants à la face intérieure du mur : aucun battant ne flotte', () => {
+  // Le mur de façade déborde de INT (0,15 m) côté hall.
+  for (const r of OBSTACLES_PORTES_ENTREE) expect(r.z + r.depth).toBeCloseTo(ENTREE.z - 0.15, 3)
+})

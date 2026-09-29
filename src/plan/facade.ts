@@ -15,7 +15,7 @@
  * Pur : ni three ni React.
  */
 import { meshLevel, type Box } from './mesh.ts'
-import { EXT } from './svg.ts'
+import { EXT, INT } from './svg.ts'
 import type { Plan, Rect } from './types.ts'
 
 /** Le portique : de l'aplomb du hall (x = 16 à 32), en saillie sur la façade sud (z = 40). */
@@ -67,9 +67,12 @@ export const OBSTACLES_PORTIQUE: Rect[] = (() => {
 
 /** L'entrée du plan (`musee.ts` : x 24, z 40, 3,20 m) ; un test vérifie qu'elle n'a pas bougé. */
 export const ENTREE = { x: 24, z: 40, width: 3.2 }
-/** Les deux battants ouverts : sur leur montant côté mur (x), de la façade (z1) vers le hall (z0). */
+/** Les deux battants ouverts : sur leur montant côté mur (x), de la face intérieure du mur (z1) vers le hall (z0). */
 const BATTANTS = [ENTREE.x - ENTREE.width / 2 + 0.06, ENTREE.x + ENTREE.width / 2 - 0.06].map((x) => {
-  const z1 = ENTREE.z - EXT + 0.02
+  // Les paumelles sont sur la face INTÉRIEURE du mur (−INT), pas l'extérieure
+  // (−EXT) : décalés de 0,30 m, les battants flottaient dans le hall, sans
+  // attache (signalé par Philippe).
+  const z1 = ENTREE.z - INT
   return { x, z0: z1 - (ENTREE.width / 2 - 0.05), z1 }
 })
 export const OBSTACLES_PORTES_ENTREE: Rect[] = BATTANTS.map((b) => ({ x: b.x - 0.05, z: b.z0, width: 0.1, depth: b.z1 - b.z0 }))
