@@ -1372,6 +1372,20 @@
     "largeur": 1280,
     "hauteur": 800
    }
+  },
+  {
+   "n": 98,
+   "ancre": "t-98",
+   "titre": "La pierre et la brique ont vécu",
+   "categorie": "hall",
+   "statut": "en ligne · PR #194",
+   "fait": true,
+   "pr": 194,
+   "image": {
+    "src": "img/98-usure.jpg",
+    "largeur": 1280,
+    "hauteur": 1200
+   }
   }
  ]
 }
