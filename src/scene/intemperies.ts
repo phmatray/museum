@@ -86,7 +86,7 @@ vec2 iRonds(vec2 xz) {
  * MAINTENANT : la clé par défaut de three est le source de `onBeforeCompile`,
  * qui sera bientôt notre enveloppe, la même pour tous.
  */
-function greffer(m: THREE.Material, cle: string, greffe: (s: Shader) => void): void {
+export function greffer(m: THREE.Material, cle: string, greffe: (s: Shader) => void): void {
   if ((m.userData.intemperies as string[] | undefined)?.includes(cle)) return
   const avant = m.onBeforeCompile.bind(m)
   const cleAvant = m.customProgramCacheKey()
@@ -100,7 +100,7 @@ function greffer(m: THREE.Material, cle: string, greffe: (s: Shader) => void): v
 }
 
 /** Les uniformes partagés, la position et la normale au MONDE (instances comprises). */
-function avecMonde(s: Shader): void {
+export function avecMonde(s: Shader): void {
   Object.assign(s.uniforms, INTEMPERIES)
   if (s.vertexShader.includes('varying vec3 vMonde;')) return
   s.vertexShader = s.vertexShader
@@ -485,7 +485,46 @@ export function vieillirBrique(m: THREE.Material): void {
     float iPied = 1.0 - smoothstep(iBord - 0.08, iBord + 0.04, vDansMur);
     float iAlgue = smoothstep(0.45, 0.75, iBruit(vec2(iS * 1.3 + 11.0, vMonde.y * 2.2)) * 0.7 + iBruit(vec2(iS * 6.0, vMonde.y * 6.0)) * 0.3);
     diffuseColor.rgb *= mix(vec3(1.0), vec3(0.62, 0.62, 0.58), iPied);
-    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.6, 0.78, 0.45), iAlgue * (0.2 + 0.5 * iPied));
+    // Tourné au nord, le mur ne sèche jamais tout à fait : les algues y montent plus haut.
+    vec3 iNw = normalize((vec4(normal, 0.0) * viewMatrix).xyz);
+    float iNord = smoothstep(0.3, 0.8, -iNw.z);
+    float iVerdit = iAlgue * (0.2 + 0.5 * iPied) + iNord * iAlgue * 0.45 * (1.0 - smoothstep(0.35, 0.75, vDansMur));
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.6, 0.78, 0.45), clamp(iVerdit, 0.0, 0.85));
+    #ifdef USE_MAP
+    if (abs(iNw.y) < 0.5) {
+      // Brique par brique (22 × 6,5 cm, joint d'un centimètre, panneresses décalées ;
+      // la carte en mètres, \`creerBrique\`) : où est-on, dans quelle brique, et où est
+      // cette brique au MONDE — chaque travée a ses reprises, pas la même que sa voisine.
+      vec2 iM = vMapUv * vec2(1.84, 0.9);
+      float iRb = floor(iM.y / 0.075);
+      float iDec = mod(11.0 - mod(iRb, 12.0), 2.0) * 0.5;
+      float iCol = floor(iM.x / 0.23 - iDec);
+      vec2 iCell = vec2(iCol, iRb);
+      float iFy = fract(iM.y / 0.075) * 0.075;
+      float iFx = fract(iM.x / 0.23 - iDec) * 0.23;
+      float iBrique = step(0.01, iFy) * step(iFx, 0.22);
+      float iLe = iNw.z > 0.5 ? vMonde.x : (iNw.z < -0.5 ? -vMonde.x : (iNw.x > 0.5 ? -vMonde.z : vMonde.z));
+      vec2 iOrigine = floor(vec2(iLe - iM.x, vMonde.y - iM.y) * 10.0 + 0.5) / 10.0;
+      vec2 iOu = iOrigine + (iCell + vec2(iDec + 0.5, 0.5)) * vec2(0.23, 0.075);
+      // Au loin, une brique tient dans moins d'un pixel : le détail s'efface avant de grésiller.
+      float iNet = 1.0 - smoothstep(0.04, 0.12, max(fwidth(iM.x), fwidth(iM.y)) * 2.0);
+      // Chaque brique sa cuisson.
+      float iH = iHash(iOu * 7.13);
+      diffuseColor.rgb *= mix(1.0, mix(0.84, 1.12, iH), iBrique * iNet);
+      // Des reprises : un pan remonté en briques neuves, plus rouges, rejointoyé au ciment gris.
+      float iRep = step(0.74, iBruit(iOu * vec2(0.55, 0.9) + 31.0) * 0.8 + iBruit(iOu * 2.3) * 0.2);
+      vec3 iNeuve = diffuseColor.rgb * vec3(1.14, 0.98, 0.9) * (1.0 + 0.25 * iPan);
+      vec3 iCiment = vec3(0.52, 0.52, 0.5) * (0.8 + 0.25 * iPan);
+      diffuseColor.rgb = mix(diffuseColor.rgb, mix(iCiment, iNeuve, iBrique), iRep * mix(0.55, 0.9, iBrique));
+      // Et, çà et là, une brique changée seule : d'une autre fournée.
+      float iSeule = step(0.985, iHash(iOu * 3.71 + 5.0)) * iBrique;
+      diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(0.46, 0.2, 0.13), vec3(0.3, 0.17, 0.15), step(0.5, iHash(iOu))), iSeule * iNet);
+      // Le salpêtre : un voile blanc au-dessus de la zone humide et sous le chaperon, qui boit le mortier d'abord.
+      float iSel = smoothstep(0.58, 0.85, iBruit(vec2(iS * 1.9, vMonde.y * 3.0) + 17.0) * 0.6 + iBruit(vec2(iS * 8.0, vMonde.y * 11.0)) * 0.25 + iBruit(vec2(iS * 30.0, vMonde.y * 30.0)) * 0.15);
+      float iZone = smoothstep(iBord - 0.02, iBord + 0.06, vDansMur) * (1.0 - smoothstep(iBord + 0.08, iBord + 0.3, vDansMur)) + smoothstep(0.88, 0.97, vDansMur) * 0.7;
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.78, 0.72), iSel * iZone * (0.12 + 0.4 * (1.0 - iBrique)) * (1.0 - iRep * 0.7));
+    }
+    #endif
   }
   #include <emissivemap_fragment>`,
       )

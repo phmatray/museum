@@ -26,7 +26,9 @@ const HAUTEUR = 2.2
 const FONDATION = 0.4
 const PAS = 4.5
 const PILE = { cote: 0.62, sur: 0.3 }
-const CHAPERON = { debord: 0.06, h: 0.1 }
+/** Le chaperon du mur : il déborde de la brique de part et d'autre, et l'épaisseur de la pierre. */
+export const CHAPERON_MUR = { debord: 0.06, h: 0.1 }
+const CHAPERON = CHAPERON_MUR
 const CHAPITEAU = { debord: 0.08, h: 0.14 }
 /** Les piles d'une grille, plus fortes et plus hautes ; la grille, un barreau tous les 12 cm. */
 const PORTAIL = { jeu: 0.5, cote: 0.8, sur: 0.75, pas: 0.12, barreau: 0.026, haut: 2.1 }
@@ -41,13 +43,36 @@ export interface Enceinte {
    * `src_lierre` regarde +z, `rotation` en lacet comme les plantations).
    */
   lierre: PlantPlacement[]
+  /** Les mêmes pieds, vus du mur : où chacun grimpe, dans quelle travée (`lierre.ts` les fait pousser). */
+  plaques: PlaqueDeLierre[]
+}
+
+/**
+ * Un pied de lierre dans sa travée. Le repère du mur : `u` le long du côté,
+ * `v` vers le dehors depuis la face intérieure (0 : la face côté parc, `epaisseur` :
+ * celle du dehors) ; au plan, (x, z) = `origine` + u·`long` + v·`dehors`.
+ */
+export interface PlaqueDeLierre {
+  /** Le côté du parc : 0 nord, 1 sud, 2 ouest, 3 est. */
+  cote: number
+  u: number
+  /** La travée, entre ses deux piles. */
+  a: number
+  b: number
+  /** Le dessus de la brique ; le chaperon, de `CHAPERON.h`, est posé dessus. */
+  arase: number
+  epaisseur: number
+  scale: number
+  origine: [number, number]
+  long: [number, number]
+  dehors: [number, number]
 }
 
 type Cote = { axe: 'x' | 'z'; cote: number; dehors: number; u0: number; u1: number }
 
 /** Le mur autour de `terrain`, ouvert d'une grille là où une allée touche le bord. */
 export function enceinte(terrain: Rect, allees: Allee[]): Enceinte {
-  const out: Enceinte = { brique: [], pierre: [], fer: [], lierre: [] }
+  const out: Enceinte = { brique: [], pierre: [], fer: [], lierre: [], plaques: [] }
   // Son propre tirage : le mur ne change pas d'une brique.
   const alea = generateur('enceinte:lierre')
   const [x0, x1, z0, z1] = [terrain.x, terrain.x + terrain.width, terrain.z, terrain.z + terrain.depth]
@@ -60,7 +85,10 @@ export function enceinte(terrain: Rect, allees: Allee[]): Enceinte {
     { axe: 'z', cote: x1, dehors: 1, u0: z0, u1: z1 },
   ]
   const bouts = allees.flatMap((a) => [a.a, a.b].map((p) => ({ ...p, largeur: a.largeur })))
-  for (const c of cotes) {
+  cotes.forEach((c, cote) => {
+    const repere = c.axe === 'x'
+      ? { origine: [0, c.cote] as [number, number], long: [1, 0] as [number, number], dehors: [0, c.dehors] as [number, number] }
+      : { origine: [c.cote, 0] as [number, number], long: [0, 1] as [number, number], dehors: [c.dehors, 0] as [number, number] }
     /** Le point du plan à l'abscisse `u` du côté, à `v` vers le dehors depuis la face intérieure. */
     const point = (u: number, v = 0): [number, number] => (c.axe === 'x' ? [u, c.cote + c.dehors * v] : [c.cote + c.dehors * v, u])
     const sol = (u: number) => hauteurDuParc(...point(u))
@@ -128,6 +156,7 @@ export function enceinte(terrain: Rect, allees: Allee[]): Enceinte {
         const vers = c.axe === 'x' ? (c.dehors < 0 ? 0 : Math.PI) : c.dehors < 0 ? Math.PI / 2 : -Math.PI / 2
         const scale = 0.75 + alea() * 0.4
         out.lierre.push({ espece: 'lierre', x, z, y: sol(u) - 0.05, rotation: vers, scale, rayon: 1.1 * scale })
+        out.plaques.push({ cote, u, a, b, arase, epaisseur: e, scale, ...repere })
       }
       out.pierre.push(boite(a, b, -CHAPERON.debord, e + CHAPERON.debord, arase, arase + CHAPERON.h))
     }
@@ -143,6 +172,6 @@ export function enceinte(terrain: Rect, allees: Allee[]): Enceinte {
       // Sur les piles d'une grille, une boule de pierre : on lit l'entrée de loin.
       if (p.portail) out.pierre.push(boite(p.u - 0.22, p.u + 0.22, e / 2 - 0.22, e / 2 + 0.22, cote + CHAPITEAU.h, cote + CHAPITEAU.h + 0.44))
     })
-  }
+  })
   return out
 }

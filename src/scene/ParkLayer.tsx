@@ -28,6 +28,8 @@ import { remous } from '../plan/ruisseau'
 import { Ruisseau } from './RuisseauLayer'
 import { PARC } from '../plan/visibilite'
 import { INTEMPERIES, intemperer, vieillirBrique } from './intemperies'
+import { mousserChaperon, pietiner } from './usure'
+import { Lierre } from './lierre'
 
 /** Le bord du terrain descend d'autant : du bout du monde, pas une feuille de papier. */
 const EPAISSEUR_SOL = 0.4
@@ -68,6 +70,8 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   const dallage = useMemo(() => {
     // Mouillé et semé de flaques sous l'averse, comme le gravier qu'il traverse.
     const m = creerPierre()
+    // Usé au milieu, moussu dans les joints (`usure.ts`) ; puis mouillé par-dessus.
+    pietiner(m, { joints: true })
     intemperer(m, { flaques: true })
     return m
   }, [])
@@ -113,6 +117,8 @@ function Enceinte({ parc }: { parc: Parc }) {
   const mur = useMemo(() => enceinte(parc.terrain, parc.allees), [parc])
   const mats = useMemo(() => {
     const m = { brique: creerBrique(), pierre: creerPierre(), fer: new THREE.MeshStandardMaterial({ color: '#1c1e1d', metalness: 0.7, roughness: 0.45 }) }
+    // La mousse du chaperon d'abord : la neige tient par-dessus.
+    mousserChaperon(m.pierre)
     for (const k of ['brique', 'pierre'] as const) intemperer(m[k])
     // Le musée garde sa brique neuve ; le mur du parc, dehors depuis toujours, a vécu.
     vieillirBrique(m.brique)
@@ -124,6 +130,7 @@ function Enceinte({ parc }: { parc: Parc }) {
       <Boites boites={mur.brique} material={mats.brique} />
       <Boites boites={mur.pierre} material={mats.pierre} />
       <Boites boites={mur.fer} material={mats.fer} />
+      <Lierre plaques={mur.plaques} />
     </>
   )
 }

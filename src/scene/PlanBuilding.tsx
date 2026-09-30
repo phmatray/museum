@@ -53,6 +53,7 @@ import { creerGranit, creerPierre } from './pierre'
 import { LumiereLayer } from './LumiereLayer'
 import { rangsDeLumiere } from './lumiere'
 import { ruisseler } from './intemperies'
+import { userInterieur, userSolDuHall } from './usure'
 import { useGameStore } from '../stores/gameStore'
 
 const AUCUNE: Box[] = []
@@ -178,8 +179,18 @@ function Niveau({ level, verre, sansMarches }: { level: number; verre: THREE.Mat
   }, [de, level, sansMarches])
   // La baie de la salle d'honneur est vitrée par la fenêtre Batlló, pas par une boîte.
   const baies = useMemo(() => sansBaieBatllo(de.get('glass') ?? AUCUNE, level), [de, level])
-  const taille = useMemo(() => creerPierre(), [])
-  const granit = useMemo(() => creerGranit(), [])
+  // Un musée bien tenu, mais habité : arêtes marquées, pied des plinthes encrassé, terrazzo terni où l'on passe (`usure.ts`).
+  const taille = useMemo(() => {
+    const m = creerPierre()
+    userInterieur(m)
+    return m
+  }, [])
+  const granit = useMemo(() => {
+    const m = creerGranit()
+    userInterieur(m, { eclats: false })
+    return m
+  }, [])
+  useMemo(() => level === 0 && userSolDuHall(dalle), [dalle, level])
   useEffect(() => () => {
     taille.map?.dispose()
     taille.dispose()

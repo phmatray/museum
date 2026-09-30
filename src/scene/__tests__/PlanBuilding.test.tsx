@@ -37,6 +37,8 @@ vi.mock('../AteliersLayer', () => ({ AteliersLayer: () => null }))
 vi.mock('../AccessoiresLayer', () => ({ AccessoiresLayer: () => null }))
 // Et l'éclairage : les spots des balcons et les projecteurs de façade sont deux lots à eux.
 vi.mock('../EclairageLayer', () => ({ EclairageLayer: () => null }))
+// Et le lierre du mur d'enceinte : ses feuilles sont un lot par côté du parc.
+vi.mock('../lierre', () => ({ Lierre: () => null }))
 import { Color } from 'three'
 import type * as THREE from 'three'
 
