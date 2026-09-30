@@ -1386,6 +1386,34 @@
     "largeur": 1280,
     "hauteur": 1200
    }
+  },
+  {
+   "n": 99,
+   "ancre": "t-99",
+   "titre": "Le hérisson se laisse trouver",
+   "categorie": "bavette",
+   "statut": "en ligne · PR #196",
+   "fait": true,
+   "pr": 196,
+   "image": {
+    "src": "img/99-herisson.jpg",
+    "largeur": 1280,
+    "hauteur": 1227
+   }
+  },
+  {
+   "n": 100,
+   "ancre": "t-100",
+   "titre": "Il ne pleut plus dans la baraque",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #197",
+   "fait": true,
+   "pr": 197,
+   "image": {
+    "src": "img/100-pluie-baraque.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
   }
  ]
 }
