@@ -8,7 +8,7 @@
  */
 import * as THREE from 'three'
 
-import { JARDIN } from '../plan/jardin'
+import { BOMBE_LEVRE, INDICE_LEVRE, JARDIN, TRACE_RUISSEAU } from '../plan/jardin'
 import { REMOUS_MAX, type Remous } from '../plan/ruisseau'
 import { INTEMPERIES, rider } from './intemperies'
 
@@ -51,6 +51,24 @@ function carteDeFilets(n = 64): THREE.DataTexture {
   return t
 }
 
+/** Un bruit de valeur, pour les shaders du jardin. */
+const BRUIT = `
+float jHash(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 45758.5453); }
+float jBruit(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(jHash(i), jHash(i + vec2(1, 0)), u.x), mix(jHash(i + vec2(0, 1)), jHash(i + vec2(1, 1)), u.x), u.y);
+}`
+
+/** Le pied de la cascade dans l'étang (x, z), la direction de la chute (x, z), et sa demi-largeur. */
+const CHUTE = (() => {
+  const [[ax, az], [bx, bz, w]] = [TRACE_RUISSEAU[INDICE_LEVRE - 1], TRACE_RUISSEAU[INDICE_LEVRE]]
+  const l = Math.hypot(bx - ax, bz - az)
+  const [ux, uz] = [(bx - ax) / l, (bz - az) / l]
+  const a = BOMBE_LEVRE + 0.19
+  return { pied: new THREE.Vector4(bx + ux * a, bz + uz * a, ux, uz), demi: w / 2 + 0.25 }
+})()
+
 const CIEL_JOUR = new THREE.Color('#5d746c')
 const CIEL_NUIT = new THREE.Color('#0b1224')
 
@@ -83,16 +101,33 @@ export function creerMatieresJardin(remous: Remous[] = []): MatieresJardin {
   // le ciel du parc. Un terme de Fresnel qui tire l'eau vers la couleur du ciel
   // de l'heure — sombre sous les pieds, claire au loin, comme un vrai étang.
   const ciel = { value: CIEL_JOUR.clone() }
+  const temps = { value: 0 }
   eau.onBeforeCompile = (shader) => {
-    shader.uniforms.uCiel = ciel
+    Object.assign(shader.uniforms, { uCiel: ciel, uTempsE: temps, uPiedCascade: { value: CHUTE.pied } })
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vEtang;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\n  vEtang = (modelMatrix * vec4(transformed, 1.0)).xyz;')
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uCiel;')
+      .replace('#include <common>', `#include <common>\nuniform vec3 uCiel;\nuniform float uTempsE;\nuniform vec4 uPiedCascade;\nvarying vec3 vEtang;\n${BRUIT}`)
+      // Au pied de la cascade, l'eau tombée remonte en bulles : une écume qui
+      // s'étale en éventail et se défait en fils vers le large.
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+  vec2 eD = vEtang.xz - uPiedCascade.xy;
+  float eAvant = dot(eD, uPiedCascade.zw), eTravers = dot(eD, vec2(-uPiedCascade.w, uPiedCascade.z));
+  float eZone = (1.0 - smoothstep(0.1, 1.0, length(vec2(eAvant * 1.1, eTravers / ${CHUTE.demi.toFixed(2)})))) * step(-0.2, eAvant);
+  float eFil = 1.0 - smoothstep(0.0, 0.045, abs(jBruit(vec2(eAvant * 1.5 - uTempsE * 1.0, eTravers * 16.0)) - 0.5));
+  float eCoeur = (1.0 - smoothstep(0.0, 0.22, eAvant)) * smoothstep(0.62, 0.82, jBruit(vec2(eAvant * 26.0 - uTempsE * 2.0, eTravers * 26.0)));
+  float eEcume = eZone * max(eFil * 0.6, eCoeur);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.82, 0.87, 0.86), eEcume);`,
+      )
       .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n  reflectedLight.directSpecular *= 0.55;')
       .replace(
         '#include <opaque_fragment>',
         `float fresnel = pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 5.0);
          outgoingLight = mix(outgoingLight, uCiel, fresnel * 0.6);
-         diffuseColor.a = mix(0.9, 1.0, fresnel);
+         diffuseColor.a = max(mix(0.9, 1.0, fresnel), eEcume);
          #include <opaque_fragment>`,
       )
   }
@@ -100,7 +135,6 @@ export function creerMatieresJardin(remous: Remous[] = []): MatieresJardin {
   // Et les ronds de la pluie sur l'étang.
   rider(eau)
 
-  const temps = { value: 0 }
   const ruisseau = creerRuisseau(vaguelettes, ciel, temps, remous)
 
   const filets = carteDeFilets()
@@ -110,11 +144,34 @@ export function creerMatieresJardin(remous: Remous[] = []): MatieresJardin {
     roughness: 0.35,
     alphaMap: filets,
     transparent: true,
-    opacity: 0.7,
-    emissive: '#5a6a66',
+    opacity: 0.8,
+    emissive: '#2c3634',
     depthWrite: false,
     side: THREE.DoubleSide,
   })
+  // UV de la nappe (build-jardin.py) : u en travers, de 0 à 1 ; v, les mètres
+  // parcourus depuis la lèvre (0,31 au pied). Une eau sombre et vitreuse en haut,
+  // rayée de filets clairs qui tombent, qui s'aère et blanchit en bas ; plus mince aux flancs.
+  cascade.onBeforeCompile = (shader) => {
+    shader.uniforms.uTempsC = temps
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec2 vCasc;')
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\n  vCasc = uv;')
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\nuniform float uTempsC;\nvarying vec2 vCasc;\n${BRUIT}`)
+      .replace(
+        '#include <alphamap_fragment>',
+        `#include <alphamap_fragment>
+  float cRaie = jBruit(vec2(vCasc.x * 55.0, vCasc.y * 5.0 - uTempsC * 2.6)) * 0.65 + jBruit(vec2(vCasc.x * 90.0, vCasc.y * 9.0 - uTempsC * 3.4)) * 0.35;
+  float cBas = smoothstep(0.14, 0.3, vCasc.y);
+  float cBulle = smoothstep(0.35, 0.7, jBruit(vec2(vCasc.x * 45.0, vCasc.y * 22.0 - uTempsC * 7.0)) + 0.3 * cBas) * cBas;
+  float cFlanc = smoothstep(0.0, 0.16, vCasc.x) * smoothstep(1.0, 0.84, vCasc.x);
+  float cClair = max(smoothstep(0.5, 0.8, cRaie), cBulle);
+  diffuseColor.rgb *= mix(0.3, 1.0, cClair);
+  diffuseColor.a = max(diffuseColor.a * mix(0.55, 1.0, cRaie), cBulle * 0.95) * mix(0.4, 1.0, cFlanc);`,
+      )
+  }
+  cascade.customProgramCacheKey = () => 'jardin:cascade'
   return {
     eau,
     ruisseau,
@@ -173,9 +230,6 @@ uniform int uNRemous;
 varying vec2 vEau;
 varying vec2 vFil;
 float rHash(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 45758.5453); }
-// La part blanche d'une écume de densité a (0..1) sur le bruit bouillonnant f :
-// quelques flocons à peine, une nappe blanche trouée de noir au plus fort.
-float rMousse(float a, float f) { return smoothstep(0.8 - 0.46 * a, 1.02 - 0.42 * a, f) * smoothstep(0.03, 0.2, a); }
 float rBruit(vec2 p) {
   vec2 i = floor(p), f = fract(p);
   vec2 u = f * f * (3.0 - 2.0 * f);
@@ -192,36 +246,43 @@ float rBruit(vec2 p) {
   float rN = rBruit(rQ) * 0.5 + rBruit(rQ * vec2(2.1, 2.6) + vec2(7.1, 3.7) - vec2(uTempsR * 1.1, 0.0)) * 0.32 + rBruit(rQ * 5.3 + 3.3) * 0.18;
   // Des taches d'écume qui naissent et se défont : un second bruit, lent, les module.
   float rNappe = rBruit(vec2(vFil.x * 0.7 - uTempsR * 0.5, vFil.y * 1.3 + 5.0));
-  // L'écume qui bouillonne : un bruit à quatre octaves, tordu par un autre, qui
-  // file vers l'aval — des flocons, des filaments, pas les taches floues d'un
-  // demi-mètre d'avant, qui lisaient comme des nuages.
-  vec2 rP = vec2(vFil.x * 1.7 - uTempsR * 1.6, vFil.y * 5.5);
-  rP += 0.7 * vec2(rBruit(rP * 0.6 + vec2(uTempsR * 0.4, 0.0)), rBruit(rP * 0.6 + vec2(3.1, uTempsR * 0.3)));
-  float rF = rBruit(rP) * 0.46 + rBruit(rP * 2.3 + 1.7) * 0.27 + rBruit(rP * 5.1 - vec2(uTempsR * 2.0, 0.0)) * 0.17 + rBruit(rP * 11.0 + 5.3) * 0.1;
-  float rEcume = rMousse(rRadier * smoothstep(0.25, 0.7, rNappe + 0.25 * rRadier) * 0.6, rF);
-  rEcume = max(rEcume, rMousse(smoothstep(0.72, 1.02, rBord) * (0.3 + 0.4 * rRadier), rF));
-  // Les obstacles (souches, branche, galets qui affleurent, rochers) : un bourrelet
-  // serré à l'amont, un sillage qui s'élargit et s'effiloche vers l'aval.
+  // L'écume en FILS : un bruit très étiré dans le sens du courant, fin en
+  // travers, dont on ne garde qu'une ligne de niveau — des traits blancs de
+  // quelques centimètres qui filent vers l'aval, coupés par un second bruit.
+  // Pas de nappes : des taches mates d'un demi-mètre lisaient comme du plastique.
+  float rOnde = 0.5 * rBruit(vec2(vFil.x * 0.45 - uTempsR * 0.4, vFil.y * 2.5));
+  float rS1 = rBruit(vec2(vFil.x * 0.8 - uTempsR * 1.7, vFil.y * 15.0 + rOnde * 4.0));
+  float rS2 = rBruit(vec2(vFil.x * 1.6 - uTempsR * 2.3 + 3.7, vFil.y * 27.0 + rOnde * 6.0 + 1.9));
+  float rF = max(1.0 - smoothstep(0.0, 0.07, abs(rS1 - 0.5)), 0.75 * (1.0 - smoothstep(0.0, 0.05, abs(rS2 - 0.5))));
+  rF *= smoothstep(0.3, 0.65, rBruit(vec2(vFil.x * 2.6 - uTempsR * 2.0, vFil.y * 7.0 + 2.3)));
+  float rEcume = rF * rRadier * smoothstep(0.4, 0.8, rNappe + 0.15 * rRadier) * 0.4;
+  rEcume = max(rEcume, rF * smoothstep(0.8, 1.05, rBord) * (0.25 + 0.3 * rRadier));
+  // Les obstacles (souches, branche, galets qui affleurent, rochers) : un
+  // bourrelet serré à l'amont, puis des fils blancs qui s'étirent vers l'aval.
   float rChoc = 0.0;
+  float rCol = 0.0;
   for (int i = 0; i < ${REMOUS_MAX}; i++) {
     if (i >= uNRemous) break;
     vec4 o = uRemous[i];
     vec2 d = vFil - o.xy;
     float aval = max(d.x, 0.0);
-    vec2 e = vec2(d.x / (o.z * (d.x > 0.0 ? 5.0 : 1.15)), d.y / (o.z * (1.0 + 0.3 * aval / o.z)));
-    rChoc = max(rChoc, (1.0 - smoothstep(0.35, 1.0, length(e))) * o.w * (1.0 - 0.6 * smoothstep(0.0, 5.0 * o.z, aval)));
+    vec2 e = vec2(d.x / (o.z * (d.x > 0.0 ? 6.0 : 1.1)), d.y / (o.z * (1.0 + 0.25 * aval / o.z)));
+    float k = (1.0 - smoothstep(0.3, 1.0, length(e))) * o.w;
+    rChoc = max(rChoc, k * (1.0 - 0.5 * smoothstep(0.0, 6.0 * o.z, aval)));
+    // Le collet : tout contre l'obstacle, l'eau se soulève en un bourrelet blanc.
+    rCol = max(rCol, (1.0 - smoothstep(0.55, 1.0, length(d / (o.z * 0.75)))) * o.w);
   }
-  rEcume = max(rEcume, rMousse(rChoc, rF));
+  rEcume = max(rEcume, rF * smoothstep(0.05, 0.5, rChoc));
+  rEcume = max(rEcume, rCol * 0.8 * smoothstep(0.5, 0.8, rBruit(vec2(vFil.x * 14.0 - uTempsR * 3.0, vFil.y * 14.0)) + 0.15 * rCol));
   rRadier = max(rRadier, rChoc);
   // Profonde au milieu des mouilles, mince au bord et sur les radiers.
   float rProfond = (1.0 - smoothstep(0.25, 1.0, rBord)) * (1.0 - 0.55 * rRadier);
   float rGel = uGelR * smoothstep(0.8, 1.05, rBord + 0.15 * rN);
   diffuseColor.rgb = mix(vec3(0.07, 0.085, 0.06), vec3(0.015, 0.04, 0.03), rProfond);
-  // Une écume qui n’est pas du papier : grisée dans ses creux, plus blanche sur ses crêtes.
-  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.93, 0.92) * (0.62 + 0.38 * smoothstep(0.35, 0.85, rF)), rEcume);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.86, 0.9, 0.9), rEcume);
   diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.86, 0.92), rGel);`,
       )
-      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(mix(roughnessFactor, 0.32, rRadier), 0.75, max(rEcume, rGel * 0.4));')
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(mix(roughnessFactor, 0.26, rRadier), 0.75, max(rEcume, rGel * 0.4));')
       .replace(
         '#include <normal_fragment_maps>',
         THREE.ShaderChunk.normal_fragment_maps.replace(
@@ -231,15 +292,24 @@ float rBruit(vec2 p) {
   vec3 mapN = normalize( vec3( ( mapN1.xy + mapN2.xy ) * ( 0.5 + 0.8 * rRadier ) * ( 1.0 - rGel ), 1.0 ) );`,
         ),
       )
-      // Le reflet du soleil adouci : une eau vive le brise en paillettes, pas en
-      // taches blanches d'un demi-mètre, et l'écume, mate, n'en renvoie presque rien.
-      .replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n  reflectedLight.directSpecular *= 0.22 * (1.0 - 0.8 * rEcume);')
+      // Le reflet du soleil presque éteint : sur une eau ridée, le lobe GGX s'étale
+      // au rasant en nappes blanches d'un demi-mètre, découpées par l'ombre des
+      // arbres — des bâches de plastique, pas de l'eau. Et le reflet de
+      // l'environnement (les sondes, le studio) ne vaut qu'au rasant, en Fresnel :
+      // l'eau reste sombre et transparente, l'écume seule y met du blanc.
+      .replace(
+        '#include <lights_fragment_end>',
+        `#include <lights_fragment_end>
+  float rFr = pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 4.0);
+  reflectedLight.directSpecular *= 0.03 * (1.0 - 0.8 * rEcume);
+  reflectedLight.indirectSpecular *= mix(0.05, 0.45, rFr) * (1.0 - 0.8 * rEcume);`,
+      )
       .replace(
         '#include <opaque_fragment>',
         `float rFresnel = pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 5.0);
-         outgoingLight = mix(outgoingLight, uCielR, rFresnel * 0.5 * (1.0 - rEcume));
+         outgoingLight = mix(outgoingLight, uCielR, rFresnel * 0.35 * (1.0 - rEcume));
          // L'hiver, l'eau froide se fait sombre et opaque : la neige de la berge (intemperer) ne tapisse pas le lit.
-         diffuseColor.a = max(mix(mix(0.18, 0.82, rProfond), 1.0, rFresnel), max(max(rEcume * 0.95, rGel), 0.92 * smoothstep(0.05, 0.35, uGelR)));
+         diffuseColor.a = max(mix(mix(0.38, 0.85, rProfond), 1.0, rFresnel), max(max(rEcume * 0.9, rGel), 0.92 * smoothstep(0.05, 0.35, uGelR)));
          #include <opaque_fragment>`,
       )
   }
@@ -345,7 +415,7 @@ export function caustiques(m: THREE.Material): void {
       vec2 cQ = vMonde.xz * 2.6;
       float cA = abs(sin(cQ.x + 1.3 * sin(cQ.y * 1.2 + uTemps * 0.9) + uTemps * 0.5));
       float cB = abs(sin(cQ.y * 1.1 + 1.4 * sin(cQ.x * 1.5 - uTemps * 0.7) - uTemps * 0.4));
-      diffuseColor.rgb *= 1.0 + 1.3 * pow(1.0 - min(cA, cB), 5.0) * cFond;
+      diffuseColor.rgb *= 1.0 + 0.45 * pow(1.0 - min(cA, cB), 9.0) * cFond;
     }
   }`,
     )

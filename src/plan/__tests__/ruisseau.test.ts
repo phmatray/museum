@@ -14,7 +14,8 @@ import { step, type Walker } from '../walk.ts'
 describe('les galets de rivière', () => {
   it('sont au fond du lit, à son bord ou au bord de l’étang', () => {
     for (const g of GALETS_DU_RUISSEAU) {
-      const pres = g.etang ? Math.abs(distanceEtang(g.x, g.z)) < 0.3 : distanceRuisseau(g.x, g.z) < 0.35
+      // Jamais sur la pelouse : au plus 8 cm au-delà du fil de l'eau, dans la terre nue du rebord.
+      const pres = g.etang ? Math.abs(distanceEtang(g.x, g.z)) < 0.08 : distanceRuisseau(g.x, g.z) < 0.1
       expect(pres, `(${g.x.toFixed(2)}, ${g.z.toFixed(2)})`).toBe(true)
     }
   })

@@ -38,6 +38,13 @@ export interface Galet {
 const NIVEAU = JARDIN.ruisseau.niveau
 const NIVEAU_ETANG = JARDIN.etang.niveau
 
+/** La berge de l'étang telle que build-jardin.py la modèle (`hauteur`) : bombée, raide au fil de l'eau. */
+function solEtang(x: number, z: number): number {
+  const d = distanceEtang(x, z)
+  const s = Math.min(1, Math.max(0, d / 1.8))
+  return Math.min(hauteurDuParc(x, z), d >= 0 ? NIVEAU_ETANG * (1 - s) ** 2 : Math.max(-0.9, NIVEAU_ETANG + 0.5 * d))
+}
+
 /** Le point du tracé k, sa direction d'aval (ux, uz) et sa normale à gauche (nx, nz). */
 function repere(k: number) {
   const [a, b] = [TRACE_RUISSEAU[Math.max(0, k - 1)], TRACE_RUISSEAU[Math.min(TRACE_RUISSEAU.length - 1, k + 1)]]
@@ -56,9 +63,13 @@ export const GALETS_DU_RUISSEAU: Galet[] = (() => {
     const echelle = longueur / GALETS[modele].longueur
     const h = GALETS[modele].hauteur * echelle
     // Jamais en l’air : un galet trop petit pour atteindre `sommet` reste posé au fond.
-    const sol = hauteurDuParc(x, z)
-    const y = sommet === undefined ? sol - enfonce * h : Math.min(sommet - h, sol - 0.15 * h)
-    out.push({ modele, x, y, z, lacet: alea() * Math.PI * 2, echelle, teinte: 0.7 + alea() * 0.35, emerge: courant && sommet !== undefined && y + h > NIVEAU + 0.01, etang: !courant })
+    // Au bord de l'étang, la berge bombée de build-jardin.py, que `hauteurDuParc` ignore :
+    // le galet y est à demi enterré, jamais posé sur la pelouse comme un œuf.
+    const sol = courant ? hauteurDuParc(x, z) : solEtang(x, z)
+    const y = sommet === undefined ? sol - enfonce * h : Math.min(sommet - h, sol - (courant ? 0.15 : 0.45) * h)
+    // Ceux de l'étang plus ternes : la vase les salit, et le blanc d'un galet sec y criait.
+    const teinte = courant ? 0.7 + alea() * 0.35 : 0.5 + alea() * 0.22
+    out.push({ modele, x, y, z, lacet: alea() * Math.PI * 2, echelle, teinte, emerge: courant && sommet !== undefined && y + h > NIVEAU + 0.01, etang: !courant })
   }
   for (let k = 0; k < INDICE_LEVRE; k++) {
     const { x, z, w, ux, uz, nx, nz } = repere(k)
@@ -74,7 +85,8 @@ export const GALETS_DU_RUISSEAU: Galet[] = (() => {
     // Le cordon des berges, à cheval sur le fil de l'eau : mouillés en bas, secs en haut.
     for (const cote of [-1, 1]) {
       if (alea() > 0.55) continue
-      const c = cote * (demi + alea() * 0.28 - 0.08)
+      // Pas plus de 8 cm au-delà du fil de l'eau : dans la terre nue du rebord, jamais sur la pelouse.
+      const c = cote * (demi + alea() * 0.18 - 0.1)
       const a = (alea() - 0.5) * 0.5
       poser(x + ux * a + nx * c, z + uz * a + nz * c, 0.07 + alea() * 0.12, 0.3)
     }
@@ -100,11 +112,10 @@ export const GALETS_DU_RUISSEAU: Galet[] = (() => {
     for (; s < l; s += 0.34 + alea() * 0.14) {
       const [x, z] = [a[0] + ((b[0] - a[0]) * s) / l, a[1] + ((b[1] - a[1]) * s) / l]
       if (Math.hypot(x - lx, z - lz) < 1.6) continue
-      // Un peu hors de l'eau : à 8 cm vers la berge, là où `distanceEtang` devient positive.
-      const [ex, ez] = [(-(b[1] - a[1]) / l) * 0.08, ((b[0] - a[0]) / l) * 0.08]
-      const [px, pz] = distanceEtang(x + ex, z + ez) > 0 ? [x + ex, z + ez] : [x - ex, z - ez]
-      const longueur = 0.2 + alea() * 0.2
-      poser(px, pz, longueur, 0, NIVEAU_ETANG + 0.04 + alea() * 0.05, false)
+      // Sur le fil de l'eau, à quelques centimètres près : à demi dans l'eau, à demi dans la berge.
+      const e = (alea() - 0.5) * 0.12
+      const [px, pz] = [x + (-(b[1] - a[1]) / l) * e, z + ((b[0] - a[0]) / l) * e]
+      poser(px, pz, 0.12 + alea() * 0.14, 0, NIVEAU_ETANG + 0.015 + alea() * 0.03, false)
     }
     s -= l
   }

@@ -57,12 +57,13 @@ function Galets({ piece, modele }: { piece: { geometry: THREE.BufferGeometry; ma
   // Par instance : la teinte, la cote de l'eau où il baigne, et s'il prend la mousse.
   const geometrie = useMemo(() => {
     const g = piece.geometry.clone()
-    const attr = new Float32Array(sujets.length * 3)
+    const attr = new Float32Array(sujets.length * 4)
     sujets.forEach((s, i) => {
       const niveau = s.etang ? JARDIN.etang.niveau : JARDIN.ruisseau.niveau
-      attr.set([s.teinte, niveau, (s.teinte * 7.31) % 1 < 0.35 ? 1 : 0], 3 * i)
+      // w : le basalte (modèle 5), dont la texture Meshy porte une tache blanche qu’on repeint en noir.
+      attr.set([s.teinte, niveau, (s.teinte * 7.31) % 1 < 0.35 ? 1 : 0, s.modele === 4 ? 1 : 0], 4 * i)
     })
-    g.setAttribute('aGalet', new THREE.InstancedBufferAttribute(attr, 3))
+    g.setAttribute('aGalet', new THREE.InstancedBufferAttribute(attr, 4))
     return g
   }, [piece, sujets])
   useEffect(() => () => geometrie.dispose(), [geometrie])
@@ -98,7 +99,7 @@ function Souches({ piece }: { piece: { geometry: THREE.BufferGeometry; material:
 function mouiller(m: THREE.Material): void {
   m.onBeforeCompile = (shader) => {
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nattribute vec3 aGalet;\nvarying vec3 vGalet;\nvarying vec4 vGaletMonde;')
+      .replace('#include <common>', '#include <common>\nattribute vec4 aGalet;\nvarying vec4 vGalet;\nvarying vec4 vGaletMonde;')
       .replace(
         '#include <project_vertex>',
         `#include <project_vertex>
@@ -114,12 +115,13 @@ function mouiller(m: THREE.Material): void {
   }`,
       )
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vGalet;\nvarying vec4 vGaletMonde;')
+      .replace('#include <common>', '#include <common>\nvarying vec4 vGalet;\nvarying vec4 vGaletMonde;')
       .replace(
         '#include <map_fragment>',
         `#include <map_fragment>
   float gSous = vGalet.y - vGaletMonde.y + 0.008 * sin(vGaletMonde.x * 37.0 + 3.0 * sin(vGaletMonde.z * 23.0));
   float gMouille = smoothstep(-0.035, 0.0, gSous);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.055, 0.052, 0.048) * (0.8 + 0.4 * diffuseColor.g), vGalet.w * smoothstep(0.18, 0.4, dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11))));
   diffuseColor.rgb *= vGalet.x;
   float gLum = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
   vec3 gSec = mix(diffuseColor.rgb, vec3(gLum), 0.2);

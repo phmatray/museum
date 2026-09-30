@@ -126,10 +126,60 @@ def matiere_meshy(o, nom, rugosite, relief=True):
                     nd.image.scale(TEXTURE, TEXTURE)
 
 
+def creuser(o):
+    """
+    La cassure du fût. Meshy livre un dessus plat, net comme un trait de scie ;
+    le concept montre un fût creux, pourri, aux bords déchiquetés. Avant la
+    décimation (le dessus y a encore des sommets) : le pourtour abaissé en
+    dents irrégulières, le cœur creusé en cuvette, et une couleur par sommet
+    (« Col », multipliée à la texture dans three) qui assombrit le bois pourri
+    du creux.
+    """
+    vs = o.data.vertices
+    H = max(v.co.z for v in vs)
+    dessus = [v for v in vs if v.co.z > H - 0.06]
+    cx = sum(v.co.x for v in dessus) / len(dessus)
+    cy = sum(v.co.y for v in dessus) / len(dessus)
+    R = sorted(math.hypot(v.co.x - cx, v.co.y - cy) for v in dessus)[int(0.95 * (len(dessus) - 1))]
+    rng = random.Random("souche")
+    phases = [rng.uniform(0, 2 * math.pi) for _ in range(4)]
+
+    def dents(a):
+        # Des pics étroits et des creux larges : |sin| relevé à une puissance.
+        s = (0.45 * abs(math.sin(2.5 * a + phases[0])) ** 0.6 + 0.3 * abs(math.sin(5.5 * a + phases[1])) ** 0.6
+             + 0.25 * abs(math.sin(11 * a + phases[2])))
+        return 1 - s
+
+    HAUT = 0.32  # la hauteur, sous le dessus, où la cassure commence à mordre
+    sombre = {}
+    for v in vs:
+        z0 = v.co.z - (H - HAUT)
+        if z0 <= 0:
+            continue
+        dx, dy = v.co.x - cx, v.co.y - cy
+        d, a = math.hypot(dx, dy), math.atan2(dy, dx)
+        t = z0 / HAUT
+        v.co.z -= 0.24 * dents(a) * t * t
+        # Le cœur : ce qui était le dessus plat descend en cuvette, plus profond au milieu.
+        if z0 > HAUT - 0.08 and d < 0.82 * R:
+            s = 1 - d / (0.82 * R)
+            s = s * s * (3 - 2 * s)
+            v.co.z -= (0.3 + 0.08 * math.sin(3 * a + phases[3])) * s
+            sombre[v.index] = min(1.0, 1.6 * s)
+    couleur = o.data.color_attributes.new("Col", "FLOAT_COLOR", "POINT")
+    for v in vs:
+        k = sombre.get(v.index, 0.0)
+        couleur.data[v.index].color = (1 - 0.62 * k, 1 - 0.68 * k, 1 - 0.72 * k, 1.0)
+    o.data.color_attributes.active_color = couleur
+    o.data.update()
+    print(f"RUISSEAU cassure : dessus {len(dessus)} sommets, rayon {R:.2f} m, {len(sombre)} creusés")
+
+
 def souche(source):
     o = importer(source)
     lo, hi = boite(o)
     poser(o, LARGEUR_SOUCHE / max(hi.x - lo.x, hi.y - lo.y))
+    creuser(o)
     n = decimer(o, TRI_SOUCHE)
     matiere_meshy(o, "Ruisseau_Souche", 0.92)
     for p in o.data.polygons:
@@ -238,7 +288,7 @@ def main():
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.export_scene.gltf(filepath=str(SORTIE), export_format="GLB", export_yup=True, export_apply=True,
                               export_image_format="WEBP", export_image_quality=85, export_draco_mesh_compression_enable=True,
-                              export_draco_mesh_compression_level=6)
+                              export_draco_mesh_compression_level=6, export_vertex_color="NAME", export_vertex_color_name="Col")
     tri = sum(triangles(o) for o in bpy.data.objects if o.type == "MESH")
     print(f"RUISSEAU_POIDS {SORTIE.stat().st_size // 1024} Kio, {tri} triangles -> {SORTIE.relative_to(ROOT)}")
 
