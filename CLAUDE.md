@@ -93,4 +93,4 @@ asset credits are declared in the `tools/fetch-assets.ts` manifest and regenerat
   adaptive pixel ratio of `scene/qualite.ts`; use `haute` for captures on a loaded machine). `?p=<repo>` (or `?projet=owner/repo`, `#repo`) opens
   the museum in front of that painting (`domain/lien.ts`, `plan/arrivee.ts`); the build writes `dist/p/<repo>/` share
   pages with per-project OpenGraph tags (`tools/pages-partage.ts`).
-- `docs/journal/index.html` is the illustrated development journal (French), one numbered step per shipped change.
+- `docs/journal/index.html` is the illustrated development journal (French), one numbered step per shipped change; the build copies it to `dist/journal/` (live at `/museum/journal/`).
