@@ -693,7 +693,7 @@ def erable(nom, tuile, graine, ecorce, feuilles, loin=False):
     lesquels on devine les branches. ~4,5 m de haut, 6 m d'envergure : plus
     large que haut, comme dans tous les jardins japonais.
 
-    `loin` : le même arbre, pour le voir de loin (`build-erables-loin.py`) —
+    `loin` : le même arbre, pour le voir de loin (l’ancien build-erables-loin.py) —
     mêmes tirages, donc mêmes branches et mêmes nuages ; une carte de feuillage
     sur deux, de surface double (la couverture ne change pas), et des rameaux
     fins sans leurs fourches.

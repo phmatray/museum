@@ -13,13 +13,13 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 
 import { brancherKTX2 } from '../io/textures'
 import type { EspeceParc } from '../plan/park'
-import { cartesDeFeuillage, intemperer, saisonnerAzalee, saisonnerErable, saisonnerPetales } from './intemperies'
+import { balancerHerbes, cartesDeFeuillage, intemperer, saisonnerAzalee, saisonnerErable, saisonnerPetales, varierFeuillage } from './intemperies'
 import { mousser } from './jardinMatieres'
 
 export interface ParkPiece {
   geometry: THREE.BufferGeometry
   material: THREE.Material
-  /** Le même sujet allégé, dessiné de loin avec le même matériau (`erables-loin.glb`). */
+  /** Le même sujet allégé, dessiné de loin avec le même matériau (`loin_*` de vegetation.glb). */
   loin?: THREE.BufferGeometry
 }
 
@@ -39,14 +39,20 @@ export interface PiecesDuRuisseau {
 }
 
 /**
- * Les nœuds de chaque essence, tous dans `build-jardin.py`. Les arbres Poly Haven
- * de `park-lod.glb` ne sont plus plantés : ils ne s'accordaient pas au jardin.
+ * Les nœuds de chaque essence : la végétation vivante dans `build-vegetation.py`
+ * (érables, touffes, lierre, herbes de berge), les pierres, la fougère et les
+ * pétales dans `build-jardin.py`. Les arbres Poly Haven de `park-lod.glb` ne
+ * sont plus plantés : ils ne s'accordaient pas au jardin.
  */
+const VEGETATION = 'jardin/vegetation.glb'
 const NOEUDS: Record<EspeceParc, [fichier: string, noeud: string]> = {
-  'erable-rouge': ['jardin/jardin.glb', 'src_erable_rouge'],
-  'erable-vert': ['jardin/jardin.glb', 'src_erable_vert'],
-  buis: ['jardin/jardin.glb', 'src_buis'],
-  azalee: ['jardin/jardin.glb', 'src_azalee'],
+  'erable-rouge': [VEGETATION, 'src_erable_rouge'],
+  'erable-vert': [VEGETATION, 'src_erable_vert'],
+  buis: [VEGETATION, 'src_buis'],
+  azalee: [VEGETATION, 'src_azalee'],
+  lierre: [VEGETATION, 'src_lierre'],
+  roseaux: [VEGETATION, 'src_roseaux'],
+  herbes: [VEGETATION, 'src_herbes'],
   fougere: ['jardin/jardin.glb', 'src_fougere'],
   petales: ['jardin/jardin.glb', 'src_petales'],
   'rocher-1': ['jardin/jardin.glb', 'src_rocher_1'],
@@ -56,9 +62,9 @@ const NOEUDS: Record<EspeceParc, [fichier: string, noeud: string]> = {
   'rocher-5': ['jardin/jardin.glb', 'src_rocher_5'],
 }
 
-/** Les sujets vus de loin (`build-erables-loin.py`) : même nœud, autre fichier. */
-const LOIN: Partial<Record<EspeceParc, string>> = { 'erable-rouge': 'src_erable_rouge', 'erable-vert': 'src_erable_vert' }
-const FICHIER_LOIN = 'jardin/erables-loin.glb'
+/** Les sujets vus de loin (`build-vegetation.py`) : mêmes tirages, une carte sur deux. */
+const LOIN: Partial<Record<EspeceParc, string>> = { 'erable-rouge': 'loin_erable_rouge', 'erable-vert': 'loin_erable_vert' }
+const FICHIER_LOIN = VEGETATION
 const FICHIER_RUISSEAU = 'jardin/ruisseau.glb'
 
 let promesse: Promise<ParkAssets> | null = null
@@ -88,7 +94,7 @@ async function charger(base: string): Promise<ParkAssets> {
       console.warn(`${fichier} : nœud « ${nom} » introuvable`)
       continue
     }
-    const { lots, cale } = lotsParMateriau(noeud)
+    const { lots, cale } = lotsParMateriau(noeud, fichier === VEGETATION ? 0.45 : 0.15)
     const loin = LOIN[id] === undefined ? undefined : scenes.get(FICHIER_LOIN)?.getObjectByName(LOIN[id])
     if (loin !== undefined) accrocherLoin(lots, loin, cale)
     especes.set(id, lots)
@@ -103,7 +109,13 @@ async function charger(base: string): Promise<ParkAssets> {
         cartesDeFeuillage(l.geometry)
         if (l.loin) cartesDeFeuillage(l.loin)
         saisonnerErable(l.material, id === 'erable-rouge')
-      } else if (feuilles && id === 'azalee') saisonnerAzalee(l.material)
+        varierFeuillage(l.material, 0.45)
+      } else if (feuilles && id === 'azalee') {
+        saisonnerAzalee(l.material)
+        varierFeuillage(l.material)
+      } else if (feuilles && id !== 'lierre') varierFeuillage(l.material)
+      else if (feuilles) varierFeuillage(l.material, 0.5)
+      if (l.material.name.startsWith('Jardin_Herbe')) balancerHerbes(l.material)
       if (id !== 'petales') intemperer(l.material)
     }
   }
@@ -145,7 +157,7 @@ function fusionParMateriau(noeud: THREE.Object3D): Map<THREE.Material, THREE.Buf
  * modèles. Tronc et feuillage bougent ensemble (une seule boîte pour tous) ;
  * `cale` est ce déplacement, que la géométrie de loin reprend.
  */
-function lotsParMateriau(noeud: THREE.Object3D): { lots: ParkPiece[]; cale: THREE.Vector3 } {
+function lotsParMateriau(noeud: THREE.Object3D, seuil: number): { lots: ParkPiece[]; cale: THREE.Vector3 } {
   const fusions = fusionParMateriau(noeud)
   const boite = new THREE.Box3()
   for (const g of fusions.values()) {
@@ -160,10 +172,13 @@ function lotsParMateriau(noeud: THREE.Object3D): { lots: ParkPiece[]; cale: THRE
     g.computeBoundingSphere()
     const m = materiau.clone()
     // Le feuillage se voit des deux côtés ; découpe binaire plutôt que tri
-    // (des milliers de feuilles instanciées ne se trient pas). À 0,35 l'arbre
-    // sortait en squelette : 0,15 garde la silhouette.
+    // (des milliers de feuilles instanciées ne se trient pas). L'atlas dessiné
+    // de `jardin.glb` sortait en squelette à 0,35 : 0,15 garde sa silhouette.
+    // Les photos de rameaux de `vegetation.glb` ont des jours entre leurs
+    // feuilles : à 0,15, les mips les bouchaient et le rameau fondait en une
+    // tache lisse ; 0,45 garde les feuilles détachées.
     m.side = THREE.DoubleSide
-    m.alphaTest = 0.15
+    m.alphaTest = seuil
     m.transparent = false
     m.depthWrite = true
     lots.push({ geometry: g, material: m })

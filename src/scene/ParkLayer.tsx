@@ -27,7 +27,7 @@ import { distanceRuisseau, presDeLEau, rubanDuRuisseau } from '../plan/jardin'
 import { remous } from '../plan/ruisseau'
 import { Ruisseau } from './RuisseauLayer'
 import { PARC } from '../plan/visibilite'
-import { INTEMPERIES, intemperer } from './intemperies'
+import { INTEMPERIES, intemperer, vieillirBrique } from './intemperies'
 
 /** Le bord du terrain descend d'autant : du bout du monde, pas une feuille de papier. */
 const EPAISSEUR_SOL = 0.4
@@ -81,10 +81,12 @@ export function ParkLayer({ placements }: { placements: Parc }) {
 
   const parEspece = useMemo(() => {
     const par = new Map<EspeceParc, PlantPlacement[]>()
-    for (const p of placements.plantations) par.set(p.espece, [...(par.get(p.espece) ?? []), p])
-    // Les érables — 7 000 triangles chacun, les trois quarts de ceux du parc — par
-    // parcelle ; buis, azalées, fougères et rochers, légers, en un lot par essence.
-    return new Map([...par].map(([espece, sujets]) => [espece, espece.startsWith('erable') ? parParcelle(sujets, placements.terrain) : [sujets]]))
+    // Les plantations, les herbes de berge et le lierre du mur d'enceinte : un lot d'instances par essence.
+    const lierre = enceinte(placements.terrain, placements.allees).lierre
+    for (const p of [...placements.plantations, ...placements.berges, ...lierre]) par.set(p.espece, [...(par.get(p.espece) ?? []), p])
+    // Les érables — 7 000 triangles chacun, les trois quarts de ceux du parc — et le
+    // lierre, qui fait le tour du parc, par parcelle ; le reste, léger, en un lot par essence.
+    return new Map([...par].map(([espece, sujets]) => [espece, espece.startsWith('erable') || espece === 'lierre' ? parParcelle(sujets, placements.terrain) : [sujets]]))
   }, [placements])
 
   return (
@@ -112,6 +114,8 @@ function Enceinte({ parc }: { parc: Parc }) {
   const mats = useMemo(() => {
     const m = { brique: creerBrique(), pierre: creerPierre(), fer: new THREE.MeshStandardMaterial({ color: '#1c1e1d', metalness: 0.7, roughness: 0.45 }) }
     for (const k of ['brique', 'pierre'] as const) intemperer(m[k])
+    // Le musée garde sa brique neuve ; le mur du parc, dehors depuis toujours, a vécu.
+    vieillirBrique(m.brique)
     return m
   }, [])
   useEffect(() => () => Object.values(mats).forEach((m) => { m.map?.dispose(); m.dispose() }), [mats])
@@ -331,12 +335,24 @@ function parParcelle<T extends { x: number; z: number }>(sujets: readonly T[], t
   return [...par.values()]
 }
 
+/**
+ * L'échelle d'un sujet. Les touffes (buis, azalées) s'étirent en plus, un peu
+ * plus larges ou plus hautes, d'un aléa tiré de leur place : un seul modèle,
+ * pas deux silhouettes pareilles.
+ */
+function echelle(s: PlantPlacement): THREE.Vector3 {
+  const e = new THREE.Vector3().setScalar(s.scale)
+  if (s.espece !== 'buis' && s.espece !== 'azalee') return e
+  const h = (k: number) => Math.abs(Math.sin(s.x * (12.9898 + k) + s.z * (78.233 - k)) * 43758.5453) % 1
+  return e.multiply(new THREE.Vector3(0.85 + 0.35 * h(1), 0.75 + 0.5 * h(2), 0.85 + 0.35 * h(3)))
+}
+
 /** Au-delà, un érable prend sa géométrie de loin ; il ne reprend la proche qu'en deçà de `LOIN - 3`. */
 const LOIN = 36
 
 /**
  * Un lot, en deux maillages : les sujets proches avec la géométrie pleine, les
- * lointains avec celle de loin (`erables-loin.glb`), même matériau — donc même
+ * lointains avec celle de loin (`loin_*` de `vegetation.glb`), même matériau — donc même
  * saison, même vent, même arbre (`iArbre` est tiré de sa matrice). Chaque
  * sujet passe de l'un à l'autre selon SA distance ; les deux maillages
  * gardent la sphère de tout le lot.
@@ -349,7 +365,7 @@ function Instances({ piece, sujets }: { piece: ParkPiece; sujets: PlantPlacement
     const q = new THREE.Quaternion()
     const haut = new THREE.Vector3(0, 1, 0)
     return sujets.map((s) =>
-      new THREE.Matrix4().compose(new THREE.Vector3(s.x, s.y ?? 0, s.z), q.setFromAxisAngle(haut, s.rotation), new THREE.Vector3().setScalar(s.scale)))
+      new THREE.Matrix4().compose(new THREE.Vector3(s.x, s.y ?? 0, s.z), q.setFromAxisAngle(haut, s.rotation), echelle(s)))
   }, [sujets])
   const repartir = useCallback(() => {
     const n = [0, 0]
