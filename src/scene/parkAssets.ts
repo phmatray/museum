@@ -45,6 +45,8 @@ export interface PiecesDuRuisseau {
  * sont plus plantés : ils ne s'accordaient pas au jardin.
  */
 const VEGETATION = 'jardin/vegetation.glb'
+/** Les grands arbres (`build-grands-arbres.py`) : cèdre, ginkgo, pin noir. Des planches photo, comme la végétation. */
+const GRANDS = 'jardin/grands-arbres.glb'
 const NOEUDS: Record<EspeceParc, [fichier: string, noeud: string]> = {
   'erable-rouge': [VEGETATION, 'src_erable_rouge'],
   'erable-vert': [VEGETATION, 'src_erable_vert'],
@@ -60,11 +62,19 @@ const NOEUDS: Record<EspeceParc, [fichier: string, noeud: string]> = {
   'rocher-3': ['jardin/jardin.glb', 'src_rocher_3'],
   'rocher-4': ['jardin/jardin.glb', 'src_rocher_4'],
   'rocher-5': ['jardin/jardin.glb', 'src_rocher_5'],
+  cedre: [GRANDS, 'src_cedre'],
+  ginkgo: [GRANDS, 'src_ginkgo'],
+  pin: [GRANDS, 'src_pin'],
 }
 
-/** Les sujets vus de loin (`build-vegetation.py`) : mêmes tirages, une carte sur deux. */
-const LOIN: Partial<Record<EspeceParc, string>> = { 'erable-rouge': 'loin_erable_rouge', 'erable-vert': 'loin_erable_vert' }
-const FICHIER_LOIN = VEGETATION
+/** Les sujets vus de loin (`build-vegetation.py`, `build-grands-arbres.py`) : mêmes tirages, une carte sur deux. */
+const LOIN: Partial<Record<EspeceParc, [fichier: string, noeud: string]>> = {
+  'erable-rouge': [VEGETATION, 'loin_erable_rouge'],
+  'erable-vert': [VEGETATION, 'loin_erable_vert'],
+  cedre: [GRANDS, 'loin_cedre'],
+  ginkgo: [GRANDS, 'loin_ginkgo'],
+  pin: [GRANDS, 'loin_pin'],
+}
 const FICHIER_RUISSEAU = 'jardin/ruisseau.glb'
 
 let promesse: Promise<ParkAssets> | null = null
@@ -84,7 +94,7 @@ async function charger(base: string): Promise<ParkAssets> {
   const draco = new DRACOLoader()
   draco.setDecoderPath(`${base}draco/`)
   gltf.setDRACOLoader(draco)
-  const fichiers = [...new Set([...Object.values(NOEUDS).map(([f]) => f), FICHIER_LOIN, FICHIER_RUISSEAU])]
+  const fichiers = [...new Set([...Object.values(NOEUDS).map(([f]) => f), FICHIER_RUISSEAU])]
   const scenes = new Map(await Promise.all(fichiers.map(async (f) => [f, (await gltf.loadAsync(`${base}assets/${f}`)).scene] as const)))
   draco.dispose()
   const especes = new Map<EspeceParc, readonly ParkPiece[]>()
@@ -94,8 +104,9 @@ async function charger(base: string): Promise<ParkAssets> {
       console.warn(`${fichier} : nœud « ${nom} » introuvable`)
       continue
     }
-    const { lots, cale } = lotsParMateriau(noeud, fichier === VEGETATION ? 0.45 : 0.15)
-    const loin = LOIN[id] === undefined ? undefined : scenes.get(FICHIER_LOIN)?.getObjectByName(LOIN[id])
+    const { lots, cale } = lotsParMateriau(noeud, fichier === VEGETATION || fichier === GRANDS ? 0.45 : 0.15)
+    const l = LOIN[id]
+    const loin = l === undefined ? undefined : scenes.get(l[0])?.getObjectByName(l[1])
     if (loin !== undefined) accrocherLoin(lots, loin, cale)
     especes.set(id, lots)
   }
@@ -105,11 +116,14 @@ async function charger(base: string): Promise<ParkAssets> {
     for (const l of lots) {
       const feuilles = l.material.name.startsWith('Jardin_Feuillage') && !l.material.name.includes('Fond')
       if (id === 'petales') saisonnerPetales(l.material)
-      else if (feuilles && id.startsWith('erable')) {
+      else if (feuilles && (id.startsWith('erable') || id === 'ginkgo')) {
         cartesDeFeuillage(l.geometry)
         if (l.loin) cartesDeFeuillage(l.loin)
-        saisonnerErable(l.material, id === 'erable-rouge')
+        saisonnerErable(l.material, id === 'erable-rouge' ? 'rouge' : id === 'ginkgo' ? 'ginkgo' : 'vert')
         varierFeuillage(l.material, 0.45)
+      } else if (feuilles && (id === 'cedre' || id === 'pin')) {
+        // Toujours verts : ni saison ni chute, une nuance par sujet, et la neige par-dessus.
+        varierFeuillage(l.material, 0.35)
       } else if (feuilles && id === 'azalee') {
         saisonnerAzalee(l.material)
         varierFeuillage(l.material)

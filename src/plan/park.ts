@@ -19,6 +19,7 @@
 import { CONTOUR_ETANG, INDICE_LEVRE, JARDIN, LEVRE, RADIERS, TABLIER, TRACE_RUISSEAU, distanceEtang, distanceRuisseau, presDeLEau } from './jardin.ts'
 import { BELVEDERE, EMPRISE_BELVEDERE, PAS_DE_LA_RIVE, PIED_DE_L_ESCALIER, OBSTACLES_BELVEDERE, VOLEES, coteDuBelvedere, dansLaPercee } from './belvedere.ts'
 import { EMPRISE_CHANTIER } from './chantier.ts'
+import { DEGAGEMENT, GRANDS_ARBRES, HOUPPIER } from './arbres.ts'
 import { hauteurDuParc } from './relief.ts'
 import type { Plan, Rect } from './types.ts'
 
@@ -26,6 +27,7 @@ export type EspeceParc =
   | 'erable-rouge' | 'erable-vert' | 'buis' | 'azalee' | 'fougere' | 'petales'
   | 'rocher-1' | 'rocher-2' | 'rocher-3' | 'rocher-4' | 'rocher-5'
   | 'roseaux' | 'herbes' | 'lierre'
+  | 'cedre' | 'ginkgo' | 'pin'
 
 export interface PlantPlacement {
   espece: EspeceParc
@@ -98,6 +100,7 @@ const RAYON: Record<EspeceParc, number> = {
   'erable-rouge': 3.2, 'erable-vert': 3.2, buis: 0.8, azalee: 0.75, fougere: 0.5, petales: 0,
   'rocher-1': 1.4, 'rocher-2': 1.1, 'rocher-3': 1.0, 'rocher-4': 1.0, 'rocher-5': 0.9,
   roseaux: 0.3, herbes: 0.4, lierre: 1.1,
+  ...HOUPPIER,
 }
 /** Au jardin, un semis plus serré : érables et boules taillées, pas les grands arbres. */
 const PAS_JARDIN = 3.5
@@ -502,6 +505,16 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
   for (const s of sujets) {
     const y = s.belvedere ? (coteDuBelvedere(s.x, s.z) ?? BELVEDERE.cote) : Math.min(...[[0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5]].map(([dx, dz]) => hauteurDuParc(s.x + dx, s.z + dz)))
     gardes.push({ espece: s.espece, x: s.x, z: s.z, rotation: s.lacet ?? generateur(`${graine}:${s.x}`)() * Math.PI * 2, scale: s.scale, rayon: RAYON[s.espece] * s.scale, y: s.espece === 'lierre' ? y - 0.05 : y })
+  }
+  // Les grands arbres (`arbres.ts`), en dernier comme le belvédère : sous leur
+  // houppier, les érables s'écartent (ils s'y mêleraient), les touffes aussi
+  // près du tronc ; rien d'autre ne bouge.
+  const dessous = (p: PlantPlacement) => GRANDS_ARBRES.some((a) =>
+    Math.hypot(p.x - a.x, p.z - a.z) < (grand(p) ? DEGAGEMENT[a.espece].grands : DEGAGEMENT[a.espece].petits + p.rayon) * a.scale)
+  for (let i = gardes.length - 1; i >= 0; i--) if (dessous(gardes[i])) gardes.splice(i, 1)
+  for (const a of GRANDS_ARBRES) {
+    const y = Math.min(...[[0.6, 0], [-0.6, 0], [0, 0.6], [0, -0.6]].map(([dx, dz]) => hauteurDuParc(a.x + dx, a.z + dz)))
+    gardes.push({ espece: a.espece, x: a.x, z: a.z, rotation: a.lacet, scale: a.scale, rayon: RAYON[a.espece] * a.scale, y })
   }
   const toutes = [...allees, ...roji]
   return { terrain, parvis, sol, dalles: couronne(parvis, emprise), allees: toutes, plantations: gardes, berges: semerBerges(toutes, gardes, graine) }

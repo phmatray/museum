@@ -235,8 +235,10 @@ export function cartesDeFeuillage(g: THREE.BufferGeometry): void {
  * érable vert sur trois fleurit, pâle, au printemps. Le vent balance le houppier.
  * La géométrie doit porter `aCarte` (`cartesDeFeuillage`).
  */
-export function saisonnerErable(m: THREE.Material, rouge: boolean): void {
-  greffer(m, `saison:erable:${rouge ? 'rouge' : 'vert'}`, (s) => {
+export function saisonnerErable(m: THREE.Material, variante: 'rouge' | 'vert' | 'ginkgo'): void {
+  const rouge = variante === 'rouge'
+  const ginkgo = variante === 'ginkgo'
+  greffer(m, `saison:erable:${variante}`, (s) => {
     avecMonde(s)
     s.vertexShader = s.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec4 aCarte;\nvarying vec2 vCarte;\nvarying float vNu;')
@@ -267,7 +269,13 @@ export function saisonnerErable(m: THREE.Material, rouge: boolean): void {
     float iL = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
     float iTourne = smoothstep(vCarte.x * 0.7, vCarte.x * 0.7 + 0.25, uFeuillage * 1.05 + (vCarte.y - 0.5) * 0.3);
     float iTon = fract(vCarte.x * 5.1 + vCarte.y);
-    ${rouge
+    ${ginkgo
+      ? `// Le ginkgo tourne d'un bloc, en quelques jours, au jaune d'or ; à peine une nuance d'un éventail à l'autre.
+    iTourne = smoothstep(0.35 + vCarte.y * 0.1, 0.55 + vCarte.y * 0.1, uFeuillage * 1.05 + (vCarte.x - 0.5) * 0.08);
+    vec3 iAutomne = mix(vec3(0.95, 0.72, 0.08), vec3(0.98, 0.82, 0.2), iTon) * (0.55 + 0.8 * iL);
+    diffuseColor.rgb = mix(diffuseColor.rgb, iAutomne, iTourne);
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.15, 1.25, 0.75) + vec3(0.03, 0.05, 0.0), uTendre * (1.0 - iTourne));`
+      : rouge
       ? `// Les pourpres s'embrasent : cramoisi et écarlate.
     vec3 iAutomne = mix(vec3(0.55, 0.03, 0.02), vec3(0.8, 0.12, 0.02), iTon) * (0.8 + 1.4 * iL);
     diffuseColor.rgb = mix(diffuseColor.rgb, iAutomne, iTourne);`
@@ -276,7 +284,7 @@ export function saisonnerErable(m: THREE.Material, rouge: boolean): void {
     diffuseColor.rgb = mix(diffuseColor.rgb, iAutomne * (0.6 + 0.7 * iL), iTourne);
     // Le vert tendre des jeunes feuilles.
     diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.2, 1.3, 0.7) + vec3(0.03, 0.05, 0.0), uTendre * (1.0 - iTourne));`}
-    ${rouge ? '' : `// Au printemps, un érable vert sur trois se pique de grappes pâles, rosées.
+    ${rouge || ginkgo ? '' : `// Au printemps, un érable vert sur trois se pique de grappes pâles, rosées.
     float iFleur = step(0.66, vCarte.y) * step(vCarte.x, 0.22) * uFloraison;
     diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.93, 0.74, 0.8) * (0.5 + 0.9 * iL), iFleur * 0.75);`}
     diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.3, 0.16, 0.06) * (0.5 + iL), smoothstep(0.05, 0.6, vNu));

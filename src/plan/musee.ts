@@ -20,6 +20,7 @@
  * 2h + g = 0,64 m, au milieu de la fourchette de Blondel.
  */
 import { OBSTACLES_ATELIERS } from './ateliers.ts'
+import { OBSTACLES_GRANDS_ARBRES } from './arbres.ts'
 import { OBSTACLES_BELVEDERE } from './belvedere.ts'
 import { OBSTACLES_CHANTIER } from './chantier.ts'
 import { obstaclesDesCimaises } from './cimaises.ts'
@@ -94,6 +95,8 @@ export const MUSEE: Plan = {
         ...OBSTACLES_CHANTIER,
         // Au fond du jardin, les murs du belvédère, sa volée, son pavillon, et la palissade du roji (belvedere.ts).
         ...OBSTACLES_BELVEDERE,
+        // Les troncs des grands arbres du parc (arbres.ts).
+        ...OBSTACLES_GRANDS_ARBRES,
       ],
     },
     {

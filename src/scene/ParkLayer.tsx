@@ -574,6 +574,8 @@ function FeuillesMortes({ parc }: { parc: Parc }) {
 const AUTOMNE = {
   'erable-rouge': ['#8c1a12', '#a3230f', '#6e1410', '#5a2a18'].map((c) => new THREE.Color(c)),
   'erable-vert': ['#c8641a', '#d4861c', '#b03a14', '#c9a227', '#7a4a22'].map((c) => new THREE.Color(c)),
+  // Sous le ginkgo, un tapis d'or, d'un seul ton.
+  ginkgo: ['#e0b21c', '#d9a414', '#e8c33a', '#c99414'].map((c) => new THREE.Color(c)),
 }
 
 /** Le tapis de feuilles, et une boîte par érable qui borne le sien. */
@@ -590,7 +592,7 @@ function feuillesMortes(parc: Parc): { geometrie: THREE.BufferGeometry; boites: 
   }
   const [pos, uv, couleur, feuille, index] = [[], [], [], [], []] as number[][]
   for (const p of parc.plantations) {
-    if (p.espece !== 'erable-rouge' && p.espece !== 'erable-vert') continue
+    if (p.espece !== 'erable-rouge' && p.espece !== 'erable-vert' && p.espece !== 'ginkgo') continue
     const palette = AUTOMNE[p.espece]
     const rayon = 3 * p.scale
     const boite = new THREE.Box3()
