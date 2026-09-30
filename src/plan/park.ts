@@ -446,5 +446,9 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
 
   // La pelouse s'arrête où commence le sol creusé du jardin (build-jardin.py).
   const sol = JARDIN.zones.reduce((rs, zone) => rs.flatMap((r) => couronne(r, zone)), couronne(terrain, parvis))
-  return { terrain, parvis, sol, dalles: couronne(parvis, emprise), allees, plantations }
+  // Les vieilles souches des berges (`ruisseau.ts`) tiennent leur place : rien ne
+  // pousse dans leurs racines. Retirés après coup, sans rebattre aucun tirage.
+  const souches = JARDIN.souches.sujets
+  const libres = plantations.filter((p) => !souches.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < 0.9 * s.echelle + p.rayon * 0.5))
+  return { terrain, parvis, sol, dalles: couronne(parvis, emprise), allees, plantations: libres }
 }

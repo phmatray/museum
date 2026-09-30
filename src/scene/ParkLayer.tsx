@@ -19,11 +19,13 @@ import { enceinte } from '../plan/enceinte'
 import { Boites } from './PlanBuilding'
 import { AlleesDuParc } from './AlleesDuParc'
 import { parkAssetsResource, type ParkAssets, type ParkPiece } from './parkAssets'
-import { creerMatieresJardin, preparerSol, uvBoite } from './jardinMatieres'
+import { caustiques, creerMatieresJardin, preparerSol, uvBoite } from './jardinMatieres'
 import { brinsDeGazon, carteDuSol, champDeVue, matiereGazon, parcellesDeGazon, uneEnVue, type ReglageGazon } from './gazon'
 import { useGameStore } from '../stores/gameStore'
 import { useChargement } from '../stores/chargementStore'
-import { presDeLEau, rubanDuRuisseau } from '../plan/jardin'
+import { distanceRuisseau, presDeLEau, rubanDuRuisseau } from '../plan/jardin'
+import { remous } from '../plan/ruisseau'
+import { Ruisseau } from './RuisseauLayer'
 import { PARC } from '../plan/visibilite'
 import { INTEMPERIES, intemperer } from './intemperies'
 
@@ -50,6 +52,8 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   const herbe = useMemo(() => {
     const m = new THREE.MeshLambertMaterial({ name: 'parc:pelouse', map: cartes?.couleur ?? null, color: TEINTE_PELOUSE, vertexColors: true })
     intemperer(m, { pelouse: true })
+    // Le fond du ruisseau (le sol creusé porte la pelouse) : le soleil y danse.
+    caustiques(m)
     return m
   }, [cartes])
 
@@ -92,7 +96,8 @@ export function ParkLayer({ placements }: { placements: Parc }) {
       <AlleesDuParc parc={placements} dallage={dallage} />
       <Gazon parc={placements} />
       <FeuillesMortes parc={placements} />
-      {assets !== null && <Jardin objets={assets.jardin} herbe={herbe} />}
+      {assets !== null && <Jardin objets={assets.jardin} herbe={herbe} parc={placements} />}
+      {assets !== null && <Ruisseau pieces={assets.ruisseau} />}
       {assets !== null &&
         [...parEspece].map(([espece, parcelles]) =>
           (assets.especes.get(espece) ?? []).map((lot, i) =>
@@ -398,8 +403,10 @@ function Instances({ piece, sujets }: { piece: ParkPiece; sujets: PlantPlacement
  * le sol creusé prend la pelouse du parc, l'eau et la cascade leurs matières
  * animées ; galets, pont et lanterne gardent les leurs.
  */
-function Jardin({ objets, herbe }: { objets: THREE.Object3D[]; herbe: THREE.Material }) {
-  const matieres = useMemo(() => creerMatieresJardin(), [])
+function Jardin({ objets, herbe, parc }: { objets: THREE.Object3D[]; herbe: THREE.Material; parc: Parc }) {
+  // Les rochers posés dans le courant (`park.ts`) lèvent leur écume, comme souches et galets.
+  const matieres = useMemo(() => creerMatieresJardin(remous(parc.plantations
+    .filter((p) => p.espece.startsWith('rocher') && distanceRuisseau(p.x, p.z) < 0).map((p): [number, number, number] => [p.x, p.z, p.rayon * 0.6]))), [parc])
   useEffect(() => () => matieres.dispose(), [matieres])
   // Le ruisseau : un ruban continu, UV le long du courant (`rubanDuRuisseau`).
   const ruban = useMemo(() => {

@@ -54,6 +54,7 @@ import sharp from 'sharp'
 export const MODELES = [
   'architecture/escalier.glb',
   'jardin/jardin.glb',
+  'jardin/ruisseau.glb',
   'plants/plants-lod.glb',
   'sculptures/arborescence.glb',
   'sculptures/chandelles.glb',
