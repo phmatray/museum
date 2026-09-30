@@ -9,8 +9,10 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
+import * as THREE from 'three'
 import config from '../../museum.config.json'
 import { projetDemande, resoudre } from '../domain/lien'
+import { capDuRegard } from '../domain/vr'
 import { AU_SOL, PAS_FIXE, VITESSE_VISITE, cadencer, sauter } from '../domain/locomotion'
 import { useAccrochage } from '../hooks/useAccrochage'
 import { useVitrines } from '../hooks/useCatalogue'
@@ -19,7 +21,7 @@ import { MUSEE } from '../plan/musee'
 import { surfaceAt } from '../plan/rules'
 import { VISITE as ITINERAIRE, avancer, capVers, type Curseur } from '../plan/tour'
 import { step, type Walker } from '../plan/walk'
-import { toucher, useGameStore } from '../stores/gameStore'
+import { toucher, useGameStore, vrEntree } from '../stores/gameStore'
 
 /**
  * 1,62 m : l'œil d'un adulte de 1,75 m. C'est l'unique référence d'échelle d'une
@@ -38,6 +40,13 @@ const TAUX_REGARD = 3.5
 /** Le visiteur au point d'apparition, calculé une fois : un plan faux casse à l'import. */
 /** Les touches qui font marcher ou sauter (`Musee3D.tsx`) : pendant la visite guidée, elles la font cesser. */
 const TOUCHES_DE_MARCHE = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'])
+
+const REGARD = new THREE.Vector3()
+/** La direction du regard, dans le plan (x, z) : en VR, la caméra est dans le gréement, sa rotation propre ne dit rien. */
+function regardXZ(camera: THREE.Camera): [number, number] {
+  camera.getWorldDirection(REGARD)
+  return [REGARD.x, REGARD.z]
+}
 
 /** La visite guidée s'arrête là où l'on est : on continue à pied, sans repasser par l'accueil. */
 function reprendreLaMain() {
@@ -173,13 +182,17 @@ export function PlanPlayer() {
       toucher.lookX = toucher.lookY = 0
     }
     // Clavier et joystick s'additionnent, bornés à [−1, 1] comme l'attend `step`.
+    // En VR, les mains et le regard (`VRLayer`) : on marche vers où regarde le casque.
+    const casque = gl.xr.isPresenting
     const borne = (v: number) => Math.max(-1, Math.min(1, v))
-    const input = {
-      forward: borne(Number(t.forward) - Number(t.backward) + toucher.forward),
-      strafe: borne(Number(t.right) - Number(t.left) + toucher.strafe),
-      yaw: camera.rotation.y,
-      hate: t.hate,
-    }
+    const input = casque
+      ? { forward: vrEntree.avance, strafe: vrEntree.cote, yaw: capDuRegard(...regardXZ(camera)), hate: vrEntree.hate }
+      : {
+        forward: borne(Number(t.forward) - Number(t.backward) + toucher.forward),
+        strafe: borne(Number(t.right) - Number(t.left) + toucher.strafe),
+        yaw: camera.rotation.y,
+        hate: t.hate,
+      }
     // Le joystick pendant la visite : même règle que le clavier, on reprend la main.
     if (tourActive && (toucher.forward || toucher.strafe)) reprendreLaMain()
     let w = walker.current
@@ -192,7 +205,7 @@ export function PlanPlayer() {
         break
       }
       w = step(MUSEE, w, entree, PAS_FIXE)
-      saut.current = sauter(saut.current, !tourActive && Boolean(t.saut), PAS_FIXE)
+      saut.current = sauter(saut.current, !tourActive && !casque && Boolean(t.saut), PAS_FIXE)
     }
     walker.current = w
     if (tourActive) {
@@ -206,7 +219,9 @@ export function PlanPlayer() {
     // Publié seulement s'il a bougé ou tourné : à l'arrêt, la minimap ne se redessine pas.
     const v = useGameStore.getState().visiteur
     if (!v || v.x !== w.x || v.z !== w.z || v.yaw !== w.yaw || v.surface !== w.surface) useGameStore.setState({ visiteur: w })
-    camera.position.set(w.x, w.y + HAUTEUR_OEIL + saut.current.h, w.z)
+    // En VR, c'est le gréement qui suit le pied ; le casque pose la tête dedans.
+    if (casque && camera.parent) camera.parent.position.set(w.x, w.y + (vrEntree.sansSol ? HAUTEUR_OEIL : 0), w.z)
+    else camera.position.set(w.x, w.y + HAUTEUR_OEIL + saut.current.h, w.z)
   })
   /* eslint-enable react-hooks/immutability */
 

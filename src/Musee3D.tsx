@@ -15,6 +15,8 @@ import { Suspense, lazy, useEffect, useRef } from 'react'
 import { PointerLockCamera } from './components/PointerLockCamera'
 import { PlanPlayer } from './components/PlanPlayer'
 import { PlanBuilding } from './scene/PlanBuilding'
+import { VRLayer } from './scene/VRLayer'
+import { useGameStore } from './stores/gameStore'
 import { utiliserKTX2 } from './io/textures'
 import { Pret } from './scene/chargement'
 import { useChargement } from './stores/chargementStore'
@@ -85,6 +87,16 @@ function QualiteAdaptative() {
   return <PerformanceMonitor onIncline={() => juger('hausse')} onDecline={() => juger('baisse')} />
 }
 
+/** La chaîne d'écran, retirée en VR : `VRLayer` y fait sa propre passe, œil par œil. */
+function EcranOuCasque() {
+  const enVR = useGameStore((s) => s.enVR)
+  return enVR ? null : (
+    <Suspense fallback={null}>
+      <PostProcessing />
+    </Suspense>
+  )
+}
+
 /**
  * `preserveDrawingBuffer` en développement seulement : sans lui, relire le
  * canvas depuis un navigateur piloté rend une image noire ; en production personne ne
@@ -101,9 +113,8 @@ export default function Musee3D() {
           <PlanBuilding />
           <PlanPlayer />
         </Suspense>
-        <Suspense fallback={null}>
-          <PostProcessing />
-        </Suspense>
+        <VRLayer />
+        <EcranOuCasque />
       </Canvas>
     </KeyboardControls>
   )

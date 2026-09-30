@@ -82,13 +82,13 @@
 
   <nav class="sommaire" aria-label="Parcourir le journal">
     <div class="onglets" role="tablist" aria-label="Thèmes">
-      <button type="button" role="tab" data-cat="tout" aria-selected="true">Tout <span class="nb">108</span></button>
+      <button type="button" role="tab" data-cat="tout" aria-selected="true">Tout <span class="nb">109</span></button>
       <button type="button" role="tab" data-cat="hall" aria-selected="false">Hall & architecture <span class="nb">23</span></button>
       <button type="button" role="tab" data-cat="galeries" aria-selected="false">Galeries & œuvres <span class="nb">25</span></button>
       <button type="button" role="tab" data-cat="jardin" aria-selected="false">Jardin & dehors <span class="nb">14</span></button>
       <button type="button" role="tab" data-cat="bavette" aria-selected="false">Bavette & faune <span class="nb">12</span></button>
       <button type="button" role="tab" data-cat="ambiance" aria-selected="false">Lumière, ciel & sons <span class="nb">15</span></button>
-      <button type="button" role="tab" data-cat="site" aria-selected="false">Site & outils <span class="nb">15</span></button>
+      <button type="button" role="tab" data-cat="site" aria-selected="false">Site & outils <span class="nb">16</span></button>
       <button type="button" role="tab" data-cat="idees" aria-selected="false">Pistes &amp; idées <span class="nb">4</span></button>
     </div>
     <details class="index">
@@ -96,6 +96,21 @@
       <ol class="liste"></ol>
     </details>
   </nav>
+
+  <section class="etape" data-cat="site" aria-labelledby="t-106">
+    <div class="entete"><h2 id="t-106">106. La visite en VR, au casque ou au Cardboard</h2><span class="statut fait">en ligne · PR #207</span></div>
+    <div class="texte">
+      <p>Le billet d’accueil propose maintenant « En VR » quand le navigateur sait faire, par exemple dans le navigateur d’un Quest, et « Avec un Cardboard » sur un téléphone.</p>
+      <ul>
+        <li><strong>Au casque :</strong> le stick gauche fait marcher vers où l’on regarde (enfoncé, on presse le pas), le droit tourne par crans de 30°. La rotation continue est ce qui rend malade. La tête bouge librement, et le pied suit la même marche qu’à l’écran, murs et escaliers compris.</li>
+        <li><strong>Au Cardboard :</strong> un tapotement lance la marche droit devant le regard, un autre l’arrête. On s’arrête aussi en butant, et la flèche en haut à gauche ramène à l’écran. Sur un téléphone sans VR native (un iPhone, par exemple), c’est le polyfill WebXR de Google qui fait la stéréo, corrige la déformation des lentilles et lit le gyroscope.</li>
+        <li><strong>Les effets, adaptés plutôt que retirés :</strong> la chaîne de l’écran ne sait rendre qu’une image, pas deux yeux. En VR, la scène est donc rendue une fois pour les deux yeux dans une image HDR, puis recopiée dans le casque par une seule passe qui refait le rendu des tons, l’étalonnage de l’heure (l’aube dorée, la nuit bleue) et le halo des lumières. Ce halo est tiré des niveaux de mip de l’image au lieu des huit passes du bloom. L’anticrénelage matériel remplace SMAA, et la lumière cuite et les ombres de contact tiennent les angles à la place de l’occlusion d’écran.</li>
+        <li><strong>Propre au casque, une vignette de confort :</strong> le champ se resserre pendant qu’on marche ou qu’on tourne, puis se rouvre à l’arrêt. Moins de vision périphérique en mouvement, c’est moins de nausée.</li>
+      </ul>
+      <p class="note">Essayé ici avec le Cardboard simulé dans un navigateur piloté : entrée, marche, arrêt et retour à l’écran fonctionnent. Il reste à l’essayer dans un vrai Cardboard et au casque d’un ami. Au passage, les imposteurs d’arbres annoncés à l’étape 105 attendront : mesuré, le feuillage lointain ne coûte que 0,4 ms sur les 6,5 ms du jardin, tout le poids est au feuillage proche. Ils prendront tout leur sens avec de grands arbres, qu’on verra de loin.</p>
+    </div>
+    <figure><img src="img/106-vr.jpg" width="1000" height="375" alt="La nef vue dans un Cardboard, deux images déformées pour les lentilles ; puis en marchant, le champ resserré par la vignette de confort."><figcaption>La nef au Cardboard, puis en marche, avec la vignette de confort.</figcaption></figure>
+  </section>
 
   <section class="etape" data-cat="site" aria-labelledby="t-105">
     <div class="entete"><h2 id="t-105">105. Moins d’appels de dessin</h2><span class="statut fait">en ligne · PR #206</span></div>

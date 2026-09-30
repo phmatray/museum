@@ -56,6 +56,8 @@ interface GameState {
   meteo: Meteo
   /** La saison du jardin, au jour de l'année ou à celle de `?saison=`. */
   saison: Saison
+  /** Une session VR est ouverte (`VRLayer`) : le casque tient la caméra, la chaîne d'écran se retire. */
+  enVR: boolean
   setPaused: (paused: boolean) => void
   setCurrentRoomId: (id: string) => void
   setTourActive: (active: boolean) => void
@@ -82,6 +84,7 @@ export const useGameStore = create<GameState>((set) => ({
   annonce: null,
   meteo: meteoDemandee(recherche()) ?? CLAIR,
   saison: saisonA(new Date(), recherche()),
+  enVR: false,
   setPaused: (paused) => set({ paused }),
   setCurrentRoomId: (id) => set({ currentRoomId: id }),
   setTourActive: (active) => set({ tourActive: active }),
@@ -106,3 +109,11 @@ export function cielDuMoment(): Ciel {
   const quand = heureDemandee(recherche(), maintenant) ?? maintenant
   return cielA(quand, config.location.latitude, config.location.longitude)
 }
+
+/**
+ * L'entrée du visiteur en VR, écrite par `VRLayer` (sticks, marche au regard)
+ * et lue par `PlanPlayer`, comme `toucher`. `sansSol` : le casque ne connaît
+ * pas son sol (un Cardboard), le gréement se hausse à hauteur d'œil ;
+ * `confort` : la vignette de confort, de 0 à 1.
+ */
+export const vrEntree = { avance: 0, cote: 0, hate: false, sansSol: false, confort: 0 }

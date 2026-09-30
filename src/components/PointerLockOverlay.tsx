@@ -21,6 +21,7 @@ import { heureDemandee } from '../domain/soleil'
 import { useAccrochage } from '../hooks/useAccrochage'
 import { useVitrines } from '../hooks/useCatalogue'
 import { laVisite } from '../io/visite'
+import { entrerEnVR, vrDisponible, type ModeVR } from '../io/xr'
 import { useGameStore } from '../stores/gameStore'
 import { mouvementReduit, recherche } from '../stores/reglagesStore'
 
@@ -111,6 +112,13 @@ export function PointerLockOverlay() {
   const [sortie, setSortie] = useState<'entree' | 'visite' | null>(null)
   const [quand] = useState(() => heureDemandee(recherche(), new Date()) ?? new Date())
   const [doigt] = useState(auDoigt)
+  // La VR, si ce navigateur la sait (un casque), ou le Cardboard sur un téléphone (`io/xr.ts`).
+  const [vr, setVr] = useState<ModeVR | null>(null)
+  useEffect(() => {
+    let vivant = true
+    void vrDisponible().then((m) => { if (vivant) setVr(m) })
+    return () => { vivant = false }
+  }, [])
 
   useEffect(() => {
     let vivant = true
@@ -190,7 +198,20 @@ export function PointerLockOverlay() {
             <button type="button" className="billet-guide" onClick={() => entrer('visite')}>
               Visite guidée
             </button>
+            {vr && (
+              // La session s'ouvre dans le geste même : rien n'attend entre le clic et elle.
+              <button type="button" className="billet-guide" onClick={() => void entrerEnVR().catch((e: unknown) => console.warn('VR refusée', e))}>
+                {vr === 'cardboard' ? 'Avec un Cardboard' : 'En VR'}
+              </button>
+            )}
           </div>
+          {vr && (
+            <p className="billet-consignes">
+              {vr === 'cardboard'
+                ? 'Dans le Cardboard : un tapotement pour marcher droit devant le regard, un autre pour s’arrêter.'
+                : 'Au casque : stick gauche pour marcher (enfoncé pour presser le pas), stick droit pour tourner.'}
+            </p>
+          )}
           {doigt ? (
             <p className="billet-consignes">Pouce gauche pour marcher, glisser à droite pour regarder, toucher le plan pour l’agrandir.</p>
           ) : (
