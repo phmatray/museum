@@ -37,6 +37,8 @@ interface GameState {
   rendezVous: { demande: string; cle: string | null } | null
   /** Le dépôt de la borne que le visiteur consulte, en salle d'honneur, publié par `VitrinesLayer`. */
   borne: string | null
+  /** L'étape du journal que le visiteur regarde dans la baraque du chantier (son ancre, `t-94`), publiée par `ChantierLayer`. */
+  etape: string | null
   /** Le visiteur regarde Bavette de près : `CarteBavette` s'ouvre. Publié par `BavetteLayer`. */
   bavetteRegarde: boolean
   /** Où se promène Bavette, pour la minimap : publié quelques fois par seconde. */
@@ -72,6 +74,7 @@ export const useGameStore = create<GameState>((set) => ({
   toile: null,
   rendezVous: null,
   borne: null,
+  etape: null,
   bavetteRegarde: false,
   bavette: null,
   ciel: cielDuMoment(),

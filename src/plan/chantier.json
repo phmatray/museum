@@ -1,0 +1,11 @@
+{
+  "_": "La baraque du chantier du musée, sur la pelouse sud-ouest : LA source partagée par src/plan/chantier.ts (murs, accrochage, marche) et tools/blender/build-chantier.py (charpente, lambris, verrière). Coordonnées du plan, en mètres.",
+  "emprise": { "x": 1, "z": 56, "width": 12, "depth": 7 },
+  "cote": 0.4,
+  "mur": 0.15,
+  "porte": { "z": 59.5, "largeur": 1.6 },
+  "lambris": 2.6,
+  "egout": 3.2,
+  "faitage": 4.9,
+  "table": { "x": 7, "z": 59.5, "largeur": 2.4, "profondeur": 0.9, "hauteur": 0.8 }
+}

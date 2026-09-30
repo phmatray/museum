@@ -251,6 +251,12 @@ const ARCHITECTURE = [
     usage: 'lampadaires du parc, le long de la ceinture, des accès et de l’axe de l’entrée',
   },
   {
+    id: 'chantier',
+    source: '`tools/blender/build-chantier.py` : charpente de fer à fermes Polonceau et verrière, lambris, enseigne (police PT Serif, OFL), table, plans et baladeuse',
+    licence: 'œuvre originale du dépôt',
+    usage: 'la baraque du chantier du musée, sur la pelouse sud-ouest, où s’accroche le journal de chantier',
+  },
+  {
     id: 'accessoires',
     source:
       'Meshy (généré par IA, texte → 3D, texture PBR), mis à l’échelle et allégé par `tools/blender/build-accessoires.py` ; prompts : ' +

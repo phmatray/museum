@@ -28,6 +28,7 @@ import { BatlloLayer } from './BatlloLayer'
 import { SalleHonneurLayer } from './SalleHonneurLayer'
 import { VitrinesLayer } from './VitrinesLayer'
 import { AteliersLayer } from './AteliersLayer'
+import { ChantierLayer } from './ChantierLayer'
 import { sansBaieBatllo } from './batllo'
 import { EscalierLayer } from './EscalierLayer'
 import { TableauDeparts } from './TableauDeparts'
@@ -80,6 +81,7 @@ export function PlanBuilding() {
       <SalleHonneurLayer />
       <VitrinesLayer />
       <AteliersLayer />
+      <ChantierLayer />
       <EscalierLayer onPret={escalierPret} />
       <TableauDeparts />
       <AmbianceSonore />

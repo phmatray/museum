@@ -10,10 +10,12 @@
  *
  * Pur : ni three ni React.
  */
+import { SEUIL_CHANTIER } from './chantier.ts'
+import { OBSTACLES_PORTIQUE } from './facade.ts'
 import { exposedRooms } from './hang.ts'
 import { contourner } from './mobilier.ts'
 import { MUSEE } from './musee.ts'
-import { PASSABLE, flightEnds, surfaceAt } from './rules.ts'
+import { PARC, PASSABLE, flightEnds, surfaceAt } from './rules.ts'
 import type { Plan, Rect } from './types.ts'
 
 export interface TourStop {
@@ -72,6 +74,22 @@ export function passages(plan: Plan): Map<string, { vers: string; points: [numbe
 
 type Point = [number, number]
 type Graphe = ReturnType<typeof passages>
+
+/** Les passages de la visite, plus l'entrée : du hall au parc, au-delà du portique (Bavette, et le dernier arrêt de la visite). */
+export function grapheEtEntree(plan: Plan): Graphe {
+  const g = passages(plan)
+  const lier = (a: string, b: string, points: [number, number][]) => {
+    g.set(a, [...(g.get(a) ?? []), { vers: b, points }])
+    g.set(b, [...(g.get(b) ?? []), { vers: a, points: [...points].reverse() }])
+  }
+  const devant = Math.max(plan.depth, ...OBSTACLES_PORTIQUE.map((o) => o.z + o.depth)) + 0.8
+  for (const level of plan.levels)
+    for (const o of level.openings)
+      // Côté hall, le point de passage est au-delà des battants ouverts de l'entrée
+      // (1,55 m) : plus près, le chemin vers un coin du hall coupait un battant.
+      if (o.kind === 'entrance' && o.b === null) lier(`${level.id}:${o.a}`, PARC, [[o.x, o.z - 2.6], [o.x, o.z - 0.8], [o.x, devant]])
+  return g
+}
 
 /** Le plus court chemin en nombre de passages : la suite des passages, chacun avec la surface d'où il part. */
 export function etapes(g: Graphe, de: string, a: string): { de: string; points: Point[] }[] | null {
@@ -145,5 +163,18 @@ export function avancer(stops: TourStop[], c: Curseur, w: { x: number; z: number
   return { stop: c.stop, point }
 }
 
+/**
+ * Le dernier arrêt, après la salle d'honneur : on redescend, on sort par
+ * l'entrée, et l'on finit dans la baraque du chantier (`chantier.ts`), face au
+ * pignon du fond où pendent les dernières étapes du journal.
+ */
+export function arretDuChantier(plan: Plan, depuis: TourStop): TourStop {
+  const la = depuis.points[depuis.points.length - 1]
+  const points = chemin(grapheEtEntree(plan), `${depuis.level}:${depuis.roomId}`, PARC, la, SEUIL_CHANTIER.dehors)
+  if (!points) throw new Error('la baraque du chantier est inatteignable')
+  return { roomId: 'chantier', level: 0, name: 'Chantier du musée', points: [...points, SEUIL_CHANTIER.dedans] }
+}
+
 /** L'itinéraire du musée publié, calculé une fois : `PlanPlayer` le marche, le cartouche le lit. */
-export const VISITE = buildTourItinerary(MUSEE)
+const SALLES = buildTourItinerary(MUSEE)
+export const VISITE = [...SALLES, arretDuChantier(MUSEE, SALLES[SALLES.length - 1])]

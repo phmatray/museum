@@ -17,6 +17,7 @@
  * même parc, arbre pour arbre.
  */
 import { CONTOUR_ETANG, INDICE_LEVRE, JARDIN, LEVRE, RADIERS, TABLIER, TRACE_RUISSEAU, distanceEtang, distanceRuisseau, presDeLEau } from './jardin.ts'
+import { EMPRISE_CHANTIER } from './chantier.ts'
 import { hauteurDuParc } from './relief.ts'
 import type { Plan, Rect } from './types.ts'
 
@@ -449,6 +450,10 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
   // Les vieilles souches des berges (`ruisseau.ts`) tiennent leur place : rien ne
   // pousse dans leurs racines. Retirés après coup, sans rebattre aucun tirage.
   const souches = JARDIN.souches.sujets
-  const libres = plantations.filter((p) => !souches.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < 0.9 * s.echelle + p.rayon * 0.5))
+  // La baraque du chantier (`chantier.ts`) de même : ni tronc sous son plancher,
+  // ni houppier dans sa verrière (le houppier d'un grand érable déborde son rayon
+  // d'encombrement d'un bon mètre), et de la pelouse autour.
+  const libres = plantations.filter((p) => !souches.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < 0.9 * s.echelle + p.rayon * 0.5)
+    && distanceRect(EMPRISE_CHANTIER, p.x, p.z) > p.rayon * (p.espece.startsWith('erable') ? 1.4 : 1) + 1)
   return { terrain, parvis, sol, dalles: couronne(parvis, emprise), allees, plantations: libres }
 }

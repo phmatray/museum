@@ -2,6 +2,9 @@
 // connaisse la clé `test`, que vite seul rejette au typage.
 import { configDefaults, defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
+import fs from 'node:fs'
+import type { IncomingMessage, ServerResponse } from 'node:http'
+import path from 'node:path'
 
 /**
  * Local Clock-compatible replacement for the THREE.Clock deprecation in r183.
@@ -110,11 +113,35 @@ function prechargerLa3D() {
   }
 }
 
+/**
+ * Le journal de chantier (`docs/journal`) sous `/journal/` en dév, comme le
+ * build le copie dans `dist/journal/` : la baraque du chantier y lit ses images
+ * (`ChantierLayer`) et la carte d'étape y renvoie. Servi en place, sans dupliquer
+ * ses 12 Mo d'images dans `public/`.
+ */
+function journalEnDev() {
+  const types: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml' }
+  return {
+    name: 'journal-en-dev',
+    apply: 'serve' as const,
+    configureServer(server: { middlewares: { use: (chemin: string, f: (req: IncomingMessage, res: ServerResponse, next: () => void) => void) => void } }) {
+      const racine = path.resolve('docs/journal')
+      server.middlewares.use('/journal', (req, res, next) => {
+        const demande = decodeURIComponent((req.url ?? '/').split('?')[0])
+        const fichier = path.join(racine, demande.endsWith('/') ? `${demande}index.html` : demande)
+        if (!fichier.startsWith(racine) || !fs.existsSync(fichier) || !fs.statSync(fichier).isFile()) return next()
+        res.setHeader('Content-Type', types[path.extname(fichier).toLowerCase()] ?? 'application/octet-stream')
+        fs.createReadStream(fichier).pipe(res)
+      })
+    },
+  }
+}
+
 export default defineConfig({
   // Sur GitHub Pages le site vit sous /<nom-du-depot>/, pas à la racine du
   // domaine. La CI passe BASE_PATH ; en local on reste à la racine.
   base: process.env.BASE_PATH ?? '/',
-  plugins: [react(), prechargerLa3D()],
+  plugins: [react(), prechargerLa3D(), journalEnDev()],
   build: {
     rolldownOptions: {
       output: {

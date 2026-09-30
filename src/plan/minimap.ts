@@ -5,7 +5,8 @@
  * Pur : (plan, visiteur) → données. Le dessin du niveau lui-même est
  * `renderLevel`, le même que `docs/plan` ; le composant ne fait que superposer.
  */
-import { S, cadre } from './svg.ts'
+import { PARC } from './rules.ts'
+import { S, cadre, cadreDehors } from './svg.ts'
 import type { Plan, Room } from './types.ts'
 import type { Walker } from './walk.ts'
 
@@ -16,6 +17,8 @@ export interface MinimapView {
   /** Coordonnées du plan dessiné ; `yaw` 0 regarde vers le nord (le haut). */
   player: { x: number; y: number; yaw: number }
   viewBox: [number, number, number, number]
+  /** Dehors, le plan s'élargit jusqu'à la baraque du chantier (`svg.ts`, `renderDehors`). */
+  dehors: boolean
 }
 
 export function projectForMinimap(plan: Plan, w: Walker): MinimapView {
@@ -23,7 +26,8 @@ export function projectForMinimap(plan: Plan, w: Walker): MinimapView {
   const room = niveau === String(w.level)
     ? plan.levels.find((l) => l.id === w.level)?.rooms.find((r) => r.id === id) ?? null
     : null
-  return { level: w.level, room, player: { x: w.x * S, y: w.z * S, yaw: w.yaw }, viewBox: cadre(plan) }
+  const dehors = w.surface === PARC
+  return { level: w.level, room, player: { x: w.x * S, y: w.z * S, yaw: w.yaw }, viewBox: dehors ? cadreDehors(plan) : cadre(plan), dehors }
 }
 
 /** Le grossissement du plan ouvert, de sa taille d'écran à six fois. */

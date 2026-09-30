@@ -22,6 +22,7 @@
 import * as THREE from 'three'
 
 import type { Allee, Parc } from '../plan/park'
+import { dansLeChantier } from '../plan/chantier'
 import { surUneAllee } from '../plan/park'
 import { BORDURE, GALETS, champDesAllees } from '../plan/allees'
 import { JARDIN, TABLIER, distanceEtang, distanceRuisseau } from '../plan/jardin'
@@ -60,9 +61,9 @@ function etangProche(x: number, z: number): number {
   return d
 }
 
-/** Le sol nu : hors du terrain, sur le parvis ou le tablier, dans l'eau et ses berges creusées. */
+/** Le sol nu : hors du terrain, sur le parvis ou le tablier, sous le plancher du chantier, dans l'eau et ses berges creusées. */
 function solNu(parc: Parc, x: number, z: number): boolean {
-  if (!dansRect(parc.terrain, x, z) || distanceParvis(parc.parvis, x, z) < 0.1 || dansRect(TABLIER, x, z, 0.6)) return true
+  if (!dansRect(parc.terrain, x, z) || distanceParvis(parc.parvis, x, z) < 0.1 || dansRect(TABLIER, x, z, 0.6) || dansLeChantier(x, z, 0.05)) return true
   // L’eau, coûteuse à tester : seulement au jardin, dans une maille à cheval sur la berge.
   if (!JARDIN.zones.some((r) => dansRect(r, x, z, 2))) return false
   if (distanceRuisseau(x, z) < RIVE) return true

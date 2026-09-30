@@ -20,6 +20,7 @@
  * 2h + g = 0,64 m, au milieu de la fourchette de Blondel.
  */
 import { OBSTACLES_ATELIERS } from './ateliers.ts'
+import { OBSTACLES_CHANTIER } from './chantier.ts'
 import { obstaclesDesCimaises } from './cimaises.ts'
 import { OBSTACLES_PORTES_ENTREE, OBSTACLES_PORTIQUE } from './facade.ts'
 import { OBSTACLES_JARDIN } from './jardin.ts'
@@ -88,6 +89,8 @@ export const MUSEE: Plan = {
         ...obstaclesDesCimaises(0),
         // Les trois ateliers en coupe de la galerie du nord (ateliers.ts).
         ...OBSTACLES_ATELIERS,
+        // Dehors, les murs et la table de la baraque du chantier, sur la pelouse sud-ouest (chantier.ts).
+        ...OBSTACLES_CHANTIER,
       ],
     },
     {

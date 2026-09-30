@@ -183,6 +183,12 @@
 <rect x="260.8" y="41.3" width="24.4" height="12.6" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
 <rect x="323.8" y="41.3" width="24.4" height="12.6" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
 <rect x="386.8" y="41.3" width="24.4" height="12.6" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="14" y="784" width="168" height="2.1" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="14" y="879.9" width="168" height="2.1" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="14" y="784" width="2.1" height="98" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="179.9" y="784" width="2.1" height="37.8" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="179.9" y="844.2" width="2.1" height="37.8" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
+<rect x="81.2" y="826.7" width="33.6" height="12.6" fill="url(#closed)" stroke="#7C838A" stroke-width="0.8"/>
 <rect x="511" y="58.5" width="112" height="0.6" fill="#1B1E21" stroke="#1B1E21" stroke-width="2.5"/>
 <rect x="622.4" y="59.1" width="0.6" height="56" fill="#1B1E21" stroke="#1B1E21" stroke-width="2.5"/>
 <rect x="69.7" y="231" width="0.6" height="98" fill="#1B1E21" stroke="#1B1E21" stroke-width="2.5"/>
