@@ -19,6 +19,14 @@ describe('les toits du musée', () => {
     expect(hauteurDesToits(-5, 20)).toBe(-Infinity)
   })
 
+  it('abritent aussi la baraque du chantier, sous sa verrière à deux pentes', () => {
+    // Au milieu, sous le faîtage ; près du long pan sud, sous l'égout ; à côté, il pleut.
+    expect(sousLesToits(7, 4.5, 59.5)).toBe(true)
+    expect(sousLesToits(7, 3.4, 62.8)).toBe(true)
+    expect(sousLesToits(7, 1.7, 64)).toBe(false)
+    expect(hauteurDesToits(7, 59.5)).toBeGreaterThan(hauteurDesToits(7, 62.8))
+  })
+
   it('la voûte de la nef culmine au faîte et retombe vers les murs', () => {
     expect(hauteurDesToits(24, 26)).toBeGreaterThan(20)
     expect(hauteurDesToits(16.5, 26)).toBeLessThan(hauteurDesToits(24, 26))

@@ -5,10 +5,12 @@
  * Deux toits : les terrasses des ailes, à 11,5 m, et le berceau de la nef
  * (`tools/blender/build-nef.py` : naissance à 12,60 m, plein cintre sur les
  * 16 m du hall), qui monte jusqu'à 20,6 m. Sous la verrière, 8 m d'air sont
- * DEDANS : il ne doit pas y pleuvoir.
+ * DEDANS : il ne doit pas y pleuvoir. Et, au jardin, la verrière à deux pentes
+ * de la baraque du chantier (`chantier.ts`) : il n'y pleut pas non plus.
  *
  * Pur : ni three ni React. `toitsGlsl` en est la copie pour les shaders.
  */
+import { CHANTIER } from './chantier.ts'
 import { MUSEE } from './musee.ts'
 
 /** L'emprise du bâtiment, faces extérieures des façades comprises. */
@@ -20,9 +22,14 @@ const hall = MUSEE.levels[0].rooms.find((r) => r.kind === 'hall')!
 const NEF = { x0: hall.x, x1: hall.x + hall.width, z0: hall.z, z1: hall.z + hall.depth, naissance: 2 * MUSEE.storey - MUSEE.slab + 3.3, rayon: hall.width / 2, cx: hall.x + hall.width / 2 }
 /** L'épaisseur de la verrière et de ses fers, au-dessus de l'intrados. */
 const EPAISSEUR = 0.4
+/** La baraque : faîtage d'est en ouest (dans sa longueur), pentes vers le nord et le sud, de l'égout au faîtage. */
+const { emprise: B, cote: BC, egout: BE, faitage: BF } = CHANTIER
+const BARAQUE = { x0: B.x, x1: B.x + B.width, z0: B.z, z1: B.z + B.depth, cz: B.z + B.depth / 2, demi: B.depth / 2, egout: BC + BE + 0.15, faitage: BC + BF + 0.15 }
 
 /** La cote du dessus du toit en (x, z), `-Infinity` hors de l'emprise. */
 export function hauteurDesToits(x: number, z: number): number {
+  if (x > BARAQUE.x0 && x < BARAQUE.x1 && z > BARAQUE.z0 && z < BARAQUE.z1)
+    return BARAQUE.faitage - (BARAQUE.faitage - BARAQUE.egout) * (Math.abs(z - BARAQUE.cz) / BARAQUE.demi)
   if (x < EMPRISE.x0 || x > EMPRISE.x1 || z < EMPRISE.z0 || z > EMPRISE.z1) return -Infinity
   if (x > NEF.x0 && x < NEF.x1 && z > NEF.z0 && z < NEF.z1) return NEF.naissance + Math.sqrt(Math.max(0, NEF.rayon ** 2 - (x - NEF.cx) ** 2)) + EPAISSEUR
   return TERRASSE
@@ -53,6 +60,8 @@ const f = (v: number) => v.toFixed(3)
 /** `float <nom>(vec2 xz)` : `hauteurDesToits` en GLSL (-1e4 hors de l'emprise). */
 export const toitsGlsl = (nom: string) => /* glsl */ `
 float ${nom}(vec2 xz) {
+  if (xz.x > ${f(BARAQUE.x0)} && xz.x < ${f(BARAQUE.x1)} && xz.y > ${f(BARAQUE.z0)} && xz.y < ${f(BARAQUE.z1)})
+    return ${f(BARAQUE.faitage)} - ${f((BARAQUE.faitage - BARAQUE.egout) / BARAQUE.demi)} * abs(xz.y - ${f(BARAQUE.cz)});
   if (xz.x < ${f(EMPRISE.x0)} || xz.x > ${f(EMPRISE.x1)} || xz.y < ${f(EMPRISE.z0)} || xz.y > ${f(EMPRISE.z1)}) return -1e4;
   if (xz.x > ${f(NEF.x0)} && xz.x < ${f(NEF.x1)} && xz.y > ${f(NEF.z0)} && xz.y < ${f(NEF.z1)})
     return ${f(NEF.naissance + EPAISSEUR)} + sqrt(max(0.0, ${f(NEF.rayon ** 2)} - (xz.x - ${f(NEF.cx)}) * (xz.x - ${f(NEF.cx)})));
