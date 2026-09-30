@@ -118,7 +118,10 @@ export function RefletsLayer() {
 
   /* eslint-disable react-hooks/immutability -- l'environnement est un état de la scène three */
   useFrame(() => {
-    const cle = file.current[0]
+    // En VR, three rend toute scène avec la caméra du casque : ni capture ni fondu
+    // ne tiendraient. Les sondes attendent la sortie ; on garde la plus proche.
+    const casque = gl.xr.isPresenting
+    const cle = casque ? undefined : file.current[0]
     if (cle !== undefined) {
       let carte: THREE.WebGLRenderTarget | null = null
       if (cle === 'ciel') {
@@ -153,7 +156,7 @@ export function RefletsLayer() {
     const a = cartes.current.get(m.sonde) ?? cartes.current.get('ciel')
     const b = cartes.current.get(m.voisine) ?? a
     if (a && b) {
-      if (a === b || m.part < 0.005) scene.environment = a.texture
+      if (a === b || m.part < 0.005 || casque) scene.environment = (m.part > 0.5 && casque ? b : a).texture
       else {
         const cle = `${a.texture.id}:${b.texture.id}:${m.part.toFixed(3)}`
         if (melange.current === null) melange.current = a.clone()

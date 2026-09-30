@@ -78,6 +78,12 @@ asset credits are declared in the `tools/fetch-assets.ts` manifest and regenerat
   are keyed on the shaded fragment's world position (`scene/lueurs.ts`, shared `uLueurs` uniform), never the camera.
 - Weather/season effects are `onBeforeCompile` shader add-ons in `scene/intemperies.ts` — chain onto an existing hook,
   never replace it.
+- VR (`scene/VRLayer.tsx`, `io/xr.ts`, pure input logic in `domain/vr.ts`): one WebXR path for headsets and
+  Cardboard (Google's `webxr-polyfill` where the browser has no immersive-vr; it needs native WebXR stripped first).
+  In VR the camera sits in a rig that `PlanPlayer` moves, `PostProcessing` unmounts and `SortieVR` renders both eyes
+  into an HDR target, then a per-eye pass redoes tone mapping, grading, a mip-based glow and a comfort vignette. Any
+  second `gl.render` in an XR frame needs `gl.resetState()` first (the polyfill touches GL state behind three's cache),
+  and offscreen renders (probe captures) are skipped while presenting (three swaps in the XR camera).
 - Room-visibility culling (`VisibiliteLayer` + `scene/tri.ts`) hides meshes by `layers.mask` and **compacts instanced
   batches in place**; use `userData.zone` to pin a mesh to a zone, `frustumCulled=false` to opt out, `sansTri()` for
   off-eye renders.
@@ -92,7 +98,7 @@ asset credits are declared in the `tools/fetch-assets.ts` manifest and regenerat
 - Dev-only hooks for headless captures and debugging: `window.__PLAN__` (walker, camera, `gl`, `scene`),
   `window.__BAVETTE__`, `window.__FAUNE__`, `window.__TOUT_VOIR__` (disable culling).
 - URL parameters force live state for screenshots: `?heure=HH:MM`, `?meteo=clair|pluie|neige|brouillard|orage`,
-  `?saison=printemps|ete|automne|hiver`, `?ombres=0`, `?annonce=1`, `?qualite=haute|basse` (freezes the
+  `?saison=printemps|ete|automne|hiver`, `?ombres=0`, `?annonce=1`, `?vr=cardboard` (the Cardboard polyfill on a desktop, to drive VR headless), `?qualite=haute|basse` (freezes the
   adaptive pixel ratio of `scene/qualite.ts`; use `haute` for captures on a loaded machine). `?p=<repo>` (or `?projet=owner/repo`, `#repo`) opens
   the museum in front of that painting (`domain/lien.ts`, `plan/arrivee.ts`); the build writes `dist/p/<repo>/` share
   pages with per-project OpenGraph tags (`tools/pages-partage.ts`).

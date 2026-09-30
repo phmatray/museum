@@ -1480,6 +1480,20 @@
    "fait": true,
    "pr": 206,
    "image": null
+  },
+  {
+   "n": 106,
+   "ancre": "t-106",
+   "titre": "La visite en VR, au casque ou au Cardboard",
+   "categorie": "site",
+   "statut": "en ligne · PR #207",
+   "fait": true,
+   "pr": 207,
+   "image": {
+    "src": "img/106-vr.jpg",
+    "largeur": 1000,
+    "hauteur": 375
+   }
   }
  ]
 }
