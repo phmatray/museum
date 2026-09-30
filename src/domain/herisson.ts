@@ -1,5 +1,5 @@
 /**
- * Le BÉBÉ HÉRISSON du jardin japonais : quinze centimètres de piquants qui
+ * Le BÉBÉ HÉRISSON du jardin japonais : vingt centimètres de piquants qui
  * trottinent autour de l'étang, s'arrêtent tous les trois pas pour flairer
  * l'herbe, et se roulent en boule quand on s'approche.
  *
@@ -8,9 +8,11 @@
  * contourne les rochers, les troncs, les bancs et la lanterne, reste sur la
  * pelouse (ni allée, ni parvis) et ne va pas au-delà du mur.
  *
- * Crépusculaire, comme les vrais : dehors presque toute la nuit, rarement le
- * jour (un petit qui a faim sort parfois l'après-midi), jamais l'hiver — il
- * hiberne sous son buis de la mi-novembre à la fin mars (`pelouse.terne`).
+ * Crépusculaire, comme les vrais : au plus actif à la brune et à l'aube, quand
+ * le soleil rase l'horizon et qu'on y voit encore ; dehors une bonne part de la
+ * nuit ; rarement le jour (un petit qui a faim sort parfois l'après-midi) ;
+ * jamais l'hiver — il hiberne sous son buis de la mi-novembre à la fin mars
+ * (`pelouse.terne`).
  *
  * Pur : l'état entre, l'état sort ; `FauneLayer` ne fait que le montrer.
  */
@@ -22,8 +24,19 @@ import { MUSEE } from '../plan/musee.ts'
 import { PARC } from '../plan/rules.ts'
 import type { Rect } from '../plan/types.ts'
 
-/** Son pas de fouille, m/s : dans la vidéo de Philippe, il avance à peine. */
-export const VITESSE_HERISSON = 0.13
+/**
+ * Sa taille : le modèle mesure quinze centimètres, le hérisson du jardin vingt
+ * (« on ne le trouve jamais », Philippe). Tout ce qui tient à son corps suit.
+ */
+export const ECHELLE_HERISSON = 4 / 3
+/**
+ * Son pas de fouille, m/s : dans la vidéo de Philippe, il avance à peine
+ * (13 cm/s à quinze centimètres). Plus grand, il va un peu plus vite, comme la
+ * racine de sa taille (à allure égale, un animal plus long allonge le pas).
+ */
+export const VITESSE_HERISSON = 0.13 * Math.sqrt(ECHELLE_HERISSON)
+/** Du centre au museau, m. */
+export const DEMI_LONGUEUR = 0.075 * ECHELLE_HERISSON
 /** Le visiteur à moins de 1,5 m : il se roule en boule ; il se déroule quand on est à plus de 2,2 m. */
 export const PORTEE_BOULE = 1.5
 const PORTEE_DEROULE = 2.2
@@ -126,7 +139,8 @@ export function libre(x: number, z: number): boolean {
   if (m.ronds.some((o) => Math.hypot(o.x - x, o.z - z) < o.r)) return false
   // Pas sur les allées : leurs dalles et leurs bordures dépassent de la pelouse, il y marcherait dedans.
   if (surUneAllee(m.allees, x, z, 0.35)) return false
-  return m.blocs.every((b) => distanceRect(b, x, z) > 0.05)
+  // Le banc, la lanterne : pas un flanc contre le pied (sa demi-largeur, 5 cm à quinze centimètres).
+  return m.blocs.every((b) => distanceRect(b, x, z) > 0.05 * ECHELLE_HERISSON)
 }
 
 /** La ligne droite de a à b est-elle libre ? (un pas tous les 25 cm) */
@@ -143,13 +157,22 @@ export function nid(): [number, number] {
 }
 
 /**
- * L'envie de sortir, de 0 à 1 : pleine la nuit (`jour` = 0), faible en plein
- * jour, nulle en hibernation. `jour` est celui de `gameStore.ciel`.
+ * L'envie de sortir, de 0 à 1, selon la hauteur du soleil (degrés, celle de
+ * `gameStore.ciel.elevation`) : pleine à la brune et à l'aube, du soleil à 4°
+ * au-dessus de l'horizon jusqu'au crépuscule civil (−6°) ; encore forte en
+ * pleine nuit (0,8) ; faible en plein jour (0,15) ; nulle en hibernation.
  */
-export function activite(jour: number, hiberne: boolean): number {
+export function activite(elevation: number, hiberne: boolean): number {
   if (hiberne) return 0
-  const j = Math.min(1, Math.max(0, (jour - 0.1) / 0.5))
-  return 1 - 0.85 * j * j * (3 - 2 * j)
+  const lisse = (a: number, b: number) => {
+    const t = Math.min(1, Math.max(0, (elevation - a) / (b - a)))
+    return t * t * (3 - 2 * t)
+  }
+  // Le fond : la nuit sous −10°, le jour au-dessus de 12°.
+  const fond = 0.8 - 0.65 * lisse(-10, 12)
+  // La bosse du crépuscule : un plateau de −6° à +4°, fondu sur 5° de chaque côté.
+  const brune = lisse(-11, -6) * (1 - lisse(4, 9))
+  return fond + (1 - fond) * brune
 }
 
 /** Un but proche (moins de 8 m), atteignable en ligne droite ; faute de mieux, n'importe lequel. */

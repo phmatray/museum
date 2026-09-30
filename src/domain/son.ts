@@ -194,3 +194,18 @@ export function volumeRonron(distance: number): number {
   const u = Math.min(1, Math.max(0, (1.5 - distance) / 0.6))
   return u * u * (3 - 2 * u)
 }
+
+// ── Le hérisson ───────────────────────────────────────────────────────────
+
+/** On l'entend froisser l'herbe à moins de 6 m. */
+export const PORTEE_FROISSEMENT = 6
+
+/**
+ * Le froissement de l'herbe sous le hérisson : plein à moins d'un mètre, puis
+ * en distance inverse, éteint en douceur à `PORTEE_FROISSEMENT` — c'est lui
+ * qu'on suit pour le trouver.
+ */
+export function volumeFroissement(distance: number): number {
+  const fin = Math.min(1, Math.max(0, (PORTEE_FROISSEMENT - distance) / 2))
+  return fin * fin * (3 - 2 * fin) / Math.max(1, distance)
+}
