@@ -4,6 +4,7 @@
  * bordure tout du long, et le décor posé hors de l'eau et des allées.
  */
 import { describe, expect, it } from 'vitest'
+import { dansLeBelvedere } from '../belvedere.ts'
 
 import { amenagerAllees, champDesAllees, unionArrondie } from '../allees.ts'
 import { distanceEtang, distanceRuisseau } from '../jardin.ts'
@@ -39,6 +40,8 @@ describe('allées', () => {
       for (let i = 0; i < ligne.length; i++) {
         const p = ligne[i]
         if (distanceRect(parc.parvis, p.x, p.z) < 0.5) continue
+        // Le bout du roji, sous les marches du belvédère : la pierre le couvre.
+        if (dansLeBelvedere(p.x, p.z)) continue
         const k = long.findIndex((l) => l > long[i] - 1)
         const j = long.findIndex((l) => l >= long[i] + 1)
         if (k >= i || j < 0) continue

@@ -48,6 +48,8 @@ import { bandesDuSol, parementDuHall, peintureDesSalles, plinthes } from '../../
 import { plafonds } from '../../plan/plafonds'
 import { facade } from '../../plan/facade'
 import { enceinte } from '../../plan/enceinte'
+import { pierresDuBelvedere } from '../../plan/belvedere'
+import { hauteurDuParc } from '../../plan/relief'
 import { parkPlacements } from '../../plan/park'
 import { amenagerAllees } from '../../plan/allees'
 import { portes } from '../../plan/portes'
@@ -109,10 +111,13 @@ describe('PlanBuilding', () => {
     // Puis la façade, après les niveaux : brique, pierre, piliers, vitres, menuiseries.
     const f = facade(MUSEE)
     attendus.push(f.brique.length, f.pierre.length, f.piliers.length, f.vitres.length, f.portes.length, f.menuiseries.length)
-    // Puis le mur d'enceinte du parc (ParkLayer) : brique, pierre, grilles.
+    // Puis le mur d'enceinte du parc (ParkLayer) : brique, pierre (avec les murs du belvédère),
+    // le dallage et les marches du belvédère, grilles.
     const parc = parkPlacements(MUSEE)
     const mur = enceinte(parc.terrain, parc.allees)
-    attendus.push(mur.brique.length, mur.pierre.length, mur.fer.length)
+    const belvedere = pierresDuBelvedere(hauteurDuParc)
+    const murs = belvedere.filter((b) => b.kind === 'wall').length
+    attendus.push(mur.brique.length, mur.pierre.length + murs, belvedere.length - murs, mur.fer.length)
     // Puis le décor des allées (AlleesDuParc) : piquets, cordes, touffes (les dalles près de l'eau sont fusionnées).
     const al = amenagerAllees(parc)
     attendus.push(al.poteaux.length, al.cordes.length, al.touffes.length + al.couvreSol.length)
