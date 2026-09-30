@@ -175,7 +175,7 @@ export function distanceEtang(x: number, z: number): number {
 export const presDeLEau = (x: number, z: number, marge = 0): boolean =>
   Math.min(distanceRuisseau(x, z), distanceEtang(x, z)) < marge
 
-/** La lèvre de la cascade : où le ruisseau atteint la berge de l'étang (`indice_cascade` de build-jardin.py). */
+/** La lèvre de la cascade : où le ruisseau atteint la berge de l'étang. */
 export const INDICE_LEVRE = TRACE_RUISSEAU.findIndex(([x, z]) => distanceEtang(x, z) < 0.5)
 export const LEVRE = TRACE_RUISSEAU[INDICE_LEVRE]
 
@@ -185,7 +185,7 @@ const SOUS_LA_RIVE = 0.25
 /**
  * La lèvre de la cascade s'arrondit : son milieu avance de tant vers l'étang,
  * ses bords restent sous la berge. Une lèvre droite, tirée au cordeau, trahissait
- * la fin d'un ruban. Le même bombé que `eau()` de build-jardin.py.
+ * la fin d'un ruban. Le même bombé porte la nappe (`nappeDeLaCascade`).
  */
 export const BOMBE_LEVRE = 0.16
 
@@ -241,6 +241,57 @@ export function rubanDuRuisseau(): Ruban {
     }
   })
   return { position: new Float32Array(position), uv: new Float32Array(uv), eau: new Float32Array(eau), index }
+}
+
+/** La vitesse de l'eau à la lèvre, au milieu du lit (m/s) : elle fixe l'arc de la chute. */
+const JET = 0.9
+
+export interface Nappe {
+  position: Float32Array
+  /** u : en travers, de 0 à 1 ; v : les mètres parcourus depuis la lèvre. */
+  uv: Float32Array
+  index: number[]
+}
+
+/**
+ * La nappe de la cascade : de la lèvre bombée du ruban à l'étang, l'eau suit
+ * sa trajectoire de chute — elle quitte la lèvre à l'horizontale, puis
+ * s'incurve en parabole (x = v·t, y = −g·t²/2). Le milieu du lit, plus
+ * rapide, file plus loin que les bords : vue de profil, la nappe se creuse et
+ * s'arrondit, ce n'est plus une bande tendue. Elle se resserre un peu en
+ * tombant, et finit deux centimètres sous l'eau de l'étang.
+ */
+export function nappeDeLaCascade(): Nappe {
+  const [[ax, az], [x, z, w]] = [TRACE_RUISSEAU[INDICE_LEVRE - 1], LEVRE]
+  const l = Math.hypot(x - ax, z - az)
+  const [ux, uz] = [(x - ax) / l, (z - az) / l]
+  const [nx, nz] = [-uz, ux]
+  const r = w / 2 + SOUS_LA_RIVE
+  const chute = JARDIN.ruisseau.niveau - JARDIN.etang.niveau + 0.02
+  const duree = Math.sqrt((2 * chute) / 9.81)
+  const [COLONNES, RANGS] = [13, 11]
+  const [position, uv, index] = [[], [], []] as number[][]
+  for (let j = 0; j < COLONNES; j++) {
+    const k = 1 - (2 * j) / (COLONNES - 1)
+    const jet = JET * (0.7 + 0.3 * (1 - k * k))
+    let [v, pa, ph] = [0, 0, 0]
+    for (let i = 0; i < RANGS; i++) {
+      const t = duree * (i / (RANGS - 1)) ** 0.8
+      const [a, h] = [jet * t, -0.5 * 9.81 * t * t]
+      v += Math.hypot(a - pa, h - ph)
+      ;[pa, ph] = [a, h]
+      // Elle se resserre en tombant : 8 % de moins au pied.
+      const e = k * r * (1 - 0.08 * (i / (RANGS - 1)))
+      const s = BOMBE_LEVRE * (1 - k * k) + a
+      position.push(x + nx * e + ux * s, JARDIN.ruisseau.niveau + h, z + nz * e + uz * s)
+      uv.push((1 - k) / 2, v)
+      if (i && j) {
+        const [p, q] = [(j - 1) * RANGS + i, j * RANGS + i]
+        index.push(p - 1, q - 1, q, p - 1, q, p)
+      }
+    }
+  }
+  return { position: new Float32Array(position), uv: new Float32Array(uv), index }
 }
 
 /** Le tablier du pont : le seul passage sec au-dessus du ruisseau. */

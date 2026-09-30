@@ -174,6 +174,29 @@ describe('la famille hérisson', () => {
     expect(centre[3] / dehors[3]).toBeGreaterThan(centre[0] / dehors[0] + 1)
   })
 
+  it('à la rentrée, chacun gagne son creux sans marcher sur sa mère ni la bousculer', () => {
+    for (const graine of [1, 5]) {
+      let f = familleInitiale(nuit, false, graine)
+      for (let t = 0; t < 1800; t += DT) f = avancerFamille(f, DT, null, nuit, false)
+      let [dessus, bouscule] = [0, 0]
+      for (let t = 0; t < 1800; t += DT) {
+        const avant = f
+        f = avancerFamille(f, DT, null, 20, false)
+        for (const p of [1, 2]) {
+          const [h, q] = [f[p], avant[p]]
+          if (h.etat === 'nid') continue
+          // Personne sous lui (celui qui dort au nid est au fond du buis, on ne le voit pas).
+          for (const o of f) if (o.qui !== p && o.etat !== 'nid' && Math.hypot(o.x - h.x, o.z - h.z) < ecartMinimal(h, o) - 1e-9) dessus++
+          // Buté contre un autre, il virait sur place, et recommençait : la bousculade.
+          if (h.etat === 'marche' && q.etat === 'marche' && h.x === q.x && h.z === q.z && Math.abs(h.cap - q.cap) > 0.7
+            && f.some((o) => o.qui !== p && o.etat !== 'nid' && Math.hypot(o.x - h.x, o.z - h.z) < ecartMinimal(h, o) + 0.05)) bouscule++
+        }
+      }
+      expect(dessus).toBe(0)
+      expect(bouscule).toBeLessThan(4)
+    }
+  })
+
   it('les petits s’écartent parfois pour flairer, puis rattrapent leur mère', () => {
     let flane = 0
     let loin = 0

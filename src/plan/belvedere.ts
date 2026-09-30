@@ -50,6 +50,8 @@ export const BELVEDERE = BELVEDERE_JSON as unknown as {
   talus: { saillie: number; fruit: number; assise: [number, number]; bloc: [number, number]; joint: number; bosse: number }
   banc: { x: number; z: number; longueur: number; profondeur: number; hauteur: number }
   lanterne: { x: number; z: number; cote: number }
+  /** La fosse de l'érable de la terrasse : `haut`, la bordure au-dessus du dallage ; `terre`, la mousse sous son arête. */
+  fosse: { x: number; z: number; cote: number; bordure: number; haut: number; terre: number }
   /** Le tracé des pas japonais de la rive sud, du pied de la volée ouest à l'axe de l'entrée. */
   rive: Point[]
   pavillon: { x: number; z: number; cote: number; poteau: number; egout: number; faitage: number; debord: number; banc: { profondeur: number; hauteur: number } }
@@ -97,6 +99,18 @@ export const EMPRISE_BELVEDERE: Rect[] = [E, ...VOLEES.map((v) => v.emprise)]
 
 const dedans = (r: Rect, x: number, z: number) => x > r.x && x < r.x + r.width && z > r.z && z < r.z + r.depth
 
+/**
+ * La fosse de l'érable de la terrasse : un arbre ne sort pas du dallage. Un
+ * carré de terre moussue, cerné d'une bordure de pierre, adossé au parapet sud
+ * (il y penche). Bordure comprise ; elle arrête la marche.
+ */
+export const FOSSE: Rect = (() => {
+  const { x, z, cote } = BELVEDERE.fosse
+  return { x: x - cote / 2, z: z - cote / 2, width: cote, depth: cote }
+})()
+/** La cote de la mousse, dans la fosse : un peu sous l'arête de sa bordure. */
+export const TERRE_DE_LA_FOSSE = H + BELVEDERE.fosse.haut - BELVEDERE.fosse.terre
+
 /** Vrai sur le bâti du belvédère (terrasse, volées, limons), élargi de `marge`. */
 export const dansLeBelvedere = (x: number, z: number, marge = 0) =>
   EMPRISE_BELVEDERE.some((r) => x > r.x - marge && x < r.x + r.width + marge && z > r.z - marge && z < r.z + r.depth + marge)
@@ -107,6 +121,7 @@ export const dansLeBelvedere = (x: number, z: number, marge = 0) =>
  * les volées du musée, sans sauter de marche en marche).
  */
 export function coteDuBelvedere(x: number, z: number): number | null {
+  if (dedans(FOSSE, x, z)) return TERRE_DE_LA_FOSSE
   if (dedans(E, x, z)) return H
   for (const v of VOLEES) {
     if (!dedans(v.rect, x, z)) continue
@@ -174,6 +189,8 @@ export const OBSTACLES_BELVEDERE: Rect[] = (() => {
     // Le banc de pierre et la lanterne de la terrasse.
     { x: B.x - B.longueur / 2, z: B.z - B.profondeur / 2, width: B.longueur, depth: B.profondeur },
     { x: L.x - L.cote / 2, z: L.z - L.cote / 2, width: L.cote, depth: L.cote },
+    // La fosse de l'érable.
+    FOSSE,
     // La palissade du roji, côté ruisseau, et la porte : deux poteaux, deux ailes jusqu'à la palissade et au mur d'enceinte.
     { x: F.x - t, z: F.z0, width: F.epaisseur, depth: F.z1 - F.z0 },
     { x: F.x - t, z: G.z - t, width: ga - (F.x - t), depth: F.epaisseur },
@@ -309,6 +326,15 @@ export function pierresDuBelvedere(sol: (x: number, z: number) => number): Box[]
 
   // Le dallage, 12 cm d'épaisseur, arasé à la cote.
   out.push(boite(X0 + M, X1 - M, Z0 + M, Z1 - M, H - 0.12, H, 'slab'))
+  // La fosse de l'érable : quatre bordures posées sur le dallage (le parapet ferme le sud,
+  // la bordure sud le rejoint), la terre moussue à part (`terreDeLaFosse`).
+  {
+    const { bordure: b, haut: hb } = BELVEDERE.fosse
+    const [fx0, fx1, fz0, fz1] = [FOSSE.x, FOSSE.x + FOSSE.width, FOSSE.z, FOSSE.z + FOSSE.depth]
+    out.push(boite(fx0, fx1, fz0, fz0 + b, H - 0.02, H + hb))
+    out.push(boite(fx0, fx0 + b, fz0 + b, fz1, H - 0.02, H + hb))
+    out.push(boite(fx1 - b, fx1, fz0 + b, fz1, H - 0.02, H + hb))
+  }
   // Le banc de pierre : une dalle sur deux dés, face à la façade.
   const { banc: B } = BELVEDERE
   const [bx0, bx1, bz0, bz1] = [B.x - B.longueur / 2, B.x + B.longueur / 2, B.z - B.profondeur / 2, B.z + B.profondeur / 2]
@@ -338,4 +364,11 @@ export function pierresDuBelvedere(sol: (x: number, z: number) => number): Box[]
     }
   }
   return out
+}
+
+/** La terre moussue de la fosse, entre ses bordures : une boîte arasée à la cote de la mousse. */
+export function terreDeLaFosse(): Box {
+  const { bordure: b } = BELVEDERE.fosse
+  const [x0, x1, z0, z1] = [FOSSE.x + b, FOSSE.x + FOSSE.width - b, FOSSE.z + b, FOSSE.z + FOSSE.depth]
+  return { x: (x0 + x1) / 2, z: (z0 + z1) / 2, y: (H - 0.02 + TERRE_DE_LA_FOSSE) / 2, w: x1 - x0, d: z1 - z0, h: TERRE_DE_LA_FOSSE - H + 0.02, kind: 'slab' }
 }

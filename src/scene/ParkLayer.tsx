@@ -16,7 +16,7 @@ import type { Rect } from '../plan/types'
 import { REGLAGE_MATIERE, repetitionMetrique, useCartes, useMatiere } from './materials'
 import { creerBrique, creerPierre } from './pierre'
 import { enceinte } from '../plan/enceinte'
-import { pierresDuBelvedere } from '../plan/belvedere'
+import { pierresDuBelvedere, terreDeLaFosse } from '../plan/belvedere'
 import { Boites } from './PlanBuilding'
 import { AlleesDuParc } from './AlleesDuParc'
 import { parkAssetsResource, type ParkAssets, type ParkPiece } from './parkAssets'
@@ -24,7 +24,7 @@ import { caustiques, creerMatieresJardin, preparerSol, uvBoite } from './jardinM
 import { brinsDeGazon, carteDuSol, champDeVue, matiereGazon, parcellesDeGazon, uneEnVue, type ReglageGazon } from './gazon'
 import { useGameStore } from '../stores/gameStore'
 import { useChargement } from '../stores/chargementStore'
-import { distanceRuisseau, presDeLEau, rubanDuRuisseau } from '../plan/jardin'
+import { distanceRuisseau, nappeDeLaCascade, presDeLEau, rubanDuRuisseau } from '../plan/jardin'
 import { remous } from '../plan/ruisseau'
 import { Ruisseau } from './RuisseauLayer'
 import { PARC } from '../plan/visibilite'
@@ -97,6 +97,7 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   return (
     <group name="parc">
       <mesh geometry={sol} material={herbe} />
+      <Fosse herbe={herbe} />
       <mesh geometry={campagne} material={herbe} />
       <Enceinte parc={placements} dallage={dallage} />
       <mesh geometry={parvis} material={dallage} />
@@ -141,6 +142,20 @@ function Enceinte({ parc, dallage }: { parc: Parc; dallage: THREE.Material }) {
       <Lierre plaques={mur.plaques} />
     </>
   )
+}
+
+/** La mousse de la fosse de l'érable du belvédère : la pelouse, plus sombre et plus verte, sur une boîte. */
+function Fosse({ herbe }: { herbe: THREE.Material }) {
+  const geometrie = useMemo(() => {
+    const b = terreDeLaFosse()
+    const g = new THREE.BoxGeometry(b.w, b.h, b.d).translate(b.x, b.y, b.z)
+    const p = g.getAttribute('position')
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(Array.from({ length: p.count }, (_, i) => [p.getX(i), p.getZ(i)]).flat(), 2))
+    g.setAttribute('color', new THREE.Float32BufferAttribute(Array.from({ length: p.count }, () => [0.52, 0.66, 0.4]).flat(), 3))
+    return g
+  }, [])
+  useEffect(() => () => geometrie.dispose(), [geometrie])
+  return <mesh geometry={geometrie} material={herbe} userData={{ zone: PARC }} />
 }
 
 /** Les pas de la campagne, du mur vers l'horizon : serrés près du mur, lâches au loin (en mètres, cumulés). */
@@ -452,6 +467,18 @@ function Jardin({ objets, herbe, parc }: { objets: THREE.Object3D[]; herbe: THRE
     return g
   }, [])
   useEffect(() => () => ruban.dispose(), [ruban])
+  // La nappe de la cascade, en parabole (`nappeDeLaCascade`) : celle du GLB n'est plus montrée.
+  const nappe = useMemo(() => {
+    const n = nappeDeLaCascade()
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.BufferAttribute(n.position, 3))
+    g.setAttribute('uv', new THREE.BufferAttribute(n.uv, 2))
+    g.setIndex(n.index)
+    g.computeVertexNormals()
+    g.computeBoundingSphere()
+    return g
+  }, [])
+  useEffect(() => () => nappe.dispose(), [nappe])
   // Le granit des pas japonais, de la lanterne et des culées : la roche des dalles des allées, pas du béton.
   const pierre = useMatiere('roche', repetitionMetrique(REGLAGE_MATIERE.roche.motif), { teinte: '#c4c6c2' })
   const bois = useMatiere('parquet', repetitionMetrique(REGLAGE_MATIERE.parquet.motif), { teinte: '#6b4a34' })
@@ -474,6 +501,8 @@ function Jardin({ objets, herbe, parc }: { objets: THREE.Object3D[]; herbe: THRE
           if (role === 'granit' || role === 'bois') uvBoite(g)
           o.userData.jardin = role
         }
+        // La vieille nappe tirée au cordeau (jusqu'à la prochaine reconstruction du GLB) : remplacée par `nappe`.
+        if (o.userData.jardin === 'cascade') o.visible = false
         const m = par[o.userData.jardin as string]
         if (m) o.material = m
         else if (o.material instanceof THREE.MeshStandardMaterial && o.material.name.startsWith('Jardin_Lueur')) lueurs.add(o.material)
@@ -494,6 +523,7 @@ function Jardin({ objets, herbe, parc }: { objets: THREE.Object3D[]; herbe: THRE
     <>
       {objets.map((o) => <primitive key={o.uuid} object={o} />)}
       <mesh geometry={ruban} material={matieres.ruisseau} userData={{ zone: PARC }} />
+      <mesh geometry={nappe} material={matieres.cascade} userData={{ zone: PARC }} />
     </>
   )
 }

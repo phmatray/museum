@@ -250,16 +250,23 @@ def teinte_du_pan(sx, k):
 def chaume(m, cx, cz, ux, uz, nx, nz, w, d, haut, k, base):
     """
     Une demi-tige de bambou refendu, debout, la peau vers le dehors : section en
-    demi-lentille (bombée devant, plate au dos), ses NŒUDS tous les 40 à 55 cm,
-    un bourrelet plus sombre ; le pied grisé par les éclaboussures.
+    demi-lentille (bombée devant, plate au dos), ses NŒUDS tous les 28 à 62 cm,
+    un bourrelet sombre et net ; le pied grisé par les éclaboussures.
+
+    Chaque tige a son propre pas : d'une latte à l'autre, les nœuds ne
+    tombent jamais en rangs. L'entre-nœud reste d'une seule teinte, le nœud
+    n'assombrit que ses deux centimètres (sinon le dégradé de sommet à sommet
+    dessine de grandes bandes).
     """
     pied = lin(96, 92, 80)
     # Les anneaux : (hauteur, renflement, assombrissement).
     anneaux = [(0.02, 1.0, 0.0)]
-    h = 0.15 + 0.35 * hache(k, 8)
+    h = 0.05 + 0.55 * hache(k, 8)
+    j = 0
     while h < haut - 0.12:
-        anneaux += [(h, 1.14, 0.4), (h + 0.025, 1.0, 0.08)]
-        h += 0.4 + 0.15 * hache(k, int(h * 10))
+        anneaux += [(h - 0.015, 1.0, 0.0), (h, 1.12, 0.36), (h + 0.02, 1.0, 0.0)]
+        j += 1
+        h += 0.28 + 0.34 * hache(k * 7 + j, 9)
     anneaux.append((haut, 1.0, 0.0))
     # La section : le dos plat contre l'âme, la peau bombée vers `n`.
     sec = [(0.5, 0.0), (0.22, 0.85), (-0.22, 0.85), (-0.5, 0.0)]

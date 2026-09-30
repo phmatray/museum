@@ -101,6 +101,12 @@ const RATTRAPE = 0.8
 const PERDU = 3
 /** Une chance sur trois, en finissant de flairer, de s'écarter pour flairer ailleurs, à moins de 3 m de leur mère. */
 const FLANER = 0.33
+/** Un autre lui barre le chemin : il le laisse passer, de 0,8 à 2 s. */
+const PASSAGE = [0.8, 2] as const
+/** À moins de 1,5 m du nid, sur le retour, la mère n'est plus suivie : chacun va à son creux. */
+const PAS_DE_LA_PORTE = 1.5
+/** La mère attend là que ses petits soient rentrés, vingt secondes au plus. */
+const ATTENTE_PORTE = 20
 /** Au nid, un petit regarde si sa mère est sortie toutes les 4 à 12 s. */
 const GUET = [4, 12] as const
 /** Le vieux : des buts jusqu'à 10 m, de préférence à plus de 10 m du centre de l'étang. */
@@ -134,6 +140,10 @@ export interface Herisson {
   qui: number
   /** Un petit qui s'est écarté de sa mère pour flairer. */
   flane: boolean
+  /** En marche, il laisse passer un autre : secondes d'arrêt restantes. */
+  pause?: number
+  /** Il fait un pas de côté pour contourner un autre : le but qu'il reprend ensuite. */
+  reprise?: [number, number]
 }
 
 /** mulberry32 : un tirage dans [0, 1) et l'état suivant (comme `promenade.ts`). */
@@ -423,14 +433,18 @@ const angle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
  * personne. Seul (`famille` vide), un petit vit sa vie comme dans #196.
  */
 export function avancerHerisson(h: Herisson, dt: number, visiteur: { x: number; z: number } | null, envie: number, famille: readonly Herisson[] = []): Herisson {
+  // Une pause ou un pas de côté ne survivent pas à la marche (roulé en boule, arrivé, rentré).
+  if (h.etat !== 'marche' && (h.pause !== undefined || h.reprise !== undefined)) h = { ...h, pause: undefined, reprise: undefined }
   let { graine } = h
   let u: number
   const ind = FAMILLE[h.qui]
   const loin = visiteur ? Math.hypot(visiteur.x - h.x, visiteur.z - h.z) : Infinity
   const mere = ind.role === 'petit' ? famille.find((f) => FAMILLE[f.qui].role === 'mere') : undefined
   const dm = mere ? Math.hypot(mere.x - h.x, mere.z - h.z) : Infinity
-  // Sa mère dehors, qu'elle rentre ou non : il la suit.
-  const guide = mere && dehors(mere) ? mere : undefined
+  // Sa mère dehors, qu'elle rentre ou non : il la suit. Mais au pas de la porte,
+  // chacun gagne son creux : collé derrière elle quand elle contourne le buis,
+  // il la bousculait.
+  const guide = mere && dehors(mere) && !(mere.rentre && Math.hypot(mere.x - nid(mere.qui)[0], mere.z - nid(mere.qui)[1]) < PAS_DE_LA_PORTE) ? mere : undefined
 
   if (h.etat === 'nid') {
     const t = h.t - dt
@@ -491,11 +505,13 @@ export function avancerHerisson(h: Herisson, dt: number, visiteur: { x: number; 
   }
 
   // En marche : vers le but, en zigzaguant un peu du museau. Un petit suit sa mère à la trace.
+  // Il laisse passer un autre : il attend sur place, sans rien décider d'autre.
+  if ((h.pause ?? 0) > 0) return { ...h, pause: (h.pause ?? 0) - dt, vitesse: 0 }
   let { but, flane, rentre } = h
   if (guide) {
     rentre = false
     if (flane && dm > PERDU) flane = false
-    if (!flane) but = derriere(guide, h.qui)
+    if (!flane && !h.reprise) but = derriere(guide, h.qui)
   } else if (mere && !rentre) {
     const s = prochainBut({ ...h, rentre: true })
     ;[rentre, flane, but, graine] = [true, false, s.but, s.graine]
@@ -503,6 +519,20 @@ export function avancerHerisson(h: Herisson, dt: number, visiteur: { x: number; 
   const suit = !!guide && !flane
   const [bx, bz] = but
   const d = Math.hypot(bx - h.x, bz - h.z)
+  // Au pas de la porte, la mère fait rentrer ses petits d'abord : couchée dans
+  // son creux, elle barrait le chemin du leur.
+  // Vingt secondes au plus (sa trotte file sous zéro) : un petit coincé ne la tient pas dehors.
+  const chez = nid(h.qui)
+  if (ind.role === 'mere' && rentre && h.t > -ATTENTE_PORTE && Math.hypot(h.x - chez[0], h.z - chez[1]) < PAS_DE_LA_PORTE
+    && famille.some((p) => FAMILLE[p.qui].role === 'petit' && dehors(p) && p.etat !== 'boule' && Math.hypot(p.x - h.x, p.z - h.z) < PERDU))
+    return { ...h, pause: 1, t: h.t - 1, but, rentre, graine, vitesse: 0 }
+  // Sur le retour, à deux pas de son creux, il y entre, quel que soit le détour en cours.
+  if (rentre && Math.hypot(h.x - chez[0], h.z - chez[1]) < 0.3) {
+    ;[u, graine] = tirer(graine)
+    return { ...h, etat: 'nid', t: entre(u, mere ? GUET : SIESTE), rentre: false, flane: false, graine, vitesse: 0 }
+  }
+  // Le pas de côté fait : il reprend son chemin, sans s'arrêter flairer.
+  if (h.reprise && d < 0.15) return { ...h, but: suit ? derriere(guide, h.qui) : h.reprise, reprise: undefined, rentre, flane, graine, vitesse: 0 }
   if (d < (suit ? 0.3 : 0.15)) {
     if (rentre && Math.hypot(bx - nid(h.qui)[0], bz - nid(h.qui)[1]) < 0.01) {
       ;[u, graine] = tirer(graine)
@@ -522,13 +552,32 @@ export function avancerHerisson(h: Herisson, dt: number, visiteur: { x: number; 
   // Il ralentit pour virer, et part d'un pas plus lent quand il ne va pas droit au but.
   const v = ind.vitesse * (suit && d > RATTRAPE ? 1.4 : 1) * Math.max(0.2, Math.cos(Math.min(Math.abs(ecart), Math.PI / 2)))
   const [x, z] = [h.x + Math.cos(cap) * v * dt, h.z + Math.sin(cap) * v * dt]
-  if (!libre(x, z, ind.echelle) || gene(h, x, z, famille)) {
+  const bloque = !libre(x, z, ind.echelle)
+  if (!bloque && gene(h, x, z, famille)) {
+    // Un autre lui barre le passage : le plus souvent, il s'arrête et le laisse
+    // passer, plutôt que de le contourner en le bousculant ; sinon (et c'est ce
+    // qui dénoue deux têtes-à-têtes), il fait le détour ci-dessous.
+    ;[u, graine] = tirer(graine)
+    if (u < 0.5) return { ...h, pause: entre(u / 0.5, PASSAGE), but, rentre, flane, graine, vitesse: 0 }
+    // Ou il s'écarte d'un pas de côté, du côté opposé à celui qui le gêne (qui
+    // dort peut-être au nid, sur son chemin) : de là, la voie est libre.
+    const autre = famille.find((f) => f.qui !== h.qui && Math.hypot(f.x - x, f.z - z) < ecartMinimal(h, f))!
+    const [c, s] = [Math.cos(cap), Math.sin(cap)]
+    const cote = (autre.x - h.x) * -s + (autre.z - h.z) * c > 0 ? -1 : 1
+    const e = ecartMinimal(h, autre) + 0.15
+    // Du bon côté d'abord ; s'il est pris (le buis, l'eau), de l'autre.
+    for (const k of [cote, -cote]) {
+      const pas: [number, number] = [h.x + c * 0.1 - s * k * e, h.z + s * 0.1 + c * k * e]
+      if (libre(pas[0], pas[1], ind.echelle) && voie([h.x, h.z], pas, ind.echelle)) return { ...h, t, cap, but: pas, reprise: h.reprise ?? but, rentre, flane, graine, vitesse: 0 }
+    }
+  }
+  if (bloque || gene(h, x, z, famille)) {
     // Buté (le but était derrière un obstacle, un autre hérisson, ou il a coupé un virage) : il cherche ailleurs ;
     // un petit fait un détour, près de sa mère. Sur le chemin du retour, le détour
     // le rapproche encore du nid : buté contre un de ses petits au pas de la porte,
     // on ne repart pas flâner à huit mètres.
     const s = rentre ? prochainBut({ ...h, rentre }) : choisirBut(h, guide)
-    return { ...h, t, but: s.but, rentre, flane: !!guide, graine: s.graine, vitesse: 0, cap: cap + Math.PI / 4 }
+    return { ...h, t, but: s.but, reprise: undefined, rentre, flane: !!guide, graine: s.graine, vitesse: 0, cap: cap + Math.PI / 4 }
   }
   return { ...h, x, z, cap, t, but, rentre, flane, graine, vitesse: dt > 0 ? v : 0 }
 }

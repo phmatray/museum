@@ -1442,6 +1442,20 @@
     "largeur": 1280,
     "hauteur": 800
    }
+  },
+  {
+   "n": 103,
+   "ancre": "t-103",
+   "titre": "Les finitions du jardin",
+   "categorie": "jardin",
+   "statut": "en ligne · PR #202",
+   "fait": true,
+   "pr": 202,
+   "image": {
+    "src": "img/103-finitions.jpg",
+    "largeur": 1000,
+    "hauteur": 625
+   }
   }
  ]
 }
