@@ -129,7 +129,7 @@ flowchart LR
 5. **Hang**: `npm run accrocher` assigns themes to rooms and paintings to walls (`public/data/accrochage.json`).
 6. **Build** with `BASE_PATH=/museum/`, then **deploy** to GitHub Pages.
 
-The story of how it came together, more than 90 steps with before/after screenshots, is in the **development journal** (in French): [`docs/journal/index.html`](docs/journal/index.html), with tabs by theme and an index. GitHub shows its source, so download it or open it from a local clone to read it.
+The story of how it came together, more than 90 steps with before/after screenshots, is in the **development journal** (in French): **[phmatray.github.io/museum/journal](https://phmatray.github.io/museum/journal/)**, with tabs by theme and an index. Its source is [`docs/journal/`](docs/journal/index.html), deployed with the museum.
 
 ## Run it locally
 

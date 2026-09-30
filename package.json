@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node tools/pages-partage.ts",
+    "build": "tsc -b && vite build && node tools/pages-partage.ts && cp -R docs/journal dist/journal",
     "lint": "eslint .",
     "preview": "vite preview",
     "fetch": "node tools/fetch-github.ts",
