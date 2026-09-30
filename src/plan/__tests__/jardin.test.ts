@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { MUSEE } from '../musee.ts'
-import { JARDIN, OBSTACLES_JARDIN, TABLIER, creuxDuRuisseau, distanceEtang, distanceRuisseau, rubanDuRuisseau } from '../jardin.ts'
+import { JARDIN, OBSTACLES_JARDIN, TABLIER, creuxDuRuisseau, distanceEtang, distanceRuisseau, nappeDeLaCascade, rubanDuRuisseau } from '../jardin.ts'
 import { parkPlacements } from '../park.ts'
 import { step, type Walker } from '../walk.ts'
 import type { Rect } from '../types.ts'
@@ -69,6 +69,42 @@ describe('le ruban du ruisseau', () => {
         expect(creuxDuRuisseau(x, z), `(${x}, ${z})`).toBeGreaterThan(JARDIN.ruisseau.niveau)
       }
     }
+  })
+})
+
+describe('la nappe de la cascade', () => {
+  const { position: p, uv, index } = nappeDeLaCascade()
+  const RANGS = 11
+  const colonnes = p.length / 3 / RANGS
+  const pt = (j: number, i: number) => [p[(j * RANGS + i) * 3], p[(j * RANGS + i) * 3 + 1], p[(j * RANGS + i) * 3 + 2]]
+
+  it('part de la lèvre, à la cote du ruisseau, et finit sous l’eau de l’étang', () => {
+    for (let j = 0; j < colonnes; j++) {
+      expect(pt(j, 0)[1]).toBeCloseTo(JARDIN.ruisseau.niveau, 5)
+      expect(pt(j, RANGS - 1)[1]).toBeLessThan(JARDIN.etang.niveau)
+    }
+    expect(index.length).toBe((colonnes - 1) * (RANGS - 1) * 6)
+  })
+
+  it('tombe en parabole : la pente s’accentue à chaque rang, sans jamais remonter', () => {
+    const m = (colonnes - 1) / 2
+    let pente = 0
+    for (let i = 1; i < RANGS; i++) {
+      const [a, b] = [pt(m, i - 1), pt(m, i)]
+      const p2 = (a[1] - b[1]) / Math.hypot(b[0] - a[0], b[2] - a[2])
+      expect(p2).toBeGreaterThan(pente)
+      pente = p2
+      expect(uv[(m * RANGS + i) * 2 + 1]).toBeGreaterThan(uv[(m * RANGS + i - 1) * 2 + 1])
+    }
+  })
+
+  it('file plus loin au milieu qu’aux bords : vue de profil, elle s’arrondit', () => {
+    // L'avancée de chaque filet, projetée sur l'aval (du milieu de la lèvre au milieu du pied).
+    const [m0, m1] = [pt((colonnes - 1) / 2, 0), pt((colonnes - 1) / 2, RANGS - 1)]
+    const l = Math.hypot(m1[0] - m0[0], m1[2] - m0[2])
+    const avance = (j: number) => ((pt(j, RANGS - 1)[0] - pt(j, 0)[0]) * (m1[0] - m0[0]) + (pt(j, RANGS - 1)[2] - pt(j, 0)[2]) * (m1[2] - m0[2])) / l
+    expect(avance((colonnes - 1) / 2)).toBeGreaterThan(avance(0) + 0.03)
+    expect(avance((colonnes - 1) / 2)).toBeGreaterThan(avance(colonnes - 1) + 0.03)
   })
 })
 

@@ -112,8 +112,6 @@ TRACE = np.array(spline(JARDIN["ruisseau"]["trace"]))
 BERGE_RUISSEAU = 1.3  # comme jardin.ts
 LEVRE_BERGE = 0.45
 FIL_DE_L_EAU = RUISSEAU - 0.03
-SOUS_LA_RIVE = 0.25
-BOMBE_LEVRE = 0.16  # comme jardin.ts
 
 
 def dist_segments(px, pz, a, b):
@@ -350,13 +348,7 @@ def normales_contour(pts):
     return out
 
 
-def indice_cascade():
-    """Le point du ruisseau où il atteint la berge de l'étang : la lèvre de la cascade."""
-    sp = sdf_etang(TRACE[:, 0], TRACE[:, 1])
-    return int(np.argmax(sp < 0.5))
-
-
-def eau(mat_eau, mat_cascade):
+def eau(mat_eau):
     # L'étang : le contour élargi de 30 cm, pour que le bord de l'eau passe SOUS la berge.
     nrm = normales_contour(CONTOUR)
     g = Maillage()
@@ -368,37 +360,10 @@ def eau(mat_eau, mat_cascade):
     bm.to_mesh(etang.data)
     bm.free()
 
-    # Le ruisseau n'est plus ici : son ruban, UV le long du courant, est tissé
-    # par `rubanDuRuisseau` (jardin.ts). Seul le bord de sa lèvre sert à la cascade.
-    fin = indice_cascade()
-    x, z = TRACE[fin][0], TRACE[fin][1]
-    a, b = TRACE[fin - 1], TRACE[fin]  # comme `rubanDuRuisseau` : son dernier travers
-    dx, dz = b[0] - a[0], b[1] - a[1]
-    l = math.hypot(dx, dz)
-    nx, nz = -dz / l, dx / l
-    r = TRACE[fin][2] / 2 + SOUS_LA_RIVE
-    bords = [((x + nx * r, z + nz * r), (x - nx * r, z - nz * r), (dx / l, dz / l))]
-
-    # La cascade : une nappe qui tombe de la lèvre au niveau de l'étang, et son écume.
-    # Sa lèvre suit le bord bombé du ruban (`BOMBE_LEVRE`, jardin.ts) : le milieu
-    # avance vers l'étang, les bords restent sous la berge ; et l'eau s'y enroule
-    # en un profil arrondi avant de tomber, plus une arête tirée au cordeau.
-    ux, uz = bords[-1][2]
-    colonnes = [1 - 2 * j / 8 for j in range(9)]
-    profil = [(0.0, 0.0), (0.03, -0.004), (0.06, -0.014), (0.09, -0.03), (0.12, -0.05), (0.15, -0.072), (0.19, ETANG - RUISSEAU - 0.02)]
-    g = Maillage()
-
-    def point(k, a, h):
-        s = BOMBE_LEVRE * (1 - k * k) + a
-        return (x + nx * k * r + ux * s, -(z + nz * k * r + uz * s), RUISSEAU + h)
-
-    for k0, k1 in zip(colonnes, colonnes[1:]):
-        u0, u1 = (1 - k0) / 2, (1 - k1) / 2
-        for (a0, h0), (a1, h1) in zip(profil, profil[1:]):
-            g.face([point(k0, a0, h0), point(k1, a0, h0), point(k1, a1, h1), point(k0, a1, h1)],
-                   mat_cascade, uvs=[(u0, a0 - h0), (u1, a0 - h0), (u1, a1 - h1), (u0, a1 - h1)])
-    cascade = g.objet("Jardin_Cascade")
-    return [etang, cascade]
+    # Le ruisseau et la nappe de la cascade ne sont plus ici : le ruban (UV le long
+    # du courant) et la nappe en parabole sont tissés par `rubanDuRuisseau` et
+    # `nappeDeLaCascade` (jardin.ts).
+    return [etang]
 
 
 # ── Le pont, la lanterne, les pas japonais ─────────────────────────────────
@@ -861,7 +826,6 @@ def construire():
     importer_polyhaven()
     sol = matiere("Jardin_Sol", (0.25, 0.4, 0.12), 1.0)
     eau_ = matiere("Jardin_Eau", (0.02, 0.05, 0.035), 0.05)
-    cascade_ = matiere("Jardin_Cascade", (0.9, 0.95, 0.95), 0.3)
     bois = matiere("Jardin_Bois", (0.2, 0.13, 0.08), 0.75)
     granit = matiere("Jardin_Granit", (0.47, 0.46, 0.42), 0.9)
     lueur = matiere("Jardin_Lueur", (0.9, 0.8, 0.6), 0.6, emission=(1.0, 0.72, 0.4), force=0.6)
@@ -871,7 +835,7 @@ def construire():
     feuilles = matiere("Jardin_Feuillage", (1, 1, 1), 0.75, image=image)
 
     terrain(sol)
-    eau(eau_, cascade_)
+    eau(eau_)
     # Les galets de l'étang et du lit ne sont plus taillés ici : les galets de
     # rivière Meshy de ruisseau.glb, instanciés par `RuisseauLayer`, les remplacent.
     pont(bois, granit)

@@ -65,7 +65,7 @@ const CHUTE = (() => {
   const [[ax, az], [bx, bz, w]] = [TRACE_RUISSEAU[INDICE_LEVRE - 1], TRACE_RUISSEAU[INDICE_LEVRE]]
   const l = Math.hypot(bx - ax, bz - az)
   const [ux, uz] = [(bx - ax) / l, (bz - az) / l]
-  const a = BOMBE_LEVRE + 0.19
+  const a = BOMBE_LEVRE + 0.14
   return { pied: new THREE.Vector4(bx + ux * a, bz + uz * a, ux, uz), demi: w / 2 + 0.25 }
 })()
 
@@ -149,26 +149,35 @@ export function creerMatieresJardin(remous: Remous[] = []): MatieresJardin {
     depthWrite: false,
     side: THREE.DoubleSide,
   })
-  // UV de la nappe (build-jardin.py) : u en travers, de 0 à 1 ; v, les mètres
-  // parcourus depuis la lèvre (0,31 au pied). Une eau sombre et vitreuse en haut,
-  // rayée de filets clairs qui tombent, qui s'aère et blanchit en bas ; plus mince aux flancs.
+  // UV de la nappe (`nappeDeLaCascade`) : u en travers, de 0 à 1 ; v, les mètres
+  // parcourus depuis la lèvre (0,18 au pied). Une eau vitreuse en haut, où l'on
+  // voit à travers, rayée de filets clairs qui tombent, qui s'aère et blanchit en
+  // bas ; ses flancs s'effilochent en filets, et la nappe ondule en tombant.
   cascade.onBeforeCompile = (shader) => {
     shader.uniforms.uTempsC = temps
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec2 vCasc;')
+      .replace('#include <common>', '#include <common>\nuniform float uTempsC;\nvarying vec2 vCasc;')
       .replace('#include <uv_vertex>', '#include <uv_vertex>\n  vCasc = uv;')
+      // Des rides qui descendent la nappe : nulle à la lèvre, qui se creusent en tombant.
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+  transformed += objectNormal * sin(uv.y * 70.0 - uTempsC * 9.0 + uv.x * 11.0) * 0.006 * smoothstep(0.0, 0.08, uv.y);`,
+      )
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\nuniform float uTempsC;\nvarying vec2 vCasc;\n${BRUIT}`)
       .replace(
         '#include <alphamap_fragment>',
         `#include <alphamap_fragment>
   float cRaie = jBruit(vec2(vCasc.x * 55.0, vCasc.y * 5.0 - uTempsC * 2.6)) * 0.65 + jBruit(vec2(vCasc.x * 90.0, vCasc.y * 9.0 - uTempsC * 3.4)) * 0.35;
-  float cBas = smoothstep(0.14, 0.3, vCasc.y);
+  float cBas = smoothstep(0.08, 0.17, vCasc.y);
   float cBulle = smoothstep(0.35, 0.7, jBruit(vec2(vCasc.x * 45.0, vCasc.y * 22.0 - uTempsC * 7.0)) + 0.3 * cBas) * cBas;
-  float cFlanc = smoothstep(0.0, 0.16, vCasc.x) * smoothstep(1.0, 0.84, vCasc.x);
+  // Les flancs : des filets qui se détachent, pas une arête nette.
+  float cBord = min(vCasc.x, 1.0 - vCasc.x) + (jBruit(vec2(vCasc.x * 70.0, vCasc.y * 3.0 - uTempsC * 2.2)) - 0.5) * 0.12;
+  float cFlanc = smoothstep(0.02, 0.14, cBord);
   float cClair = max(smoothstep(0.5, 0.8, cRaie), cBulle);
-  diffuseColor.rgb *= mix(0.3, 1.0, cClair);
-  diffuseColor.a = max(diffuseColor.a * mix(0.55, 1.0, cRaie), cBulle * 0.95) * mix(0.4, 1.0, cFlanc);`,
+  diffuseColor.rgb *= mix(0.72, 1.0, cClair);
+  diffuseColor.a = max(diffuseColor.a * mix(0.42, 0.95, cClair), cBulle * 0.95) * cFlanc;`,
       )
   }
   cascade.customProgramCacheKey = () => 'jardin:cascade'

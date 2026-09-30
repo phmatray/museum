@@ -17,7 +17,7 @@
  * même parc, arbre pour arbre.
  */
 import { CONTOUR_ETANG, INDICE_LEVRE, JARDIN, LEVRE, RADIERS, TABLIER, TRACE_RUISSEAU, distanceEtang, distanceRuisseau, presDeLEau } from './jardin.ts'
-import { BELVEDERE, EMPRISE_BELVEDERE, PAS_DE_LA_RIVE, PIED_DE_L_ESCALIER, OBSTACLES_BELVEDERE, VOLEES, dansLaPercee } from './belvedere.ts'
+import { BELVEDERE, EMPRISE_BELVEDERE, PAS_DE_LA_RIVE, PIED_DE_L_ESCALIER, OBSTACLES_BELVEDERE, VOLEES, coteDuBelvedere, dansLaPercee } from './belvedere.ts'
 import { EMPRISE_CHANTIER } from './chantier.ts'
 import { hauteurDuParc } from './relief.ts'
 import type { Plan, Rect } from './types.ts'
@@ -83,6 +83,12 @@ const ARRONDI = 9
 const ECART_CEINTURE = 1.6
 /** La bordure et son lit de galets (`allees.ts`) : ni tronc ni boule n'y pousse. */
 const BORD = 0.6
+/**
+ * La part du rayon d'encombrement d'un érable où son houppier descend encore
+ * sous 1,90 m : un mur ou une palissade plus proche que ça, les feuilles le
+ * traversent.
+ */
+export const HOUPPIER_BAS = 0.8
 /** Un sujet par maille, quand la maille le permet : des arbres isolés, pas un rideau. */
 /** Le parc hors jardin : ses bosquets, leur écart minimal, ses sujets isolés. */
 const BOSQUETS = 14
@@ -475,7 +481,8 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
   // dans la pierre, sur le roji, dans la palissade, ou dans la percée (les grands
   // arbres seuls : boules et azalées font le premier plan) ; les houppiers qui
   // débordent sur le roji restent — c'est le tunnel du chemin de thé.
-  const { roji: J, sujets } = BELVEDERE
+  const { roji: J, sujets, palissade: F } = BELVEDERE
+  const palissade: Rect = { x: F.x - F.epaisseur / 2, z: F.z0, width: F.epaisseur, depth: F.z1 - F.z0 }
   // Il file sous les deux premières marches : son bout rond, et sa bordure, se perdent sous la pierre.
   const roji = serpenter({ x: J.x, z: J.z0 }, { x: PIED_DE_L_ESCALIER[0], z: VOLEES[0].u0 + 1.2 }, J.ondulation, J.largeur)
   const grand = (p: PlantPlacement) => p.espece.startsWith('erable')
@@ -485,13 +492,15 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
     && !OBSTACLES_BELVEDERE.some((r) => distanceRect(r, p.x, p.z) < pied(p) + 0.3)
     && !surUneAllee(roji, p.x, p.z, pied(p) + BORD)
     && !(grand(p) && dansLaPercee(p.x, p.z))
+    // Côté ruisseau, rien ne passe au travers de la palissade : un houppier la surplombe, il ne la perce pas.
+    && !(p.x < F.x && distanceRect(palissade, p.x, p.z) < p.rayon * (grand(p) ? HOUPPIER_BAS : 1))
     && !sujets.some((s) => Math.hypot(s.x - p.x, s.z - p.z) < (RAYON[s.espece] * s.scale + p.rayon) * 0.6)
     // Les pas japonais de la rive sud : les boules et les azalées sur leur passage leur cèdent la place.
     && !PAS_DE_LA_RIVE.some((s) => Math.hypot(s.x - p.x, s.z - p.z) < s.rayon + pied(p) * 0.8 + 0.15))
   // Les sujets plantés à dessein : l'érable pourpre de la terrasse, qui penche
   // sur le parapet, et la paire qui encadre la façade au bout de l'axe.
   for (const s of sujets) {
-    const y = s.belvedere ? BELVEDERE.cote : Math.min(...[[0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5]].map(([dx, dz]) => hauteurDuParc(s.x + dx, s.z + dz)))
+    const y = s.belvedere ? (coteDuBelvedere(s.x, s.z) ?? BELVEDERE.cote) : Math.min(...[[0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5]].map(([dx, dz]) => hauteurDuParc(s.x + dx, s.z + dz)))
     gardes.push({ espece: s.espece, x: s.x, z: s.z, rotation: s.lacet ?? generateur(`${graine}:${s.x}`)() * Math.PI * 2, scale: s.scale, rayon: RAYON[s.espece] * s.scale, y: s.espece === 'lierre' ? y - 0.05 : y })
   }
   const toutes = [...allees, ...roji]

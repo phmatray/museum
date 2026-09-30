@@ -5,10 +5,10 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { BELVEDERE, VOLEES, HAUT_DE_LA_VOLEE_OUEST, HAUT_DE_L_ESCALIER, PAS_DE_LA_RIVE, PIED_DE_LA_VOLEE_OUEST, MARCHE, PIED_DE_L_ESCALIER, POINT_DE_VUE, coteDuBelvedere, dansLaPercee, dansLeBelvedere, pierresDuBelvedere } from '../belvedere.ts'
+import { BELVEDERE, FOSSE, TERRE_DE_LA_FOSSE, VOLEES, HAUT_DE_LA_VOLEE_OUEST, HAUT_DE_L_ESCALIER, PAS_DE_LA_RIVE, PIED_DE_LA_VOLEE_OUEST, MARCHE, PIED_DE_L_ESCALIER, POINT_DE_VUE, coteDuBelvedere, dansLaPercee, dansLeBelvedere, pierresDuBelvedere } from '../belvedere.ts'
 import { distanceRuisseau, presDeLEau } from '../jardin.ts'
 import { MUSEE } from '../musee.ts'
-import { parkPlacements, surUneAllee } from '../park.ts'
+import { HOUPPIER_BAS, distanceRect, parkPlacements, surUneAllee } from '../park.ts'
 import { hauteurDuParc } from '../relief.ts'
 import { PARC } from '../rules.ts'
 import { avancer, capVers, VISITE } from '../tour.ts'
@@ -84,6 +84,17 @@ describe('le belvédère', () => {
     expect(new Set(ouest.map((b) => b.z.toFixed(2))).size).toBeGreaterThan(8)
   })
 
+  it('plante son érable dans une fosse de terre moussue, pas dans le dallage', () => {
+    const erable = parc.plantations.find((p) => p.espece === 'erable-rouge' && distanceRect(E, p.x, p.z) < 0)!
+    expect(distanceRect(FOSSE, erable.x, erable.z)).toBeLessThan(-0.3)
+    expect(erable.y).toBeCloseTo(TERRE_DE_LA_FOSSE, 5)
+    expect(coteDuBelvedere(erable.x, erable.z)).toBeCloseTo(TERRE_DE_LA_FOSSE, 5)
+    // On en fait le tour, on n'y marche pas ; la volée ouest arrive à côté, dégagée.
+    const w = marcher(dehors(...HAUT_DE_LA_VOLEE_OUEST), erable.x, erable.z, 10)
+    expect(distanceRect(FOSSE, w.x, w.z)).toBeGreaterThan(0)
+    expect(distanceRect(FOSSE, ...HAUT_DE_LA_VOLEE_OUEST)).toBeGreaterThan(0.5)
+  })
+
   it('reste au sec, hors de l’eau et du ruisseau, et laisse la pelouse autour', () => {
     for (let x = E.x - 1; x <= E.x + E.width + 1; x += 0.5)
       for (let z = VOLEES[0].u0 - 1; z <= E.z + E.depth + 1; z += 0.5) expect(presDeLEau(x, z, 2)).toBe(false)
@@ -95,6 +106,15 @@ describe('le roji', () => {
   it('est une allée, du pont au pied de l’escalier, sans arbre planté dedans', () => {
     for (let z = G.z + 1; z < PIED_DE_L_ESCALIER[1]; z += 1) expect(surUneAllee(parc.allees, BELVEDERE.roji.x, z)).toBe(true)
     for (const p of parc.plantations) expect(surUneAllee(parc.allees, p.x, p.z, p.espece.startsWith('erable') ? 0.3 : p.rayon * 0.5)).toBe(false)
+  })
+
+  it('ne se laisse traverser par aucune plante : côté ruisseau, les houppiers surplombent la palissade', () => {
+    const palissade = { x: F.x - F.epaisseur / 2, z: F.z0, width: F.epaisseur, depth: F.z1 - F.z0 }
+    for (const p of [...parc.plantations, ...parc.berges]) {
+      if (p.x >= F.x || p.espece === 'petales') continue
+      const garde = p.rayon * (p.espece.startsWith('erable') ? HOUPPIER_BAS : 1)
+      expect(distanceRect(palissade, p.x, p.z), `${p.espece} en (${p.x.toFixed(1)}, ${p.z.toFixed(1)})`).toBeGreaterThanOrEqual(garde)
+    }
   })
 
   it('se prend par sa porte : la palissade et ses ailes ferment le reste', () => {
