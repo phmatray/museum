@@ -15,6 +15,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 import { useGameStore } from '../stores/gameStore'
+import { fusionnerParMatiere, unePasse, unifierParCouleur } from './fusion'
 import { eclairerMatiere, eclairerModele } from './lumiere'
 import { useMatiere } from './materials'
 
@@ -34,7 +35,12 @@ export function SalleHonneurLayer() {
       .loadAsync(`${base}assets/architecture/salle-honneur.glb`)
       .then(({ scene }) => {
         if (!vivant) return
+        // Les cives du vitrail en une matière, AVANT la lumière cuite : un clone n'en garderait pas la greffe.
+        unifierParCouleur(scene, 'Honneur_Cive')
         eclairerModele(scene, 'salle-honneur') // la lumière cuite de la salle (`lumiere.ts`)
+        // Un appel par matière ; le parquet reçoit plus bas la matière du musée, par son nom.
+        fusionnerParMatiere(scene, (o) => o.name === 'Parquet')
+        unePasse(scene)
         setSalle(scene)
       })
       .catch((erreur: unknown) => console.error('salle d’honneur indisponible', erreur))

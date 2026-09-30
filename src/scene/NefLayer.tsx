@@ -17,6 +17,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { useGameStore } from '../stores/gameStore'
 import { anglesHorloge } from './horloge'
 import { ruisseler } from './intemperies'
+import { fusionnerParMatiere, unePasse } from './fusion'
 import { LUEURS } from './lueurs'
 
 /** La lueur des lanternes sur le hall, la nuit (`lueurs.ts`) : réglée à l'écran contre l'ancienne nef. */
@@ -49,6 +50,9 @@ export function NefLayer() {
           // Et la pluie y ruisselle, sur la verrière comme sur le pignon.
           if (o instanceof THREE.Mesh && (o.material as THREE.Material).name === 'Nef_Verre') ruisseler(o.material as THREE.Material)
         })
+        // Un appel par matière (`fusion.ts`) ; les aiguilles tournent seules.
+        fusionnerParMatiere(scene, (o) => o.name.startsWith('Nef_Aiguille'))
+        unePasse(scene)
         if (vivant) setNef(scene)
       })
       // Le musée reste visitable à ciel ouvert.

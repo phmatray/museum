@@ -14,6 +14,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
 import { brancherKTX2 } from '../io/textures'
+import { fusionnerParMatiere } from './fusion'
 import { eclairerModele } from './lumiere'
 
 export function EscalierLayer({ onPret }: { onPret: () => void }) {
@@ -31,6 +32,7 @@ export function EscalierLayer({ onPret }: { onPret: () => void }) {
         if (!vivant) return
         // La lumière du hall cuite sur le marbre (`lumiere.ts`) : il ne sort plus du mur.
         eclairerModele(scene, 'escalier')
+        fusionnerParMatiere(scene)
         setEscalier(scene)
         onPret()
       })
