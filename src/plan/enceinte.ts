@@ -14,7 +14,7 @@
  *
  * Pur : ni three ni React.
  */
-import type { Allee } from './park.ts'
+import { generateur, type Allee, type PlantPlacement } from './park.ts'
 import { hauteurDuParc } from './relief.ts'
 import type { Box } from './mesh.ts'
 import type { Rect } from './types.ts'
@@ -35,13 +35,21 @@ export interface Enceinte {
   brique: Box[]
   pierre: Box[]
   fer: Box[]
+  /**
+   * Le lierre qui grimpe au mur, par plaques, côté parc : de quoi casser la
+   * répétition des travées. Le pied au sol, tourné vers le parc (le modèle
+   * `src_lierre` regarde +z, `rotation` en lacet comme les plantations).
+   */
+  lierre: PlantPlacement[]
 }
 
 type Cote = { axe: 'x' | 'z'; cote: number; dehors: number; u0: number; u1: number }
 
 /** Le mur autour de `terrain`, ouvert d'une grille là où une allée touche le bord. */
 export function enceinte(terrain: Rect, allees: Allee[]): Enceinte {
-  const out: Enceinte = { brique: [], pierre: [], fer: [] }
+  const out: Enceinte = { brique: [], pierre: [], fer: [], lierre: [] }
+  // Son propre tirage : le mur ne change pas d'une brique.
+  const alea = generateur('enceinte:lierre')
   const [x0, x1, z0, z1] = [terrain.x, terrain.x + terrain.width, terrain.z, terrain.z + terrain.depth]
   const e = EPAISSEUR
   // Le nord et le sud prennent les angles ; l'ouest et l'est s'arrêtent à leur face.
@@ -112,6 +120,15 @@ export function enceinte(terrain: Rect, allees: Allee[]): Enceinte {
       const arase = haut + HAUTEUR
       arases.push(arase)
       out.brique.push(boite(a, b, 0, e, bas - FONDATION, arase))
+      // Une travée sur deux à peu près porte une plaque de lierre, parfois deux.
+      const tirage = alea()
+      for (let k = 0; k < (tirage < 0.12 ? 2 : tirage < 0.5 ? 1 : 0); k++) {
+        const u = a + 1 + alea() * Math.max(0, b - a - 2)
+        const [x, z] = point(u, -0.01)
+        const vers = c.axe === 'x' ? (c.dehors < 0 ? 0 : Math.PI) : c.dehors < 0 ? Math.PI / 2 : -Math.PI / 2
+        const scale = 0.75 + alea() * 0.4
+        out.lierre.push({ espece: 'lierre', x, z, y: sol(u) - 0.05, rotation: vers, scale, rayon: 1.1 * scale })
+      }
       out.pierre.push(boite(a, b, -CHAPERON.debord, e + CHAPERON.debord, arase, arase + CHAPERON.h))
     }
     piles.forEach((p, i) => {

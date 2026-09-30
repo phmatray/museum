@@ -214,7 +214,7 @@ const ARCHITECTURE = [
     id: 'jardin',
     source: "`tools/blender/build-jardin.py`, d'après le jardin japonais de Hasselt",
     licence: 'œuvre originale du dépôt',
-    usage: 'étang, ruisseau, pont, lanterne, érables du Japon et boules taillées du parc',
+    usage: 'étang, ruisseau, pont, lanterne, rochers moussus, fougères et pétales tombés du jardin',
   },
   {
     id: 'ruisseau',
@@ -225,6 +225,19 @@ const ARCHITECTURE = [
       'Mis à l’échelle, séparés, couchés et allégés par `tools/blender/build-ruisseau.py`, qui modèle aussi la branche morte',
     licence: 'généré pour le dépôt (conditions de Meshy)',
     usage: 'la vieille souche moussue des berges du ruisseau, la branche tombée en travers du courant, les galets de rivière du lit et du bord de l’étang',
+  },
+  {
+    id: 'vegetation',
+    source:
+      'Feuillage : cartes découpées à l’alpha dans des planches botaniques Nano Banana 2 (Meshy, généré par IA, fond retiré) ; prompts, chacun suivi de « photographed perfectly flat from directly above, orthographic top-down botanical scan, even soft diffuse studio lighting, no cast shadows, sharp focus, true natural colours, isolated on a pure white background » : ' +
+      '« A single real fresh branch spray of Japanese maple (Acer palmatum), a thin forked reddish-brown twig carrying about twenty deeply cut seven-lobed palmate leaves of different sizes, bright fresh green with lighter veins… » ; ' +
+      '« A single real branch spray of red Japanese maple (Acer palmatum ‘Bloodgood’)… deep burgundy purple-red with darker veins… » ; ' +
+      '« A dense round cluster of real boxwood sprigs (Buxus sempervirens)… small glossy oval leaves, mixed dark green and fresh lighter green new growth » ; ' +
+      '« A real sprig cluster of Japanese evergreen azalea (Rhododendron ‘Satsuki’)… small glossy elliptic dark green leaves and five open bright pink funnel-shaped flowers » ; ' +
+      '« A real trailing stem of English ivy (Hedera helix)… glossy dark green three-to-five lobed leaves with pale green veins ». ' +
+      'Érables (tronc, charpentières, branches, rameaux, brindilles), touffes, lierre, roseaux et herbe du Japon modelés par `tools/blender/build-vegetation.py`',
+    licence: 'généré pour le dépôt (conditions de Meshy)',
+    usage: 'érables du Japon rouges et verts (et leur version lointaine), buis et azalées, lierre du mur d’enceinte, roseaux et herbes des berges',
   },
   {
     id: 'salle-honneur',

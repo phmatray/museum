@@ -24,6 +24,7 @@ import type { Plan, Rect } from './types.ts'
 export type EspeceParc =
   | 'erable-rouge' | 'erable-vert' | 'buis' | 'azalee' | 'fougere' | 'petales'
   | 'rocher-1' | 'rocher-2' | 'rocher-3' | 'rocher-4' | 'rocher-5'
+  | 'roseaux' | 'herbes' | 'lierre'
 
 export interface PlantPlacement {
   espece: EspeceParc
@@ -55,6 +56,12 @@ export interface Parc {
   dalles: Rect[]
   allees: Allee[]
   plantations: PlantPlacement[]
+  /**
+   * Les herbes de berge (`semerBerges`) : roseaux au fil de l'eau, herbe du
+   * Japon sur la rive. À part des `plantations` : on les traverse, rien ne les
+   * contourne, et le reste du parc ne bouge pas d'un sujet.
+   */
+  berges: PlantPlacement[]
 }
 
 /** 40 m : un horizon d'arbres depuis l'étage, sans voir le bord du monde. */
@@ -83,6 +90,7 @@ const ISOLES = 18
 const RAYON: Record<EspeceParc, number> = {
   'erable-rouge': 3.2, 'erable-vert': 3.2, buis: 0.8, azalee: 0.75, fougere: 0.5, petales: 0,
   'rocher-1': 1.4, 'rocher-2': 1.1, 'rocher-3': 1.0, 'rocher-4': 1.0, 'rocher-5': 0.9,
+  roseaux: 0.3, herbes: 0.4, lierre: 1.1,
 }
 /** Au jardin, un semis plus serré : érables et boules taillées, pas les grands arbres. */
 const PAS_JARDIN = 3.5
@@ -455,5 +463,73 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
   // d'encombrement d'un bon mètre), et de la pelouse autour.
   const libres = plantations.filter((p) => !souches.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < 0.9 * s.echelle + p.rayon * 0.5)
     && distanceRect(EMPRISE_CHANTIER, p.x, p.z) > p.rayon * (p.espece.startsWith('erable') ? 1.4 : 1) + 1)
-  return { terrain, parvis, sol, dalles: couronne(parvis, emprise), allees, plantations: libres }
+  return { terrain, parvis, sol, dalles: couronne(parvis, emprise), allees, plantations: libres, berges: semerBerges(allees, libres, graine) }
+}
+
+/**
+ * Les herbes de berge, par colonies comme dans la nature : des roseaux les
+ * pieds dans l'eau le long du ruisseau et autour de l'étang, de l'herbe du
+ * Japon en fontaine sur le haut de la rive. Une colonie court sur quelques
+ * mètres puis la rive se dégage ; les pierres, les souches, le pont, les pas
+ * japonais et les allées gardent leur place. Leur propre tirage.
+ */
+function semerBerges(allees: Allee[], plantations: PlantPlacement[], graine: string): PlantPlacement[] {
+  const alea = generateur(`${graine}:berges`)
+  const out: PlantPlacement[] = []
+  const { lanterne, pas, souches, etang } = JARDIN
+  const libre = (x: number, z: number, r: number) =>
+    !surUneAllee(allees, x, z, r + 0.3) && !dansRect(TABLIER, x, z, r + 0.8)
+    && Math.hypot(x - lanterne.x, z - lanterne.z) > r + 1.2
+    && !pas.some(([px, pz]) => Math.hypot(x - px, z - pz) < r + 0.5)
+    && !souches.sujets.some((s) => Math.hypot(x - s.x, z - s.z) < 1.1 * s.echelle + r)
+    && !plantations.some((p) => p.espece !== 'petales' && p.espece !== 'fougere' && Math.hypot(p.x - x, p.z - z) < p.rayon * 0.7 + r)
+    && !out.some((p) => Math.hypot(p.x - x, p.z - z) < (p.rayon + r) * 0.75)
+  const poser = (espece: EspeceParc, x: number, z: number, scale: number, y?: number) => {
+    const rayon = RAYON[espece] * scale
+    if (!libre(x, z, rayon)) return
+    const sol = y ?? Math.min(...[[0.3, 0], [-0.3, 0], [0, 0.3], [0, -0.3]].map(([dx, dz]) => hauteurDuParc(x + dx, z + dz)))
+    out.push({ espece, x, z, rotation: alea() * Math.PI * 2, scale, rayon, y: sol })
+  }
+  /** Une colonie par rive : elle dure `n` pas, puis la rive reste nue un moment. */
+  const colonies = () => {
+    let reste = 0
+    return (chance: number) => {
+      if (reste > 0) return reste-- > 0
+      if (alea() < chance) reste = 4 + Math.floor(alea() * 8)
+      return false
+    }
+  }
+  // Le ruisseau : les roseaux au fil de l'eau, l'herbe du Japon plus haut sur la berge.
+  const [roseau, herbe] = [[colonies(), colonies()], [colonies(), colonies()]]
+  TRACE_RUISSEAU.forEach(([x, z, w], k) => {
+    if (k === 0 || k >= INDICE_LEVRE || k % 2) return
+    const [ax, az] = TRACE_RUISSEAU[k - 1]
+    const d = Math.hypot(x - ax, z - az) || 1
+    const [nx, nz] = [-(z - az) / d, (x - ax) / d]
+    ;[-1, 1].forEach((cote, i) => {
+      if (roseau[i](0.12)) {
+        const r = w / 2 - 0.05 + (alea() - 0.4) * 0.3
+        poser('roseaux', x + nx * cote * r + (alea() - 0.5) * 0.3, z + nz * cote * r + (alea() - 0.5) * 0.3, 0.75 + alea() * 0.5)
+      }
+      if (herbe[i](0.1)) {
+        const r = w / 2 + 0.55 + alea() * 0.6
+        poser('herbes', x + nx * cote * r, z + nz * cote * r, 0.8 + alea() * 0.5)
+      }
+    })
+  })
+  // L'étang : des roseaux dans l'eau le long du bord, de l'herbe sur la rive ; rien devant la cascade.
+  const [cx, cz] = CONTOUR_ETANG.reduce(([a, b], [x, z]) => [a + x / CONTOUR_ETANG.length, b + z / CONTOUR_ETANG.length], [0, 0])
+  const [lx, lz] = LEVRE
+  const [bord, rive] = [colonies(), colonies()]
+  CONTOUR_ETANG.forEach(([x, z]) => {
+    if (Math.hypot(x - lx, z - lz) < 3.5) return
+    const l = Math.hypot(x - cx, z - cz)
+    const [ux, uz] = [(x - cx) / l, (z - cz) / l]
+    if (bord(0.1)) {
+      const e = -0.1 - alea() * 0.35
+      poser('roseaux', x + ux * e, z + uz * e, 0.8 + alea() * 0.5, etang.niveau - 0.2)
+    }
+    if (rive(0.08)) poser('herbes', x + ux * (0.7 + alea() * 0.5), z + uz * (0.7 + alea() * 0.5), 0.8 + alea() * 0.5)
+  })
+  return out
 }

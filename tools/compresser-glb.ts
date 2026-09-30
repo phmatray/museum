@@ -55,6 +55,7 @@ export const MODELES = [
   'architecture/escalier.glb',
   'jardin/jardin.glb',
   'jardin/ruisseau.glb',
+  'jardin/vegetation.glb',
   'plants/plants-lod.glb',
   'sculptures/arborescence.glb',
   'sculptures/chandelles.glb',

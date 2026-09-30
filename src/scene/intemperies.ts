@@ -379,3 +379,115 @@ export function ruisseler(m: THREE.Material): void {
     ).replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n  totalEmissiveRadiance *= (1.0 - 0.8 * iFilet) * (1.0 - 0.3 * uPluie);')
   })
 }
+
+/**
+ * Chaque sujet sa nuance : un buis plus jaune, un autre plus bleuté, un érable
+ * un peu plus sombre que son voisin. Un aléa par instance, tiré de sa place —
+ * deux copies du même modèle ne se lisent plus comme des clones. `force` :
+ * 1 pour les touffes, moins pour les érables (leur saison les varie déjà).
+ */
+export function varierFeuillage(m: THREE.Material, force = 1): void {
+  greffer(m, `nuance:${force}`, (s) => {
+    avecMonde(s)
+    s.vertexShader = s.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying float vNuance;')
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+  vNuance = 0.5;
+  #ifdef USE_INSTANCING
+    vNuance = iHash(floor(instanceMatrix[3].xz * 2.0) + 0.37);
+  #endif`,
+      )
+    s.fragmentShader = s.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vNuance;')
+      .replace(
+        '#include <color_fragment>',
+        `#include <color_fragment>
+  {
+    vec3 iTeinte = mix(vec3(1.1, 1.05, 0.78), vec3(0.86, 0.97, 1.08), vNuance);
+    float iVal = 0.84 + 0.3 * fract(vNuance * 7.31);
+    diffuseColor.rgb *= mix(vec3(1.0), iTeinte * iVal, ${force.toFixed(2)});
+  }`,
+      )
+  })
+}
+
+/**
+ * Les herbes de berge dans le vent et au fil de l'année : chaque lame ploie
+ * d'autant plus qu'elle monte (le pied reste planté), chaque touffe à son
+ * rythme ; elles blondissent à l'automne et restent debout, sèches et pâles,
+ * tout l'hiver — la paille des roseaux, comme au bord d'un vrai étang.
+ */
+export function balancerHerbes(m: THREE.Material): void {
+  greffer(m, 'saison:herbes', (s) => {
+    avecMonde(s)
+    s.vertexShader = s.vertexShader.replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>
+  {
+    float iTouffe = 0.5;
+    #ifdef USE_INSTANCING
+      iTouffe = iHash(floor(instanceMatrix[3].xz * 3.0));
+    #endif
+    float iPoids = pow(max(transformed.y, 0.0) / 1.2, 1.6);
+    float iAmp = (0.05 + 0.035 * uVent) * iPoids;
+    float iPhase = uTemps * (1.6 + 0.5 * iTouffe) + iTouffe * 30.0 + transformed.x * 2.0;
+    transformed.x += (sin(iPhase) * 0.8 + sin(iPhase * 2.3 + 1.7) * 0.3) * iAmp;
+    transformed.z += cos(iPhase * 0.8 + transformed.z * 3.0) * iAmp * 0.7;
+  }`,
+    )
+    s.fragmentShader = s.fragmentShader.replace(
+      '#include <color_fragment>',
+      `#include <color_fragment>
+  {
+    float iL = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
+    float iSec = clamp(max(uFeuillage * 0.75, uChute), 0.0, 1.0);
+    vec3 iPaille = vec3(0.62, 0.5, 0.3) * (0.55 + 1.6 * iL);
+    diffuseColor.rgb = mix(diffuseColor.rgb, iPaille, iSec * 0.85);
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.15, 1.2, 0.8), uTendre * (1.0 - iSec));
+  }`,
+    )
+  })
+}
+
+/**
+ * Un mur de brique qui a vécu : des pans plus sombres ou plus roses selon les
+ * fournées, des coulures verticales noircies par la pluie, verdies d'algues
+ * par endroits. Lu sur la position au monde : le long d'un mur (x + z, les
+ * murs sont d'équerre) et en hauteur, sans deux travées pareilles.
+ */
+export function vieillirBrique(m: THREE.Material): void {
+  greffer(m, 'vieux:brique', (s) => {
+    avecMonde(s)
+    // La hauteur dans la boîte (0 au pied de la fondation, 1 sous le chaperon) :
+    // les `Boites` sont un cube unité mis à l'échelle par instance.
+    s.vertexShader = s.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying float vDansMur;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n  vDansMur = position.y + 0.5;')
+    s.fragmentShader = s.fragmentShader
+      .replace('#include <common>', '#include <common>\nvarying float vDansMur;')
+      .replace(
+        '#include <emissivemap_fragment>',
+        `
+  {
+    float iS = vMonde.x + vMonde.z;
+    // Les fournées : des pans plus sombres, d'autres plus roses.
+    float iPan = iBruit(vec2(iS * 0.18, vMonde.y * 0.35)) * 0.7 + iBruit(vec2(iS * 0.7, vMonde.y * 1.3)) * 0.3;
+    diffuseColor.rgb *= mix(vec3(0.78, 0.78, 0.8), vec3(1.08, 1.0, 0.94), iPan);
+    // Les coulures, du chaperon vers le bas, chacune à sa longueur.
+    float iCol = iBruit(vec2(iS * 3.1, 0.5)) * iBruit(vec2(iS * 0.45, 2.5));
+    float iLong = 0.35 + 0.5 * iBruit(vec2(iS * 2.3, 7.1));
+    float iCoule = smoothstep(0.2, 0.5, iCol) * smoothstep(1.0 - iLong, 1.0, vDansMur) * (0.6 + 0.4 * iBruit(vec2(iS * 9.0, vMonde.y * 0.7)));
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.42, 0.44, 0.42), iCoule * 0.7);
+    // Le pied, qui boit l'eau du sol : plus sombre, verdi d'algues par plaques.
+    float iBord = 0.3 + 0.08 * iBruit(vec2(iS * 1.5, 3.3));
+    float iPied = 1.0 - smoothstep(iBord - 0.08, iBord + 0.04, vDansMur);
+    float iAlgue = smoothstep(0.45, 0.75, iBruit(vec2(iS * 1.3 + 11.0, vMonde.y * 2.2)) * 0.7 + iBruit(vec2(iS * 6.0, vMonde.y * 6.0)) * 0.3);
+    diffuseColor.rgb *= mix(vec3(1.0), vec3(0.62, 0.62, 0.58), iPied);
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.6, 0.78, 0.45), iAlgue * (0.2 + 0.5 * iPied));
+  }
+  #include <emissivemap_fragment>`,
+      )
+  })
+}

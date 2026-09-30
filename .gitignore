@@ -102,7 +102,7 @@ public/assets/lumiere/*
 !public/assets/jardin/
 public/assets/jardin/*
 !public/assets/jardin/jardin.glb
-!public/assets/jardin/erables-loin.glb
+!public/assets/jardin/vegetation.glb
 # Souche, branche et galets du ruisseau (Meshy + `tools/blender/build-ruisseau.py`) : commités, comme le hérisson.
 !public/assets/jardin/ruisseau.glb
 

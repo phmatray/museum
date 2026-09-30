@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { MUSEE } from '../musee.ts'
+import { presDeLEau, TABLIER } from '../jardin.ts'
 import { parkPlacements, surUneAllee } from '../park.ts'
 
 describe('parkPlacements', () => {
@@ -34,6 +35,17 @@ describe('parkPlacements', () => {
     for (const r of [...parc.sol, ...parc.dalles]) {
       const recouvre = r.x < MUSEE.width && r.x + r.width > 0 && r.z < MUSEE.depth && r.z + r.depth > 0
       expect(recouvre).toBe(false)
+    }
+  })
+
+  it('borde l’eau de roseaux et d’herbes, jamais dans une allée ni sur le pont', () => {
+    const especes = new Set(parc.berges.map((p) => p.espece))
+    expect([...especes].sort()).toEqual(['herbes', 'roseaux'])
+    expect(parc.berges.length).toBeGreaterThan(60)
+    for (const p of parc.berges) {
+      expect(presDeLEau(p.x, p.z, 2.2), `${p.espece} en (${p.x}, ${p.z})`).toBe(true)
+      expect(surUneAllee(parc.allees, p.x, p.z, p.rayon)).toBe(false)
+      expect(p.x > TABLIER.x - 0.5 && p.x < TABLIER.x + TABLIER.width + 0.5 && p.z > TABLIER.z - 0.5 && p.z < TABLIER.z + TABLIER.depth + 0.5).toBe(false)
     }
   })
 

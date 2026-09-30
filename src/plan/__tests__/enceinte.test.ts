@@ -12,6 +12,19 @@ const [x1, z1] = [terrain.x + terrain.width, terrain.z + terrain.depth]
 const dedans = (x: number, z: number) => x > terrain.x && x < x1 && z > terrain.z && z < z1
 
 describe('enceinte', () => {
+  it('habille le mur de plaques de lierre, au pied, côté parc, tournées vers lui', () => {
+    expect(mur.lierre.length).toBeGreaterThan(30)
+    for (const l of mur.lierre) {
+      // Au ras de la face intérieure : à 1 cm dans le terrain.
+      const bord = Math.min(l.x - terrain.x, x1 - l.x, l.z - terrain.z, z1 - l.z)
+      expect(bord, `${l.x}, ${l.z}`).toBeCloseTo(0.01, 5)
+      // Le modèle regarde +z : tourné de `rotation`, il regarde vers le centre du parc.
+      const [vx, vz] = [Math.sin(l.rotation), Math.cos(l.rotation)]
+      expect(vx * (terrain.x + terrain.width / 2 - l.x) + vz * (terrain.z + terrain.depth / 2 - l.z)).toBeGreaterThan(0)
+      expect(Math.abs(l.y! - hauteurDuParc(l.x, l.z))).toBeLessThan(0.1)
+    }
+  })
+
   it('ferme le parc sur ses quatre côtés, hors du terrain où l’on marche', () => {
     const long = (f: (b: (typeof mur.brique)[number]) => boolean) => mur.brique.filter(f).reduce((s, b) => s + Math.max(b.w, b.d), 0)
     expect(long((b) => b.z < terrain.z)).toBeGreaterThan(terrain.width * 0.85)
