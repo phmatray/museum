@@ -1330,6 +1330,20 @@
     "largeur": 1280,
     "hauteur": 1200
    }
+  },
+  {
+   "n": 95,
+   "ancre": "t-95",
+   "titre": "Le journal en ligne, et sa salle dans le musée",
+   "categorie": "site",
+   "statut": "en ligne · PR #187, #188",
+   "fait": true,
+   "pr": 187,
+   "image": {
+    "src": "img/95-chantier.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
   }
  ]
 }
