@@ -20,6 +20,10 @@ export const JARDIN = JARDIN_JSON as unknown as {
   zones: Rect[]
   etang: { niveau: number; contour: Point[] }
   ruisseau: { niveau: number; trace: [number, number, number][] }
+  souches: {
+    sujets: { x: number; z: number; lacet: number; echelle: number }[]
+    branche: { de: [number, number, number]; a: [number, number, number] }
+  }
   pont: { x: number; z: number; longueur: number; largeur: number }
   lanterne: { x: number; z: number }
   pas: Point[]
@@ -179,6 +183,13 @@ export const LEVRE = TRACE_RUISSEAU[INDICE_LEVRE]
 const SOUS_LA_RIVE = 0.25
 
 /**
+ * La lèvre de la cascade s'arrondit : son milieu avance de tant vers l'étang,
+ * ses bords restent sous la berge. Une lèvre droite, tirée au cordeau, trahissait
+ * la fin d'un ruban. Le même bombé que `eau()` de build-jardin.py.
+ */
+export const BOMBE_LEVRE = 0.16
+
+/**
  * Le RADIER en chaque point du tracé, 0..1 : l'eau se presse et écume où le lit
  * se resserre (moins de 2,2 m), et dans le dernier mètre et demi avant la
  * cascade ; elle dort, sombre, dans les mouilles larges.
@@ -218,7 +229,9 @@ export function rubanDuRuisseau(): Ruban {
     if (i) u += Math.hypot(x - t[i - 1][0], z - t[i - 1][1])
     const demi = w / 2 + SOUS_LA_RIVE
     for (const k of TRAVERS) {
-      position.push(x + nx * k * demi, JARDIN.ruisseau.niveau, z + nz * k * demi)
+      // (nz, −nx) : l'aval.
+      const bombe = i === t.length - 1 ? BOMBE_LEVRE * (1 - k * k) : 0
+      position.push(x + nx * k * demi + nz * bombe, JARDIN.ruisseau.niveau, z + nz * k * demi - nx * bombe)
       uv.push(u, k * demi)
       eau.push(RADIERS[i], (Math.abs(k) * demi) / (w / 2))
     }
@@ -237,6 +250,12 @@ export const TABLIER: Rect = (() => {
 })()
 
 const dansRect = (r: Rect, x: number, z: number) => x > r.x && x < r.x + r.width && z > r.z && z < r.z + r.depth
+
+/** Le pied d'une souche arrête la marche : un carré de 1,24 m à l'échelle 1, ses racines en débordent à peine. */
+export const OBSTACLES_SOUCHES: Rect[] = JARDIN.souches.sujets.map(({ x, z, echelle }) => {
+  const r = 0.62 * echelle
+  return { x: x - r, z: z - r, width: 2 * r, depth: 2 * r }
+})
 
 /** Pas de la grille des obstacles : assez fin pour suivre une berge, assez gros pour rester peu nombreux. */
 const MAILLE = 1
@@ -265,5 +284,5 @@ export const OBSTACLES_JARDIN: Rect[] = (() => {
       fermer(zone.x + zone.width)
     }
   }
-  return out
+  return [...out, ...OBSTACLES_SOUCHES]
 })()

@@ -103,6 +103,8 @@ public/assets/lumiere/*
 public/assets/jardin/*
 !public/assets/jardin/jardin.glb
 !public/assets/jardin/erables-loin.glb
+# Souche, branche et galets du ruisseau (Meshy + `tools/blender/build-ruisseau.py`) : commités, comme le hérisson.
+!public/assets/jardin/ruisseau.glb
 
 # Le hérisson du jardin (Meshy + `tools/blender/build-herisson.py`) : commité, la CI n'a ni Blender ni clé Meshy.
 !public/assets/faune/

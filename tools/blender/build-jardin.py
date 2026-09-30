@@ -6,7 +6,7 @@ Le jardin japonais du parc, généré par Blender en headless.
 
 Produit `public/assets/jardin/jardin.glb`, d'après le jardin japonais de
 Hasselt : un ruisseau qui serpente, passe sous un pont de bois et tombe en
-petite cascade dans un étang sombre bordé de galets ; une lanterne de pierre,
+petite cascade dans un étang sombre ; une lanterne de pierre,
 des pas japonais. Et les sujets que `src/scene/JardinLayer.tsx` instancie :
 érables du Japon rouge et vert, boules taillées (buis, azalée en fleur),
 rochers moussus et fougère.
@@ -113,6 +113,7 @@ BERGE_RUISSEAU = 1.3  # comme jardin.ts
 LEVRE_BERGE = 0.45
 FIL_DE_L_EAU = RUISSEAU - 0.03
 SOUS_LA_RIVE = 0.25
+BOMBE_LEVRE = 0.16  # comme jardin.ts
 
 
 def dist_segments(px, pz, a, b):
@@ -379,91 +380,25 @@ def eau(mat_eau, mat_cascade):
     bords = [((x + nx * r, z + nz * r), (x - nx * r, z - nz * r), (dx / l, dz / l))]
 
     # La cascade : une nappe qui tombe de la lèvre au niveau de l'étang, et son écume.
-    gl, dl, (ux, uz) = bords[-1]
-    profil = [(0.0, 0.0), (0.06, -0.015), (0.12, -0.05), (0.17, -0.08), (0.22, ETANG - RUISSEAU - 0.02)]
+    # Sa lèvre suit le bord bombé du ruban (`BOMBE_LEVRE`, jardin.ts) : le milieu
+    # avance vers l'étang, les bords restent sous la berge ; et l'eau s'y enroule
+    # en un profil arrondi avant de tomber, plus une arête tirée au cordeau.
+    ux, uz = bords[-1][2]
+    colonnes = [1 - 2 * j / 8 for j in range(9)]
+    profil = [(0.0, 0.0), (0.03, -0.004), (0.06, -0.014), (0.09, -0.03), (0.12, -0.05), (0.15, -0.072), (0.19, ETANG - RUISSEAU - 0.02)]
     g = Maillage()
-    for (a0, h0), (a1, h1) in zip(profil, profil[1:]):
-        g.face([
-            (gl[0] + ux * a0, -(gl[1] + uz * a0), RUISSEAU + h0), (dl[0] + ux * a0, -(dl[1] + uz * a0), RUISSEAU + h0),
-            (dl[0] + ux * a1, -(dl[1] + uz * a1), RUISSEAU + h1), (gl[0] + ux * a1, -(gl[1] + uz * a1), RUISSEAU + h1),
-        ], mat_cascade, uvs=[(0, a0 - h0), (1, a0 - h0), (1, a1 - h1), (0, a1 - h1)])
+
+    def point(k, a, h):
+        s = BOMBE_LEVRE * (1 - k * k) + a
+        return (x + nx * k * r + ux * s, -(z + nz * k * r + uz * s), RUISSEAU + h)
+
+    for k0, k1 in zip(colonnes, colonnes[1:]):
+        u0, u1 = (1 - k0) / 2, (1 - k1) / 2
+        for (a0, h0), (a1, h1) in zip(profil, profil[1:]):
+            g.face([point(k0, a0, h0), point(k1, a0, h0), point(k1, a1, h1), point(k0, a1, h1)],
+                   mat_cascade, uvs=[(u0, a0 - h0), (u1, a0 - h0), (u1, a1 - h1), (u0, a1 - h1)])
     cascade = g.objet("Jardin_Cascade")
     return [etang, cascade]
-
-
-def galets(gris, mousse, mouille):
-    """Un liseré de galets au fil de l'eau, tout autour de l'étang — sauf devant la cascade."""
-    rng = random.Random("galets")
-    fin = TRACE[indice_cascade()]
-    g = Maillage()
-    pts = CONTOUR
-    nrm = normales_contour(pts)
-    # Rééchantillonné tous les 42 cm le long du contour.
-    long = [0.0]
-    for i in range(1, len(pts) + 1):
-        long.append(long[-1] + math.dist(pts[i - 1], pts[i % len(pts)]))
-    s = 0.0
-    while s < long[-1]:
-        i = next(k for k in range(len(long) - 1) if long[k + 1] >= s)
-        u = (s - long[i]) / max(1e-9, long[i + 1] - long[i])
-        a, b = pts[i], pts[(i + 1) % len(pts)]
-        x, z = a[0] + u * (b[0] - a[0]), a[1] + u * (b[1] - a[1])
-        n = nrm[i]
-        s += rng.uniform(0.34, 0.48)
-        if math.hypot(x - fin[0], z - fin[1]) < 2.2:
-            continue
-        caillou(g, x + n[0] * 0.08, z + n[1] * 0.08, ETANG + 0.02, rng, gris if rng.random() < 0.6 else mousse)
-    # Le lit du ruisseau : des galets sous l'eau claire, serrés dans les radiers,
-    # clairsemés dans les mouilles, et un cordon de graviers au pied des berges.
-    rng = random.Random("lit")
-    for i in range(indice_cascade()):
-        (x0, z0, w), (x1, z1, _) = TRACE[i], TRACE[i + 1]
-        l = math.hypot(x1 - x0, z1 - z0)
-        ux, uz = (x1 - x0) / l, (z1 - z0) / l
-        serre = np.clip((2.4 - w) / 1.0, 0.25, 1)
-        for _ in range(sum(int(rng.random() < serre) for _ in range(3)) + 1):
-            a, c = rng.random() * l, rng.uniform(-1, 1) * (w / 2 - 0.08)
-            px, pz = x0 + ux * a - uz * c, z0 + uz * a + ux * c
-            fond = float(creux_ruisseau(np.array([px]), np.array([pz]))[0])
-            # À demi enterré : le dessus reste sous l'eau, sauf aux radiers, où il affleure.
-            t = rng.uniform(0.25, 0.65)
-            caillou(g, px, pz, fond - 0.03 * t, rng, mouille if rng.random() < 0.88 else mousse, taille=t)
-        for cote in (-1, 1):
-            if rng.random() < 0.55:
-                c = cote * (w / 2 - rng.uniform(0.0, 0.12))
-                a = rng.random() * l
-                px, pz = x0 + ux * a - uz * c, z0 + uz * a + ux * c
-                fond = float(creux_ruisseau(np.array([px]), np.array([pz]))[0])
-                caillou(g, px, pz, fond - 0.02, rng, mouille if rng.random() < 0.9 else mousse, taille=rng.uniform(0.3, 0.5))
-    return g.objet("Jardin_Galets", lisse=math.radians(60))
-
-
-def caillou(g, x, z, h, rng, mat, taille=1.0):
-    """Un galet : un octaèdre subdivisé à la main, bosselé."""
-    rx, ry, rz = rng.uniform(0.18, 0.27) * taille, rng.uniform(0.13, 0.2) * taille, rng.uniform(0.08, 0.14) * taille
-    a = rng.uniform(0, math.pi)
-    ca, sa = math.cos(a), math.sin(a)
-    anneaux = [(-1.0, 0.0), (-0.55, 0.8), (0.1, 1.0), (0.7, 0.65), (1.0, 0.0)]
-    n = 7
-    sommets = []
-    for hz, r in anneaux:
-        anneau = []
-        for k in range(n if r > 0 else 1):
-            t = 2 * math.pi * k / n
-            j = rng.uniform(0.85, 1.12) if r > 0 else 1
-            lx, ly = r * math.cos(t) * rx * j, r * math.sin(t) * ry * j
-            anneau.append((x + lx * ca - ly * sa, -z + (lx * sa + ly * ca), h + hz * rz))
-        sommets.append(anneau)
-    for r0, r1 in zip(sommets, sommets[1:]):
-        if len(r0) == 1:
-            for k in range(n):
-                g.face([r0[0], r1[(k + 1) % n], r1[k]], mat)
-        elif len(r1) == 1:
-            for k in range(n):
-                g.face([r0[k], r0[(k + 1) % n], r1[0]], mat)
-        else:
-            for k in range(n):
-                g.face([r0[k], r0[(k + 1) % n], r1[(k + 1) % n], r1[k]], mat)
 
 
 # ── Le pont, la lanterne, les pas japonais ─────────────────────────────────
@@ -927,8 +862,6 @@ def construire():
     sol = matiere("Jardin_Sol", (0.25, 0.4, 0.12), 1.0)
     eau_ = matiere("Jardin_Eau", (0.02, 0.05, 0.035), 0.05)
     cascade_ = matiere("Jardin_Cascade", (0.9, 0.95, 0.95), 0.3)
-    gris = matiere("Jardin_Galet", (0.3, 0.29, 0.27), 0.85)
-    mousse = matiere("Jardin_Galet_Moussu", (0.2, 0.24, 0.13), 0.95)
     bois = matiere("Jardin_Bois", (0.2, 0.13, 0.08), 0.75)
     granit = matiere("Jardin_Granit", (0.47, 0.46, 0.42), 0.9)
     lueur = matiere("Jardin_Lueur", (0.9, 0.8, 0.6), 0.6, emission=(1.0, 0.72, 0.4), force=0.6)
@@ -939,8 +872,8 @@ def construire():
 
     terrain(sol)
     eau(eau_, cascade_)
-    # Les galets du lit, mouillés : plus sombres, plus lisses que ceux de l'étang.
-    galets(gris, mousse, matiere("Jardin_Galet_Mouille", (0.13, 0.12, 0.1), 0.45))
+    # Les galets de l'étang et du lit ne sont plus taillés ici : les galets de
+    # rivière Meshy de ruisseau.glb, instanciés par `RuisseauLayer`, les remplacent.
     pont(bois, granit)
     lanterne(granit, lueur)
     pas_japonais(granit)

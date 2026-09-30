@@ -27,6 +27,15 @@ export interface ParkAssets {
   especes: ReadonlyMap<EspeceParc, readonly ParkPiece[]>
   /** Le décor fixe du jardin (`Jardin_*` de jardin.glb) : sol creusé, eau, pont, lanterne. */
   jardin: THREE.Object3D[]
+  /** Le lit du ruisseau (`ruisseau.glb`, à l'origine, pied à 0) : la souche, la branche, les sept galets. */
+  ruisseau: PiecesDuRuisseau
+}
+
+export interface PiecesDuRuisseau {
+  souche: ParkPiece[]
+  branche: ParkPiece[]
+  /** Un lot par modèle de galet ; tous partagent le même matériau (la planche Meshy). */
+  galets: ParkPiece[][]
 }
 
 /**
@@ -50,6 +59,7 @@ const NOEUDS: Record<EspeceParc, [fichier: string, noeud: string]> = {
 /** Les sujets vus de loin (`build-erables-loin.py`) : même nœud, autre fichier. */
 const LOIN: Partial<Record<EspeceParc, string>> = { 'erable-rouge': 'src_erable_rouge', 'erable-vert': 'src_erable_vert' }
 const FICHIER_LOIN = 'jardin/erables-loin.glb'
+const FICHIER_RUISSEAU = 'jardin/ruisseau.glb'
 
 let promesse: Promise<ParkAssets> | null = null
 
@@ -58,7 +68,7 @@ export function parkAssetsResource(base: string = import.meta.env.BASE_URL): Pro
   promesse ??= charger(base).catch((erreur: unknown) => {
     // Le musée reste visitable sans ses arbres : le parc sort en pelouse nue.
     console.error('parc indisponible', erreur)
-    return { especes: new Map(), jardin: [] }
+    return { especes: new Map(), jardin: [], ruisseau: { souche: [], branche: [], galets: [] } }
   })
   return promesse
 }
@@ -68,7 +78,7 @@ async function charger(base: string): Promise<ParkAssets> {
   const draco = new DRACOLoader()
   draco.setDecoderPath(`${base}draco/`)
   gltf.setDRACOLoader(draco)
-  const fichiers = [...new Set([...Object.values(NOEUDS).map(([f]) => f), FICHIER_LOIN])]
+  const fichiers = [...new Set([...Object.values(NOEUDS).map(([f]) => f), FICHIER_LOIN, FICHIER_RUISSEAU])]
   const scenes = new Map(await Promise.all(fichiers.map(async (f) => [f, (await gltf.loadAsync(`${base}assets/${f}`)).scene] as const)))
   draco.dispose()
   const especes = new Map<EspeceParc, readonly ParkPiece[]>()
@@ -98,7 +108,13 @@ async function charger(base: string): Promise<ParkAssets> {
     }
   }
   const jardin = scenes.get('jardin/jardin.glb')?.children.filter((o) => o.name.startsWith('Jardin_')) ?? []
-  return { especes, jardin }
+  const lit = scenes.get(FICHIER_RUISSEAU)
+  const pieces = (nom: string): ParkPiece[] => {
+    const noeud = lit?.getObjectByName(nom)
+    return noeud === undefined ? [] : [...fusionParMateriau(noeud)].map(([material, geometry]) => ({ material, geometry }))
+  }
+  const ruisseau = { souche: pieces('src_souche'), branche: pieces('src_branche'), galets: Array.from({ length: 7 }, (_, k) => pieces(`src_galet_${k + 1}`)) }
+  return { especes, jardin, ruisseau }
 }
 
 /** Les maillages de `noeud` fusionnés par matériau, transformations cuites dans son repère. */

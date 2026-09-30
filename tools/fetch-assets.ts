@@ -217,6 +217,16 @@ const ARCHITECTURE = [
     usage: 'étang, ruisseau, pont, lanterne, érables du Japon et boules taillées du parc',
   },
   {
+    id: 'ruisseau',
+    source:
+      'Meshy (généré par IA) : images Nano Banana Pro puis image → 3D (textures PBR) ; prompts : ' +
+      '« A single isolated old willow tree stump torn from a riverbank, photographed for a 3D scan: a short broad trunk base about 1.4 metres wide and 60 cm tall, its top broken and rotted into a jagged hollow, thick gnarled exposed roots spreading out and down like fingers gripping a clump of dark earth, the whole stump densely covered in thick vivid green cushion moss, patches of pale grey-green and yellow crustose lichen on the bark… » et ' +
+      '« Seven separate smooth rounded river stones laid out apart from each other in a loose row… a speckled grey granite egg-shaped cobble, a white-and-grey quartz pebble with veins, a flat dark slate-blue schist pebble with fine layers, a rusty ochre sandstone round stone, a near-black basalt oval, a pale beige limestone pebble, a greenish grey banded pebble. All worn smooth by water, slightly glossy damp surfaces… ». ' +
+      'Mis à l’échelle, séparés, couchés et allégés par `tools/blender/build-ruisseau.py`, qui modèle aussi la branche morte',
+    licence: 'généré pour le dépôt (conditions de Meshy)',
+    usage: 'la vieille souche moussue des berges du ruisseau, la branche tombée en travers du courant, les galets de rivière du lit et du bord de l’étang',
+  },
+  {
     id: 'salle-honneur',
     source: "`tools/blender/build-salle-honneur.py`, d'après l'étage noble de la Casa Batlló de Gaudí",
     licence: 'œuvre originale du dépôt',
