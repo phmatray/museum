@@ -56,7 +56,7 @@ export class Moteur {
   private readonly jour: GainNode
   private readonly nuit: GainNode
   private readonly ronronneur: { panner: PannerNode; gain: GainNode }
-  private readonly herisson: PannerNode
+  private readonly herissons: PannerNode[]
   private readonly averse: { filtre: BiquadFilterNode; gain: GainNode }
   private readonly horloge: PannerNode
   private readonly tableau: PannerNode
@@ -121,9 +121,12 @@ export class Moteur {
     this.ronronneur = { panner: this.panner([0, -100, 0], gainRonron, 0.4), gain: gainRonron }
     this.sources.push(ronron(ctx, this.ronronneur.panner))
 
-    // Le hérisson : placé (HRTF), mais la distance est dans `volumeFroissement`, pas dans le panner.
-    this.herisson = this.panner([0, -100, 0], this.dehors, 1)
-    this.herisson.rolloffFactor = 0
+    // Les hérissons : deux voix placées (HRTF), mais la distance est dans `volumeFroissement`, pas dans le panner.
+    this.herissons = [0, 1].map(() => {
+      const p = this.panner([0, -100, 0], this.dehors, 1)
+      p.rolloffFactor = 0
+      return p
+    })
 
     const filtre = ctx.createBiquadFilter()
     filtre.type = 'lowpass'
@@ -228,12 +231,16 @@ export class Moteur {
     pas(this.ctx, this.pasBus, this.ctx.currentTime + 0.01, matiere, force)
   }
 
-  /** Le hérisson froisse l'herbe en (x, y, z) ; rien s'il est trop loin pour qu'on l'entende. */
-  froisser([x, y, z]: Vec, force = 1) {
+  /**
+   * Un hérisson froisse l'herbe en (x, y, z) ; rien s'il est trop loin pour
+   * qu'on l'entende. `voix` : 0 ou 1, une par hérisson entendu (les deux plus
+   * proches, au choix de `FauneLayer`), chacune placée où il est.
+   */
+  froisser([x, y, z]: Vec, force = 1, voix = 0) {
     const [ox, , oz] = this.position
     const g = volumeFroissement(Math.hypot(x - ox, z - oz)) * force
     if (g <= 0) return
-    const p = this.herisson
+    const p = this.herissons[voix] ?? this.herissons[0]
     p.positionX.value = x; p.positionY.value = y; p.positionZ.value = z
     froissement(this.ctx, p, this.ctx.currentTime + 0.01, g)
   }
