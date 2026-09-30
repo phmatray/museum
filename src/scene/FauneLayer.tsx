@@ -22,7 +22,7 @@ import { avancerOiseaux, oiseauxInitiaux, perchoirs, type Oiseau, type Perchoir,
 import { generateur, parkPlacements } from '../plan/park'
 import { hauteurDuParc, solDuParc } from '../plan/relief'
 import { PARC as ZONE_PARC } from '../plan/visibilite'
-import { DEMI_LONGUEUR, ECHELLE_HERISSON, VITESSE_HERISSON, activite, avancerHerisson, herissonInitial, type EtatHerisson, type Herisson as EtatDuHerisson } from '../domain/herisson'
+import { ECHELLE_HERISSON, FAMILLE, avancerFamille, familleInitiale, type EtatHerisson, type Herisson as EtatDuHerisson } from '../domain/herisson'
 import type { Saison } from '../domain/saisons'
 import { useGameStore } from '../stores/gameStore'
 import { moteurCourant, useSon } from '../audio/etat'
@@ -40,7 +40,7 @@ const VARIETE = { kohaku: 0, ogon: 1, showa: 2 } as const
  */
 const dev = {
   gel: false, envol: false, oiseaux: [] as Oiseau[], perchoirs: [] as Perchoir[], carpes: [] as Koi[],
-  herisson: null as EtatDuHerisson | null, placer: null as Partial<EtatDuHerisson> | null,
+  herissons: [] as EtatDuHerisson[], placer: new Map<number, Partial<EtatDuHerisson>>(),
 }
 if (import.meta.env.DEV && typeof window !== 'undefined') {
   ;(window as unknown as { __FAUNE__?: unknown }).__FAUNE__ = {
@@ -49,10 +49,12 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
     oiseaux: () => dev.oiseaux,
     perchoirs: () => dev.perchoirs,
     carpes: () => dev.carpes,
-    herisson: () => dev.herisson,
-    /** `placerHerisson(x, z, cap, 'flaire' | 'marche' | 'boule', t)` : pour une photo ; `t` secondes dans cet état (une heure). */
-    placerHerisson: (x: number, z: number, cap = 0, etat: EtatHerisson = 'flaire', t = 3600) => {
-      dev.placer = { x, z, cap, etat, t, rentre: false, boule: etat === 'boule' ? 1 : 0, vitesse: etat === 'marche' ? VITESSE_HERISSON : 0, but: [x + Math.cos(cap) * 50, z + Math.sin(cap) * 50] }
+    /** La famille, dans l'ordre de `FAMILLE` : 0 la mère, 1 le petit (celui de #196), 2 la petite, 3 le vieux. */
+    herissons: () => dev.herissons,
+    herisson: (i = 1) => dev.herissons[i],
+    /** `placerHerisson(x, z, cap, 'flaire' | 'marche' | 'boule', t, i)` : pour une photo ; `t` secondes dans cet état (une heure) ; `i` son rang (le petit par défaut). */
+    placerHerisson: (x: number, z: number, cap = 0, etat: EtatHerisson = 'flaire', t = 3600, i = 1) => {
+      dev.placer.set(i, { x, z, cap, etat, t, rentre: false, flane: true, boule: etat === 'boule' ? 1 : 0, vitesse: etat === 'marche' ? FAMILLE[i].vitesse : 0, but: [x + Math.cos(cap) * 50, z + Math.sin(cap) * 50] })
     },
   }
 }
@@ -63,7 +65,7 @@ export function FauneLayer() {
       <Carpes />
       <Oiseaux />
       <Lucioles />
-      <Herisson />
+      <Herissons />
     </group>
   )
 }
@@ -584,26 +586,27 @@ function Lucioles() {
   return <points ref={points} geometry={geometrie} material={matiere} frustumCulled={false} />
 }
 
-// ── Le hérisson ───────────────────────────────────────────────────────────
+// ── Les hérissons ─────────────────────────────────────────────────────────
 
 /**
- * Le bébé hérisson (`domain/herisson.ts` décide où il va) : un seul maillage
+ * Les hérissons (`domain/herisson.ts` décide où va chacun) : un seul maillage
  * Meshy aux piquants modelés (`tools/blender/build-herisson.py`), le nez vers
- * +x, les pieds à 0. Ses trois gestes se font dans le vertex shader, sans
- * squelette ni cible de morphose à télécharger — `uGeste` :
+ * +x, les pieds à 0, instancié quatre fois — un seul appel de dessin pour la
+ * famille. Leurs trois gestes se font dans le vertex shader, sans squelette ni
+ * cible de morphose à télécharger — `aGeste`, par individu :
  * - x `boule` : le corps enroulé autour d'un axe transversal, le dos dehors,
  *   la tête et la croupe rentrées dessous (0 à 1) ;
  * - y `tete` : la tête qui tourne autour du cou, levée (> 0) ou au sol (< 0) ;
  * - z `pas` : les pattes en diagonale, avant gauche et arrière droite d'un
- *   côté, les deux autres de l'autre (−1 à 1, au rythme du trot).
- * Le dandinement et le rebond du corps, eux, sont dans sa matrice, à l'échelle
- * `ECHELLE_HERISSON` : tout ici est en coordonnées du modèle (15 cm).
- *
- * `eclat` : l'éclat des yeux et de la truffe mouillée, la nuit (0 le jour) —
- * un reflet minuscule, tourné vers qui le regarde, plus vif près d'un
- * lampadaire. Ni lumière, ni halo : on le découvre en s'approchant.
+ *   côté, les deux autres de l'autre (−1 à 1, au rythme du trot) ;
+ * - w `eclat` : l'éclat des yeux et de la truffe mouillée, la nuit (0 le
+ *   jour) — un reflet minuscule, tourné vers qui le regarde, plus vif près
+ *   d'un lampadaire. Ni lumière, ni halo : on le découvre en s'approchant.
+ * `aTeinte` : 0 le pelage brun des petits, 1 celui des adultes, plus clair et
+ * plus gris. Le dandinement, le rebond et la taille de chacun sont dans sa
+ * matrice d'instance : tout ici est en coordonnées du modèle (15 cm).
  */
-function matiereHerisson(m: THREE.MeshStandardMaterial, g: THREE.BufferGeometry, geste: { value: THREE.Vector4 }, eclat: { value: number }): void {
+function matiereHerisson(m: THREE.MeshStandardMaterial, g: THREE.BufferGeometry): void {
   g.computeBoundingBox()
   const [x0, x1, h] = [g.boundingBox!.min.x, g.boundingBox!.max.x, g.boundingBox!.max.y]
   const xc = (x0 + x1) / 2
@@ -615,23 +618,26 @@ function matiereHerisson(m: THREE.MeshStandardMaterial, g: THREE.BufferGeometry,
   for (let i = 0; i < p.count; i++) dessous = Math.min(dessous, Math.cos((p.getX(i) - xc) / neutre) * (0.012 + 0.6 * Math.max(0, p.getY(i))))
   const f = (v: number) => v.toFixed(5)
   m.onBeforeCompile = (shader) => {
-    shader.uniforms.uGeste = geste
-    shader.uniforms.uEclat = eclat
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>
-        uniform vec4 uGeste;
+        attribute vec4 aGeste;
+        attribute float aTeinte;
         varying vec3 vRepos;
+        varying float vEclat;
+        varying float vTeinte;
         vec2 tourne(vec2 v, float a) { return vec2(v.x * cos(a) - v.y * sin(a), v.x * sin(a) + v.y * cos(a)); }`)
       .replace('#include <beginnormal_vertex>', `
         vec3 objectNormal = normal;
         vec3 pH = position;
         vRepos = position;
+        vEclat = aGeste.w;
+        vTeinte = aTeinte;
         // Les pattes, sous 2,2 cm : ±9 mm en diagonale.
         float jambe = 1.0 - smoothstep(0.004, 0.022, pH.y);
-        pH.x += 0.009 * uGeste.z * jambe * sign(1e-5 - pH.z) * sign(pH.x - ${f(xc - 0.01)});
+        pH.x += 0.009 * aGeste.z * jambe * sign(1e-5 - pH.z) * sign(pH.x - ${f(xc - 0.01)});
         // La tête, devant le cou : 18° au plus.
         vec2 cou = vec2(${f(x1 - 0.055)}, ${f(0.42 * h)});
-        float a = 0.314 * uGeste.y * smoothstep(cou.x - 0.012, cou.x + 0.018, pH.x);
+        float a = 0.314 * aGeste.y * smoothstep(cou.x - 0.012, cou.x + 0.018, pH.x);
         pH.xy = cou + tourne(pH.xy - cou, a);
         objectNormal.xy = tourne(objectNormal.xy, a);
         // La boule.
@@ -639,17 +645,19 @@ function matiereHerisson(m: THREE.MeshStandardMaterial, g: THREE.BufferGeometry,
         float r = 0.012 + max(pH.y, 0.0) * 0.6;
         vec3 roule = vec3(sin(t) * r, cos(t) * r - (${f(dessous)}), pH.z * 1.05);
         vec3 nRoule = vec3(objectNormal.x * cos(t) + objectNormal.y * sin(t), -objectNormal.x * sin(t) + objectNormal.y * cos(t), objectNormal.z);
-        pH = mix(pH, roule, uGeste.x);
-        objectNormal = normalize(mix(objectNormal, nRoule, uGeste.x));`)
+        pH = mix(pH, roule, aGeste.x);
+        objectNormal = normalize(mix(objectNormal, nRoule, aGeste.x));`)
       .replace('#include <begin_vertex>', 'vec3 transformed = pH;')
     // La texture de Meshy est terne : sur la photo, la pointe crème des piquants tranche
     // sur leur base brun-noir, et le poil du visage est gris-brun. On éclaircit le clair.
     // Les yeux et la truffe, noirs sur la texture (relevés dans le GLB) : de petites
     // sphères autour de chacun, et seulement là où la texture est sombre.
+    // Les adultes : le même brun, passé, plus gris et un peu plus clair.
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
-        uniform float uEclat;
-        varying vec3 vRepos;`)
+        varying vec3 vRepos;
+        varying float vEclat;
+        varying float vTeinte;`)
       .replace('#include <map_fragment>', `#include <map_fragment>
         float lumH = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
         vec3 oeil = vec3(vRepos.x - ${f(x1 - 0.0225)}, vRepos.y - 0.027, abs(vRepos.z) - 0.0145);
@@ -657,7 +665,8 @@ function matiereHerisson(m: THREE.MeshStandardMaterial, g: THREE.BufferGeometry,
         float sombre = 1.0 - smoothstep(0.04, 0.1, lumH);
         float yeux = (1.0 - smoothstep(0.003, 0.0065, length(oeil))) * sombre;
         float nez = (1.0 - smoothstep(0.004, 0.008, length(truffe))) * sombre;
-        diffuseColor.rgb *= vec3(1.06, 1.0, 0.88) * (1.0 + 1.7 * smoothstep(0.07, 0.3, lumH));`)
+        diffuseColor.rgb *= vec3(1.06, 1.0, 0.88) * (1.0 + 1.7 * smoothstep(0.07, 0.3, lumH));
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(lumH * 2.0) * vec3(1.0, 0.96, 0.9), 0.3 * vTeinte * (1.0 - yeux - nez)) * (1.0 + 0.06 * vTeinte);`)
       // Mouillés : lisses.
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
         roughnessFactor = mix(roughnessFactor, 0.15, yeux);`)
@@ -665,9 +674,9 @@ function matiereHerisson(m: THREE.MeshStandardMaterial, g: THREE.BufferGeometry,
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         // La truffe, elle, n'a qu'un lustre : un point plus serré et plus faible — pas une perle.
         float face = max(dot(normal, normalize(vViewPosition)), 0.0);
-        totalEmissiveRadiance += vec3(1.0, 0.93, 0.8) * (uEclat * (yeux * face * face * face + 0.4 * nez * pow(face, 16.0)));`)
+        totalEmissiveRadiance += vec3(1.0, 0.93, 0.8) * (vEclat * (yeux * face * face * face + 0.4 * nez * pow(face, 16.0)));`)
   }
-  m.customProgramCacheKey = () => 'faune:herisson:eclat'
+  m.customProgramCacheKey = () => 'faune:herissons'
 }
 
 let herissonPromis: Promise<THREE.Mesh | null> | null = null
@@ -694,13 +703,13 @@ function useHerisson(): THREE.Mesh | null {
   return mesh
 }
 
-/** L'envie de sortir, maintenant : la nuit, pas l'hiver (il hiberne quand la pelouse s'éteint). */
-function envieDuHerisson(): number {
+/** Le soleil et l'hiver du moment : ils hibernent quand la pelouse s'éteint. */
+function heureDesHerissons(): [number, boolean] {
   const { ciel, saison } = useGameStore.getState()
-  return activite(ciel.elevation, saison.pelouse.terne > 0.5)
+  return [ciel.elevation, saison.pelouse.terne > 0.5]
 }
 
-/** Une graine par session : il n'est pas deux fois au même endroit. */
+/** Une graine par session : ils ne sont pas deux fois au même endroit. */
 const GRAINE_HERISSON = Math.floor(Math.random() * 2 ** 31)
 
 /** Sous les globes : ce qu'il reçoit des lampadaires à moins de 7 m (la flaque de `lueurs.ts`). */
@@ -714,89 +723,118 @@ function flaqueDesLampadaires(x: number, z: number): number {
 }
 
 /** Le froissement, s'il y a du son : le moteur n'existe qu'après un geste, et se tait coupé ou en pause. */
-function froisser(x: number, z: number, force: number) {
+function froisser(x: number, z: number, force: number, voix: number) {
   const m = moteurCourant()
   if (!m || !useSon.getState().actif || m.ctx.state !== 'running') return
-  m.froisser([x, solDuParc(x, z) + 0.05, z], force)
+  m.froisser([x, solDuParc(x, z) + 0.05, z], force, voix)
 }
 
-function Herisson() {
+/** On n'entend que les deux plus proches : quatre hérissons qui fouillent, ce serait un vacarme. */
+const VOIX = 2
+
+function Herissons() {
   const mesh = useHerisson()
-  return mesh && <HerissonVivant modele={mesh} />
+  return mesh && <HerissonsVivants modele={mesh} />
 }
 
-function HerissonVivant({ modele }: { modele: THREE.Mesh }) {
-  const etat = useRef<EtatDuHerisson>(herissonInitial(envieDuHerisson(), GRAINE_HERISSON))
-  const corps = useRef<THREE.Group>(null)
-  const horloge = useRef({ pas: 0, flair: 0 })
-  const geste = useMemo(() => ({ value: new THREE.Vector4() }), [])
-  const eclat = useMemo(() => ({ value: 0 }), [])
+const M4 = new THREE.Matrix4()
+const Q4 = new THREE.Quaternion()
+const V3 = new THREE.Vector3()
+const S3 = new THREE.Vector3()
+const RIEN = new THREE.Matrix4().makeScale(0, 0, 0)
+
+function HerissonsVivants({ modele }: { modele: THREE.Mesh }) {
+  const n = FAMILLE.length
+  const etat = useRef<EtatDuHerisson[]>(familleInitiale(...heureDesHerissons(), GRAINE_HERISSON))
+  const lot = useRef<THREE.InstancedMesh>(null)
+  // Chacun son horloge, décalée : ils ne flairent pas en chœur.
+  const horloges = useRef(FAMILLE.map((_, i) => ({ pas: i * 1.3, flair: i * 2.7 })))
+  const [geste, teinte] = useMemo(() => {
+    const geste = new THREE.InstancedBufferAttribute(new Float32Array(4 * n), 4)
+    const teinte = new THREE.InstancedBufferAttribute(new Float32Array(FAMILLE.map((i) => i.teinte)), 1)
+    geste.setUsage(THREE.DynamicDrawUsage)
+    return [geste, teinte]
+  }, [n])
   useEffect(() => {
     /* eslint-disable react-hooks/immutability */
-    matiereHerisson(modele.material as THREE.MeshStandardMaterial, modele.geometry, geste, eclat)
+    modele.geometry.setAttribute('aGeste', geste)
+    modele.geometry.setAttribute('aTeinte', teinte)
+    matiereHerisson(modele.material as THREE.MeshStandardMaterial, modele.geometry)
     ;(modele.material as THREE.Material).needsUpdate = true
-    // Roulé, il déborde de sa boîte au repos : on ne le coupe pas au bord de l'écran.
-    modele.frustumCulled = false
-    modele.userData.zone = ZONE_PARC
     /* eslint-enable react-hooks/immutability */
-  }, [modele, geste, eclat])
+  }, [modele, geste, teinte])
 
   useFrame(({ camera }, delta) => {
-    const g = corps.current
-    if (!g) return
+    const m = lot.current
+    if (!m) return
     const dt = dev.gel ? 0 : Math.min(delta, 0.1)
-    if (dev.placer) {
-      etat.current = { ...etat.current, ...dev.placer }
-      dev.placer = null
+    let f = etat.current
+    if (dev.placer.size) {
+      f = f.map((h, i) => (dev.placer.has(i) ? { ...h, ...dev.placer.get(i) } : h))
+      dev.placer.clear()
     }
     const sol = hauteurDuParc(camera.position.x, camera.position.z)
     const visiteur = camera.position.y - sol < 3 ? { x: camera.position.x, z: camera.position.z } : null
-    // Figé pour une photo : il garde la pose qu'on lui a donnée, même sous le nez de l'objectif.
-    const h = (etat.current = dev.gel ? etat.current : avancerHerisson(etat.current, dt, visiteur, envieDuHerisson()))
-    dev.herisson = h
-    g.visible = h.etat !== 'nid'
-    // L'herbe se couche sous lui (sinon elle le noie) ; au nid, plus rien.
-    FOULE.value.set(h.x, h.z, g.visible ? 0.3 * ECHELLE_HERISSON : 0)
-    if (!g.visible) return
-
-    // Le trot : quatre à cinq foulées par seconde à son pas, des pattes de deux centimètres (à quinze centimètres).
-    const c = horloge.current
-    const foulee = Math.floor(c.pas / Math.PI)
-    c.pas += dt * h.vitesse * (2 * Math.PI / (0.028 * ECHELLE_HERISSON))
-    c.flair += dt
-    // Il froisse l'herbe : à chaque pas qu'il trotte, et par à-coups quand il fouille du museau.
-    const bruisse = h.etat === 'marche' ? Math.floor(c.pas / Math.PI) !== foulee : h.etat === 'flaire' && Math.random() < dt * 2.5
-    if (bruisse && dt > 0) froisser(h.x, h.z, h.etat === 'marche' ? 1 : 0.6)
-    const marche = Math.min(1, h.vitesse / 0.08)
-    const roule = THREE.MathUtils.smoothstep(h.boule, 0, 1)
-    const deroule = 1 - roule
-    // Il flaire : le museau monte et descend vite, par salves, la tête plus basse entre deux.
-    const flaire = h.etat === 'flaire' ? 1 : 0.3 * marche
-    const salve = 0.5 + 0.5 * Math.sin(c.flair * 1.3)
-    const tete = flaire * (0.35 * Math.sin(c.flair * 17) * salve - 0.3 + 0.4 * Math.sin(c.flair * 0.7))
-    geste.value.set(roule, tete * deroule, Math.sin(c.pas) * marche * deroule, 0)
-
-    // Posé sur la pente, le nez vers son cap.
-    const [x, z, cap] = [h.x, h.z, h.cap]
-    const [ax, az] = [Math.cos(cap) * DEMI_LONGUEUR, Math.sin(cap) * DEMI_LONGUEUR]
-    const tangage = Math.atan2(solDuParc(x + ax, z + az) - solDuParc(x - ax, z - az), 2 * DEMI_LONGUEUR)
-    const devers = Math.atan2(solDuParc(x - az, z + ax) - solDuParc(x + az, z - ax), 2 * DEMI_LONGUEUR)
-    const dandine = 0.07 * Math.sin(c.pas) * marche * deroule
-    const bond = 0.0025 * ECHELLE_HERISSON * Math.abs(Math.sin(c.pas)) * marche * deroule
-    g.position.set(x, solDuParc(x, z) + bond, z)
-    g.scale.setScalar(ECHELLE_HERISSON)
-    E.set(devers + dandine, -cap, tangage, 'YXZ')
-    g.quaternion.setFromEuler(E)
-
-    // L'éclat des yeux, la nuit : un soupçon sous la lune, vif sous un lampadaire allumé.
+    // Figés pour une photo : ils gardent la pose qu'on leur a donnée, même sous le nez de l'objectif.
+    f = etat.current = dev.gel ? f : avancerFamille(f, dt, visiteur, ...heureDesHerissons())
+    dev.herissons = f
+    // Les voix : les deux plus proches du visiteur, dehors.
+    const proches = f.filter((h) => h.etat !== 'nid').sort((a, b) => Math.hypot(a.x - camera.position.x, a.z - camera.position.z) - Math.hypot(b.x - camera.position.x, b.z - camera.position.z)).slice(0, VOIX)
     const nuit = 1 - useGameStore.getState().ciel.jour
+
     /* eslint-disable react-hooks/immutability */
-    eclat.value = nuit * 0.15 + 0.6 * LAMPES.x * flaqueDesLampadaires(x, z)
+    for (let i = 0; i < n; i++) {
+      const h = f[i]
+      const { echelle, demiLongueur } = FAMILLE[h.qui]
+      const dehors = h.etat !== 'nid'
+      // L'herbe se couche sous lui (sinon elle le noie) ; au nid, plus rien.
+      FOULE.value[i].set(h.x, h.z, dehors ? 0.3 * echelle : 0)
+      if (!dehors) {
+        m.setMatrixAt(i, RIEN)
+        continue
+      }
+      // Le trot : quatre à cinq foulées par seconde à son pas, des pattes de deux centimètres (à quinze centimètres).
+      const c = horloges.current[i]
+      const foulee = Math.floor(c.pas / Math.PI)
+      c.pas += dt * h.vitesse * (2 * Math.PI / (0.028 * echelle))
+      c.flair += dt
+      // Il froisse l'herbe : à chaque pas qu'il trotte, et par à-coups quand il fouille du museau.
+      const voix = proches.indexOf(h)
+      const bruisse = h.etat === 'marche' ? Math.floor(c.pas / Math.PI) !== foulee : h.etat === 'flaire' && Math.random() < dt * 2.5
+      if (voix >= 0 && bruisse && dt > 0) froisser(h.x, h.z, (h.etat === 'marche' ? 1 : 0.6) * Math.sqrt(echelle / ECHELLE_HERISSON), voix)
+      const marche = Math.min(1, h.vitesse / 0.08)
+      const roule = THREE.MathUtils.smoothstep(h.boule, 0, 1)
+      const deroule = 1 - roule
+      // Il flaire : le museau monte et descend vite, par salves, la tête plus basse entre deux.
+      const flaire = h.etat === 'flaire' ? 1 : 0.3 * marche
+      const salve = 0.5 + 0.5 * Math.sin(c.flair * 1.3)
+      const tete = flaire * (0.35 * Math.sin(c.flair * 17) * salve - 0.3 + 0.4 * Math.sin(c.flair * 0.7))
+      // L'éclat des yeux, la nuit : un soupçon sous la lune, vif sous un lampadaire allumé.
+      const eclat = nuit * 0.15 + 0.6 * LAMPES.x * flaqueDesLampadaires(h.x, h.z)
+      geste.setXYZW(i, roule, tete * deroule, Math.sin(c.pas) * marche * deroule, eclat)
+
+      // Posé sur la pente, le nez vers son cap.
+      const [x, z, cap] = [h.x, h.z, h.cap]
+      const [ax, az] = [Math.cos(cap) * demiLongueur, Math.sin(cap) * demiLongueur]
+      const tangage = Math.atan2(solDuParc(x + ax, z + az) - solDuParc(x - ax, z - az), 2 * demiLongueur)
+      const devers = Math.atan2(solDuParc(x - az, z + ax) - solDuParc(x + az, z - ax), 2 * demiLongueur)
+      const dandine = 0.07 * Math.sin(c.pas) * marche * deroule
+      const bond = 0.0025 * echelle * Math.abs(Math.sin(c.pas)) * marche * deroule
+      E.set(devers + dandine, -cap, tangage, 'YXZ')
+      m.setMatrixAt(i, M4.compose(V3.set(x, solDuParc(x, z) + bond, z), Q4.setFromEuler(E), S3.setScalar(echelle)))
+    }
+    m.instanceMatrix.needsUpdate = true
+    geste.needsUpdate = true
     /* eslint-enable react-hooks/immutability */
   })
+  // Roulés, ils débordent de leur boîte au repos : on ne les coupe pas au bord de l'écran.
   return (
-    <group ref={corps}>
-      <primitive object={modele} />
-    </group>
+    <instancedMesh
+      ref={lot}
+      args={[modele.geometry, undefined, n]}
+      material={modele.material}
+      frustumCulled={false}
+      userData={{ zone: ZONE_PARC }}
+    />
   )
 }

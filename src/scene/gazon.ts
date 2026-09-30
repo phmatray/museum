@@ -239,11 +239,12 @@ export interface MatiereGazon {
 }
 
 /**
- * Là où l'herbe est foulée par une petite bête (le hérisson de `FauneLayer`) :
- * (x, z, rayon) ; rayon 0, nulle part. Les brins s'y couchent : sans cela,
- * quinze centimètres de hérisson se noient dans vingt centimètres d'herbe.
+ * Là où l'herbe est foulée par de petites bêtes (les quatre hérissons de
+ * `FauneLayer`) : (x, z, rayon) chacun ; rayon 0, nulle part. Les brins s'y
+ * couchent : sans cela, vingt centimètres de hérisson se noient dans vingt
+ * centimètres d'herbe.
  */
-export const FOULE = { value: new THREE.Vector3() }
+export const FOULE = { value: Array.from({ length: 4 }, () => new THREE.Vector3()) }
 
 /** Le brin en Lambert : diffus seul, aucun reflet, éclairé par le soleil et le ciel de l'heure. */
 export function matiereGazon(sol: CarteDuSol, { cote, rayon, largeur, hauteur }: ReglageGazon): MatiereGazon {
@@ -266,7 +267,7 @@ export function matiereGazon(sol: CarteDuSol, { cote, rayon, largeur, hauteur }:
 uniform vec2 uCam;
 uniform float uTemps, uCote, uRayon, uLargeur;
 uniform vec2 uHauteur;
-uniform vec3 uFoule;
+uniform vec3 uFoule[4];
 uniform vec4 uCadre;
 uniform sampler2D uSol;
 uniform float uEnneige, uVent;
@@ -285,7 +286,7 @@ varying float vTeinte;`)
   float fondu = 1.0 - smoothstep(uRayon * 0.6, uRayon, distance(p, uCam));
   // Sous la neige, on ne voit plus que la pointe des plus hauts brins.
   float h = mix(uHauteur.x, uHauteur.y, aBrin.w * aBrin.w) * garde * fondu * (1.0 - 0.85 * uEnneige);
-  h *= 1.0 - 0.75 * step(0.001, uFoule.z) * (1.0 - smoothstep(uFoule.z * 0.5, uFoule.z, distance(p, uFoule.xy)));
+  for (int i = 0; i < 4; i++) h *= 1.0 - 0.75 * step(0.001, uFoule[i].z) * (1.0 - smoothstep(uFoule[i].z * 0.5, uFoule[i].z, distance(p, uFoule[i].xy)));
   float t = position.y;
   float a = aBrin.z * 43.0;
   vec2 travers = vec2(cos(a), sin(a));
