@@ -18,8 +18,11 @@
  */
 import { execFileSync } from 'node:child_process'
 import { mkdirSync, writeFileSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { basename, dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { NodeIO } from '@gltf-transform/core'
+import { ALL_EXTENSIONS } from '@gltf-transform/extensions'
+import draco3d from 'draco3d'
 import sharp from 'sharp'
 
 import { boitesDesCimaises } from '../src/plan/cimaises.ts'
@@ -70,6 +73,38 @@ const residus = MUSEE.levels.flatMap((l) => plafonds(MUSEE, l.id).resille)
 // Les cimaises modulables (cimaises.ts) font écran comme le mobilier.
 const cimaises = MUSEE.levels.flatMap((l) => boitesDesCimaises(MUSEE, l.id).panneaux)
 
+/**
+ * La teinte moyenne des cartes KTX2 des modèles, que Blender ne sait pas lire
+ * (`KHR_texture_basisu`, requis depuis `compresser-glb.ts`). Pour la cuisson,
+ * seule compte la couleur que la lumière emporte en rebondissant.
+ */
+const TEINTES_MOYENNES: Record<string, [number, number, number]> = {
+  Escalier_Marbre: [0.82, 0.8, 0.77],
+  Escalier_Griotte: [0.42, 0.11, 0.09],
+}
+
+/**
+ * Le chemin d'un modèle que Blender peut importer : lui-même, ou, s'il porte des
+ * cartes KTX2, une copie dans `.lumiere/` sans cartes ni Draco, chaque matière
+ * texturée ramenée à sa teinte moyenne.
+ */
+async function pourBlender(chemin: string): Promise<string> {
+  const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'draco3d.decoder': await draco3d.createDecoderModule() })
+  const doc = await io.read(chemin)
+  const racine = doc.getRoot()
+  if (!racine.listExtensionsUsed().some((e) => e.extensionName === 'KHR_texture_basisu')) return chemin
+  for (const m of racine.listMaterials()) {
+    const t = TEINTES_MOYENNES[m.getName()]
+    if (m.getBaseColorTexture() && !t) throw new Error(`teinte moyenne inconnue pour ${m.getName()} (TEINTES_MOYENNES)`)
+    if (t) m.setBaseColorFactor([...t, m.getBaseColorFactor()[3]])
+  }
+  for (const t of racine.listTextures()) t.dispose()
+  for (const e of racine.listExtensionsUsed()) if (e.extensionName === 'KHR_texture_basisu' || e.extensionName === 'KHR_draco_mesh_compression') e.dispose()
+  const copie = resolve(TRAVAIL, basename(chemin))
+  await io.write(copie, doc)
+  return copie
+}
+
 mkdirSync(TRAVAIL, { recursive: true })
 writeFileSync(
   resolve(TRAVAIL, 'scene.json'),
@@ -80,7 +115,7 @@ writeFileSync(
     lanterneaux,
     mobilier: MOBILIER.filter((m) => m.surface !== 'parc:terrain'),
     modeles,
-    glb: ['nef', 'escalier', 'salle-honneur', 'batllo', 'mobilier'].map((n) => resolve(ROOT, `public/assets/architecture/${n}.glb`)),
+    glb: await Promise.all(['nef', 'escalier', 'salle-honneur', 'batllo', 'mobilier'].map((n) => pourBlender(resolve(ROOT, `public/assets/architecture/${n}.glb`)))),
     sortie: resolve(TRAVAIL, 'atlas.png'),
     echantillons: Number(process.env.ECHANTILLONS ?? 128),
   }),

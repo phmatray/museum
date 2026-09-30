@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 
 import { MUSEE } from '../musee'
-import { meshLevel } from '../mesh'
-import { bandesDuSol, parementDuHall, plinthes } from '../parement'
+import { meshLevel, type Box } from '../mesh'
+import { CORNICHE, bandesDuSol, corniches, parementDuHall, plinthes } from '../parement'
 
 const hall = MUSEE.levels[0].rooms.find((r) => r.id === 'hall')!
 
@@ -50,6 +50,35 @@ describe('plinthes', () => {
       for (const o of MUSEE.levels[level].openings.filter((o) => o.kind === 'door' || o.kind === 'entrance'))
         expect(p.some((b) => Math.abs(b.x - o.x) < b.w / 2 - 0.01 && Math.abs(b.z - o.z) < b.d / 2 - 0.01 && Math.abs(b.x - o.x) + Math.abs(b.z - o.z) < 0.5)).toBe(false)
     }
+  })
+})
+
+describe('corniches', () => {
+  const chevauche = (a: Box, b: Box) =>
+    Math.abs(a.x - b.x) < (a.w + b.w) / 2 - 1e-6 && Math.abs(a.y - b.y) < (a.h + b.h) / 2 - 1e-6 && Math.abs(a.z - b.z) < (a.d + b.d) / 2 - 1e-6
+
+  it('ferment le haut de chaque mur de galerie, sous le plafond, sans une boîte dans une autre', () => {
+    for (const level of MUSEE.levels) {
+      const c = corniches(MUSEE, level.id)
+      const galeries = level.rooms.filter((r) => r.kind === 'gallery')
+      // Quatre murs, quatre moulures chacun (au moins : les portes les coupent en morceaux).
+      expect(c.length).toBeGreaterThanOrEqual(galeries.length * 4 * CORNICHE.length)
+      const plafond = level.elevation + MUSEE.storey - MUSEE.slab - 0.02
+      for (const b of c) {
+        expect(b.y + b.h / 2).toBeLessThanOrEqual(plafond + 1e-6)
+        expect(b.y - b.h / 2).toBeGreaterThan(plafond - 0.25)
+        // Dans une galerie, jamais dans le hall ni dans la salle d'honneur.
+        expect(galeries.some((r) => b.x > r.x && b.x < r.x + r.width && b.z > r.z && b.z < r.z + r.depth)).toBe(true)
+      }
+      for (let i = 0; i < c.length; i++) for (let j = i + 1; j < c.length; j++) expect(chevauche(c[i], c[j]), `${i} et ${j}`).toBe(false)
+    }
+  })
+
+  it('saille de plus en plus en montant, et ne mord pas le haut d’une toile', () => {
+    const saillies = CORNICHE.map(([s]) => s)
+    expect([...saillies].sort((a, b) => b - a)).toEqual(saillies)
+    // Le haut des cimaises (2,50 m) et des toiles reste sous elle, avec de la marge.
+    expect(MUSEE.storey - MUSEE.slab - 0.02 - CORNICHE.reduce((h, [, d]) => h + d, 0)).toBeGreaterThan(3.5)
   })
 })
 

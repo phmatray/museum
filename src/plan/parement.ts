@@ -7,6 +7,7 @@
  * portes y sont donc déjà découpées, et le côté galerie garde son plâtre.
  */
 import { meshLevel, type Box } from './mesh.ts'
+import { INT } from './svg.ts'
 import type { Plan, Rect } from './types.ts'
 
 const PEAU = 0.03
@@ -83,6 +84,55 @@ export function plinthes(plan: Plan, levelId: number): { hall: Box[]; salles: Bo
       .flatMap((r) => peauInterieure(plan, levelId, r, (hall ? PEAU : PEINTURE) + PLINTHE_EP, false))
       .map((b) => ({ ...b, y: (level?.elevation ?? 0) + PLINTHE_H / 2, h: PLINTHE_H }))
   return { hall: pour(true), salles: pour(false) }
+}
+
+/**
+ * La corniche des galeries, de haut en bas : [saillie, hauteur] de chaque
+ * moulure, 21 cm en tout. La plus saillante contre le plafond, puis en retraits
+ * successifs jusqu'à un filet de 2,5 cm : de loin, un profil mouluré qui
+ * attrape la lumière du lanterneau et ferme le mur, là où il butait nu sur le
+ * plâtre.
+ */
+export const CORNICHE: readonly [number, number][] = [[0.14, 0.05], [0.1, 0.06], [0.06, 0.07], [0.025, 0.03]]
+/** L'épaisseur du plâtre du plafond (`plafonds.ts`) : la corniche passe dessous. */
+const SOUS_PLAFOND = 0.02
+
+/**
+ * Les corniches des galeries : sous le plafond, le long de chaque mur, de
+ * porte en porte (les linteaux la portent au-dessus des portes). Les murs
+ * nord et sud courent d'angle en angle ; ceux de l'est et de l'ouest s'arrêtent
+ * contre eux, moulure par moulure : les angles se retournent sans que deux
+ * boîtes se chevauchent. La salle d'honneur a sa voûte.
+ */
+export function corniches(plan: Plan, levelId: number): Box[] {
+  const level = plan.levels.find((l) => l.id === levelId)
+  if (!level) return []
+  const haut = level.elevation + plan.storey - plan.slab - SOUS_PLAFOND
+  const out: Box[] = []
+  for (const r of level.rooms.filter((r) => r.kind === 'gallery')) {
+    const peau = peauInterieure(plan, levelId, r, PEINTURE).filter((b) => b.y + b.h / 2 > haut - EPS)
+    const [x0, x1, z0, z1] = [r.x, r.x + r.width, r.z, r.z + r.depth]
+    for (const b of peau) {
+      const long = b.d < b.w
+      // La face peinte, et le côté de la salle vers lequel la corniche avance.
+      const [face, sens] = long ? (b.z < r.z + r.depth / 2 ? [b.z + b.d / 2, 1] : [b.z - b.d / 2, -1]) : b.x < r.x + r.width / 2 ? [b.x + b.w / 2, 1] : [b.x - b.w / 2, -1]
+      let y = haut
+      for (const [saillie, h] of CORNICHE) {
+        // Du coin intérieur au coin intérieur ; les murs est et ouest s'arrêtent devant la moulure nord et sud.
+        const retrait = long ? 0 : saillie
+        const [a0, a1] = long ? [x0, x1] : [z0, z1]
+        const [s, t] = [Math.max(long ? b.x - b.w / 2 : b.z - b.d / 2, a0 + INT + PEINTURE + retrait), Math.min(long ? b.x + b.w / 2 : b.z + b.d / 2, a1 - INT - PEINTURE - retrait)]
+        if (t - s > EPS) {
+          const [c, e] = [face + (sens * saillie) / 2, saillie]
+          out.push(long
+            ? { x: (s + t) / 2, z: c, w: t - s, d: e, y: y - h / 2, h, kind: 'wall' }
+            : { x: c, z: (s + t) / 2, w: e, d: t - s, y: y - h / 2, h, kind: 'wall' })
+        }
+        y -= h
+      }
+    }
+  }
+  return out
 }
 
 /** Une peau d'épaisseur `ep` sur la face des murs et linteaux qui regarde l'intérieur de `r`. */

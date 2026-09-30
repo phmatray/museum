@@ -15,7 +15,7 @@
  *
  * Pur : ni three ni React.
  */
-import { bandesDuSol, parementDuHall, peintureDesSalles } from './parement.ts'
+import { bandesDuSol, corniches, parementDuHall, peintureDesSalles } from './parement.ts'
 import { meshLevel, type Box } from './mesh.ts'
 import { plafonds } from './plafonds.ts'
 import { EXT } from './svg.ts'
@@ -74,7 +74,8 @@ export function surfacesCuites(plan: Plan): Surface[] {
     }
     for (const b of parementDuHall(plan, l.id)) ajouter(b, 'pierre')
     for (const p of peintureDesSalles(plan, l.id)) for (const b of p.boites) ajouter(b, p.couleur as Matiere)
-    for (const b of plafonds(plan, l.id).platre) ajouter(b, 'platre')
+    const { platre, cadre } = plafonds(plan, l.id)
+    for (const b of [...platre, ...cadre, ...corniches(plan, l.id)]) ajouter(b, 'platre')
   }
   for (const b of bandesDuSol(plan)) ajouter(b, 'granit')
   return out

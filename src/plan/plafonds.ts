@@ -32,11 +32,16 @@ export interface Plafonds {
   platre: Box[]
   verre: Box[]
   resille: Box[]
+  /** Le cadre mouluré du lanterneau : deux ressauts de plâtre autour du verre. */
+  cadre: Box[]
 }
+
+/** Les ressauts du cadre, du verre vers le plâtre : [de, à] (distance au verre), retombée sous le plafond. */
+export const CADRE_LANTERNEAU: readonly [number, number, number][] = [[0, 0.07, 0.07], [0.07, 0.17, 0.035]]
 
 export function plafonds(plan: Plan, levelId: number): Plafonds {
   const level = plan.levels.find((l) => l.id === levelId)
-  const out: Plafonds = { platre: [], verre: [], resille: [] }
+  const out: Plafonds = { platre: [], verre: [], resille: [], cadre: [] }
   if (!level) return out
   // Sous la dalle de l'étage au-dessus, ou au sommet des murs pour le dernier.
   const sous = level.elevation + plan.storey - plan.slab
@@ -52,6 +57,16 @@ export function plafonds(plan: Plan, levelId: number): Plafonds {
     const yb = y - EP_VERRE
     for (let i = 1; i < Math.round(w / MAILLE); i++) out.resille.push({ x: cx - w / 2 + (i * w) / Math.round(w / MAILLE), y: yb, z: cz, w: BOIS, h: EP_VERRE, d, kind: 'railing' })
     for (let i = 1; i < Math.round(d / MAILLE); i++) out.resille.push({ x: cx, y: yb, z: cz - d / 2 + (i * d) / Math.round(d / MAILLE), w, h: EP_VERRE, d: BOIS, kind: 'railing' })
+    // Le cadre : il borde le verre sans le mordre, ressaut après ressaut. Les
+    // côtés nord et sud d'angle en angle, l'est et l'ouest entre eux : jamais deux
+    // boîtes l'une dans l'autre, jamais deux faces dans le même plan.
+    for (const [a, b, retombee] of CADRE_LANTERNEAU) {
+      const [yc, hc, l] = [sous - EP_PLAFOND - retombee / 2, retombee, b - a]
+      for (const s of [-1, 1]) {
+        out.cadre.push({ x: cx, y: yc, z: cz + s * (d / 2 + (a + b) / 2), w: w + 2 * b, h: hc, d: l, kind: 'slab' })
+        out.cadre.push({ x: cx + s * (w / 2 + (a + b) / 2), y: yc, z: cz, w: l, h: hc, d: d + 2 * a, kind: 'slab' })
+      }
+    }
   }
   return out
 }

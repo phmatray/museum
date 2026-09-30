@@ -46,7 +46,7 @@ import type * as THREE from 'three'
 
 import { PlanBuilding } from '../PlanBuilding'
 import { MUSEE } from '../../plan/musee'
-import { bandesDuSol, parementDuHall, peintureDesSalles, plinthes } from '../../plan/parement'
+import { bandesDuSol, corniches, parementDuHall, peintureDesSalles, plinthes } from '../../plan/parement'
 import { plafonds } from '../../plan/plafonds'
 import { facade } from '../../plan/facade'
 import { enceinte } from '../../plan/enceinte'
@@ -89,19 +89,19 @@ describe('PlanBuilding', () => {
 
     const attendus = MUSEE.levels.flatMap((niveau) => {
       const boites = meshLevel(MUSEE, niveau.id)
-      // Puis la pierre du hall : son parement, les plinthes (hall, salles), et au rez-de-chaussée les bandes du sol.
-      const { platre, verre, resille } = plafonds(MUSEE, niveau.id)
+      // Puis la pierre du hall : son parement, les plinthes (hall, salles), les plafonds, le cadre des lanterneaux, les corniches, et au rez-de-chaussée les bandes du sol.
+      const { platre, verre, resille, cadre } = plafonds(MUSEE, niveau.id)
       const plinthe = plinthes(MUSEE, niveau.id)
-      const pierre = [parementDuHall(MUSEE, niveau.id).length, plinthe.hall.length, plinthe.salles.length, platre.length, verre.length, resille.length, ...(niveau.id === 0 ? [bandesDuSol(MUSEE).length] : [])]
+      const pierre = [parementDuHall(MUSEE, niveau.id).length, plinthe.hall.length, plinthe.salles.length, platre.length, verre.length, resille.length, cadre.length, corniches(MUSEE, niveau.id).length, ...(niveau.id === 0 ? [bandesDuSol(MUSEE).length] : [])]
       const comptes = ORDRE_SORTES.map((kind) => boites.filter((b) => b.kind === kind).length)
       // La baie de la salle d'honneur est vitrée par la fenêtre Batlló (BatlloLayer), pas par une boîte.
       comptes[ORDRE_SORTES.indexOf('glass')] = sansBaieBatllo(boites.filter((b) => b.kind === 'glass'), niveau.id).length
       // Les dalles des balcons sont à part, en pierre, juste après les dalles courantes.
       const balcons = niveau.rooms.filter((r) => r.kind === 'balcony').length
-      const galeriesRdc = niveau.id === 0 ? niveau.rooms.filter((r) => r.kind === 'gallery').length : 0
-      comptes.splice(2, 1, comptes[2] - balcons - galeriesRdc, balcons)
-      // Puis le parquet des galeries du rez-de-chaussée et leurs murs peints, un lot par couleur.
-      return [...comptes, ...pierre, galeriesRdc, ...peintureDesSalles(MUSEE, niveau.id).map((p) => p.boites.length)]
+      const galeries = niveau.rooms.filter((r) => r.kind === 'gallery').length
+      comptes.splice(2, 1, comptes[2] - balcons - galeries, balcons)
+      // Puis le parquet des galeries (bâtons rompus, aux deux niveaux) et leurs murs peints, un lot par couleur.
+      return [...comptes, ...pierre, galeries, ...peintureDesSalles(MUSEE, niveau.id).map((p) => p.boites.length)]
     })
     // Puis les embrasures de pierre des portes (PortesLayer ; ses chambranles attendent leur GLB).
     attendus.push(portes(MUSEE).embrasures.length)
