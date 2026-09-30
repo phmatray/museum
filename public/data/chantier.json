@@ -1500,9 +1500,9 @@
    "ancre": "t-107",
    "titre": "De grands arbres pour le relief du jardin",
    "categorie": "jardin",
-   "statut": "en ligne",
+   "statut": "en ligne · PR #211",
    "fait": true,
-   "pr": null,
+   "pr": 211,
    "image": {
     "src": "img/107-grands-arbres.jpg",
     "largeur": 1000,
