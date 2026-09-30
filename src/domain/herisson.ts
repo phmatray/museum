@@ -524,8 +524,10 @@ export function avancerHerisson(h: Herisson, dt: number, visiteur: { x: number; 
   const [x, z] = [h.x + Math.cos(cap) * v * dt, h.z + Math.sin(cap) * v * dt]
   if (!libre(x, z, ind.echelle) || gene(h, x, z, famille)) {
     // Buté (le but était derrière un obstacle, un autre hérisson, ou il a coupé un virage) : il cherche ailleurs ;
-    // un petit fait un détour, près de sa mère.
-    const s = choisirBut(h, guide)
+    // un petit fait un détour, près de sa mère. Sur le chemin du retour, le détour
+    // le rapproche encore du nid : buté contre un de ses petits au pas de la porte,
+    // on ne repart pas flâner à huit mètres.
+    const s = rentre ? prochainBut({ ...h, rentre }) : choisirBut(h, guide)
     return { ...h, t, but: s.but, rentre, flane: !!guide, graine: s.graine, vitesse: 0, cap: cap + Math.PI / 4 }
   }
   return { ...h, x, z, cap, t, but, rentre, flane, graine, vitesse: dt > 0 ? v : 0 }
