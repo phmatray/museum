@@ -20,6 +20,8 @@
  *   Bloom           déborde les hautes lumières — encore en linéaire, sinon le
  *                   rendu des tons aurait déjà écrasé ce qui doit déborder
  *   ToneMapping     la courbe du lot 3, rejouée ici (voir plus bas)
+ *   Rayons          le soleil à travers les arbres, en écran (`etalonnage.ts`)
+ *   Étalonnage      la couleur de l'heure : aube dorée, midi neutre, soir ambré, nuit bleue
  *   Vignette        après la courbe : c'est un assombrissement d'image finie
  *   SMAA            en dernier, sur l'image telle qu'elle sera affichée
  *
@@ -41,11 +43,14 @@
  */
 import { EffectComposer, N8AO, Bloom, ToneMapping, Vignette, SMAA } from '@react-three/postprocessing'
 import { useThree } from '@react-three/fiber'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 
 import { TONE_EXPOSURE, TONE_MAPPING } from './lighting'
 import { AO, BLOOM, VIGNETTE, toneMappingMode } from './postProcessingSettings'
+import { EtalonnageEffect, creerRayons } from './etalonnage'
+import { qualiteDemandee } from './qualite'
+import { recherche } from '../stores/reglagesStore'
 
 /** Ce que `alleger` touche de `N8AOPostPass` (n8ao ne publie pas ses types). */
 interface PasseN8AO {
@@ -114,6 +119,13 @@ export function PostProcessing() {
   // L'exposition que `ToneMappingEffect` lit dans l'uniforme du renderer :
   // personne d'autre ne la pose depuis le retrait de l'ancienne scène (#29).
   const gl = useThree((s) => s.gl)
+  const camera = useThree((s) => s.camera)
+  // `?qualite=basse` : les mêmes effets, moins chers (occlusion et rayons moins échantillonnés, rayons au quart).
+  const basse = qualiteDemandee(recherche()) === 'basse'
+  const rayons = useMemo(() => creerRayons(camera, basse), [camera, basse])
+  const etalonnage = useMemo(() => new EtalonnageEffect(), [])
+  useEffect(() => () => rayons.dispose(), [rayons])
+  useEffect(() => () => etalonnage.dispose(), [etalonnage])
   useEffect(() => {
     // eslint-disable-next-line react-hooks/immutability
     gl.toneMappingExposure = TONE_EXPOSURE
@@ -138,8 +150,8 @@ export function PostProcessing() {
         aoRadius={AO.aoRadius}
         distanceFalloff={AO.distanceFalloff}
         intensity={AO.intensity}
-        aoSamples={AO.aoSamples}
-        denoiseSamples={AO.denoiseSamples}
+        aoSamples={basse ? AO.aoSamples / 2 : AO.aoSamples}
+        denoiseSamples={basse ? AO.denoiseSamples / 2 : AO.denoiseSamples}
         denoiseRadius={AO.denoiseRadius}
         halfRes={AO.halfRes}
         screenSpaceRadius={AO.screenSpaceRadius}
@@ -158,6 +170,10 @@ export function PostProcessing() {
       />
 
       <ToneMapping mode={toneMappingMode(TONE_MAPPING)} />
+
+      {/* Les rayons à travers les arbres, puis l'étalonnage de l'heure (\`etalonnage.ts\`) : sur l'image finie, avant la vignette. */}
+      <primitive object={rayons} dispose={null} />
+      <primitive object={etalonnage} dispose={null} />
 
       <Vignette offset={VIGNETTE.offset} darkness={VIGNETTE.darkness} />
 
