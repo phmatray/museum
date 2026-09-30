@@ -240,6 +240,17 @@ const ARCHITECTURE = [
     usage: 'érables du Japon rouges et verts (et leur version lointaine), buis et azalées, lierre du mur d’enceinte, roseaux et herbes des berges',
   },
   {
+    id: 'grands-arbres',
+    source:
+      'Feuillage : cartes découpées à l’alpha dans des planches botaniques Nano Banana 2 (Meshy, généré par IA, fond retiré), avec le même suffixe que la végétation : ' +
+      '« A single real fresh branch spray of Ginkgo biloba, a short grey-brown twig with knobby spur shoots carrying about fifteen fan-shaped two-lobed leaves of different sizes on long thin stalks, fresh bright green with fine radiating parallel veins » ; ' +
+      '« A single real flat branch spray of Lebanon cedar (Cedrus libani), a horizontal brown twig with side shoots covered in many small dense rosettes of short stiff silvery blue-green needles, layered and full » ; ' +
+      '« A single real branch tip of Japanese black pine (Pinus thunbergii), a stout dark brown twig ending in a dense radiating brush of long stiff glossy dark green needles in pairs, with a pale silvery candle bud at the tip ». ' +
+      'Troncs, charpentières, étages et nuages modelés par `tools/blender/build-grands-arbres.py`',
+    licence: 'généré pour le dépôt (conditions de Meshy)',
+    usage: 'les grands arbres du parc : le cèdre du Liban, les deux ginkgos et le pin noir taillé en nuages (et leurs versions lointaines)',
+  },
+  {
     id: 'salle-honneur',
     source: "`tools/blender/build-salle-honneur.py`, d'après l'étage noble de la Casa Batlló de Gaudí",
     licence: 'œuvre originale du dépôt',

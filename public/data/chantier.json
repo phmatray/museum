@@ -1494,6 +1494,20 @@
     "largeur": 1000,
     "hauteur": 375
    }
+  },
+  {
+   "n": 107,
+   "ancre": "t-107",
+   "titre": "De grands arbres pour le relief du jardin",
+   "categorie": "jardin",
+   "statut": "en ligne · PR #211",
+   "fait": true,
+   "pr": 211,
+   "image": {
+    "src": "img/107-grands-arbres.jpg",
+    "largeur": 1000,
+    "hauteur": 625
+   }
   }
  ]
 }
