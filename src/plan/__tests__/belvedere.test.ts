@@ -5,7 +5,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { BELVEDERE, HAUT_DE_L_ESCALIER, MARCHE, PIED_DE_L_ESCALIER, POINT_DE_VUE, coteDuBelvedere, dansLaPercee, dansLeBelvedere, pierresDuBelvedere } from '../belvedere.ts'
+import { BELVEDERE, VOLEES, HAUT_DE_LA_VOLEE_OUEST, HAUT_DE_L_ESCALIER, PAS_DE_LA_RIVE, PIED_DE_LA_VOLEE_OUEST, MARCHE, PIED_DE_L_ESCALIER, POINT_DE_VUE, coteDuBelvedere, dansLaPercee, dansLeBelvedere, pierresDuBelvedere } from '../belvedere.ts'
 import { distanceRuisseau, presDeLEau } from '../jardin.ts'
 import { MUSEE } from '../musee.ts'
 import { parkPlacements, surUneAllee } from '../park.ts'
@@ -64,18 +64,29 @@ describe('le belvédère', () => {
     expect(hauteurDuParc(...HAUT_DE_L_ESCALIER)).toBe(H)
   })
 
-  it('pose ses pierres sur le sol : aucun mur ne flotte, rien sous la cote de fondation', () => {
-    for (const b of pierresDuBelvedere(hauteurDuParc)) {
+  it('pose ses pierres sur le sol : chaque pierre est fondée sous le sol, ou portée par une autre', () => {
+    const pierres = pierresDuBelvedere(hauteurDuParc)
+    const dessous = (b: (typeof pierres)[number], c: (typeof pierres)[number]) =>
+      Math.abs(b.x - c.x) < (b.w + c.w) / 2 - 0.01 && Math.abs(b.z - c.z) < (b.d + c.d) / 2 - 0.01 && c.y + c.h / 2 >= b.y - b.h / 2 - 0.03 && c.y < b.y
+    for (const b of pierres) {
       expect(b.h).toBeGreaterThan(0)
       const bas = b.y - b.h / 2
-      // Un mur, une marche ou un limon descend sous le sol à son pied ; un parapet, un chaperon ou le dallage est porté.
-      if (bas < H - 0.3) expect(bas, `boîte en (${b.x}, ${b.z})`).toBeLessThanOrEqual(hauteurDuParc(b.x, b.z) + 1e-6 + (dansLeBelvedere(b.x, b.z) ? H : 0))
+      const fonde = bas <= hauteurDuParc(b.x, b.z) + 1e-6 || (dansLeBelvedere(b.x, b.z) && bas >= H - 0.3)
+      expect(fonde || pierres.some((c) => c !== b && dessous(b, c)), `boîte en (${b.x.toFixed(2)}, ${b.y.toFixed(2)}, ${b.z.toFixed(2)})`).toBe(true)
     }
+  })
+
+  it('a un parement en bossage qui s’évase vers le pied (le fruit du mur)', () => {
+    const ouest = pierresDuBelvedere(hauteurDuParc).filter((b) => b.x < E.x && b.z > E.z + 1 && b.z < E.z + 5)
+    const saillie = (b: (typeof ouest)[number]) => E.x - (b.x - b.w / 2)
+    const [basse, haute] = [ouest.reduce((a, b) => (b.y < a.y ? b : a)), ouest.reduce((a, b) => (b.y > a.y ? b : a))]
+    expect(saillie(basse)).toBeGreaterThan(saillie(haute) + 0.1)
+    expect(new Set(ouest.map((b) => b.z.toFixed(2))).size).toBeGreaterThan(8)
   })
 
   it('reste au sec, hors de l’eau et du ruisseau, et laisse la pelouse autour', () => {
     for (let x = E.x - 1; x <= E.x + E.width + 1; x += 0.5)
-      for (let z = BELVEDERE.escalier.z0 - 1; z <= E.z + E.depth + 1; z += 0.5) expect(presDeLEau(x, z, 2)).toBe(false)
+      for (let z = VOLEES[0].u0 - 1; z <= E.z + E.depth + 1; z += 0.5) expect(presDeLEau(x, z, 2)).toBe(false)
     for (let z = F.z0; z <= F.z1; z += 0.5) expect(distanceRuisseau(F.x, z)).toBeGreaterThan(1.5)
   })
 })
@@ -110,21 +121,57 @@ describe('la percée', () => {
 })
 
 describe('la visite guidée', () => {
-  it('finit au belvédère : de la baraque, par le pont, le roji et l’escalier, à pied', () => {
-    const i = VISITE.length - 1
+  /** Marche un arrêt de la visite, de son premier point à son dernier. */
+  function parcourir(i: number, depuis: Walker) {
     const arret = VISITE[i]
-    expect(arret.roomId).toBe('belvedere')
-    const [x, z] = arret.points[0]
-    let w = dehors(x, z)
+    let w = depuis
     let c = { stop: i, point: 0 }
     for (let n = 0; n < 300 / DT && c.point < arret.points.length; n++) {
       c = avancer(VISITE, c, w)
       if (c.point >= arret.points.length) break
       w = step(MUSEE, w, { forward: 1, strafe: 0, yaw: capVers(w, ...arret.points[c.point]) }, DT)
     }
-    expect(c.point, `bloqué en ${w.x.toFixed(2)}, ${w.z.toFixed(2)}`).toBe(arret.points.length)
+    expect(c.point, `${arret.roomId} : bloqué en ${w.x.toFixed(2)}, ${w.z.toFixed(2)}`).toBe(arret.points.length)
+    return w
+  }
+
+  it('monte au belvédère par le pont, le roji et l’escalier, puis redescend par la volée ouest et la rive sud jusqu’à l’axe', () => {
+    const [terrasse, rive] = [VISITE.length - 2, VISITE.length - 1]
+    expect(VISITE[terrasse].roomId).toBe('belvedere')
+    expect(VISITE[rive].roomId).toBe('rive')
+    let w = parcourir(terrasse, dehors(...VISITE[terrasse].points[0]))
     expect(surLaTerrasse(w)).toBe(true)
     expect(w.y).toBeCloseTo(H, 5)
+    w = parcourir(rive, w)
+    // Au bout : sur l'axe de l'entrée, au sol, face au nord — la façade encadrée.
+    expect(Math.abs(w.x - 24)).toBeLessThan(0.2)
+    expect(w.y).toBeCloseTo(hauteurDuParc(w.x, w.z), 5)
+    expect(Math.abs(w.yaw)).toBeLessThan(0.2)
+  })
+})
+
+describe('la rive sud', () => {
+  it('descend la volée ouest, de la terrasse au pied, à plain-pied au bout', () => {
+    const w = marcher(marcher(marcher(dehors(...PIED_DE_L_ESCALIER), ...HAUT_DE_L_ESCALIER), ...HAUT_DE_LA_VOLEE_OUEST), ...PIED_DE_LA_VOLEE_OUEST)
+    expect(Math.hypot(w.x - PIED_DE_LA_VOLEE_OUEST[0], w.z - PIED_DE_LA_VOLEE_OUEST[1])).toBeLessThan(0.05)
+    expect(w.y).toBeLessThan(0.1)
+  })
+
+  it('pose ses pas japonais au sec, sans en chevaucher un autre ni une plante', () => {
+    expect(PAS_DE_LA_RIVE.length).toBeGreaterThan(50)
+    PAS_DE_LA_RIVE.forEach((p, i) => {
+      expect(presDeLEau(p.x, p.z, 2)).toBe(false)
+      const suivant = PAS_DE_LA_RIVE[i + 1]
+      if (suivant) {
+        expect(Math.hypot(suivant.x - p.x, suivant.z - p.z)).toBeGreaterThan(p.rayon + suivant.rayon)
+        expect(Math.hypot(suivant.x - p.x, suivant.z - p.z)).toBeLessThan(1)
+      }
+      for (const q of parc.plantations) {
+        if (q.espece === 'petales') continue
+        const pied = q.espece.startsWith('erable') ? 0.5 * q.scale : q.rayon * 0.8
+        expect(Math.hypot(q.x - p.x, q.z - p.z), `${q.espece} (${q.x.toFixed(1)}, ${q.z.toFixed(1)})`).toBeGreaterThan(p.rayon + pied)
+      }
+    })
   })
 })
 

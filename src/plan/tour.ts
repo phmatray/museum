@@ -10,7 +10,7 @@
  *
  * Pur : ni three ni React.
  */
-import { HAUT_DE_L_ESCALIER, PIED_DE_L_ESCALIER, POINT_DE_VUE } from './belvedere.ts'
+import { BELVEDERE, HAUT_DE_LA_VOLEE_OUEST, HAUT_DE_L_ESCALIER, PIED_DE_LA_VOLEE_OUEST, PIED_DE_L_ESCALIER, POINT_DE_VUE } from './belvedere.ts'
 import { SEUIL_CHANTIER } from './chantier.ts'
 import { OBSTACLES_PORTIQUE } from './facade.ts'
 import { exposedRooms } from './hang.ts'
@@ -180,8 +180,7 @@ export function arretDuChantier(plan: Plan, depuis: TourStop): TourStop {
  * Le tout dernier arrêt : le belvédère (`belvedere.ts`). De la baraque, on
  * longe la ceinture jusqu'à l'accès est, on passe le pont, la porte du roji,
  * on le suit entre la palissade et le mur, on monte l'escalier dos au jardin,
- * et l'on finit au coin de la terrasse, face à l'étang et à la façade : la
- * visite s'achève sur la vue d'ensemble. Des points de passage à la main — la
+ * et l'on s'arrête au coin de la terrasse, face à l'étang et à la façade. Des points de passage à la main — la
  * pelouse n'a pas de graphe —, chaque ligne droite contournant les bancs et les
  * lampadaires (`contourner`).
  */
@@ -197,7 +196,22 @@ export function arretDuBelvedere(depuis: TourStop): TourStop {
   return { roomId: 'belvedere', level: 0, name: 'Le belvédère', points }
 }
 
+/**
+ * Le retour : on descend la volée ouest du belvédère, on suit les pas japonais
+ * de la rive sud, et l'on finit sur l'axe de l'entrée, face à la façade que
+ * deux érables encadrent — la visite boucle sur le musée, elle ne s'arrête pas
+ * au bout d'un cul-de-sac.
+ */
+export function arretDeLaRive(depuis: TourStop): TourStop {
+  if (depuis.roomId !== 'belvedere') throw new Error('la rive sud se prend en descendant du belvédère')
+  const etapes: Point[] = [POINT_DE_VUE, HAUT_DE_LA_VOLEE_OUEST, PIED_DE_LA_VOLEE_OUEST, ...BELVEDERE.rive, [24, 75], [24, 74]]
+  const points: Point[] = []
+  for (let i = 1; i < etapes.length; i++) points.push(...contourner(PARC, etapes[i - 1], etapes[i]))
+  return { roomId: 'rive', level: 0, name: 'La rive sud', points }
+}
+
 /** L'itinéraire du musée publié, calculé une fois : `PlanPlayer` le marche, le cartouche le lit. */
 const SALLES = buildTourItinerary(MUSEE)
 const CHANTIER = arretDuChantier(MUSEE, SALLES[SALLES.length - 1])
-export const VISITE = [...SALLES, CHANTIER, arretDuBelvedere(CHANTIER)]
+const TERRASSE = arretDuBelvedere(CHANTIER)
+export const VISITE = [...SALLES, CHANTIER, TERRASSE, arretDeLaRive(TERRASSE)]

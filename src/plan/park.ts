@@ -17,7 +17,7 @@
  * même parc, arbre pour arbre.
  */
 import { CONTOUR_ETANG, INDICE_LEVRE, JARDIN, LEVRE, RADIERS, TABLIER, TRACE_RUISSEAU, distanceEtang, distanceRuisseau, presDeLEau } from './jardin.ts'
-import { BELVEDERE, EMPRISE_BELVEDERE, PIED_DE_L_ESCALIER, OBSTACLES_BELVEDERE, dansLaPercee } from './belvedere.ts'
+import { BELVEDERE, EMPRISE_BELVEDERE, PAS_DE_LA_RIVE, PIED_DE_L_ESCALIER, OBSTACLES_BELVEDERE, VOLEES, dansLaPercee } from './belvedere.ts'
 import { EMPRISE_CHANTIER } from './chantier.ts'
 import { hauteurDuParc } from './relief.ts'
 import type { Plan, Rect } from './types.ts'
@@ -477,7 +477,7 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
   // débordent sur le roji restent — c'est le tunnel du chemin de thé.
   const { roji: J, sujets } = BELVEDERE
   // Il file sous les deux premières marches : son bout rond, et sa bordure, se perdent sous la pierre.
-  const roji = serpenter({ x: J.x, z: J.z0 }, { x: PIED_DE_L_ESCALIER[0], z: BELVEDERE.escalier.z0 + 1.2 }, J.ondulation, J.largeur)
+  const roji = serpenter({ x: J.x, z: J.z0 }, { x: PIED_DE_L_ESCALIER[0], z: VOLEES[0].u0 + 1.2 }, J.ondulation, J.largeur)
   const grand = (p: PlantPlacement) => p.espece.startsWith('erable')
   const pied = (p: PlantPlacement) => (grand(p) ? 0.5 * p.scale : p.rayon)
   const gardes = libres.filter((p) =>
@@ -485,7 +485,9 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
     && !OBSTACLES_BELVEDERE.some((r) => distanceRect(r, p.x, p.z) < pied(p) + 0.3)
     && !surUneAllee(roji, p.x, p.z, pied(p) + BORD)
     && !(grand(p) && dansLaPercee(p.x, p.z))
-    && !sujets.some((s) => Math.hypot(s.x - p.x, s.z - p.z) < (RAYON[s.espece] * s.scale + p.rayon) * 0.6))
+    && !sujets.some((s) => Math.hypot(s.x - p.x, s.z - p.z) < (RAYON[s.espece] * s.scale + p.rayon) * 0.6)
+    // Les pas japonais de la rive sud : les boules et les azalées sur leur passage leur cèdent la place.
+    && !PAS_DE_LA_RIVE.some((s) => Math.hypot(s.x - p.x, s.z - p.z) < s.rayon + pied(p) * 0.8 + 0.15))
   // Les sujets plantés à dessein : l'érable pourpre de la terrasse, qui penche
   // sur le parapet, et la paire qui encadre la façade au bout de l'axe.
   for (const s of sujets) {

@@ -318,8 +318,9 @@ export function pietiner(m: THREE.Material, { joints = false } = {}): void {
 }
 
 /**
- * Le chaperon et les chapiteaux du mur d'enceinte : de la mousse sur les dessus,
- * qui déborde de quelques centimètres sur les faces, et des taches de lichen.
+ * Le chaperon et les chapiteaux du mur d'enceinte, les pierres du belvédère : de la
+ * mousse fine le long des arêtes et dans les joints des dessus, qui déborde de
+ * quelques centimètres sur les faces, et des taches de lichen.
  */
 export function mousserChaperon(m: THREE.Material): void {
   greffer(m, 'usure:chaperon', (s) => {
@@ -333,10 +334,25 @@ export function mousserChaperon(m: THREE.Material): void {
     float uSousDessus = vTailleB.y * 0.5 - vBoite.y;
     float uB = iBruit(vMonde.xz * 3.1 + vMonde.y) * 0.6 + iBruit(vMonde.xz * 11.0 + vMonde.y * 3.0) * 0.4;
     float uDessus = smoothstep(0.6, 0.9, uNw.y);
-    float uDeborde = (1.0 - smoothstep(0.0, 0.015 + 0.05 * uB, uSousDessus)) * (1.0 - uDessus);
-    float uMousse = smoothstep(0.38, 0.62, uB) * max(uDessus, uDeborde * 0.9);
+    // La mousse prend là où l'eau s'attarde : le long des arêtes du dessus et dans
+    // les joints des pierres (une tous les 60 cm le long de la boîte), jamais en
+    // plaques sur le plat. Le grain est fin (quelques centimètres) : sur un
+    // chaperon large, un bruit de 30 cm peignait des taches de camouflage.
+    vec2 uBord = vTailleB.xz * 0.5 - abs(vBoite.xz);
+    float uLong = vTailleB.x > vTailleB.z ? vBoite.x : vBoite.z;
+    float uJoint = abs(fract(uLong / 0.6 + 0.5) - 0.5) * 0.6;
+    float uNid = min(min(uBord.x, uBord.y), uJoint);
+    float uGrain = iBruit(vMonde.xz * 19.0 + vMonde.y * 5.0) * 0.6 + iBruit(vMonde.xz * 47.0 - vMonde.y * 3.0) * 0.4;
+    float uFrange = 0.012 + 0.05 * uGrain * smoothstep(0.3, 0.7, uB);
+    float uSurLeDessus = (1.0 - smoothstep(uFrange * 0.5, uFrange, uNid)) * smoothstep(0.35, 0.55, uGrain);
+    // Et quelques coussinets épars sur le plat, d'un ou deux centimètres.
+    float uCoussin = smoothstep(0.78, 0.86, iBruit(vMonde.xz * 41.0 + 7.0)) * smoothstep(0.45, 0.7, uB);
+    float uDeborde = (1.0 - smoothstep(0.0, 0.01 + 0.025 * uGrain, uSousDessus)) * (1.0 - uDessus) * smoothstep(0.4, 0.6, uGrain);
+    float uMousse = max(uDessus * max(uSurLeDessus, uCoussin * 0.8), uDeborde * 0.8);
     float uL = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
-    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.19, 0.25, 0.08) * (0.55 + 0.8 * uL), uMousse * 0.85);
+    // Un vert sombre, brun dans ses creux : de la mousse, pas de la peinture.
+    vec3 uVert = mix(vec3(0.06, 0.075, 0.03), vec3(0.14, 0.17, 0.06), uGrain);
+    diffuseColor.rgb = mix(diffuseColor.rgb, uVert * (0.7 + 0.6 * uL), uMousse * 0.9);
     // Le lichen : des ronds pâles, gris-vert, sur les faces.
     float uLichen = smoothstep(0.78, 0.84, iBruit(vec2(dot(vMonde.xz, vec2(1.0)) * 9.0, vMonde.y * 9.0)));
     diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.64, 0.5), uLichen * 0.4 * (1.0 - uDessus));

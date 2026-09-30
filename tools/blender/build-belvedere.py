@@ -218,42 +218,111 @@ def pavillon(bois, toit, lueur):
 
 # ── La palissade et la porte du roji ────────────────────────────────────────
 
+def lin(r, g, b):
+    """Une couleur sRGB 0-255 en linéaire : la couleur de sommet multiplie la matière."""
+    return tuple(((c / 255 + 0.055) / 1.055) ** 2.4 for c in (r, g, b))
+
+
+# Le bambou qui a vécu : du blond doré au vert passé, jusqu'au gris argent des tiges les plus exposées.
+TEINTES_BAMBOU = [lin(196, 162, 104), lin(180, 158, 92), lin(168, 160, 102), lin(158, 150, 128), lin(142, 138, 124), lin(202, 172, 118)]
+RAIL = lin(74, 52, 32)
+CORDE = lin(14, 13, 12)
+POTEAU = lin(120, 110, 88)
+
+
+def melange(a, b, t):
+    return tuple(x + (y - x) * t for x, y in zip(a, b))
+
+
+def teinte_du_pan(sx, k):
+    """
+    La teinte d'une tige : par plages le long de la palissade, du blond doré au
+    gris argent (le soleil et la pluie n'ont pas frappé partout pareil), un
+    reste de vert par endroits, et chaque tige un peu plus claire ou plus sombre
+    que sa voisine — pas de rayures.
+    """
+    gris = 0.5 + 0.5 * math.sin(sx * 0.37 + 1.3) * math.cos(sx * 0.11 + 0.4)
+    vert = max(0.0, math.sin(sx * 0.23 + 2.1)) ** 2 * 0.6
+    c = melange(melange(lin(196, 164, 106), lin(150, 146, 128), gris), lin(160, 158, 96), vert)
+    return tuple(x * (0.9 + 0.2 * hache(k, 7)) for x in c)
+
+
+def chaume(m, cx, cz, ux, uz, nx, nz, w, d, haut, k, base):
+    """
+    Une demi-tige de bambou refendu, debout, la peau vers le dehors : section en
+    demi-lentille (bombée devant, plate au dos), ses NŒUDS tous les 40 à 55 cm,
+    un bourrelet plus sombre ; le pied grisé par les éclaboussures.
+    """
+    pied = lin(96, 92, 80)
+    # Les anneaux : (hauteur, renflement, assombrissement).
+    anneaux = [(0.02, 1.0, 0.0)]
+    h = 0.15 + 0.35 * hache(k, 8)
+    while h < haut - 0.12:
+        anneaux += [(h, 1.14, 0.4), (h + 0.025, 1.0, 0.08)]
+        h += 0.4 + 0.15 * hache(k, int(h * 10))
+    anneaux.append((haut, 1.0, 0.0))
+    # La section : le dos plat contre l'âme, la peau bombée vers `n`.
+    sec = [(0.5, 0.0), (0.22, 0.85), (-0.22, 0.85), (-0.5, 0.0)]
+    n0 = len(m.v)
+    for y, r, sombre in anneaux:
+        c = melange(base, pied, max(0.0, 1 - y / 0.35) * 0.7)
+        c = tuple(x * (1 - sombre) for x in c)
+        for a, b in sec:
+            du, dv = a * w * r, b * d * r
+            m.v.append((cx + ux * du + nx * dv, -(cz + uz * du + nz * dv), y))
+            m.c.append(c)
+    for i in range(len(anneaux) - 1):
+        for j in range(3):
+            a, b = n0 + i * 4 + j, n0 + i * 4 + j + 1
+            m.f.append((a, b, b + 4, a + 4))
+
+
 def pan(bambou, bois, x0, z0, x1, z1, haut, depart=0):
-    """Un pan de kenninji-gaki de (x0, z0) à (x1, z1), au sol (cote 0)."""
+    """
+    Un pan de kenninji-gaki de (x0, z0) à (x1, z1), au sol (cote 0) : des demi-
+    tiges de bambou debout, serrées, en quinconce ; trois paires de lisses de
+    bambou sombre, liées de corde noire ; un chapeau de bambou ; des poteaux ronds.
+    """
     l = math.hypot(x1 - x0, z1 - z0)
     ux, uz = (x1 - x0) / l, (z1 - z0) / l
     nx, nz = -uz, ux
     pt = lambda s, v: (x0 + ux * s + nx * v, z0 + uz * s + nz * v)
-    # Les lattes : du bambou refendu, 7 cm, serrées, chacune sa teinte et un léger jeu.
-    LATTE = 0.07
-    n = int(l / LATTE)
-    for i in range(n):
-        s0, s1 = i * LATTE + 0.003, (i + 1) * LATTE - 0.003
-        k = depart + i
-        # Un bambou qui a vécu : blond passé, gris par endroits, quelques lattes encore vertes.
-        t = 0.7 + 0.35 * hache(k)
-        gris = hache(k, 4) < 0.3
-        verdi = hache(k, 1) < 0.08
-        c = (t * 0.82, t * 0.84, t * 0.8) if gris else (t * 0.85, t * 0.95, t * 0.62) if verdi else (t, t * 0.9, t * 0.72)
-        # Une latte sur deux en avant : la palissade se lit à ses joints, pas comme un panneau.
-        e = (0.022 if i % 2 else 0.008) + 0.006 * hache(k, 2)
-        (ax, az), (bx, bz) = pt(s0, -e), pt(s1, e)
-        bambou.boite(min(ax, bx), max(ax, bx), 0.04, haut - 0.03 + 0.02 * hache(k, 3), min(az, bz), max(az, bz), c)
-    # Les lisses : trois paires de demi-bambous, de part et d'autre ; le chapeau, un bambou entier.
-    for y in (0.32, 0.92, 1.5):
-        for v in (-0.035, 0.035):
+    LARGE = 0.085
+    n = int(l / LARGE)
+    # Deux faces de tiges jointives, dos à dos, la seconde décalée d'une demi-tige.
+    for face, decale in ((1, 0.0), (-1, 0.5)):
+        for i in range(n):
+            k = depart + i + (0 if face > 0 else 100000)
+            cx, cz = pt((i + 0.5 + decale) % n * LARGE if decale else (i + 0.5) * LARGE, 0.012 * face)
+            sx = (i + 0.5) * LARGE + depart * LARGE
+            chaume(bambou, cx, cz, ux, uz, nx * face, nz * face, LARGE * 1.06, 0.022, haut - 0.02 - 0.05 * hache(k, 3), k, teinte_du_pan(sx, k))
+    # L'âme de la palissade : un fond sombre entre les deux faces de tiges, qu'on ne voit qu'entre elles.
+    (ax, az), (bx, bz) = pt(0, -0.006), pt(l, 0.006)
+    bambou.boite(min(ax, bx), max(ax, bx), 0.03, haut - 0.04, min(az, bz), max(az, bz), lin(48, 38, 26))
+    # Les lisses (oshibuchi) : trois rangs, un bambou sombre de chaque côté.
+    for y in (0.38, 1.0, 1.55):
+        for v in (-0.045, 0.045):
             a, b = pt(0, v), pt(l, v)
-            bambou.cylindre((a[0], y, a[1]), (b[0], y, b[1]), 0.026, n=6, couleur=(0.78, 0.66, 0.42))
+            bambou.cylindre((a[0], y, a[1]), (b[0], y, b[1]), 0.022, n=6, couleur=RAIL)
+        # Les ligatures de corde noire, tous les 30 cm environ : un nœud croisé qui traverse.
+        m = max(2, round(l / 0.3))
+        for j in range(1, m):
+            x, z = pt(l * j / m, 0)
+            dx, dz = ux * 0.011, uz * 0.011
+            ex, ez = nx * 0.07, nz * 0.07
+            xs = [x - dx - ex, x + dx - ex, x - dx + ex, x + dx + ex]
+            zs = [z - dz - ez, z + dz - ez, z - dz + ez, z + dz + ez]
+            bois.boite(min(xs), max(xs), y - 0.018, y + 0.018, min(zs), max(zs), CORDE)
+    # Le chapeau (tamabuchi) : un gros bambou refendu à cheval sur les tiges, et un plus mince dessus.
     a, b = pt(0, 0), pt(l, 0)
-    bambou.cylindre((a[0], haut + 0.01, a[1]), (b[0], haut + 0.01, b[1]), 0.045, n=8, couleur=(0.72, 0.62, 0.4))
-    # Les poteaux ronds, tous les 1,80 m, et les nœuds de corde noire aux lisses.
+    bambou.cylindre((a[0], haut + 0.0, a[1]), (b[0], haut + 0.0, b[1]), 0.05, n=8, couleur=RAIL)
+    bambou.cylindre((a[0], haut + 0.06, a[1]), (b[0], haut + 0.06, b[1]), 0.022, n=6, couleur=melange(RAIL, CORDE, 0.3))
+    # Les poteaux ronds, tous les 1,80 m, gris d'avoir vécu, liés au chapeau.
     m = max(1, round(l / 1.8))
     for j in range(m + 1):
-        s = l * j / m
-        x, z = pt(s, 0)
-        bambou.cylindre((x, 0, z), (x, haut + 0.09, z), 0.05, n=8, couleur=(0.6, 0.5, 0.32))
-        for y in (0.32, 0.92, 1.5):
-            bois.boite(x - 0.05, x + 0.05, y - 0.03, y + 0.03, z - 0.05, z + 0.05)
+        x, z = pt(l * j / m, 0)
+        bambou.cylindre((x, 0, z), (x, haut + 0.12, z), 0.052, n=8, couleur=POTEAU)
+        bois.boite(x - 0.06, x + 0.06, haut - 0.03, haut + 0.05, z - 0.06, z + 0.06, CORDE)
     return n
 
 
@@ -286,16 +355,51 @@ def roji(bambou, bois, toit):
     toit.cylindre((xa - 0.05, faite + 0.04, z), (xb + 0.05, faite + 0.04, z), 0.07, n=6, couleur=(0.7, 0.7, 0.72))
 
 
+def lanterne(pierre, lueur):
+    """
+    La lanterne de pierre du coin de la terrasse (ishi-dōrō), 1,35 m : un socle
+    hexagonal, un fût, une tablette, le foyer ajouré — le papier y luit la nuit —,
+    un chapeau à six pans et son bouton. Du granit, en couleur de sommets.
+    """
+    L = B["lanterne"]
+    x, z = L["x"], L["z"]
+    gris = lin(150, 148, 140)
+    sombre = lin(118, 116, 108)
+    y = H
+    pierre.cylindre((x, y - 0.02, z), (x, y + 0.12, z), 0.24, n=6, couleur=sombre)
+    pierre.cylindre((x, y + 0.12, z), (x, y + 0.6, z), 0.075, n=8, couleur=gris)
+    pierre.cylindre((x, y + 0.6, z), (x, y + 0.7, z), 0.2, n=6, couleur=gris)
+    pierre.cylindre((x, y + 0.7, z), (x, y + 0.75, z), 0.16, n=6, couleur=gris)
+    lueur.cylindre((x, y + 0.75, z), (x, y + 0.95, z), 0.13, n=6)
+    for k in range(6):
+        a = math.pi / 6 + k * math.pi / 3
+        px, pz = x + 0.145 * math.cos(a), z + 0.145 * math.sin(a)
+        pierre.cylindre((px, y + 0.75, pz), (px, y + 0.95, pz), 0.028, n=5, couleur=gris)
+    pierre.cylindre((x, y + 0.95, z), (x, y + 1.0, z), 0.17, n=6, couleur=gris)
+    # Le chapeau : un bord épais, puis six pans jusqu'à la pointe.
+    r, y0, y1 = 0.33, y + 1.0, y + 1.05
+    pierre.cylindre((x, y0, z), (x, y1, z), r, n=6, couleur=sombre)
+    pointe = (x, -z, y + 1.22)
+    for k in range(6):
+        a, b2 = k * math.pi / 3, (k + 1) * math.pi / 3
+        pa = (x + r * 0.98 * math.cos(a), -(z + r * 0.98 * math.sin(a)), y1)
+        pb = (x + r * 0.98 * math.cos(b2), -(z + r * 0.98 * math.sin(b2)), y1)
+        pierre.quad([pa, pb, pointe], sombre)
+    pierre.cylindre((x, y + 1.18, z), (x, y + 1.27, z), 0.055, n=8, couleur=gris)
+    pierre.cylindre((x, y + 1.27, z), (x, y + 1.35, z), 0.035, n=8, couleur=gris)
+
+
 def construire():
     mats = {
         "bois": matiere("Belvedere_Bois", (0.16, 0.085, 0.05), 0.72),
         "toit": matiere("Belvedere_Toit", (0.1, 0.1, 0.11), 0.55),
-        "bambou": matiere("Belvedere_Bambou", (0.5, 0.42, 0.28), 0.62),
+        "bambou": matiere("Belvedere_Bambou", (1.0, 1.0, 1.0), 0.48),
         "lueur": matiere("Belvedere_Lueur", (0.95, 0.88, 0.72), 0.6, emission=(1.0, 0.62, 0.3), force=3.0),
     }
     m = {k: Maillage() for k in mats}
     pavillon(m["bois"], m["toit"], m["lueur"])
     roji(m["bambou"], m["bois"], m["toit"])
+    lanterne(m["bambou"], m["lueur"])
     racine = bpy.data.objects.new("Belvedere", None)
     bpy.context.collection.objects.link(racine)
     total = 0

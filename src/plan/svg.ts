@@ -9,7 +9,7 @@
  * Pur : (plan, niveau) → chaîne. Le même rendu sert au dossier `docs/plan` et
  * pourra servir à la minimap.
  */
-import { BELVEDERE, EMPRISE_BELVEDERE, VOLEE } from './belvedere.ts'
+import { BELVEDERE, EMPRISE_BELVEDERE, VOLEES } from './belvedere.ts'
 import { CHANTIER, EMPRISE_CHANTIER } from './chantier.ts'
 import { MODULE, cimaisesDe } from './cimaises.ts'
 import { guardrails, isNordSud } from './geometry.ts'
@@ -224,7 +224,7 @@ export function renderDehors(plan: Plan, levelId: number): string {
     text(n(c.x + c.width / 2), n(c.z + c.depth / 2) + 5, 'Chantier du musée', `text-anchor="middle" font-size="14" class="lbl" ${halo(C.honneur)}`),
     // Le belvédère du fond du jardin : sa terrasse, sa volée au nord, son nom.
     ...EMPRISE_BELVEDERE.map((r) => rect(r, `fill="${C.honneur}" stroke="${C.poche}" stroke-width="${n(BELVEDERE.mur)}"`)),
-    rect(VOLEE, `fill="${C.honneur}"`, 0.02),
+    ...VOLEES.map((v) => rect(v.rect, `fill="${C.honneur}"`, 0.02)),
     text(n(b.x + b.width / 2), n(b.z + b.depth / 2) + 5, 'Belvédère', `text-anchor="middle" font-size="14" class="lbl" ${halo(C.honneur)}`),
     `</svg>`,
   ].join('\n')

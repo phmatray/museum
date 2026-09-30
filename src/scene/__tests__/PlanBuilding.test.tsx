@@ -31,6 +31,8 @@ vi.mock('../EscalierLayer', async () => {
 })
 // La faune du jardin (carpes, oiseaux, lucioles) a ses propres instances : hors du compte des boîtes.
 vi.mock('../FauneLayer', () => ({ FauneLayer: () => null }))
+// Le belvédère : son GLB, et le lot des pas japonais de la rive sud, compté par son propre test.
+vi.mock('../BelvedereLayer', () => ({ BelvedereLayer: () => null }))
 // Les ateliers en coupe aussi : leurs socles, laitons, verres et blocs sont des lots à eux.
 vi.mock('../AteliersLayer', () => ({ AteliersLayer: () => null }))
 // Et les accessoires : les blocs « Sortie » sont un lot à eux.

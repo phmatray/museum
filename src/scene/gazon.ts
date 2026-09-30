@@ -27,7 +27,7 @@ import { surUneAllee } from '../plan/park'
 import { BORDURE, GALETS, champDesAllees } from '../plan/allees'
 import { JARDIN, TABLIER, distanceEtang, distanceRuisseau } from '../plan/jardin'
 import { distanceParvis, hauteurDuParc } from '../plan/relief'
-import { dansLeBelvedere } from '../plan/belvedere'
+import { PAS_DE_LA_RIVE, dansLeBelvedere } from '../plan/belvedere'
 import { INTEMPERIES } from './intemperies'
 import type { Rect } from '../plan/types'
 
@@ -82,6 +82,7 @@ function pelades(parc: Parc): Allee[] {
     }),
     disque(JARDIN.lanterne.x, JARDIN.lanterne.z, 0.5),
     ...JARDIN.pas.map(([x, z]) => disque(x, z, 0.45)),
+    ...PAS_DE_LA_RIVE.map((p) => disque(p.x, p.z, p.rayon + 0.08)),
   ].filter((p) => p.largeur > 0)
 }
 

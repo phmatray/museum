@@ -50,7 +50,8 @@ describe('hauteurDuParc', () => {
     for (const r of plats)
       for (let z = r.z; z <= r.z + r.depth; z += 0.5)
         for (let x = r.x; x <= r.x + r.width; x += 0.5) {
-          if (distanceRuisseau(x, z) < BERGE_RUISSEAU) continue
+          // Et hors du pied de la volée ouest du belvédère, qui mord sur le sol du jardin.
+          if (distanceRuisseau(x, z) < BERGE_RUISSEAU || dansLeBelvedere(x, z)) continue
           expect(hauteurDuParc(x, z), `(${x}, ${z})`).toBe(0)
         }
   })
