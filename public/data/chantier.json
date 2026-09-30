@@ -1344,6 +1344,34 @@
     "largeur": 1280,
     "hauteur": 800
    }
+  },
+  {
+   "n": 96,
+   "ancre": "t-96",
+   "titre": "Une végétation qui a poussé",
+   "categorie": "jardin",
+   "statut": "en ligne · PR #191",
+   "fait": true,
+   "pr": 191,
+   "image": {
+    "src": "img/96-vegetation.jpg",
+    "largeur": 1280,
+    "hauteur": 1200
+   }
+  },
+  {
+   "n": 97,
+   "ancre": "t-97",
+   "titre": "L’air du jardin : brume, rais de soleil et couleurs du jour",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #192",
+   "fait": true,
+   "pr": 192,
+   "image": {
+    "src": "img/97-atmosphere.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
   }
  ]
 }
