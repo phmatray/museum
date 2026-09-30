@@ -45,11 +45,11 @@ A 3D museum you walk through in your browser, inspired by the Musée d'Orsay, wh
 
 | | |
 |---|---|
-| ![A gallery with its coloured walls, spotlit paintings and two free-standing Novo panels](docs/images/gallery.webp) | ![The Hall of Honour: Casa Batlló bones and curves, red showcases and their kiosks](docs/images/hall-of-honour.webp) |
+| ![A gallery with its coloured walls, spotlit paintings, an L-shaped run of Novo panels and an olive tree](docs/images/gallery.webp) | ![The Hall of Honour: Casa Batlló bones and curves, red showcases and their kiosks](docs/images/hall-of-honour.webp) |
 | **The galleries.** Themed rooms on two floors, one colour, one theme and one species of tree each. Every painting has its label, its spotlight and a QR code that opens the repository on a phone; the busiest rooms get free-standing Novo panels, straight or L-shaped. | **The Hall of Honour.** Upstairs, behind a Casa Batlló bay, the flagship projects stand in Cernuschi-style showcases, each with a bronze sculpture and a kiosk that shows the README. Below it, the **workshop** shows the same projects in cross-section: their real architecture (.NET projects or npm workspaces) as layers of glass joined by glowing wires. |
-| ![The Japanese garden: pond, stones and maples in autumn, the museum façade behind](docs/images/garden.webp) | ![The façade at night: the sign lights up under a sky full of stars](docs/images/night.webp) |
+| ![The Japanese garden: the pond, stones and maples in autumn, the museum façade behind](docs/images/garden.webp) | ![The façade at night: floodlit brick, the lit sign and lamp posts along the forecourt](docs/images/night.webp) |
 | **The garden.** A Japanese garden wraps the building: a pond with koi, a stream, stone lanterns, maples, birds by day and fireflies on summer nights. A baby hedgehog trots across the lawn after dusk, and rolls into a ball if you come too close. | **Real time, real sky.** The sun and the moon stand where they really are above Brussels, the shadows and light shafts follow them. At night the façade is floodlit and 32 lamp posts light the paths. |
-| ![The garden under snow in winter](docs/images/snow.webp) | ![Bavette, sitting in the grass of the garden](docs/images/bavette.webp) |
+| ![The garden under snow in winter](docs/images/snow.webp) | ![Bavette walking on the lawn of the garden](docs/images/bavette.webp) |
 | **Real weather and seasons.** The weather is Brussels' own (Open-Meteo): rain, snow, fog or storm, seen and heard from inside as well, puddles that mirror the sky, and maples that turn with the seasons, down to bare twigs in winter. | **Bavette.** Philippe's cat, who is no longer with us, roams the museum and the garden freely, with the proportions and coat of the videos he was modelled from. Now and then he jumps onto a bench and naps there, curled up. Look at him closely and his label appears. |
 
 ## Welcome ticket and settings
