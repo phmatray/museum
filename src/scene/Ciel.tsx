@@ -17,6 +17,7 @@ import { cadrerOmbre, redessinerOmbre } from '../domain/ombres'
 import { directionDuSoleil } from '../domain/soleil'
 import { useGameStore } from '../stores/gameStore'
 import { recherche, useReglages } from '../stores/reglagesStore'
+import { AIR, AIR_GLSL, AIR_LUEUR, AIR_SOL, AIR_SOLEIL } from './atmosphere'
 import { INTEMPERIES } from './intemperies'
 import { AMBIANCE, CIEL, SOLEIL } from './lighting'
 import { LUEURS } from './lueurs'
@@ -43,6 +44,7 @@ const FRAGMENTS = /* glsl */ `
   uniform float uNuages, uBrume, uEclair;
   uniform vec3 uBrumeCouleur;
   varying vec3 vDir;
+  ${AIR_GLSL}
   void main() {
     vec3 d = normalize(vDir);
     vec2 uv = vec2(atan(d.z, d.x) * 0.15915494 + 0.5, asin(clamp(d.y, -1.0, 1.0)) * 0.31830989 + 0.5);
@@ -53,6 +55,11 @@ const FRAGMENTS = /* glsl */ `
     float l = dot(c, vec3(0.3, 0.59, 0.11));
     vec3 couvert = uBrumeCouleur * (0.8 + 0.2 * smoothstep(0.3, 1.0, l / max(0.1, jour)) + 0.08 * d.y);
     c = mix(c, couvert, uNuages * 0.95);
+    // L'air du lointain (\`atmosphere.ts\`) : l'horizon prend la couleur dont se voilent
+    // les arbres et les murs au loin, et s'allume autour du soleil.
+    float airHorizon = (1.0 - smoothstep(-0.05, 0.3, d.y)) * clamp(uAir.w * 140.0, 0.0, 0.8);
+    c = mix(c, airCouleur(d), airHorizon);
+    c += uAirLueur.rgb * uAirSoleil.w * 0.35 * pow(max(dot(d, uAirSoleil.xyz), 0.0), 24.0) * jour;
     // Le brouillard mange l'horizon d'abord.
     c = mix(c, uBrumeCouleur, uBrume * (1.0 - 0.55 * smoothstep(0.0, 0.7, d.y)));
     c += uEclair * vec3(0.75, 0.8, 1.0);
@@ -99,6 +106,8 @@ export function Ciel() {
           jourTex: { value: null }, nuitTex: { value: null }, jour: { value: 1 }, crepuscule: { value: 0 }, charge: { value: 0 },
           // Le temps qu'il fait (`MeteoLayer`), partagé : réglé une fois par image, pour tout le monde.
           uNuages: INTEMPERIES.uNuages, uBrume: INTEMPERIES.uBrume, uEclair: INTEMPERIES.uEclair, uBrumeCouleur: INTEMPERIES.uBrumeCouleur,
+          // L'air de l'heure (`AtmosphereLayer`), le même que celui des matières.
+          uAir: { value: AIR }, uAirSol: { value: AIR_SOL }, uAirSoleil: { value: AIR_SOLEIL }, uAirLueur: { value: AIR_LUEUR },
         },
         side: THREE.BackSide,
         depthWrite: false,
