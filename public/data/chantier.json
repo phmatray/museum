@@ -1,0 +1,1335 @@
+{
+ "categories": {
+  "hall": "Hall & architecture",
+  "galeries": "Galeries & œuvres",
+  "jardin": "Jardin & dehors",
+  "bavette": "Bavette & faune",
+  "ambiance": "Lumière, ciel & sons",
+  "site": "Site & outils",
+  "idees": "Pistes & idées"
+ },
+ "etapes": [
+  {
+   "n": 0,
+   "ancre": "t-0",
+   "titre": "Avant",
+   "categorie": "hall",
+   "statut": "point de départ",
+   "fait": false,
+   "pr": null,
+   "image": {
+    "src": "img/00-avant.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 1,
+   "ancre": "t-1",
+   "titre": "La nef : voûte, verrière, horloge",
+   "categorie": "hall",
+   "statut": "en ligne · PR #66",
+   "fait": true,
+   "pr": 66,
+   "image": {
+    "src": "img/01-nef.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 2,
+   "ancre": "t-2",
+   "titre": "La pierre du hall",
+   "categorie": "hall",
+   "statut": "en ligne · PR #67",
+   "fait": true,
+   "pr": 67,
+   "image": {
+    "src": "img/02-pierre.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 3,
+   "ancre": "t-3",
+   "titre": "L’allée des sculptures",
+   "categorie": "hall",
+   "statut": "abandonnée",
+   "fait": false,
+   "pr": null,
+   "image": null
+  },
+  {
+   "n": 4,
+   "ancre": "t-4",
+   "titre": "Un vrai ciel",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #68",
+   "fait": true,
+   "pr": 68,
+   "image": {
+    "src": "img/04-ciel-7.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 5,
+   "ancre": "t-5",
+   "titre": "Des plafonds à lanterneau",
+   "categorie": "hall",
+   "statut": "en ligne · PR #69",
+   "fait": true,
+   "pr": 69,
+   "image": {
+    "src": "img/05-plafond-9.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 6,
+   "ancre": "t-6",
+   "titre": "Le parc accessible",
+   "categorie": "jardin",
+   "statut": "en ligne · PR #70",
+   "fait": true,
+   "pr": 70,
+   "image": {
+    "src": "img/06-parc.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 7,
+   "ancre": "t-7",
+   "titre": "L’horloge à l’heure",
+   "categorie": "hall",
+   "statut": "en ligne · PR #71",
+   "fait": true,
+   "pr": 71,
+   "image": {
+    "src": "img/07-horloge.jpg",
+    "largeur": 450,
+    "hauteur": 330
+   }
+  },
+  {
+   "n": 8,
+   "ancre": "t-8",
+   "titre": "Des garde-corps de verre clair",
+   "categorie": "hall",
+   "statut": "en ligne · PR #72",
+   "fait": true,
+   "pr": 72,
+   "image": {
+    "src": "img/08-garde-corps-13.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 9,
+   "ancre": "t-9",
+   "titre": "La façade façon S.M.A.K.",
+   "categorie": "hall",
+   "statut": "en ligne · PR #76",
+   "fait": true,
+   "pr": 76,
+   "image": {
+    "src": "img/09-facade-15.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 10,
+   "ancre": "t-10",
+   "titre": "Le tableau « Mes derniers projets »",
+   "categorie": "hall",
+   "statut": "en ligne · PR #78",
+   "fait": true,
+   "pr": 78,
+   "image": {
+    "src": "img/10-departs.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": null,
+   "ancre": "t-idees",
+   "titre": "Faire vivre tes projets : les pistes",
+   "categorie": "idees",
+   "statut": "choisies",
+   "fait": true,
+   "pr": null,
+   "image": null
+  },
+  {
+   "n": null,
+   "ancre": "t-11",
+   "titre": "Correctif : l’entrée dégagée",
+   "categorie": "hall",
+   "statut": "en ligne · PR #77",
+   "fait": true,
+   "pr": 77,
+   "image": {
+    "src": "img/11-entree.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": null,
+   "ancre": "t-portes",
+   "titre": "Les portes : les pistes",
+   "categorie": "idees",
+   "statut": "choisies : 1, 2 et 3",
+   "fait": true,
+   "pr": null,
+   "image": null
+  },
+  {
+   "n": 12,
+   "ancre": "t-12",
+   "titre": "Les drapeaux de Microsoft",
+   "categorie": "hall",
+   "statut": "en ligne · PR #79",
+   "fait": true,
+   "pr": 79,
+   "image": {
+    "src": "img/12-drapeaux.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 13,
+   "ancre": "t-13",
+   "titre": "Des toiles qui s’éveillent, et la lumière de l’activité",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #80",
+   "fait": true,
+   "pr": 80,
+   "image": {
+    "src": "img/13-toiles-22.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 14,
+   "ancre": "t-14",
+   "titre": "La constellation de la verrière",
+   "categorie": "ambiance",
+   "statut": "refaite en 15",
+   "fait": false,
+   "pr": null,
+   "image": {
+    "src": "img/14-constellation-24.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 15,
+   "ancre": "t-15",
+   "titre": "Le jour et la nuit, et la constellation qui s’allume",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #81",
+   "fait": true,
+   "pr": 81,
+   "image": {
+    "src": "img/15-2300.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": null,
+   "ancre": "t-17",
+   "titre": "Correctifs : la constellation suspendue, l’enseigne lisible",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #83",
+   "fait": true,
+   "pr": 83,
+   "image": {
+    "src": "img/17-c1.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": null,
+   "ancre": "t-20",
+   "titre": "Correctif : des amas à différentes hauteurs",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #84",
+   "fait": true,
+   "pr": 84,
+   "image": {
+    "src": "img/20-hauteurs.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 16,
+   "ancre": "t-16",
+   "titre": "Des toiles plus grandes",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #85",
+   "fait": true,
+   "pr": 85,
+   "image": {
+    "src": "img/16-toiles.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 18,
+   "ancre": "t-18",
+   "titre": "Des projecteurs sur rail",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #86",
+   "fait": true,
+   "pr": 86,
+   "image": {
+    "src": "img/18-p2.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 19,
+   "ancre": "t-19",
+   "titre": "La baie de la salle d’honneur, façon Casa Batlló",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #87",
+   "fait": true,
+   "pr": 87,
+   "image": {
+    "src": "img/19-proche.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 21,
+   "ancre": "t-21",
+   "titre": "L’escalier de marbre, façon Opéra Garnier",
+   "categorie": "hall",
+   "statut": "en ligne · PR #88",
+   "fait": true,
+   "pr": 88,
+   "image": {
+    "src": "img/21-c2.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 22,
+   "ancre": "t-22",
+   "titre": "Bavette, remodelé d’après ta photo",
+   "categorie": "bavette",
+   "statut": "en ligne · PR #89",
+   "fait": true,
+   "pr": 89,
+   "image": {
+    "src": "img/22-bavette.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 23,
+   "ancre": "t-23",
+   "titre": "Le jardin japonais",
+   "categorie": "jardin",
+   "statut": "validé, en reprise",
+   "fait": false,
+   "pr": null,
+   "image": {
+    "src": "img/23-final-etang.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 24,
+   "ancre": "t-24",
+   "titre": "Les portes",
+   "categorie": "hall",
+   "statut": "en ligne · PR #90",
+   "fait": true,
+   "pr": 90,
+   "image": {
+    "src": "img/24-balcon.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 25,
+   "ancre": "t-25",
+   "titre": "Le jardin : bosquets, vrai gazon, relief",
+   "categorie": "jardin",
+   "statut": "en ligne · PR #92",
+   "fait": true,
+   "pr": 92,
+   "image": {
+    "src": "img/25-d2.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 26,
+   "ancre": "t-26",
+   "titre": "Bavette en liberté",
+   "categorie": "bavette",
+   "statut": "en ligne · PR #94",
+   "fait": true,
+   "pr": 94,
+   "image": {
+    "src": "img/26-m_side.jpg",
+    "largeur": 2000,
+    "hauteur": 750
+   }
+  },
+  {
+   "n": 27,
+   "ancre": "t-27",
+   "titre": "La salle d’honneur, façon Casa Batlló et Cernuschi",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #93",
+   "fait": true,
+   "pr": 93,
+   "image": {
+    "src": "img/27-final-1-nord.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": null,
+   "ancre": "t-vivant",
+   "titre": "D’autres éléments vivants : les pistes",
+   "categorie": "idees",
+   "statut": "retenus, en cours",
+   "fait": false,
+   "pr": null,
+   "image": null
+  },
+  {
+   "n": null,
+   "ancre": "t-realisme",
+   "titre": "Polish : ce qui n’existerait pas dans un vrai musée",
+   "categorie": "idees",
+   "statut": "en cours",
+   "fait": false,
+   "pr": null,
+   "image": {
+    "src": "img/29-toiles.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 30,
+   "ancre": "t-30",
+   "titre": "La baie Batlló sur toute la largeur",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #96",
+   "fait": true,
+   "pr": 96,
+   "image": {
+    "src": "img/30-nef3.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 31,
+   "ancre": "t-31",
+   "titre": "Polish : réalisme et corrections",
+   "categorie": "hall",
+   "statut": "en ligne · PR #95",
+   "fait": true,
+   "pr": 95,
+   "image": {
+    "src": "img/31-j1.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 32,
+   "ancre": "t-32",
+   "titre": "Les captures d’écran de tes projets",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #97",
+   "fait": true,
+   "pr": 97,
+   "image": {
+    "src": "img/32-carte.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 33,
+   "ancre": "t-33",
+   "titre": "Le mobilier",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #98",
+   "fait": true,
+   "pr": 98,
+   "image": {
+    "src": "img/33-v1-nef.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 34,
+   "ancre": "t-34",
+   "titre": "Bavette marche comme dans ta vidéo",
+   "categorie": "bavette",
+   "statut": "en ligne · PR #100",
+   "fait": true,
+   "pr": 100,
+   "image": {
+    "src": "img/34-marche.jpg",
+    "largeur": 2000,
+    "hauteur": 600
+   }
+  },
+  {
+   "n": 35,
+   "ancre": "t-35",
+   "titre": "De vraies portes d’entrée",
+   "categorie": "hall",
+   "statut": "en ligne · PR #99",
+   "fait": true,
+   "pr": 99,
+   "image": {
+    "src": "img/35-porte.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 36,
+   "ancre": "t-36",
+   "titre": "L’ambiance sonore",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #101",
+   "fait": true,
+   "pr": 101,
+   "image": null
+  },
+  {
+   "n": 37,
+   "ancre": "t-37",
+   "titre": "Ta mosaïque, la cloche, le compteur",
+   "categorie": "hall",
+   "statut": "en ligne · PR #102",
+   "fait": true,
+   "pr": 102,
+   "image": {
+    "src": "img/37-mosaique.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 38,
+   "ancre": "t-38",
+   "titre": "Les portes, cette fois contre le mur",
+   "categorie": "hall",
+   "statut": "en ligne · PR #104",
+   "fait": true,
+   "pr": 104,
+   "image": {
+    "src": "img/38-gonds.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 39,
+   "ancre": "t-39",
+   "titre": "La vraie météo de Bruxelles et les saisons",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #105",
+   "fait": true,
+   "pr": 105,
+   "image": {
+    "src": "img/39-meteo.jpg",
+    "largeur": 1280,
+    "hauteur": 1200
+   }
+  },
+  {
+   "n": 40,
+   "ancre": "t-40",
+   "titre": "La lumière cuite dans Blender",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #106",
+   "fait": true,
+   "pr": 106,
+   "image": {
+    "src": "img/40-lumiere.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 41,
+   "ancre": "t-41",
+   "titre": "Plinthes et main courante",
+   "categorie": "hall",
+   "statut": "en ligne · PR #107",
+   "fait": true,
+   "pr": 107,
+   "image": {
+    "src": "img/41-main-courante.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 42,
+   "ancre": "t-42",
+   "titre": "Les ombres, et la lune ne traverse plus les murs",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #108",
+   "fait": true,
+   "pr": 108,
+   "image": {
+    "src": "img/42-lune.jpg",
+    "largeur": 1280,
+    "hauteur": 400
+   }
+  },
+  {
+   "n": 43,
+   "ancre": "t-43",
+   "titre": "Carpes koï, oiseaux et lucioles",
+   "categorie": "bavette",
+   "statut": "en ligne · PR #109",
+   "fait": true,
+   "pr": 109,
+   "image": {
+    "src": "img/43-faune.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 44,
+   "ancre": "t-44",
+   "titre": "Une étoile pour tes projets",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #110",
+   "fait": true,
+   "pr": 110,
+   "image": {
+    "src": "img/44-etoile.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 45,
+   "ancre": "t-45",
+   "titre": "La mosaïque, du lundi au dimanche",
+   "categorie": "hall",
+   "statut": "en ligne · PR #111",
+   "fait": true,
+   "pr": 111,
+   "image": {
+    "src": "img/45-mosaique.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 46,
+   "ancre": "t-46",
+   "titre": "Les pattes arrière de Bavette",
+   "categorie": "bavette",
+   "statut": "en ligne · PR #112",
+   "fait": true,
+   "pr": 112,
+   "image": {
+    "src": "img/46-bavette.jpg",
+    "largeur": 1280,
+    "hauteur": 541
+   }
+  },
+  {
+   "n": 47,
+   "ancre": "t-47",
+   "titre": "Plus rapide, et des rayons de soleil sous la verrière",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #113",
+   "fait": true,
+   "pr": 113,
+   "image": {
+    "src": "img/47-rayons.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 48,
+   "ancre": "t-48",
+   "titre": "Des cimaises modulables Novo",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #114",
+   "fait": true,
+   "pr": 114,
+   "image": {
+    "src": "img/48-cimaises.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 49,
+   "ancre": "t-49",
+   "titre": "Bavette moins pomme de terre",
+   "categorie": "bavette",
+   "statut": "en ligne · PR #115",
+   "fait": true,
+   "pr": 115,
+   "image": {
+    "src": "img/49-bavette.jpg",
+    "largeur": 960,
+    "hauteur": 600
+   }
+  },
+  {
+   "n": 50,
+   "ancre": "t-50",
+   "titre": "README, aperçus de partage, favicon",
+   "categorie": "site",
+   "statut": "en ligne · PR #116 et #117",
+   "fait": true,
+   "pr": 116,
+   "image": {
+    "src": "img/50-partage.jpg",
+    "largeur": 1280,
+    "hauteur": 640
+   }
+  },
+  {
+   "n": 51,
+   "ancre": "t-51",
+   "titre": "Les cimaises, avec du recul",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #118",
+   "fait": true,
+   "pr": 118,
+   "image": {
+    "src": "img/51-r-o2.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 52,
+   "ancre": "t-52",
+   "titre": "Le liseré sous les baies cintrées",
+   "categorie": "hall",
+   "statut": "en ligne · PR #120",
+   "fait": true,
+   "pr": 120,
+   "image": {
+    "src": "img/52-corniche.jpg",
+    "largeur": 1240,
+    "hauteur": 180
+   }
+  },
+  {
+   "n": 53,
+   "ancre": "t-53",
+   "titre": "Le compteur, la licence, l’image de partage",
+   "categorie": "site",
+   "statut": "en ligne · PR #121 et #122",
+   "fait": true,
+   "pr": 121,
+   "image": {
+    "src": "img/53-compteur.jpg",
+    "largeur": 1280,
+    "hauteur": 400
+   }
+  },
+  {
+   "n": 54,
+   "ancre": "t-54",
+   "titre": "Sept bugs dehors et au jardin",
+   "categorie": "jardin",
+   "statut": "en ligne · PR #123",
+   "fait": true,
+   "pr": 123,
+   "image": {
+    "src": "img/54-bannieres.jpg",
+    "largeur": 1280,
+    "hauteur": 400
+   }
+  },
+  {
+   "n": 55,
+   "ancre": "t-55",
+   "titre": "Six bugs dans la nef et la salle d’honneur",
+   "categorie": "hall",
+   "statut": "en ligne · PR #124",
+   "fait": true,
+   "pr": 124,
+   "image": {
+    "src": "img/55-cloche.jpg",
+    "largeur": 1280,
+    "hauteur": 400
+   }
+  },
+  {
+   "n": 56,
+   "ancre": "t-56",
+   "titre": "Sept bugs dans les galeries — 20 sur 20",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #126",
+   "fait": true,
+   "pr": 126,
+   "image": {
+    "src": "img/56-lanterneaux.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 57,
+   "ancre": "t-57",
+   "titre": "Des allées de vrai jardin",
+   "categorie": "jardin",
+   "statut": "en ligne · PR #131",
+   "fait": true,
+   "pr": 131,
+   "image": {
+    "src": "img/57-jonction.jpg",
+    "largeur": 1280,
+    "hauteur": 400
+   }
+  },
+  {
+   "n": 58,
+   "ancre": "t-58",
+   "titre": "Les tableaux ne clignotent plus",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #130",
+   "fait": true,
+   "pr": 130,
+   "image": {
+    "src": "img/58-clignote-avant.jpg",
+    "largeur": 1800,
+    "hauteur": 375
+   }
+  },
+  {
+   "n": 59,
+   "ancre": "t-59",
+   "titre": "Un écran de chargement",
+   "categorie": "site",
+   "statut": "en ligne · PR #128 et #129",
+   "fait": true,
+   "pr": 128,
+   "image": {
+    "src": "img/59-chargement.jpg",
+    "largeur": 1280,
+    "hauteur": 400
+   }
+  },
+  {
+   "n": 60,
+   "ancre": "t-60",
+   "titre": "Les jonctions des allées, et l’angle de la façade",
+   "categorie": "jardin",
+   "statut": "en ligne · PR #133",
+   "fait": true,
+   "pr": 133,
+   "image": {
+    "src": "img/60-jonction.jpg",
+    "largeur": 1280,
+    "hauteur": 400
+   }
+  },
+  {
+   "n": 61,
+   "ancre": "t-61",
+   "titre": "Plus de saut de lumière en passant une porte",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #134",
+   "fait": true,
+   "pr": 134,
+   "image": {
+    "src": "img/61-seuil.jpg",
+    "largeur": 1280,
+    "hauteur": 216
+   }
+  },
+  {
+   "n": 62,
+   "ancre": "t-62",
+   "titre": "Du vrai mobilier de musée, avec Meshy",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #135",
+   "fait": true,
+   "pr": 135,
+   "image": {
+    "src": "img/62-cordons.jpg",
+    "largeur": 1280,
+    "hauteur": 398
+   }
+  },
+  {
+   "n": 63,
+   "ancre": "t-63",
+   "titre": "Une sculpture pour chaque projet phare",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #137 et #136",
+   "fait": true,
+   "pr": 137,
+   "image": {
+    "src": "img/63-salle.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 64,
+   "ancre": "t-64",
+   "titre": "Un lien qui mène droit devant un tableau",
+   "categorie": "site",
+   "statut": "en ligne · PR #138",
+   "fait": true,
+   "pr": 138,
+   "image": {
+    "src": "img/64-partage.jpg",
+    "largeur": 1280,
+    "hauteur": 1200
+   }
+  },
+  {
+   "n": 65,
+   "ancre": "t-65",
+   "titre": "Un QR code sur chaque cartel",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #139",
+   "fait": true,
+   "pr": 139,
+   "image": {
+    "src": "img/65-qr.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 66,
+   "ancre": "t-66",
+   "titre": "Un abri à vélos, et de vrais buis",
+   "categorie": "jardin",
+   "statut": "en ligne · PR #140",
+   "fait": true,
+   "pr": 140,
+   "image": {
+    "src": "img/66-velos.jpg",
+    "largeur": 1280,
+    "hauteur": 1200
+   }
+  },
+  {
+   "n": 67,
+   "ancre": "t-67",
+   "titre": "L’atelier en coupe",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #141",
+   "fait": true,
+   "pr": 141,
+   "image": {
+    "src": "img/67-atelier.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 68,
+   "ancre": "t-68",
+   "titre": "Des rameaux en hiver, des flaques sous la pluie",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #143",
+   "fait": true,
+   "pr": 143,
+   "image": {
+    "src": "img/68-saisons.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 69,
+   "ancre": "t-69",
+   "titre": "De vraies pierres, un parvis arrondi",
+   "categorie": "jardin",
+   "statut": "en ligne · PR #144",
+   "fait": true,
+   "pr": 144,
+   "image": {
+    "src": "img/69-parc.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 70,
+   "ancre": "t-70",
+   "titre": "Un vrai mur d’atelier",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #145",
+   "fait": true,
+   "pr": 145,
+   "image": {
+    "src": "img/70-atelier.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 71,
+   "ancre": "t-71",
+   "titre": "« Chandelles », refaite",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #146",
+   "fait": true,
+   "pr": 146,
+   "image": {
+    "src": "img/71-chandelles.jpg",
+    "largeur": 1280,
+    "hauteur": 400
+   }
+  },
+  {
+   "n": 72,
+   "ancre": "t-72",
+   "titre": "Un QR code qu’on peut vraiment scanner, une cimaise en L",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #147",
+   "fait": true,
+   "pr": 147,
+   "image": {
+    "src": "img/72-qr.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 73,
+   "ancre": "t-73",
+   "titre": "L’escalier et la salle d’honneur dans la lumière",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #148, #149",
+   "fait": true,
+   "pr": 148,
+   "image": {
+    "src": "img/73-lumiere.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 74,
+   "ancre": "t-74",
+   "titre": "Bavette sans pli, un peu plus près du sol",
+   "categorie": "bavette",
+   "statut": "en ligne · PR #150",
+   "fait": true,
+   "pr": 150,
+   "image": {
+    "src": "img/74-bavette.jpg",
+    "largeur": 1280,
+    "hauteur": 768
+   }
+  },
+  {
+   "n": 75,
+   "ancre": "t-75",
+   "titre": "Bavette retrouve les proportions de la vidéo",
+   "categorie": "bavette",
+   "statut": "en ligne · PR #152",
+   "fait": true,
+   "pr": 152,
+   "image": {
+    "src": "img/75-bavette.jpg",
+    "largeur": 1280,
+    "hauteur": 576
+   }
+  },
+  {
+   "n": 76,
+   "ancre": "t-76",
+   "titre": "La carte se zoome au doigt",
+   "categorie": "site",
+   "statut": "en ligne · PR #153",
+   "fait": true,
+   "pr": 153,
+   "image": {
+    "src": "img/76-carte.jpg",
+    "largeur": 1280,
+    "hauteur": 908
+   }
+  },
+  {
+   "n": 77,
+   "ancre": "t-77",
+   "titre": "Un index et des onglets dans ce journal",
+   "categorie": "site",
+   "statut": "en ligne · PR #154",
+   "fait": true,
+   "pr": 154,
+   "image": {
+    "src": "img/77-journal.jpg",
+    "largeur": 1280,
+    "hauteur": 441
+   }
+  },
+  {
+   "n": 78,
+   "ancre": "t-78",
+   "titre": "La passe performances",
+   "categorie": "site",
+   "statut": "en ligne · PR #155 à #158",
+   "fait": true,
+   "pr": 155,
+   "image": {
+    "src": "img/78-perf.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 79,
+   "ancre": "t-79",
+   "titre": "Un bébé hérisson au jardin",
+   "categorie": "bavette",
+   "statut": "en ligne · PR #159",
+   "fait": true,
+   "pr": 159,
+   "image": {
+    "src": "img/79-herisson.jpg",
+    "largeur": 1280,
+    "hauteur": 320
+   }
+  },
+  {
+   "n": 80,
+   "ancre": "t-80",
+   "titre": "Le compteur de visiteurs compte enfin",
+   "categorie": "site",
+   "statut": "en ligne · PR #160",
+   "fait": true,
+   "pr": 160,
+   "image": {
+    "src": "img/80-compteur.jpg",
+    "largeur": 1280,
+    "hauteur": 815
+   }
+  },
+  {
+   "n": 81,
+   "ancre": "t-81",
+   "titre": "Bavette fait la sieste sur un banc",
+   "categorie": "bavette",
+   "statut": "en ligne · PR #161",
+   "fait": true,
+   "pr": 161,
+   "image": {
+    "src": "img/81-sieste.jpg",
+    "largeur": 1280,
+    "hauteur": 800
+   }
+  },
+  {
+   "n": 82,
+   "ancre": "t-82",
+   "titre": "On peut sauter",
+   "categorie": "site",
+   "statut": "en ligne · PR #162",
+   "fait": true,
+   "pr": 162,
+   "image": null
+  },
+  {
+   "n": 83,
+   "ancre": "t-83",
+   "titre": "Un billet d’entrée composté",
+   "categorie": "site",
+   "statut": "en ligne · PR #164",
+   "fait": true,
+   "pr": 164,
+   "image": {
+    "src": "img/83-billet.jpg",
+    "largeur": 1280,
+    "hauteur": 376
+   }
+  },
+  {
+   "n": 84,
+   "ancre": "t-84",
+   "titre": "Des textures compressées pour les modèles",
+   "categorie": "site",
+   "statut": "en ligne · PR #165",
+   "fait": true,
+   "pr": 165,
+   "image": null
+  },
+  {
+   "n": 85,
+   "ancre": "t-85",
+   "titre": "Un panneau de réglages",
+   "categorie": "site",
+   "statut": "en ligne · PR #167",
+   "fait": true,
+   "pr": 167,
+   "image": {
+    "src": "img/85-reglages.jpg",
+    "largeur": 1280,
+    "hauteur": 310
+   }
+  },
+  {
+   "n": 86,
+   "ancre": "t-86",
+   "titre": "Des lampadaires, et la nuit s’éclaire",
+   "categorie": "jardin",
+   "statut": "en ligne · PR #169",
+   "fait": true,
+   "pr": 169,
+   "image": {
+    "src": "img/86-lampadaires.jpg",
+    "largeur": 1280,
+    "hauteur": 1200
+   }
+  },
+  {
+   "n": 87,
+   "ancre": "t-87",
+   "titre": "De vraies plantes de musée",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #171",
+   "fait": true,
+   "pr": 171,
+   "image": {
+    "src": "img/87-plantes.jpg",
+    "largeur": 1280,
+    "hauteur": 1200
+   }
+  },
+  {
+   "n": 88,
+   "ancre": "t-88",
+   "titre": "Le verre, le bois, les sols, les étiquettes",
+   "categorie": "hall",
+   "statut": "en ligne · PR #175",
+   "fait": true,
+   "pr": 175,
+   "image": {
+    "src": "img/88-matieres.jpg",
+    "largeur": 1280,
+    "hauteur": 1600
+   }
+  },
+  {
+   "n": 89,
+   "ancre": "t-89",
+   "titre": "Plus de murs presque vides",
+   "categorie": "galeries",
+   "statut": "en ligne · PR #173",
+   "fait": true,
+   "pr": 173,
+   "image": {
+    "src": "img/88-accrochage.jpg",
+    "largeur": 1280,
+    "hauteur": 795
+   }
+  },
+  {
+   "n": 90,
+   "ancre": "t-90",
+   "titre": "Reprendre la main pendant la visite guidée",
+   "categorie": "site",
+   "statut": "en ligne · PR #174",
+   "fait": true,
+   "pr": 174,
+   "image": null
+  },
+  {
+   "n": 91,
+   "ancre": "t-91",
+   "titre": "La pluie se voit du dedans",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #179",
+   "fait": true,
+   "pr": 179,
+   "image": {
+    "src": "img/91-pluie.jpg",
+    "largeur": 1280,
+    "hauteur": 400
+   }
+  },
+  {
+   "n": 92,
+   "ancre": "t-92",
+   "titre": "Changer de météo ne fige plus le musée",
+   "categorie": "ambiance",
+   "statut": "en ligne · PR #179",
+   "fait": true,
+   "pr": 179,
+   "image": null
+  },
+  {
+   "n": 93,
+   "ancre": "t-93",
+   "titre": "Un vrai ruisseau",
+   "categorie": "jardin",
+   "statut": "en ligne · PR #183",
+   "fait": true,
+   "pr": 183,
+   "image": {
+    "src": "img/93-ruisseau.jpg",
+    "largeur": 1280,
+    "hauteur": 1200
+   }
+  },
+  {
+   "n": 94,
+   "ancre": "t-94",
+   "titre": "La vieille souche et les galets de rivière",
+   "categorie": "jardin",
+   "statut": "en ligne · PR #185",
+   "fait": true,
+   "pr": 185,
+   "image": {
+    "src": "img/94-souche.jpg",
+    "largeur": 1280,
+    "hauteur": 1200
+   }
+  }
+ ]
+}

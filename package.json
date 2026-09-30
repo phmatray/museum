@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && node tools/pages-partage.ts && cp -R docs/journal dist/journal",
+    "build": "node tools/chantier.ts && tsc -b && vite build && node tools/pages-partage.ts && cp -R docs/journal dist/journal",
     "lint": "eslint .",
     "preview": "vite preview",
     "fetch": "node tools/fetch-github.ts",
@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "plan:svg": "node tools/plan-svg.ts",
     "accrocher": "node tools/accrocher.ts",
-    "bake": "node tools/bake-lumiere.ts"
+    "bake": "node tools/bake-lumiere.ts",
+    "chantier": "node tools/chantier.ts"
   },
   "dependencies": {
     "@fontsource/marcellus": "^5.3.0",

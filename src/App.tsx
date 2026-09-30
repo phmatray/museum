@@ -6,6 +6,7 @@ import { Minimap } from './components/Minimap'
 import { CarteOeuvre } from './components/CarteOeuvre'
 import { BorneOeuvre } from './components/BorneOeuvre'
 import { CarteBavette } from './components/CarteBavette'
+import { CarteEtape } from './components/CarteEtape'
 import { GuidedTour } from './components/GuidedTour'
 import { BoutonSon } from './components/BoutonSon'
 import { EcranChargement } from './components/EcranChargement'
@@ -48,6 +49,7 @@ export default function App() {
       <CarteOeuvre />
       <BorneOeuvre />
       <CarteBavette />
+      <CarteEtape />
       <BoutonSon />
       <MessagePartage />
       <Musee3DPlusTard />

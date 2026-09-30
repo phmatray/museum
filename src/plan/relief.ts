@@ -17,6 +17,7 @@
  * Une fonction pure : la marche (`walk.ts`), les plantations (`park.ts`), la
  * pelouse, les allées et l'herbe la lisent, et tombent d'accord au millimètre.
  */
+import { CHANTIER, EMPRISE_CHANTIER } from './chantier.ts'
 import { JARDIN, TABLIER, creuxDuRuisseau } from './jardin.ts'
 import type { Rect } from './types.ts'
 
@@ -27,6 +28,13 @@ const AXE: Rect = { x: 21.8, z: 45, width: 4.4, depth: 40 }
 /** Le plat autour de ce qui doit l'être, puis la pente qui se lève sur `FONDU`. */
 const PLAT = 2
 const FONDU = 14
+/**
+ * La plate-forme de la baraque du chantier (`chantier.ts`) : de niveau à sa cote
+ * (`CHANTIER.cote`, celle de la pelouse à cet endroit), 80 cm autour, puis un
+ * raccord de `FONDU_CHANTIER` vers le relief — pas un trou creusé jusqu'à 0.
+ */
+const PLAT_CHANTIER = 0.8
+const FONDU_CHANTIER = 8
 
 /** Distance d'un point à un rectangle : 0 dedans. */
 function distanceRect(r: Rect, x: number, z: number): number {
@@ -103,9 +111,10 @@ export function distanceParvis(r: Rect, x: number, z: number): number {
 export function hauteurDuParc(x: number, z: number): number {
   const lit = distanceRect(TABLIER, x, z) > 0 ? creuxDuRuisseau(x, z) : 0
   const m = masqueDuRelief(x, z)
-  if (m === 0) return lit
+  const k = lisse(Math.min(1, Math.max(0, (distanceRect(EMPRISE_CHANTIER, x, z) - PLAT_CHANTIER) / FONDU_CHANTIER)))
+  if (m === 0 && k === 1) return lit
   const ondes = OCTAVES.reduce((s, [l, a], k) => s + a * (bruit(x / l + 7.3 * k, z / l - 3.1 * k, k + 1) - 0.2), 0)
   const nord = MONTEE_NORD * lisse(Math.min(1, Math.max(0, (-10 - z) / 30)))
   const buttes = BUTTES.reduce((s, [bx, bz, r, h]) => s + h * Math.max(0, 1 - ((x - bx) ** 2 + (z - bz) ** 2) / (r * r)) ** 2, 0)
-  return m * (ondes + nord + buttes) + lit
+  return CHANTIER.cote + (m * (ondes + nord + buttes) - CHANTIER.cote) * k + lit
 }

@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNod
 import { useAccrochage, themeName } from '../hooks/useAccrochage'
 import { MUSEE } from '../plan/musee'
 import { projectForMinimap, zoomer, type Cadrage } from '../plan/minimap'
-import { S, renderLevel } from '../plan/svg'
+import { S, renderDehors, renderLevel } from '../plan/svg'
 import { useGameStore } from '../stores/gameStore'
 import { useReglages } from '../stores/reglagesStore'
 
@@ -32,7 +32,9 @@ export function Minimap() {
   const affiche = useReglages((s) => s.plan)
   const vue = visiteur && projectForMinimap(MUSEE, visiteur)
   const level = vue?.level ?? MUSEE.spawn.level
-  const fond = useMemo(() => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(renderLevel(MUSEE, level))}`, [level])
+  // Dehors, le plan montre aussi le parc jusqu'à la baraque du chantier.
+  const dehors = vue?.dehors ?? false
+  const fond = useMemo(() => `data:image/svg+xml;charset=utf-8,${encodeURIComponent(dehors ? renderDehors(MUSEE, level) : renderLevel(MUSEE, level))}`, [level, dehors])
   if (!vue || !affiche) return null
 
   const { player: p, room, viewBox } = vue

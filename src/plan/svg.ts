@@ -9,6 +9,7 @@
  * Pur : (plan, niveau) → chaîne. Le même rendu sert au dossier `docs/plan` et
  * pourra servir à la minimap.
  */
+import { CHANTIER, EMPRISE_CHANTIER } from './chantier.ts'
 import { MODULE, cimaisesDe } from './cimaises.ts'
 import { guardrails, isNordSud } from './geometry.ts'
 import { capacity } from './rules.ts'
@@ -184,4 +185,39 @@ export function renderLevel(plan: Plan, levelId: number): string {
 
 function halo(fill: string) {
   return `stroke="${fill}" stroke-width="5" paint-order="stroke" stroke-linejoin="round"`
+}
+
+/**
+ * Le cadre du plan vu du DEHORS : celui du bâtiment, élargi jusqu'à la baraque
+ * du chantier (`chantier.ts`), sur la pelouse sud-ouest.
+ */
+export function cadreDehors(plan: Plan): [number, number, number, number] {
+  const [x, y, w, h] = cadre(plan)
+  const c = EMPRISE_CHANTIER
+  const m = 40
+  const [x0, y0] = [Math.min(x, n(c.x) - m), Math.min(y, n(c.z) - m)]
+  const [x1, y1] = [Math.max(x + w, n(c.x + c.width) + m), Math.max(y + h, n(c.z + c.depth) + m)]
+  return [x0, y0, x1 - x0, y1 - y0]
+}
+
+/**
+ * Le niveau du rez-de-chaussée vu du dehors : le plan du bâtiment (`renderLevel`)
+ * dans le cadre élargi, et la baraque du chantier pochée à sa place, sa porte à
+ * l'est, son nom dessous.
+ */
+export function renderDehors(plan: Plan, levelId: number): string {
+  const [X, Y, W, H] = cadreDehors(plan)
+  const [bx, by] = cadre(plan)
+  const c = EMPRISE_CHANTIER
+  const e = CHANTIER.mur
+  const porte = { x: c.x + c.width - e, z: CHANTIER.porte.z - CHANTIER.porte.largeur / 2, width: 2 * e, depth: CHANTIER.porte.largeur }
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${X} ${Y} ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${plan.name}, le parc et le chantier du musée">`,
+    `<rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="${C.paper}"/>`,
+    renderLevel(plan, levelId).replace(/^<svg /, `<svg x="${bx}" y="${by}" `),
+    rect(c, `fill="${C.honneur}" stroke="${C.poche}" stroke-width="${n(e) * 2}"`),
+    rect(porte, `fill="${C.honneur}"`, 0.02),
+    text(n(c.x + c.width / 2), n(c.z + c.depth / 2) + 5, 'Chantier du musée', `text-anchor="middle" font-size="14" class="lbl" ${halo(C.honneur)}`),
+    `</svg>`,
+  ].join('\n')
 }

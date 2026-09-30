@@ -22,6 +22,7 @@ npm run ateliers             # flagship repos' .csproj (or npm workspaces) graph
 npm run captures             # screenshots of project sites/READMEs (needs Chrome)
 npm run media                # catalogue -> painting textures in public/media (gitignored)
 npm run accrocher            # hang the collection -> public/data/accrochage.json (committed)
+npm run chantier             # docs/journal/index.html -> public/data/chantier.json (committed; also run by build) for the garden's site hut
 npm run plan:svg             # redraw docs/plan/niveau-*.svg from the plan
 node tools/fetch-assets.ts   # CC0 PBR materials/HDRI/sky (gitignored) + regenerates public/assets/CREDITS.md
 npm run bake                 # bake the lightmap atlas in headless Blender (~10 min) -> public/assets/lumiere/atlas.webp

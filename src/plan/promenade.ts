@@ -15,12 +15,13 @@
  * Pur et semé : une graine donne toujours la même promenade, et les tests la
  * rejouent. Ni three ni React.
  */
+import { EMPRISE_CHANTIER } from './chantier.ts'
 import { presDeLEau } from './jardin.ts'
 import { OBSTACLES_PORTIQUE } from './facade.ts'
 import { ASSISES, DIMENSIONS, MOBILIER, blocsDuMobilier, contournement, contourner as eviter } from './mobilier.ts'
 import type { Parc } from './park.ts'
 import { PARC, PASSABLE, surfaceAt } from './rules.ts'
-import { capVers, chemin, passages } from './tour.ts'
+import { capVers, chemin, grapheEtEntree } from './tour.ts'
 import type { Plan, Rect } from './types.ts'
 import { step, type Walker } from './walk.ts'
 
@@ -344,22 +345,6 @@ export function siesteForcee(plan: Plan, p: Promenade, c: Couchette, phase?: Pha
   return points ? { ...p, sieste: undefined, lieu, points, pause: 0, duree: 0, bloque: 0 } : p
 }
 
-/** Les passages de la visite, plus l'entrée : du hall au parc, au-delà du portique. */
-function graphe(plan: Plan) {
-  const g = passages(plan)
-  const lier = (a: string, b: string, points: [number, number][]) => {
-    g.set(a, [...(g.get(a) ?? []), { vers: b, points }])
-    g.set(b, [...(g.get(b) ?? []), { vers: a, points: [...points].reverse() }])
-  }
-  const devant = Math.max(plan.depth, ...OBSTACLES_PORTIQUE.map((o) => o.z + o.depth)) + 0.8
-  for (const level of plan.levels)
-    for (const o of level.openings)
-      // Côté hall, le point de passage est au-delà des battants ouverts de l'entrée
-      // (1,55 m) : plus près, le chemin vers un coin du hall coupait un battant.
-      if (o.kind === 'entrance' && o.b === null) lier(`${level.id}:${o.a}`, PARC, [[o.x, o.z - 2.6], [o.x, o.z - 0.8], [o.x, devant]])
-  return g
-}
-
 /**
  * Dehors, de a à b sans traverser le musée : par les angles de son emprise
  * (portique compris), plus court chemin sur ce petit graphe de visibilité —
@@ -375,11 +360,15 @@ const OBSTACLES_DEHORS = new WeakMap<Plan, { blocs: Rect[]; noeuds: [number, num
 
 function obstaclesDehors(plan: Plan): { blocs: Rect[]; noeuds: [number, number][] } {
   const m = 0.6
-  const bati = [{ x: 0, z: 0, width: plan.width, depth: plan.depth }, ...OBSTACLES_PORTIQUE].map((r) => ({ x: r.x - m, z: r.z - m, width: r.width + 2 * m, depth: r.depth + 2 * m }))
+  // Le musée, son portique, et la baraque du chantier (`chantier.ts`) : Bavette en fait le tour, elle n'y entre pas.
+  const bati = [{ x: 0, z: 0, width: plan.width, depth: plan.depth }, ...OBSTACLES_PORTIQUE, EMPRISE_CHANTIER].map((r) => ({ x: r.x - m, z: r.z - m, width: r.width + 2 * m, depth: r.depth + 2 * m }))
   const e = 2.5
   const sud = Math.max(plan.depth, ...OBSTACLES_PORTIQUE.map((o) => o.z + o.depth)) + e
   const bancs = blocsDuMobilier(PARC)
   const angles: [number, number][] = [[-e, -e], [plan.width + e, -e], [plan.width + e, sud], [-e, sud]]
+  // Les coins de la baraque, à un mètre : de quoi la contourner.
+  const c = EMPRISE_CHANTIER
+  angles.push([c.x - 1, c.z - 1], [c.x + c.width + 1, c.z - 1], [c.x + c.width + 1, c.z + c.depth + 1], [c.x - 1, c.z + c.depth + 1])
   return { blocs: [...bati, ...bancs.blocs], noeuds: [...angles, ...bancs.noeuds] }
 }
 
@@ -387,7 +376,7 @@ function obstaclesDehors(plan: Plan): { blocs: Rect[]; noeuds: [number, number][
 export function itineraire(plan: Plan, de: Pick<Walker, 'surface' | 'x' | 'z'>, lieu: Lieu): [number, number][] | null {
   // ponytail: graphe recalculé à chaque destination — une par arrêt, soit toutes les dix secondes.
   // Dedans, le chemin contourne le mobilier de chaque salle ; dehors, c'est `contourner` qui s'en charge.
-  const pts = chemin(graphe(plan), de.surface, lieu.surface, de.surface === PARC ? undefined : [de.x, de.z])
+  const pts = chemin(grapheEtEntree(plan), de.surface, lieu.surface, de.surface === PARC ? undefined : [de.x, de.z])
   if (!pts) return null
   const approche: [number, number] = [lieu.x + Math.sin(lieu.cap) * APPROCHE, lieu.z + Math.cos(lieu.cap) * APPROCHE]
   const bruts: [number, number][] = [...pts, approche, [lieu.x, lieu.z]]
