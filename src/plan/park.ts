@@ -16,7 +16,7 @@
  * Aucun aléa réel : le tirage est semé par un texte, deux appels donnent le
  * même parc, arbre pour arbre.
  */
-import { CONTOUR_ETANG, JARDIN, LEVRE, TABLIER, TRACE_RUISSEAU, distanceEtang, presDeLEau } from './jardin.ts'
+import { CONTOUR_ETANG, INDICE_LEVRE, JARDIN, LEVRE, RADIERS, TABLIER, TRACE_RUISSEAU, distanceEtang, distanceRuisseau, presDeLEau } from './jardin.ts'
 import { hauteurDuParc } from './relief.ts'
 import type { Plan, Rect } from './types.ts'
 
@@ -258,17 +258,17 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
     && Math.hypot(x - lanterne.x, z - lanterne.z) > rayon + 1.2
     && !JARDIN.pas.some(([px, pz]) => Math.hypot(x - px, z - pz) < rayon + 0.6)
     && !plantations.some((p) => Math.hypot(p.x - x, p.z - z) < (p.rayon + rayon) * serre)
-  const planter = (espece: EspeceParc, x: number, z: number, scale = 0.85 + alea() * 0.3, y?: number) => {
+  const planter = (espece: EspeceParc, x: number, z: number, scale = 0.85 + alea() * 0.3, y?: number, tirage = alea) => {
     // ±15 % de taille : deux sujets identiques côte à côte trahiraient l'instanciation.
-    const p: PlantPlacement = { espece, x, z, rotation: alea() * Math.PI * 2, scale, rayon: RAYON[espece] * scale }
+    const p: PlantPlacement = { espece, x, z, rotation: tirage() * Math.PI * 2, scale, rayon: RAYON[espece] * scale }
     // Sur une pente, le pied se pose au plus bas de son tour : rien ne flotte côté aval.
     const sol = Math.min(...[[0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5]].map(([dx, dz]) => hauteurDuParc(x + dx, z + dz)))
-    if (y !== undefined || sol > 0) p.y = (y ?? 0) + sol
+    if (y !== undefined || sol !== 0) p.y = (y ?? 0) + sol
     // Le dernier mot, houppier compris, quel que soit le tirage qui a proposé le sujet.
     if (surUneAllee(allees, x, z, p.rayon + BORD) || dansRect(parvis, x, z, p.rayon) || !dansRect(terrain, x, z, -p.rayon)) return
     plantations.push(p)
   }
-  const rocher = () => ROCHERS[Math.floor(alea() * ROCHERS.length)]
+  const rocher = (tirage = alea) => ROCHERS[Math.floor(tirage() * ROCHERS.length)]
 
   // 1. Les rochers d'abord : ils tiennent la berge, le reste pousse autour.
   //    Deux gros de part et d'autre de la cascade, puis la rive de l'étang et
@@ -294,21 +294,39 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
     const [fx, fz] = [x + ((x - cx) / d) * 1.0, z + ((z - cz) / d) * 1.0]
     if (libre(fx, fz, 0.2, 0.3)) planter('fougere', fx, fz, 1.1 + alea() * 0.7)
   })
+  // Le long du ruisseau, tous les 3,5 m environ : un rocher moussu calé dans la
+  // berge, d'un côté ou de l'autre ; aux radiers, une pierre au milieu du courant
+  // que l'eau contourne en écumant. Et des fougères qui penchent sur l'eau.
+  // Leur propre tirage : le tracé du ruisseau peut changer sans rebattre tout le parc.
+  const rive = generateur(`${graine}:ruisseau`)
+  let [marche, prochain] = [0, 2]
   TRACE_RUISSEAU.forEach(([x, z, w], k) => {
-    if (k % 3 !== 0 || alea() < 0.35) return
-    const [ax, az] = TRACE_RUISSEAU[Math.min(k + 1, TRACE_RUISSEAU.length - 1)]
-    const d = Math.hypot(ax - x, az - z) || 1
-    const [nx, nz] = [-(az - z) / d, (ax - x) / d]
-    const cote = alea() < 0.5 ? -1 : 1
-    const [rx, rz] = [x + nx * cote * (w / 2 + 0.2), z + nz * cote * (w / 2 + 0.2)]
-    const s = 0.22 + alea() * 0.25
-    if (distanceEtang(rx, rz) < 2 || dansRect(TABLIER, rx, rz, 1.5) || surUneAllee(allees, rx, rz, 0.8)) return
-    planter(rocher(), rx, rz, s, -0.08 - 0.3 * s)
-    // Une fougère au pied du rocher, côté terre.
-    const [fx, fz] = [rx + nx * cote * 1.1, rz + nz * cote * 1.1]
-    if (alea() < 0.7 && libre(fx, fz, RAYON.fougere * 0.3, 0.2)) planter('fougere', fx, fz, 1.2 + alea() * 0.6)
+    if (k === 0 || k >= INDICE_LEVRE) return
+    const [ax, az] = TRACE_RUISSEAU[k - 1]
+    marche += Math.hypot(x - ax, z - az)
+    const d = Math.hypot(x - ax, z - az) || 1
+    const [nx, nz] = [-(z - az) / d, (x - ax) / d]
+    const loinDuPont = !dansRect(TABLIER, x, z, 1.5) && distanceEtang(x, z) > 2
+    if (marche >= prochain && loinDuPont) {
+      prochain = marche + 2.8 + rive() * 1.6
+      const cote = rive() < 0.5 ? -1 : 1
+      if (RADIERS[k] > 0.7 && rive() < 0.75) {
+        const c = (rive() - 0.5) * w * 0.4
+        planter(rocher(rive), x + nx * c, z + nz * c, 0.24 + rive() * 0.12, -0.12, rive)
+      } else if (rive() < 0.7) {
+        const [rx, rz] = [x + nx * cote * (w / 2 + 0.15), z + nz * cote * (w / 2 + 0.15)]
+        if (!surUneAllee(allees, rx, rz, 0.8)) planter(rocher(rive), rx, rz, 0.22 + rive() * 0.25, -0.06, rive)
+      }
+    }
+    // Les fougères : une tous les 1,5 m à peu près, sur la pente de la berge.
+    if (k % 3 === 0 && loinDuPont && rive() < 0.55) {
+      const cote = rive() < 0.5 ? -1 : 1
+      const r = w / 2 + 0.3 + rive() * 0.45
+      const [fx, fz] = [x + nx * cote * r, z + nz * cote * r]
+      const serre = !plantations.some((p) => Math.hypot(p.x - fx, p.z - fz) < (p.rayon + 0.25) * 0.6)
+      if (serre && !surUneAllee(allees, fx, fz, 0.8) && distanceRuisseau(fx, fz) > 0.2) planter('fougere', fx, fz, 1.0 + rive() * 0.7, undefined, rive)
+    }
   })
-
   // 2. Un rideau de grands arbres au fond du jardin, le long du bord du terrain :
   //    sans lui, la pelouse filait jusqu'au ciel derrière l'étang.
   const [xMax, zMax] = [terrain.x + terrain.width, terrain.z + terrain.depth]

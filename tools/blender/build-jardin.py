@@ -74,8 +74,45 @@ def lisser(pts, fermee, iterations=3):
     return p
 
 
+def spline(pts, pas=0.5):
+    """Catmull-Rom centripète (Barry-Goldman), exactement comme `spline()` de jardin.ts."""
+    n = len(pts)
+
+    def P(i):
+        if i < 0:
+            return [2 * v - w for v, w in zip(pts[0], pts[1])]
+        if i >= n:
+            return [2 * v - w for v, w in zip(pts[n - 1], pts[n - 2])]
+        return list(pts[i])
+
+    def noeud(a, b):
+        return math.sqrt(math.hypot(b[0] - a[0], b[1] - a[1])) or 1e-6
+
+    def lerp(a, b, ta, tb, t):
+        return [((tb - t) * v + (t - ta) * w) / (tb - ta) for v, w in zip(a, b)]
+
+    out = []
+    for i in range(n - 1):
+        p0, p1, p2, p3 = P(i - 1), P(i), P(i + 1), P(i + 2)
+        t1 = noeud(p0, p1)
+        t2 = t1 + noeud(p1, p2)
+        t3 = t2 + noeud(p2, p3)
+        m = max(1, math.ceil(math.hypot(p2[0] - p1[0], p2[1] - p1[1]) / pas))
+        for j in range(m):
+            t = t1 + (t2 - t1) * j / m
+            a1, a2, a3 = lerp(p0, p1, 0, t1, t), lerp(p1, p2, t1, t2, t), lerp(p2, p3, t2, t3, t)
+            b1, b2 = lerp(a1, a2, 0, t2, t), lerp(a2, a3, t1, t3, t)
+            out.append(tuple(lerp(b1, b2, t1, t2, t)))
+    out.append(tuple(pts[-1]))
+    return out
+
+
 CONTOUR = np.array(lisser(JARDIN["etang"]["contour"], True))
-TRACE = np.array(lisser(JARDIN["ruisseau"]["trace"], False))
+TRACE = np.array(spline(JARDIN["ruisseau"]["trace"]))
+BERGE_RUISSEAU = 1.3  # comme jardin.ts
+LEVRE_BERGE = 0.45
+FIL_DE_L_EAU = RUISSEAU - 0.03
+SOUS_LA_RIVE = 0.25
 
 
 def dist_segments(px, pz, a, b):
@@ -103,26 +140,34 @@ def sdf_etang(px, pz):
     return np.where(dedans, -d, d)
 
 
-def sdf_ruisseau(px, pz, trace=TRACE):
+def sdf_ruisseau(px, pz, trace=TRACE, largeur=False):
     a, b = trace[:-1, :2], trace[1:, :2]
     d, t, i = dist_segments(px, pz, a, b)
     w = trace[i, 2] + t * (trace[i + 1, 2] - trace[i, 2])
-    return d - w / 2
+    return (d - w / 2, w) if largeur else d - w / 2
+
+
+def creux_ruisseau(px, pz):
+    """Le lit creusé : le miroir exact de `creuxDuRuisseau` (jardin.ts)."""
+    d, w = sdf_ruisseau(px, pz, largeur=True)
+    berge = FIL_DE_L_EAU * (0.55 * np.clip(1 - d / LEVRE_BERGE, 0, 1) ** 2 + 0.45 * np.clip(1 - d / BERGE_RUISSEAU, 0, 1) ** 2)
+    fond = 0.07 + 0.2 * np.clip((w - 1.4) / 1.4, 0, 1)
+    s = np.clip(-d / np.minimum(0.7, w / 2), 0, 1)
+    lit = FIL_DE_L_EAU - fond * s * s * (3 - 2 * s)
+    return np.where(d >= 0, berge, lit)
 
 
 def hauteur(px, pz):
     """
     Le sol du jardin. Une berge d'étang BOMBÉE — pente nulle côté pelouse,
-    raide au fil de l'eau — comme les rives gazonnées de Hasselt ; un lit de
-    ruisseau affleurant, la pelouse descend à l'eau.
+    raide au fil de l'eau — comme les rives gazonnées de Hasselt ; le lit du
+    ruisseau creusé d'une vingtaine de centimètres sous la pelouse, sa berge
+    raide au fil de l'eau, son fond plus creux dans les mouilles.
     """
     sp = sdf_etang(px, pz)
     s = np.clip(sp / 1.8, 0, 1)
     hp = np.where(sp >= 0, ETANG * (1 - s) ** 2, np.maximum(-0.9, ETANG + 0.5 * sp))
-    ss = sdf_ruisseau(px, pz)
-    s = np.clip(ss / 0.8, 0, 1)
-    hs = np.where(ss >= 0, RUISSEAU * (1 - s) ** 2, np.maximum(-0.38, RUISSEAU + 0.5 * ss))
-    return np.minimum(hp, hs)
+    return np.minimum(hp, creux_ruisseau(px, pz))
 
 
 # ── Outils Blender ────────────────────────────────────────────────────────
@@ -242,8 +287,16 @@ def terrain(sol):
         zs = z["z"] + np.arange(nz + 1) * PAS_GRILLE
         gx, gz = np.meshgrid(xs, zs, indexing="ij")
         h = hauteur(gx.ravel(), gz.ravel()).reshape(gx.shape)
-        # Le bord de zone reste au niveau de la pelouse, quoi qu'il arrive.
-        h[0, :] = h[-1, :] = h[:, 0] = h[:, -1] = 0
+        # Le bord de zone reste au niveau de la pelouse — sauf la couture entre
+        # deux zones, que le ruisseau traverse : forcée à 0, elle barrait le lit
+        # d'un seuil de gazon (la « dent » de la capture de Philippe).
+        autres = [r for r in JARDIN["zones"] if r is not z]
+        bord = np.zeros(gx.shape, bool)
+        bord[0, :] = bord[-1, :] = bord[:, 0] = bord[:, -1] = True
+        couture = np.zeros(gx.shape, bool)
+        for r in autres:
+            couture |= (gx >= r["x"] - 1e-6) & (gx <= r["x"] + r["width"] + 1e-6) & (gz >= r["z"] - 1e-6) & (gz <= r["z"] + r["depth"] + 1e-6)
+        h[bord & ~couture] = 0
         bm = bmesh.new()
         vs = [[bm.verts.new((float(gx[i, j]), float(-gz[i, j]), float(h[i, j]))) for j in range(nz + 1)] for i in range(nx + 1)]
         for i in range(nx):
@@ -259,7 +312,7 @@ def terrain(sol):
         bord = [e for e in bm.edges if e.is_boundary]
         r = bmesh.ops.extrude_edge_only(bm, edges=bord)
         for v in (e for e in r["geom"] if isinstance(e, bmesh.types.BMVert)):
-            v.co.z = -0.4
+            v.co.z = min(-0.4, v.co.z - 0.2)
         # Arête vive entre le sol et sa jupe : sans elle, la normale lissée d'un
         # sommet de bord penche vers la jupe, et les grands triangles de la
         # pelouse plane l'étalent sur des mètres — une nappe qui brille au soleil.
@@ -314,25 +367,20 @@ def eau(mat_eau, mat_cascade):
     bm.to_mesh(etang.data)
     bm.free()
 
-    # Le ruisseau : un ruban jusqu'à la lèvre, 30 cm plus large que son lit.
+    # Le ruisseau n'est plus ici : son ruban, UV le long du courant, est tissé
+    # par `rubanDuRuisseau` (jardin.ts). Seul le bord de sa lèvre sert à la cascade.
     fin = indice_cascade()
-    t = TRACE[: fin + 1]
-    g = Maillage()
-    bords = []
-    for i in range(len(t)):
-        a, b = t[max(0, i - 1)], t[min(len(t) - 1, i + 1)]
-        dx, dz = b[0] - a[0], b[1] - a[1]
-        l = math.hypot(dx, dz)
-        nx, nz = -dz / l, dx / l
-        r = t[i][2] / 2 + 0.3
-        bords.append(((t[i][0] + nx * r, t[i][1] + nz * r), (t[i][0] - nx * r, t[i][1] - nz * r), (dx / l, dz / l)))
-    for (g0, d0, _), (g1, d1, _) in zip(bords, bords[1:]):
-        g.face([(g0[0], -g0[1], RUISSEAU), (d0[0], -d0[1], RUISSEAU), (d1[0], -d1[1], RUISSEAU), (g1[0], -g1[1], RUISSEAU)], mat_eau)
-    ruisseau = g.objet("Jardin_Eau_Ruisseau")
+    x, z = TRACE[fin][0], TRACE[fin][1]
+    a, b = TRACE[fin - 1], TRACE[fin]  # comme `rubanDuRuisseau` : son dernier travers
+    dx, dz = b[0] - a[0], b[1] - a[1]
+    l = math.hypot(dx, dz)
+    nx, nz = -dz / l, dx / l
+    r = TRACE[fin][2] / 2 + SOUS_LA_RIVE
+    bords = [((x + nx * r, z + nz * r), (x - nx * r, z - nz * r), (dx / l, dz / l))]
 
     # La cascade : une nappe qui tombe de la lèvre au niveau de l'étang, et son écume.
     gl, dl, (ux, uz) = bords[-1]
-    profil = [(0.0, 0.0), (0.08, -0.02), (0.15, -0.07), (0.21, -0.15), (0.25, ETANG - RUISSEAU)]
+    profil = [(0.0, 0.0), (0.06, -0.015), (0.12, -0.05), (0.17, -0.08), (0.22, ETANG - RUISSEAU - 0.02)]
     g = Maillage()
     for (a0, h0), (a1, h1) in zip(profil, profil[1:]):
         g.face([
@@ -340,10 +388,10 @@ def eau(mat_eau, mat_cascade):
             (dl[0] + ux * a1, -(dl[1] + uz * a1), RUISSEAU + h1), (gl[0] + ux * a1, -(gl[1] + uz * a1), RUISSEAU + h1),
         ], mat_cascade, uvs=[(0, a0 - h0), (1, a0 - h0), (1, a1 - h1), (0, a1 - h1)])
     cascade = g.objet("Jardin_Cascade")
-    return [etang, ruisseau, cascade]
+    return [etang, cascade]
 
 
-def galets(gris, mousse):
+def galets(gris, mousse, mouille):
     """Un liseré de galets au fil de l'eau, tout autour de l'étang — sauf devant la cascade."""
     rng = random.Random("galets")
     fin = TRACE[indice_cascade()]
@@ -365,6 +413,28 @@ def galets(gris, mousse):
         if math.hypot(x - fin[0], z - fin[1]) < 2.2:
             continue
         caillou(g, x + n[0] * 0.08, z + n[1] * 0.08, ETANG + 0.02, rng, gris if rng.random() < 0.6 else mousse)
+    # Le lit du ruisseau : des galets sous l'eau claire, serrés dans les radiers,
+    # clairsemés dans les mouilles, et un cordon de graviers au pied des berges.
+    rng = random.Random("lit")
+    for i in range(indice_cascade()):
+        (x0, z0, w), (x1, z1, _) = TRACE[i], TRACE[i + 1]
+        l = math.hypot(x1 - x0, z1 - z0)
+        ux, uz = (x1 - x0) / l, (z1 - z0) / l
+        serre = np.clip((2.4 - w) / 1.0, 0.25, 1)
+        for _ in range(sum(int(rng.random() < serre) for _ in range(3)) + 1):
+            a, c = rng.random() * l, rng.uniform(-1, 1) * (w / 2 - 0.08)
+            px, pz = x0 + ux * a - uz * c, z0 + uz * a + ux * c
+            fond = float(creux_ruisseau(np.array([px]), np.array([pz]))[0])
+            # À demi enterré : le dessus reste sous l'eau, sauf aux radiers, où il affleure.
+            t = rng.uniform(0.25, 0.65)
+            caillou(g, px, pz, fond - 0.03 * t, rng, mouille if rng.random() < 0.88 else mousse, taille=t)
+        for cote in (-1, 1):
+            if rng.random() < 0.55:
+                c = cote * (w / 2 - rng.uniform(0.0, 0.12))
+                a = rng.random() * l
+                px, pz = x0 + ux * a - uz * c, z0 + uz * a + ux * c
+                fond = float(creux_ruisseau(np.array([px]), np.array([pz]))[0])
+                caillou(g, px, pz, fond - 0.02, rng, mouille if rng.random() < 0.9 else mousse, taille=rng.uniform(0.3, 0.5))
     return g.objet("Jardin_Galets", lisse=math.radians(60))
 
 
@@ -869,7 +939,8 @@ def construire():
 
     terrain(sol)
     eau(eau_, cascade_)
-    galets(gris, mousse)
+    # Les galets du lit, mouillés : plus sombres, plus lisses que ceux de l'étang.
+    galets(gris, mousse, matiere("Jardin_Galet_Mouille", (0.13, 0.12, 0.1), 0.45))
     pont(bois, granit)
     lanterne(granit, lueur)
     pas_japonais(granit)

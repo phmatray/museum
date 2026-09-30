@@ -9,10 +9,15 @@
  * (build-jardin.py) et vaut 0 sur leur bord, où la pelouse le rejoint sans
  * fente.
  *
+ * Seule exception : le lit du RUISSEAU (`creuxDuRuisseau`), creusé dans la
+ * pelouse du jardin comme dans son sol Blender — l'herbe descend la berge, le
+ * hérisson aussi, et le pied du visiteur s'y enfonce au bord de l'eau. Sauf sur
+ * le tablier du pont, qui l'enjambe.
+ *
  * Une fonction pure : la marche (`walk.ts`), les plantations (`park.ts`), la
  * pelouse, les allées et l'herbe la lisent, et tombent d'accord au millimètre.
  */
-import { JARDIN } from './jardin.ts'
+import { JARDIN, TABLIER, creuxDuRuisseau } from './jardin.ts'
 import type { Rect } from './types.ts'
 
 /** L'emprise du musée (`MUSEE`) élargie du parvis de `park.ts` : 5 m. */
@@ -96,10 +101,11 @@ export function distanceParvis(r: Rect, x: number, z: number): number {
 
 /** La cote de la pelouse en (x, z), en mètres : 0 au parvis, jusqu'à ~3,5 m aux confins. */
 export function hauteurDuParc(x: number, z: number): number {
+  const lit = distanceRect(TABLIER, x, z) > 0 ? creuxDuRuisseau(x, z) : 0
   const m = masqueDuRelief(x, z)
-  if (m === 0) return 0
+  if (m === 0) return lit
   const ondes = OCTAVES.reduce((s, [l, a], k) => s + a * (bruit(x / l + 7.3 * k, z / l - 3.1 * k, k + 1) - 0.2), 0)
   const nord = MONTEE_NORD * lisse(Math.min(1, Math.max(0, (-10 - z) / 30)))
   const buttes = BUTTES.reduce((s, [bx, bz, r, h]) => s + h * Math.max(0, 1 - ((x - bx) ** 2 + (z - bz) ** 2) / (r * r)) ** 2, 0)
-  return m * (ondes + nord + buttes)
+  return m * (ondes + nord + buttes) + lit
 }

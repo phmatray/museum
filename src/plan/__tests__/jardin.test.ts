@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { MUSEE } from '../musee.ts'
-import { JARDIN, OBSTACLES_JARDIN, TABLIER, distanceEtang, distanceRuisseau } from '../jardin.ts'
+import { JARDIN, OBSTACLES_JARDIN, TABLIER, creuxDuRuisseau, distanceEtang, distanceRuisseau, rubanDuRuisseau } from '../jardin.ts'
 import { parkPlacements } from '../park.ts'
 import { step, type Walker } from '../walk.ts'
 import type { Rect } from '../types.ts'
@@ -43,6 +43,32 @@ describe('le jardin japonais', () => {
   it('laisse libres l’axe de l’entrée et le portique', () => {
     for (const o of OBSTACLES_JARDIN) expect(o.x > 26 || o.x + o.width < 22).toBe(true)
     for (let z = 40; z < 80; z += 0.5) expect(Math.min(distanceEtang(24, z), distanceRuisseau(24, z))).toBeGreaterThan(5)
+  })
+})
+
+describe('le ruban du ruisseau', () => {
+  const { position: p, index, uv } = rubanDuRuisseau()
+
+  it('ne se replie jamais : chaque triangle regarde le ciel, sans chevauchement aux coudes', () => {
+    for (let k = 0; k < index.length; k += 3) {
+      const [a, b, c] = [index[k] * 3, index[k + 1] * 3, index[k + 2] * 3]
+      // Composante verticale du produit vectoriel (x est, z sud, y haut) : > 0 vers le ciel.
+      const ny = (p[c] - p[a]) * (p[b + 2] - p[a + 2]) - (p[b] - p[a]) * (p[c + 2] - p[a + 2])
+      expect(ny, `triangle ${k / 3}`).toBeGreaterThan(0)
+    }
+  })
+
+  it('coule d’un bout à l’autre : u croît le long du courant', () => {
+    for (let i = 10; i < uv.length; i += 10) expect(uv[i]).toBeGreaterThanOrEqual(uv[i - 10])
+  })
+
+  it('glisse son bord sous la berge : la rive recouvre toujours le fil de l’eau', () => {
+    for (let i = 0; i < p.length; i += 15) {
+      for (const k of [0, 4]) {
+        const [x, z] = [p[i + k * 3], p[i + k * 3 + 2]]
+        expect(creuxDuRuisseau(x, z), `(${x}, ${z})`).toBeGreaterThan(JARDIN.ruisseau.niveau)
+      }
+    }
   })
 })
 
