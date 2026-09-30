@@ -83,16 +83,18 @@ const fondreRvb = (p: Poids, v: Record<keyof Moments, Rvb>): Rvb =>
 const lin = (r: number, g: number, b: number): Rvb => [r, g, b].map((c) => ((c / 255 + 0.055) / 1.055) ** 2.4) as unknown as Rvb
 
 const AIR: Record<keyof Moments, Air> = {
-  aube: { couleur: lin(172, 152, 142), densite: 0.004, sol: 0.045, decroissance: 1.4, diffusion: 0.7, lueur: lin(255, 190, 130) },
+  // Soleil bas : un gris chaud, légèrement doré — jamais rose, sinon la brique du mur rosit.
+  aube: { couleur: lin(168, 160, 140), densite: 0.004, sol: 0.045, decroissance: 1.4, diffusion: 0.7, lueur: lin(255, 212, 150) },
   midi: { couleur: lin(170, 190, 212), densite: 0.0035, sol: 0.003, decroissance: 0.5, diffusion: 0.25, lueur: lin(255, 244, 222) },
-  soir: { couleur: lin(180, 140, 112), densite: 0.0045, sol: 0.03, decroissance: 1.4, diffusion: 0.9, lueur: lin(255, 165, 90) },
-  nuit: { couleur: lin(22, 30, 50), densite: 0.004, sol: 0.03, decroissance: 1.2, diffusion: 0.1, lueur: lin(150, 170, 220) },
+  soir: { couleur: lin(174, 158, 130), densite: 0.0045, sol: 0.03, decroissance: 1.4, diffusion: 0.9, lueur: lin(255, 196, 120) },
+  // La nuit, l'air ne voile qu'à peine : ce que les lampes éclairent reste éclairé.
+  nuit: { couleur: lin(22, 30, 50), densite: 0.0025, sol: 0.012, decroissance: 1.2, diffusion: 0.1, lueur: lin(150, 170, 220) },
 }
 
 const ETAL: Record<keyof Moments, Etalonnage> = {
-  aube: { lift: [0.004, 0.006, 0.014], gamma: [1.03, 1.0, 0.97], gain: [1.06, 1.0, 0.9], saturation: 1.06, contraste: 1.04 },
+  aube: { lift: [0.004, 0.006, 0.014], gamma: [1.02, 1.01, 0.97], gain: [1.04, 1.01, 0.91], saturation: 1.05, contraste: 1.04 },
   midi: { lift: [0.0, 0.001, 0.003], gamma: [1.0, 1.0, 1.0], gain: [1.0, 1.0, 0.99], saturation: 1.04, contraste: 1.04 },
-  soir: { lift: [0.006, 0.004, 0.01], gamma: [1.04, 0.99, 0.94], gain: [1.1, 0.97, 0.82], saturation: 1.08, contraste: 1.06 },
+  soir: { lift: [0.006, 0.004, 0.01], gamma: [1.03, 1.0, 0.94], gain: [1.07, 1.0, 0.85], saturation: 1.06, contraste: 1.06 },
   // La nuit bleuit les OMBRES, pas les lumières : les lanternes de la nef et les lampadaires restent chauds.
   nuit: { lift: [0.0, 0.002, 0.006], gamma: [1.0, 1.0, 1.02], gain: [1.03, 1.0, 0.97], saturation: 0.97, contraste: 1.03 },
 }

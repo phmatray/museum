@@ -19,6 +19,8 @@ export const ETALONNAGE = {
   uGain: new THREE.Uniform(new THREE.Vector3(1, 1, 1)),
   uSaturation: new THREE.Uniform(1),
   uContraste: new THREE.Uniform(1),
+  /** La part de nuit : les sources de lumière y gardent leur couleur et leur éclat. */
+  uNuit: new THREE.Uniform(0),
 }
 
 const FRAGMENT = /* glsl */ `
@@ -27,6 +29,7 @@ uniform vec3 uGamma;
 uniform vec3 uGain;
 uniform float uSaturation;
 uniform float uContraste;
+uniform float uNuit;
 void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
   vec3 c = clamp(inputColor.rgb, 0.0, 1.0);
   c = uGain * c + uLift * (1.0 - c);
@@ -36,7 +39,12 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   s = clamp((s - 0.46) * uContraste + 0.46, 0.0, 1.0);
   c = s * s;
   float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
-  outputColor = vec4(max(mix(vec3(l), c, uSaturation), 0.0), inputColor.a);
+  c = max(mix(vec3(l), c, uSaturation), 0.0);
+  // La nuit, les points de lumière (lucioles, lampadaires, lanternes) sortent tels quels :
+  // l'étalonnage bleuit l'ombre, il n'éteint aucune source.
+  vec3 brut = clamp(inputColor.rgb, 0.0, 1.0);
+  float source = uNuit * smoothstep(0.12, 0.45, max(brut.r, max(brut.g, brut.b)));
+  outputColor = vec4(mix(c, max(c, brut), source), inputColor.a);
 }
 `
 

@@ -36,6 +36,15 @@ describe("l'air et l'étalonnage à l'heure qu'il est", () => {
     expect(Math.max(...airDuCiel(ciel('02:00'), CLAIR, GRIS).couleur)).toBeLessThan(0.05)
   })
 
+  it("au soleil bas, l'air est un gris doré, jamais rose", () => {
+    for (const h of ['08:05', '08:30', '18:30', '18:45']) {
+      const [r, g, b] = airDuCiel(ciel(h), CLAIR, GRIS).couleur
+      expect(r).toBeGreaterThanOrEqual(g)
+      // Rose : le vert tombe vers le bleu. Doré : le vert reste près du rouge.
+      expect(g - b).toBeGreaterThan(r - g)
+    }
+  })
+
   it('la brume au sol est une affaire du matin et du soir', () => {
     expect(airDuCiel(ciel('08:15'), CLAIR, GRIS).sol).toBeGreaterThan(5 * airDuCiel(ciel('13:30'), CLAIR, GRIS).sol)
   })

@@ -38,6 +38,7 @@ export function AtmosphereLayer() {
     ETALONNAGE.uGain.value.set(...e.gain)
     ETALONNAGE.uSaturation.value = e.saturation
     ETALONNAGE.uContraste.value = e.contraste
+    ETALONNAGE.uNuit.value = 1 - ciel.jour
 
     const force = forceDesRayonsDehors(ciel, temps)
     const s = SOLEIL_DES_RAYONS

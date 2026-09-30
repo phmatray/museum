@@ -73,7 +73,9 @@ if (!C.fog_pars_fragment.includes('airVoile')) {
 		// Dehors seulement : au-dessus des toits, ou hors de leur emprise (\`MeteoLayer\`).
 		float airDehors = step(brumeToit(vFogMonde.xz), vFogMonde.y);
 		vec3 airV = vFogMonde - cameraPosition;
-		gl_FragColor.rgb = mix(gl_FragColor.rgb, airCouleur(normalize(airV)), airDehors * airVoile(cameraPosition, vFogMonde));
+		// Une source (globe de lampadaire, lanterne) perce l'air : seul ce qui est éclairé s'y voile.
+		float airSource = 1.0 - smoothstep(0.25, 1.5, max(gl_FragColor.r, max(gl_FragColor.g, gl_FragColor.b)));
+		gl_FragColor.rgb = mix(gl_FragColor.rgb, airCouleur(normalize(airV)), airDehors * airSource * airVoile(cameraPosition, vFogMonde));
 	}
 	gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor, fogFactor );`,
   )
