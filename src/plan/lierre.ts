@@ -82,8 +82,9 @@ function plaque(p: PlaqueDeLierre, i: number): Feuille[] {
     const face = sur === 'dessus' ? ([0, 1, 0] as V3) : vers[sur]
     // Tournée vers le jour : relevée vers le ciel, un peu de biais le long du mur.
     const biais = (alea() - 0.5) * 0.9
+    // Sur le chaperon, à plat : une crête dressée se découpait sur le ciel.
     const n: V3 = sur === 'dessus'
-      ? norm([long[0] * biais * 0.6 + vers.parc[0] * (alea() - 0.5), 1, long[2] * biais * 0.6 + vers.parc[2] * (alea() - 0.5)])
+      ? norm([long[0] * biais * 0.15 + vers.parc[0] * (alea() - 0.5) * 0.2, 1, long[2] * biais * 0.15 + vers.parc[2] * (alea() - 0.5) * 0.2])
       : norm([face[0] + long[0] * biais + 0, Math.tan(bascule), face[2] + long[2] * biais])
     // Le pétiole vers le haut (ou vers la tige, sur le dessus), puis roulée de ±35°.
     const ref: V3 = sur === 'dessus' ? (alea() < 0.5 ? vers.parc : vers.dehors) : [0, 1, 0]
@@ -120,7 +121,7 @@ function plaque(p: PlaqueDeLierre, i: number): Feuille[] {
       for (let f = 0; f < nb; f++) {
         const ecart = (alea() + alea() - 1) * (0.1 + 0.16 * m)
         const q: Point = sur === 'dessus'
-          ? { u: pt.u + ecart, y: pt.y + 0.01 + alea() * 0.03, v: pt.v + (alea() - 0.5) * 0.06 }
+          ? { u: pt.u + ecart, y: pt.y + 0.004 + alea() * 0.01, v: pt.v + (alea() - 0.5) * 0.06 }
           : { u: sur === 'parc' ? borne(pt.u + ecart) : pt.u + ecart, y: pt.y + (alea() - 0.5) * 0.05, v: pt.v }
         // Décollée du mur : le fond de la plaque touche la brique, le dessus s'avance.
         const decolle = 0.012 + alea() ** 1.4 * (0.03 + 0.09 * m)
@@ -128,8 +129,9 @@ function plaque(p: PlaqueDeLierre, i: number): Feuille[] {
         else if (sur === 'dehors') q.v = pt.v + decolle
         const bout = t > 1 - jeune ? (t - (1 - jeune)) / jeune : 0
         const tire = alea()
-        const sorte = tire < 0.32 ? SORTE.feuille : tire < 0.52 ? SORTE.jeune : SORTE.rameau
-        const taille = (sorte === SORTE.rameau ? 0.2 + 0.12 * alea() : 0.085 + 0.065 * alea()) * (1 - 0.4 * bout)
+        // Sur le chaperon, pas de rameau long : des feuilles couchées.
+        const sorte = tire < 0.32 ? SORTE.feuille : tire < 0.52 || sur === 'dessus' ? SORTE.jeune : SORTE.rameau
+        const taille = (sorte === SORTE.rameau ? 0.2 + 0.12 * alea() : 0.085 + 0.065 * alea()) * (1 - 0.4 * bout) * (sur === 'dessus' ? 0.8 : 1)
         const jour = Math.min(1, (sur === 'dessus' ? 0.75 : 0.25) + decolle * 6 + 0.25 * alea())
         feuille(q, sur, sorte, taille, jour)
       }
@@ -197,8 +199,8 @@ function plaque(p: PlaqueDeLierre, i: number): Feuille[] {
     for (let l = 0; l < chute; l += PAS) rideau.push({ u: ut + 0.06 * Math.sin(l * 4 + phase), y: dessus - 0.03 - l, v: p.epaisseur + CHAPERON_MUR.debord + 0.005 })
     garnir(rideau, 'dehors', (pt) => 0.9 - 0.5 * ((dessus - pt.y) / chute), 0.5)
     // Côté parc aussi, un rameau trop long pend du chaperon, écarté du mur.
-    if (alea() < 0.6) {
-      const pend = 0.25 + alea() * 0.7
+    if (alea() < 0.85) {
+      const pend = 0.3 + alea() * 0.8
       const retombe: Point[] = []
       for (let l = 0; l < pend; l += PAS) retombe.push({ u: borne(ut + (alea() - 0.5) * 0.3 + 0.08 * Math.sin(l * 5 + phase)), y: dessus - 0.02 - l, v: -CHAPERON_MUR.debord - 0.03 - 0.04 * (l / pend) })
       garnir(retombe, 'parc', () => 0.35, 0.6)

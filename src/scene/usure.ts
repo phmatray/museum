@@ -257,6 +257,7 @@ export function pietiner(m: THREE.Material, { joints = false } = {}): void {
     float uL = dot(diffuseColor.rgb, vec3(0.3, 0.59, 0.11));
     ${joints ? `
     float uMousse = 0.0;
+    float uJoint = 0.0;
     float uDalle = 0.5;
     #ifdef USE_MAP
     {
@@ -266,26 +267,41 @@ export function pietiner(m: THREE.Material, { joints = false } = {}): void {
       float uDec = mod(uRang, 2.0) < 0.5 ? 0.6 : 0.0;
       float uFz = fract(uM.y / 0.6);
       float uFx = fract((uM.x - uDec) / 1.2);
-      float uJ = min(min(uFz, 1.0 - uFz) * 0.6, min(uFx, 1.0 - uFx) * 1.2);
+      float uJz = min(uFz, 1.0 - uFz) * 0.6;
+      float uJx = min(uFx, 1.0 - uFx) * 1.2;
+      float uJ = min(uJz, uJx);
+      float uCol = floor((uM.x - uDec) / 1.2);
       // Chaque dalle s'use à sa façon : l'une plus que sa voisine.
-      uDalle = iHash(vec2(floor((uM.x - uDec) / 1.2), uRang) + 0.5);
-      // Plus la place est tranquille, plus la mousse déborde du joint en coussinets.
-      float uCalme = uP.g * (0.35 + 0.65 * smoothstep(0.3, 0.75, uB));
-      float uLarge = 0.007 + 0.05 * uCalme * uCalme;
-      uMousse = (1.0 - smoothstep(uLarge * 0.55, uLarge, uJ)) * smoothstep(0.05, 0.35, uP.g + (uB - 0.5) * 0.25);
+      uDalle = iHash(vec2(uCol, uRang) + 0.5);
+      // Le joint lui-même, un tronçon par côté de dalle : la mousse le prend, ou pas.
+      vec2 uTroncon = uJz < uJx ? vec2(uCol, floor(uM.y / 0.6 + 0.5)) : vec2(floor((uM.x - uDec) / 1.2 + 0.5), uRang + 300.0);
+      float uPris = iHash(uTroncon * 1.37 + 11.0);
+      // À l'ombre et contre le mur, la plupart des joints ; au soleil, quelques-uns.
+      float uSeuil = 1.0 - 0.95 * uP.g;
+      float uPlein = smoothstep(uSeuil, uSeuil + 0.3, uPris);
+      // Et le long du joint, la mousse s'interrompt par touffes.
+      float uLong = uJz < uJx ? uM.x : uM.y;
+      float uTouffe = smoothstep(0.35, 0.65, iBruit(vec2(uLong * 7.0, uPris * 40.0)) * 0.7 + iBruit(vec2(uLong * 23.0, uPris * 9.0)) * 0.3);
+      float uLarge = 0.005 + 0.02 * uPlein * uP.g;
+      uJoint = 1.0 - smoothstep(0.004, 0.012, uJ);
+      uMousse = (1.0 - smoothstep(uLarge * 0.5, uLarge, uJ)) * uPlein * uTouffe * smoothstep(0.08, 0.4, uP.g);
     }
     #endif
-    // Foulé : la pierre claire se grise de la terre des semelles, par taches, et se polit un peu.
+    // Foulé : la pierre ne fonce pas, elle se POLIT — un peu plus claire, plus lustrée au
+    // milieu ; la crasse va aux bords de la trace et dans ses joints, que les semelles ne lavent pas.
     float uTache = iBruit(vMonde.xz * 1.3 + 3.0) * 0.6 + iBruit(vMonde.xz * 4.1) * 0.4;
-    uPas *= 0.45 + 0.35 * uDalle + 0.4 * uTache;
-    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(uL) * vec3(0.9, 0.85, 0.78), min(1.0, uPas) * 0.45) * (1.0 - 0.22 * min(1.0, uPas));
+    float uPoli = min(1.0, uPas * (0.55 + 0.3 * uDalle + 0.3 * uTache));
+    float uBordTrace = smoothstep(0.05, 0.3, uP.r) * (1.0 - smoothstep(0.35, 0.7, uP.r)) * (0.5 + 0.5 * uTache);
+    diffuseColor.rgb *= (1.0 + 0.05 * uPoli) * (1.0 - 0.1 * uBordTrace) * (1.0 - 0.28 * uJoint * smoothstep(0.1, 0.5, uP.r));
     #ifdef STANDARD
-      roughnessFactor = max(0.35, roughnessFactor - 0.18 * uPas);
+      roughnessFactor = max(0.3, roughnessFactor - 0.3 * uPoli);
     #endif
     // Et, où l'on ne marche jamais, du lichen par plaques sur la pierre même.
     float uLichen = smoothstep(0.62, 0.8, uB) * smoothstep(0.35, 0.8, uP.g);
-    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.2, 0.3, 0.08) * (0.6 + 0.9 * uL), uMousse * 0.9);
-    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.8, 0.86, 0.7), uLichen * 0.5);`
+    // La mousse des joints : vert-brun sombre, éteint, pas un néon.
+    vec3 uVertMousse = mix(vec3(0.1, 0.11, 0.06), vec3(0.17, 0.19, 0.09), iBruit(vMonde.xz * 5.0));
+    diffuseColor.rgb = mix(diffuseColor.rgb, uVertMousse * (0.8 + 0.6 * uL), uMousse * 0.85);
+    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.84, 0.86, 0.78), uLichen * 0.45);`
       : `
     // Le gravier tassé : moins de cailloux clairs qui roulent, la terre qui affleure entre eux.
     diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.4 + 0.35 * uL) * vec3(0.92, 0.86, 0.76), uPas * 0.5) * (1.0 - 0.22 * uPas);
