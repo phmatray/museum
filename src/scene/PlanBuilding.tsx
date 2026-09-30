@@ -45,7 +45,8 @@ import { CimaisesLayer } from './CimaisesLayer'
 import { ConstellationLayer } from './ConstellationLayer'
 import { FacadeLayer } from './FacadeLayer'
 import { OmbresLayer } from './OmbresLayer'
-import { bandesDuSol, parementDuHall, peintureDesSalles, plinthes } from '../plan/parement'
+import { bandesDuSol, corniches, parementDuHall, peintureDesSalles, plinthes } from '../plan/parement'
+import { batonsRompus, tendre } from './galeries'
 import { VisibiliteLayer } from './VisibiliteLayer'
 import { RayonsLayer } from './RayonsLayer'
 import { AtmosphereLayer } from './AtmosphereLayer'
@@ -137,9 +138,12 @@ function Niveau({ level, verre, sansMarches }: { level: number; verre: THREE.Mat
   const parement = useMemo(() => parementDuHall(MUSEE, level), [level])
   const peintures = useMemo(() => peintureDesSalles(MUSEE, level), [level])
   const plinthesDuNiveau = useMemo(() => plinthes(MUSEE, level), [level])
-  const parquet = useMatiere('parquet')
   const plafond = useMemo(() => plafonds(MUSEE, level), [level])
+  const corniche = useMemo(() => corniches(MUSEE, level), [level])
   const platrePlafond = useMatiere('platre')
+  // Le parquet des galeries, à bâtons rompus (`galeries.ts`) ; le reste garde ses lames droites.
+  const parquet = useMatiere('parquet')
+  useMemo(() => batonsRompus(parquet), [parquet])
   const lanterneau = useMemo(() => {
     const m = new THREE.MeshStandardMaterial({ color: '#f4f1ea', emissive: '#fff6e6', emissiveIntensity: 0.55, roughness: 0.9 })
     // Sous le ciel, à l'étage, la pluie s'y écrase : on la voit d'en dessous.
@@ -170,9 +174,9 @@ function Niveau({ level, verre, sansMarches }: { level: number; verre: THREE.Mat
     // Une dalle qui dépasse le plancher est la paillasse d'une marche : l'escalier de marbre la remplace.
     const sousMarche = (b: Box) => b.y + b.h / 2 > (niveau?.elevation ?? 0) + 1e-6
     const toutes = (de.get('slab') ?? AUCUNE).filter((b) => !(sansMarches && sousMarche(b)))
-    // Au rez-de-chaussée, le terrazzo est pour le hall ; les galeries sont parquetées, comme à l'étage.
+    // Au rez-de-chaussée, le terrazzo est pour le hall ; les galeries sont parquetées, à bâtons rompus, aux deux niveaux.
     const galeries = (niveau?.rooms ?? []).filter((r) => r.kind === 'gallery')
-    const estGalerie = (b: Box) => level === 0 && galeries.some((r) => Math.abs(r.x + r.width / 2 - b.x) < 1e-6 && Math.abs(r.z + r.depth / 2 - b.z) < 1e-6)
+    const estGalerie = (b: Box) => galeries.some((r) => Math.abs(r.x + r.width / 2 - b.x) < 1e-6 && Math.abs(r.z + r.depth / 2 - b.z) < 1e-6)
     return {
       balcons: toutes.filter(estBalcon),
       galeries: toutes.filter(estGalerie),
@@ -216,6 +220,8 @@ function Niveau({ level, verre, sansMarches }: { level: number; verre: THREE.Mat
       <Boites boites={plafond.platre} material={platrePlafond} />
       <Boites boites={plafond.verre} material={lanterneau} />
       <Boites boites={plafond.resille} material={granit} />
+      <Boites boites={plafond.cadre} material={platrePlafond} />
+      <Boites boites={corniche} material={platrePlafond} />
       {level === 0 && <Boites boites={BANDES} material={granit} />}
       <Boites boites={dalles.galeries} material={parquet} />
       {peintures.map((p) => <Peinture key={p.couleur} couleur={p.couleur} boites={p.boites} />)}
@@ -271,8 +277,9 @@ export function Boites({ boites, material }: { boites: Box[]; material: THREE.Ma
   return <instancedMesh key={boites.length} ref={ref} args={[geometry, undefined, boites.length]} material={material} />
 }
 
-/** Les murs peints d'une galerie : le plâtre du musée, teinté de sa couleur. */
+/** Les murs d'une galerie : le plâtre du musée, teinté de sa couleur, tendu de tissu (`galeries.ts`). */
 function Peinture({ couleur, boites }: { couleur: string; boites: Box[] }) {
   const matiere = useMatiere('platre', undefined, { teinte: couleur })
+  useMemo(() => tendre(matiere), [matiere])
   return <Boites boites={boites} material={matiere} />
 }

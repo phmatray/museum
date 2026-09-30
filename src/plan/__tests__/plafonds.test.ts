@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest'
 
 import { MUSEE } from '../musee'
-import { plafonds, VOUTE } from '../plafonds'
+import type { Box } from '../mesh'
+import { CADRE_LANTERNEAU, plafonds, VOUTE } from '../plafonds'
 
 it('couvre chaque salle d’exposition, sous la dalle ou au sommet des murs, jamais le hall ni les balcons', () => {
   for (const level of MUSEE.levels) {
@@ -22,4 +23,16 @@ it('laisse la salle d’honneur à sa voûte : ni plâtre plat ni lanterneau sou
   const { platre, verre } = plafonds(MUSEE, 1)
   const dessous = (b: { x: number; z: number }) => b.x > h.x && b.x < h.x + h.width && b.z > h.z && b.z < h.z + h.depth
   expect([...platre, ...verre].filter(dessous)).toHaveLength(0)
+})
+
+it('borde chaque lanterneau d’un cadre mouluré, sans boîte dans une autre ni face dans le plan du verre', () => {
+  for (const level of MUSEE.levels) {
+    const { verre, cadre } = plafonds(MUSEE, level.id)
+    expect(cadre).toHaveLength(verre.length * 4 * CADRE_LANTERNEAU.length)
+    const chevauche = (a: Box, b: Box) =>
+      Math.abs(a.x - b.x) < (a.w + b.w) / 2 - 1e-6 && Math.abs(a.y - b.y) < (a.h + b.h) / 2 - 1e-6 && Math.abs(a.z - b.z) < (a.d + b.d) / 2 - 1e-6
+    for (let i = 0; i < cadre.length; i++) for (let j = i + 1; j < cadre.length; j++) expect(chevauche(cadre[i], cadre[j])).toBe(false)
+    // Il ne mord pas le verre : chaque boîte est hors de son rectangle.
+    for (const c of cadre) for (const v of verre) expect(Math.abs(c.x - v.x) >= (c.w + v.w) / 2 - 1e-6 || Math.abs(c.z - v.z) >= (c.d + v.d) / 2 - 1e-6).toBe(true)
+  }
 })

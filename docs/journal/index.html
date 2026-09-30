@@ -82,9 +82,9 @@
 
   <nav class="sommaire" aria-label="Parcourir le journal">
     <div class="onglets" role="tablist" aria-label="Thèmes">
-      <button type="button" role="tab" data-cat="tout" aria-selected="true">Tout <span class="nb">106</span></button>
+      <button type="button" role="tab" data-cat="tout" aria-selected="true">Tout <span class="nb">107</span></button>
       <button type="button" role="tab" data-cat="hall" aria-selected="false">Hall & architecture <span class="nb">23</span></button>
-      <button type="button" role="tab" data-cat="galeries" aria-selected="false">Galeries & œuvres <span class="nb">24</span></button>
+      <button type="button" role="tab" data-cat="galeries" aria-selected="false">Galeries & œuvres <span class="nb">25</span></button>
       <button type="button" role="tab" data-cat="jardin" aria-selected="false">Jardin & dehors <span class="nb">14</span></button>
       <button type="button" role="tab" data-cat="bavette" aria-selected="false">Bavette & faune <span class="nb">12</span></button>
       <button type="button" role="tab" data-cat="ambiance" aria-selected="false">Lumière, ciel & sons <span class="nb">15</span></button>
@@ -96,6 +96,22 @@
       <ol class="liste"></ol>
     </details>
   </nav>
+
+  <section class="etape" data-cat="galeries" aria-labelledby="t-104">
+    <div class="entete"><h2 id="t-104">104. L’intérieur des galeries</h2><span class="statut fait">en ligne · PR #204</span></div>
+    <div class="texte">
+      <p>Les passes visuelles avaient soigné le hall, la façade et le jardin, mais les salles elles-mêmes étaient restées telles quelles : un mur de couleur uni qui butait en arête vive contre le plafond, un lanterneau posé à plat dans le plâtre, et le même plancher à lames droites que partout. Elles ont maintenant l’habit d’une salle de peinture.</p>
+      <ul>
+        <li><strong>Une corniche :</strong> quatre moulures de plâtre blanc, de plus en plus saillantes en montant, ferment le haut de chaque mur. Elles se retournent dans les angles et passent au-dessus des portes. Elles attrapent la lumière du lanterneau et dessinent le volume de la salle.</li>
+        <li><strong>Un lanterneau encadré :</strong> deux ressauts moulurés bordent le verre dépoli au lieu d’un bord net dans le plâtre.</li>
+        <li><strong>Des murs tendus de tissu :</strong> la couleur de chaque salle est maintenant une tenture. De près, on devine l’armure de la toile, à mi-distance des fils flammés, et partout des nuances larges, comme une teinture jamais tout à fait égale. Tout cela reste discret, pour que les toiles gardent la vedette.</li>
+        <li><strong>Un parquet à bâtons rompus :</strong> des lames de 54 × 9 cm posées à 45°, alternées à angle droit, aux deux étages. Chaque lame prend sa propre planche de chêne, avec le fil du bois tourné avec elle et une teinte un peu différente de sa voisine, séparée d’elle par un joint fin qui s’efface au loin. La salle d’honneur garde son point de Hongrie.</li>
+        <li><strong>La lumière recuite :</strong> la corniche et le cadre ont leur place dans la lumière précalculée. Une ombre douce passe sous la corniche, en haut des murs. La cuisson refonctionne aussi depuis que les modèles ont des textures KTX2, que Blender ne savait pas lire.</li>
+      </ul>
+      <p class="note">Côté coût : la corniche et le cadre ajoutent deux lots d’instances par étage, et le parquet un petit calcul par pixel du sol, sans texture de plus.</p>
+    </div>
+    <figure><img src="img/104-galeries.jpg" width="1000" height="625" alt="Une galerie avec sa corniche, son lanterneau encadré et son parquet à bâtons rompus ; le parquet de près ; l’angle de la corniche ; une salle de l’étage."><figcaption>La corniche et le lanterneau encadré, le parquet à bâtons rompus, l’angle de la corniche, une salle de l’étage.</figcaption></figure>
+  </section>
 
   <section class="etape" data-cat="jardin" aria-labelledby="t-103">
     <div class="entete"><h2 id="t-103">103. Les finitions du jardin</h2><span class="statut fait">en ligne · PR #202</span></div>
