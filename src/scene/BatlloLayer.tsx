@@ -11,6 +11,8 @@ import * as THREE from 'three'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
+import { fusionnerParMatiere, unePasse, unifierParCouleur } from './fusion'
+
 export function BatlloLayer() {
   const [baie, setBaie] = useState<THREE.Object3D | null>(null)
   useEffect(() => {
@@ -27,6 +29,11 @@ export function BatlloLayer() {
         scene.traverse((o) => {
           if (o instanceof THREE.Mesh && (o.material as THREE.Material).transparent) (o.material as THREE.Material).depthWrite = false
         })
+        // Les cinq couleurs de cives en une matière, les dix-huit pièces de chêne
+        // en un appel, les verres plans en une passe (`fusion.ts`).
+        unifierParCouleur(scene, 'Batllo_Cive')
+        fusionnerParMatiere(scene)
+        unePasse(scene)
         if (vivant) setBaie(scene)
       })
       .catch((erreur: unknown) => console.error('baie Batlló indisponible', erreur))

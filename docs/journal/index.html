@@ -82,13 +82,13 @@
 
   <nav class="sommaire" aria-label="Parcourir le journal">
     <div class="onglets" role="tablist" aria-label="Thèmes">
-      <button type="button" role="tab" data-cat="tout" aria-selected="true">Tout <span class="nb">107</span></button>
+      <button type="button" role="tab" data-cat="tout" aria-selected="true">Tout <span class="nb">108</span></button>
       <button type="button" role="tab" data-cat="hall" aria-selected="false">Hall & architecture <span class="nb">23</span></button>
       <button type="button" role="tab" data-cat="galeries" aria-selected="false">Galeries & œuvres <span class="nb">25</span></button>
       <button type="button" role="tab" data-cat="jardin" aria-selected="false">Jardin & dehors <span class="nb">14</span></button>
       <button type="button" role="tab" data-cat="bavette" aria-selected="false">Bavette & faune <span class="nb">12</span></button>
       <button type="button" role="tab" data-cat="ambiance" aria-selected="false">Lumière, ciel & sons <span class="nb">15</span></button>
-      <button type="button" role="tab" data-cat="site" aria-selected="false">Site & outils <span class="nb">14</span></button>
+      <button type="button" role="tab" data-cat="site" aria-selected="false">Site & outils <span class="nb">15</span></button>
       <button type="button" role="tab" data-cat="idees" aria-selected="false">Pistes &amp; idées <span class="nb">4</span></button>
     </div>
     <details class="index">
@@ -96,6 +96,19 @@
       <ol class="liste"></ol>
     </details>
   </nav>
+
+  <section class="etape" data-cat="site" aria-labelledby="t-105">
+    <div class="entete"><h2 id="t-105">105. Moins d’appels de dessin</h2><span class="statut fait">en ligne · PR #206</span></div>
+    <div class="texte">
+      <p>C’est le début de la seconde vague de performances. Le profil du processeur est net : un quart du temps de chaque image part dans l’envoi des matrices à la carte graphique, une fois par objet dessiné. Moins d’objets, c’est moins d’envois.</p>
+      <ul>
+        <li><strong>La géométrie statique fusionnée :</strong> les modèles Blender arrivaient en autant de morceaux que d’objets, dix-huit pièces de chêne dans le vitrail Batlló, cinq fontes dans la nef. Au chargement, les morceaux qui partagent une matière sont réunis en un seul, sans jamais mêler deux salles, pour que le tri de la visibilité reste aussi fin. Les aiguilles de l’horloge tournent toujours seules.</li>
+        <li><strong>Les cives en une matière :</strong> les verres colorés du vitrail et de la salle d’honneur ne différaient que par leur couleur. La couleur passe dans les sommets, et leur lueur la suit.</li>
+        <li><strong>Les vitres planes en une passe :</strong> un verre double face se dessinait deux fois, le dos puis la face. Sur une vitre plane, la seconde passe ne dessinait rien.</li>
+      </ul>
+      <p class="note">De 5 à 11 % d’appels de dessin en moins selon l’endroit (733 → 677 à l’entrée, 355 → 316 au milieu de la nef, 262 → 236 dans la salle d’honneur), pour la même image : comparée pixel à pixel, seuls bougent le vent dans les arbres et les aiguilles de l’horloge. Sur ma machine, le temps par image ne bouge pas encore de façon mesurable. Le vrai poids est ailleurs : le feuillage coûte à lui seul plusieurs millisecondes de carte graphique. C’est l’étape suivante, les imposteurs.</p>
+    </div>
+  </section>
 
   <section class="etape" data-cat="galeries" aria-labelledby="t-104">
     <div class="entete"><h2 id="t-104">104. L’intérieur des galeries</h2><span class="statut fait">en ligne · PR #204</span></div>

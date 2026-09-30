@@ -35,6 +35,7 @@ import type { EtapeJournal, Journal } from '../domain/journal'
 import { adresseJournal, teinteCategorie, useJournal } from '../hooks/useChantier'
 import { accrocherChantier, cadreVise, CENTRE_CHANTIER, dansLeChantier, type CadreChantier } from '../plan/chantier'
 import { useGameStore } from '../stores/gameStore'
+import { unePasse } from './fusion'
 import { chargerGlb } from './propAssets'
 
 /** À 35 m, on commence à charger les images : la baraque se voit déjà nettement. */
@@ -61,6 +62,8 @@ export function ChantierLayer() {
           // Le verre ne masque rien derrière lui (comme la verrière de la nef).
           if (m.transparent) m.depthWrite = false
         })
+        // Les vitres planes en une passe (`fusion.ts`).
+        unePasse(scene)
         if (vivant) setModele(scene)
       })
       .catch((erreur: unknown) => console.error('baraque du chantier indisponible', erreur))
