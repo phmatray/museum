@@ -5,7 +5,7 @@ import { JARDIN } from '../../plan/jardin'
 import { parkPlacements } from '../../plan/park'
 import { PARC } from '../../plan/rules'
 import {
-  BOURDON, avancerPas, carillonDu, intervallePas, lieuDe, matiereSous, mixage, partitionAnnonce, partitionHeure, pluieEntendue, volumeRonron,
+  BOURDON, avancerPas, carillonDu, intervallePas, lieuDe, matiereSous, mixage, partitionAnnonce, partitionHeure, pluieEntendue, volumeFroissement, volumeRonron,
 } from '../son'
 
 const parc = parkPlacements(MUSEE)
@@ -104,6 +104,18 @@ describe('volumeRonron', () => {
     expect(volumeRonron(1.5)).toBe(0)
     expect(volumeRonron(1.2)).toBeGreaterThan(0)
     expect(volumeRonron(0.5)).toBe(1)
+  })
+})
+
+describe('volumeFroissement', () => {
+  it('le hérisson froisse l’herbe à quelques mètres, de plus en plus bas', () => {
+    expect(volumeFroissement(0.5)).toBe(1)
+    expect(volumeFroissement(1)).toBe(1)
+    expect(volumeFroissement(2)).toBeLessThan(volumeFroissement(1))
+    expect(volumeFroissement(4)).toBeLessThan(volumeFroissement(2))
+    expect(volumeFroissement(4)).toBeGreaterThan(0)
+    expect(volumeFroissement(6)).toBe(0)
+    expect(volumeFroissement(30)).toBe(0)
   })
 })
 

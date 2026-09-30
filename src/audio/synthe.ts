@@ -187,6 +187,26 @@ export function pas(ctx: BaseAudioContext, out: AudioNode, t: number, matiere: M
   }
 }
 
+/**
+ * Le hérisson dans l'herbe : un frôlement de brins (du bruit adouci, attaque
+ * lente) et, une fois sur deux, le crépitement d'une feuille sèche (une
+ * tranche du gravier, plus haut, plus bref). `force` porte déjà la distance.
+ */
+export function froissement(ctx: BaseAudioContext, out: AudioNode, t: number, force: number) {
+  const v = entre(0.85, 1.2)
+  const s = ctx.createBufferSource()
+  s.buffer = bruit(ctx)
+  const f = ctx.createBiquadFilter()
+  f.type = 'bandpass'
+  f.frequency.value = 3200 * v
+  f.Q.value = 0.6
+  const duree = entre(0.07, 0.16)
+  s.connect(f).connect(enveloppe(ctx, out, t, 0.22 * force * entre(0.6, 1), duree, 0.02))
+  s.start(t, alea() * 1.5)
+  s.stop(t + duree + 0.08)
+  if (alea() < 0.5) tranche(ctx, out, t + entre(0, 0.04), gravier(ctx), entre(0.04, 0.08), 0.12 * force, 1.6 * v, ['highpass', 3000])
+}
+
 /** Le craquement d'une latte : un grincement bref, une plainte qui descend. */
 function craquement(ctx: BaseAudioContext, out: AudioNode, t: number, gain: number) {
   const o = ctx.createOscillator()

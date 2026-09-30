@@ -10,15 +10,16 @@
  *   eau, oiseaux ► 3D ─┐                              ├─► maître 0,6 ► limiteur ► sortie
  *   vent, grillons ────┴► dehors (jour / nuit) ──────┤
  *   ronron ► 3D ─────────────────────────────────────┤
+ *   hérisson ► 3D ► dehors ──────────────────────────┤
  *   pluie ► passe-bas (selon le lieu) ───────────────┘
  *
  * Les poids viennent de `mixage()` (domain/son.ts) et sont rejoints en douceur :
  * passer la porte est un fondu d'une seconde.
  */
-import { mixage, pluieEntendue, volumeRonron, type Coup, type Lieu, type Matiere } from '../domain/son'
+import { mixage, pluieEntendue, volumeFroissement, volumeRonron, type Coup, type Lieu, type Matiere } from '../domain/son'
 import { TRACE_RUISSEAU, LEVRE } from '../plan/jardin'
 import type { PlantPlacement } from '../plan/park'
-import { cloche, eau, grillons, oiseau, pas, pluie, ronron, salle, tic, vent, volets } from './synthe'
+import { cloche, eau, froissement, grillons, oiseau, pas, pluie, ronron, salle, tic, vent, volets } from './synthe'
 
 /** Sous la verrière, le cadran nord (`build-nef.py`) et le tableau des départs dessous. */
 const HORLOGE: Vec = [24, 14.8, 12.6]
@@ -55,6 +56,7 @@ export class Moteur {
   private readonly jour: GainNode
   private readonly nuit: GainNode
   private readonly ronronneur: { panner: PannerNode; gain: GainNode }
+  private readonly herisson: PannerNode
   private readonly averse: { filtre: BiquadFilterNode; gain: GainNode }
   private readonly horloge: PannerNode
   private readonly tableau: PannerNode
@@ -118,6 +120,10 @@ export class Moteur {
     const gainRonron = g(0, this.maitre)
     this.ronronneur = { panner: this.panner([0, -100, 0], gainRonron, 0.4), gain: gainRonron }
     this.sources.push(ronron(ctx, this.ronronneur.panner))
+
+    // Le hérisson : placé (HRTF), mais la distance est dans `volumeFroissement`, pas dans le panner.
+    this.herisson = this.panner([0, -100, 0], this.dehors, 1)
+    this.herisson.rolloffFactor = 0
 
     const filtre = ctx.createBiquadFilter()
     filtre.type = 'lowpass'
@@ -220,6 +226,16 @@ export class Moteur {
 
   pas(matiere: Matiere, force = 1) {
     pas(this.ctx, this.pasBus, this.ctx.currentTime + 0.01, matiere, force)
+  }
+
+  /** Le hérisson froisse l'herbe en (x, y, z) ; rien s'il est trop loin pour qu'on l'entende. */
+  froisser([x, y, z]: Vec, force = 1) {
+    const [ox, , oz] = this.position
+    const g = volumeFroissement(Math.hypot(x - ox, z - oz)) * force
+    if (g <= 0) return
+    const p = this.herisson
+    p.positionX.value = x; p.positionY.value = y; p.positionZ.value = z
+    froissement(this.ctx, p, this.ctx.currentTime + 0.01, g)
   }
 
   /** Les palettes du tableau qui tournent pendant `duree` secondes. */
