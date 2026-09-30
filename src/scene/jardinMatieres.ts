@@ -8,7 +8,7 @@
  */
 import * as THREE from 'three'
 
-import { rider } from './intemperies'
+import { INTEMPERIES, rider } from './intemperies'
 
 /** Des vaguelettes : une somme de sinus à fréquences ENTIÈRES, donc une tuile sans raccord. */
 function carteDeVaguelettes(n = 128): THREE.DataTexture {
@@ -54,6 +54,8 @@ const CIEL_NUIT = new THREE.Color('#0b1224')
 
 export interface MatieresJardin {
   eau: THREE.MeshStandardMaterial
+  /** Le ruisseau : une eau claire qui COULE le long de son ruban (`rubanDuRuisseau`), écume aux radiers. */
+  ruisseau: THREE.MeshStandardMaterial
   cascade: THREE.MeshStandardMaterial
   /** À chaque image : l'eau dérive, la cascade tombe, le reflet suit le ciel (`jour` ∈ [0, 1]). */
   animer: (t: number, jour: number) => void
@@ -94,6 +96,9 @@ export function creerMatieresJardin(): MatieresJardin {
   // Et les ronds de la pluie sur l'étang.
   rider(eau)
 
+  const temps = { value: 0 }
+  const ruisseau = creerRuisseau(vaguelettes, ciel, temps)
+
   const filets = carteDeFilets()
   const cascade = new THREE.MeshStandardMaterial({
     name: 'jardin:cascade',
@@ -108,17 +113,106 @@ export function creerMatieresJardin(): MatieresJardin {
   })
   return {
     eau,
+    ruisseau,
     cascade,
     animer: (t, jour) => {
+      temps.value = t
       ciel.value.copy(CIEL_NUIT).lerp(CIEL_JOUR, jour)
       vaguelettes.offset.set(t * 0.012, t * 0.007)
       filets.offset.set(0, t * 0.9)
     },
     dispose: () => {
-      for (const m of [eau, cascade]) m.dispose()
+      for (const m of [eau, ruisseau, cascade]) m.dispose()
       for (const t of [vaguelettes, filets]) t.dispose()
     },
   }
+}
+
+/**
+ * L'eau du ruisseau, sur le ruban de `rubanDuRuisseau` : u le long du courant,
+ * v en travers (mètres), et par sommet le radier (0..1) et la place en travers
+ * (`aEau`). Deux couches de vaguelettes défilent vers l'aval à des vitesses
+ * différentes, plus creusées aux radiers ; un bruit étiré dans le sens du
+ * courant y blanchit l'écume, qui court aussi au pied des berges. Claire là où
+ * elle est mince (on voit les galets du lit), sombre au creux des mouilles, et
+ * le ciel au rasant comme l'étang. L'hiver, ses bords prennent en glace.
+ * L'écume est posée AVANT l'éclairage (couleur, rugosité) : elle s'éteint la nuit
+ * avec le reste.
+ */
+function creerRuisseau(vaguelettes: THREE.Texture, ciel: { value: THREE.Color }, temps: { value: number }): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({
+    name: 'jardin:ruisseau',
+    color: '#ffffff',
+    roughness: 0.14,
+    metalness: 0,
+    normalMap: vaguelettes,
+    normalScale: new THREE.Vector2(0.14, 0.14),
+    envMapIntensity: 0.45,
+    transparent: true,
+  })
+  m.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, { uCielR: ciel, uTempsR: temps, uGelR: INTEMPERIES.uEnneige })
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nattribute vec2 aEau;\nvarying vec2 vEau;\nvarying vec2 vFil;')
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvEau = aEau;\nvFil = uv;')
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+uniform vec3 uCielR;
+uniform float uTempsR;
+uniform float uGelR;
+varying vec2 vEau;
+varying vec2 vFil;
+float rHash(vec2 p) { return fract(sin(dot(p, vec2(41.3, 289.1))) * 45758.5453); }
+float rBruit(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(rHash(i), rHash(i + vec2(1, 0)), u.x), mix(rHash(i + vec2(0, 1)), rHash(i + vec2(1, 1)), u.x), u.y);
+}`,
+      )
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+  float rRadier = vEau.x;
+  float rBord = vEau.y;
+  // Le courant : le bruit défile vers l'aval, étiré dans son sens.
+  vec2 rQ = vec2(vFil.x * 2.4 - uTempsR * 1.6, vFil.y * 6.5);
+  float rN = rBruit(rQ) * 0.5 + rBruit(rQ * vec2(2.1, 2.6) + vec2(7.1, 3.7) - vec2(uTempsR * 1.1, 0.0)) * 0.32 + rBruit(rQ * 5.3 + 3.3) * 0.18;
+  // Des taches d'écume qui naissent et se défont : un second bruit, lent, les module.
+  float rNappe = rBruit(vec2(vFil.x * 0.7 - uTempsR * 0.5, vFil.y * 1.3 + 5.0));
+  float rEcume = smoothstep(0.6 - 0.12 * rRadier, 0.85, rN) * rRadier * smoothstep(0.25, 0.7, rNappe + 0.25 * rRadier);
+  rEcume = max(rEcume, smoothstep(0.72, 1.02, rBord) * smoothstep(0.45, 0.85, rN) * (0.25 + 0.5 * rRadier));
+  // Profonde au milieu des mouilles, mince au bord et sur les radiers.
+  float rProfond = (1.0 - smoothstep(0.25, 1.0, rBord)) * (1.0 - 0.55 * rRadier);
+  float rGel = uGelR * smoothstep(0.8, 1.05, rBord + 0.15 * rN);
+  diffuseColor.rgb = mix(vec3(0.07, 0.085, 0.06), vec3(0.015, 0.04, 0.03), rProfond);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.9, 0.93, 0.92), rEcume);
+  diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.86, 0.92), rGel);`,
+      )
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n  roughnessFactor = mix(mix(roughnessFactor, 0.32, rRadier), 0.75, max(rEcume, rGel * 0.4));')
+      .replace(
+        '#include <normal_fragment_maps>',
+        THREE.ShaderChunk.normal_fragment_maps.replace(
+        'vec3 mapN = texture2D( normalMap, vNormalMapUv ).xyz * 2.0 - 1.0;',
+        `vec3 mapN1 = texture2D( normalMap, vec2( vFil.x * 0.55 - uTempsR * 0.32, vFil.y * 0.8 ) ).xyz * 2.0 - 1.0;
+  vec3 mapN2 = texture2D( normalMap, vec2( vFil.x * 1.35 - uTempsR * 0.6 + 0.37, vFil.y * 1.6 + 0.21 ) ).xyz * 2.0 - 1.0;
+  vec3 mapN = normalize( vec3( ( mapN1.xy + mapN2.xy ) * ( 0.5 + 0.8 * rRadier ) * ( 1.0 - rGel ), 1.0 ) );`,
+        ),
+      )
+      .replace(
+        '#include <opaque_fragment>',
+        `float rFresnel = pow(1.0 - clamp(dot(normalize(vViewPosition), normal), 0.0, 1.0), 5.0);
+         outgoingLight = mix(outgoingLight, uCielR, rFresnel * 0.5 * (1.0 - rEcume));
+         // L'hiver, l'eau froide se fait sombre et opaque : la neige de la berge (intemperer) ne tapisse pas le lit.
+         diffuseColor.a = max(mix(mix(0.3, 0.85, rProfond), 1.0, rFresnel), max(max(rEcume * 0.95, rGel), 0.92 * smoothstep(0.05, 0.35, uGelR)));
+         #include <opaque_fragment>`,
+      )
+  }
+  m.customProgramCacheKey = () => 'jardin:ruisseau'
+  // Les ronds de la pluie, greffés après : `rider` enchaîne sur ce crochet.
+  rider(m)
+  return m
 }
 
 /**
@@ -169,6 +263,10 @@ export function uvBoite(g: THREE.BufferGeometry, echelle = 1): void {
 
 /** La berge fonce et verdit en descendant vers l'eau : la terre mouillée, la mousse. */
 const BERGE = new THREE.Color('#4a5a2c')
+/** Au fil de l'eau, le rebord de la berge : de la terre mouillée, presque noire. */
+const TERRE = new THREE.Color('#3a3325')
+/** Et sous l'eau, le lit : gravier et limon, brun-gris, que la nappe claire du ruisseau laisse voir. */
+const LIT = new THREE.Color('#5e5644')
 
 /**
  * Prépare le sol creusé pour la pelouse du parc : UV en mètres lues sur le plan
@@ -183,7 +281,8 @@ export function preparerSol(g: THREE.BufferGeometry, eau: boolean): void {
   for (let i = 0; i < p.count; i++) {
     const [x, y, z] = [p.getX(i), p.getY(i), p.getZ(i)]
     ;[uv[2 * i], uv[2 * i + 1]] = eau ? [x / 3, z / 3] : [x, z]
-    c.setRGB(1, 1, 1).lerp(BERGE, Math.min(1, Math.max(0, (-y - 0.05) / 0.25)))
+    const t = (a: number, b: number) => Math.min(1, Math.max(0, (-y - a) / (b - a)))
+    c.setRGB(1, 1, 1).lerp(BERGE, t(0.03, 0.12)).lerp(TERRE, t(0.1, 0.2)).lerp(LIT, t(0.22, 0.28))
     couleur.set([c.r, c.g, c.b], 3 * i)
   }
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2))

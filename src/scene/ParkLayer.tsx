@@ -23,7 +23,7 @@ import { creerMatieresJardin, preparerSol, uvBoite } from './jardinMatieres'
 import { brinsDeGazon, carteDuSol, champDeVue, matiereGazon, parcellesDeGazon, uneEnVue, type ReglageGazon } from './gazon'
 import { useGameStore } from '../stores/gameStore'
 import { useChargement } from '../stores/chargementStore'
-import { presDeLEau } from '../plan/jardin'
+import { presDeLEau, rubanDuRuisseau } from '../plan/jardin'
 import { PARC } from '../plan/visibilite'
 import { INTEMPERIES, intemperer } from './intemperies'
 
@@ -401,6 +401,19 @@ function Instances({ piece, sujets }: { piece: ParkPiece; sujets: PlantPlacement
 function Jardin({ objets, herbe }: { objets: THREE.Object3D[]; herbe: THREE.Material }) {
   const matieres = useMemo(() => creerMatieresJardin(), [])
   useEffect(() => () => matieres.dispose(), [matieres])
+  // Le ruisseau : un ruban continu, UV le long du courant (`rubanDuRuisseau`).
+  const ruban = useMemo(() => {
+    const r = rubanDuRuisseau()
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.BufferAttribute(r.position, 3))
+    g.setAttribute('uv', new THREE.BufferAttribute(r.uv, 2))
+    g.setAttribute('aEau', new THREE.BufferAttribute(r.eau, 2))
+    g.setIndex(r.index)
+    g.computeVertexNormals()
+    g.computeBoundingSphere()
+    return g
+  }, [])
+  useEffect(() => () => ruban.dispose(), [ruban])
   // Le granit des pas japonais, de la lanterne et des culées : la roche des dalles des allées, pas du béton.
   const pierre = useMatiere('roche', repetitionMetrique(REGLAGE_MATIERE.roche.motif), { teinte: '#c4c6c2' })
   const bois = useMatiere('parquet', repetitionMetrique(REGLAGE_MATIERE.parquet.motif), { teinte: '#6b4a34' })
@@ -439,7 +452,12 @@ function Jardin({ objets, herbe }: { objets: THREE.Object3D[]; herbe: THREE.Mate
     for (const l of lueurs) l.emissiveIntensity = (l.userData.eclat as number) * (1 - THREE.MathUtils.smoothstep(jour, 0.15, 0.6))
   })
 
-  return <>{objets.map((o) => <primitive key={o.uuid} object={o} />)}</>
+  return (
+    <>
+      {objets.map((o) => <primitive key={o.uuid} object={o} />)}
+      <mesh geometry={ruban} material={matieres.ruisseau} userData={{ zone: PARC }} />
+    </>
+  )
 }
 
 /**

@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { MUSEE } from '../musee.ts'
-import { presDeLEau } from '../jardin.ts'
+import { TABLIER, presDeLEau } from '../jardin.ts'
 import { parkPlacements } from '../park.ts'
 import { ASSISES, MOBILIER, emprise } from '../mobilier.ts'
 import {
@@ -179,7 +179,8 @@ describe('promenade au jardin', () => {
       if (avant > 0 && p.bloque === 0 && p.pause === 2) coinces++
       if (p.walker.surface === 'parc:terrain') {
         dehors++
-        expect(presDeLEau(p.walker.x, p.walker.z), `${p.walker.x}, ${p.walker.z}`).toBe(false)
+        // Sur le tablier du pont, il passe au-dessus du ruisseau, les pattes au sec.
+        if (!contains(TABLIER, p.walker.x, p.walker.z)) expect(presDeLEau(p.walker.x, p.walker.z), `${p.walker.x}, ${p.walker.z}`).toBe(false)
       }
       // Les siestes : jamais dans un banc — dessus, à la cote de l'assise, ou à côté.
       if (p.sieste && !avantSieste) siestes++

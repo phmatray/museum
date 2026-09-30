@@ -24,7 +24,7 @@ import * as THREE from 'three'
 import type { Allee, Parc } from '../plan/park'
 import { surUneAllee } from '../plan/park'
 import { BORDURE, GALETS, champDesAllees } from '../plan/allees'
-import { JARDIN, TABLIER, distanceEtang, distanceRuisseau, presDeLEau } from '../plan/jardin'
+import { JARDIN, TABLIER, distanceEtang, distanceRuisseau } from '../plan/jardin'
 import { distanceParvis, hauteurDuParc } from '../plan/relief'
 import { INTEMPERIES } from './intemperies'
 import type { Rect } from '../plan/types'
@@ -33,8 +33,13 @@ import type { Rect } from '../plan/types'
 const TEXEL = 0.5
 /** Les niveaux d'un brin : assez pour qu'il se courbe. */
 const NIVEAUX = 3
-/** L’herbe s’arrête à tant de l’eau : là où la berge creusée (build-jardin.py) plonge vraiment. */
+/** L’herbe s’arrête à tant de l’étang : là où sa berge creusée (build-jardin.py) plonge vraiment. */
 const BERGE = 1.2
+/**
+ * Et à tant du ruisseau : son lit est dans `hauteurDuParc`, l’herbe en descend la
+ * berge et la surplombe presque au fil de l’eau, comme sur un vrai ru.
+ */
+const RIVE = 0.3
 
 const dansRect = (r: Rect, x: number, z: number, marge = 0) =>
   x >= r.x - marge && x <= r.x + r.width + marge && z >= r.z - marge && z <= r.z + r.depth + marge
@@ -43,15 +48,15 @@ const dansRect = (r: Rect, x: number, z: number, marge = 0) =>
 const PIED: Partial<Record<string, number>> = { 'erable-rouge': 0.25, 'erable-vert': 0.25, buis: 0.7, azalee: 0.7 }
 
 /**
- * La distance à l’eau au centre de la maille d’un mètre qui contient (x, z). Une
+ * La distance à l’étang au centre de la maille d’un mètre qui contient (x, z). Une
  * distance varie d’au plus 0,71 m sur la maille : sa valeur borne tous ses points.
  */
 const EAU = new Map<string, number>()
-function eauProche(x: number, z: number): number {
+function etangProche(x: number, z: number): number {
   const [i, j] = [Math.floor(x), Math.floor(z)]
   const cle = `${i}:${j}`
   let d = EAU.get(cle)
-  if (d === undefined) EAU.set(cle, (d = Math.min(distanceRuisseau(i + 0.5, j + 0.5), distanceEtang(i + 0.5, j + 0.5))))
+  if (d === undefined) EAU.set(cle, (d = distanceEtang(i + 0.5, j + 0.5)))
   return d
 }
 
@@ -60,8 +65,9 @@ function solNu(parc: Parc, x: number, z: number): boolean {
   if (!dansRect(parc.terrain, x, z) || distanceParvis(parc.parvis, x, z) < 0.1 || dansRect(TABLIER, x, z, 0.6)) return true
   // L’eau, coûteuse à tester : seulement au jardin, dans une maille à cheval sur la berge.
   if (!JARDIN.zones.some((r) => dansRect(r, x, z, 2))) return false
-  const d = eauProche(x, z)
-  return d < BERGE - 0.71 || (d < BERGE + 0.71 && presDeLEau(x, z, BERGE))
+  if (distanceRuisseau(x, z) < RIVE) return true
+  const d = etangProche(x, z)
+  return d < BERGE - 0.71 || (d < BERGE + 0.71 && distanceEtang(x, z) < BERGE)
 }
 
 /** Ce qui dégarnit le gazon, hors des allées, en bandes (un disque est une bande de longueur nulle). */
