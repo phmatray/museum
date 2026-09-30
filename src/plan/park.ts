@@ -17,6 +17,7 @@
  * même parc, arbre pour arbre.
  */
 import { CONTOUR_ETANG, INDICE_LEVRE, JARDIN, LEVRE, RADIERS, TABLIER, TRACE_RUISSEAU, distanceEtang, distanceRuisseau, presDeLEau } from './jardin.ts'
+import { BELVEDERE, EMPRISE_BELVEDERE, PAS_DE_LA_RIVE, PIED_DE_L_ESCALIER, OBSTACLES_BELVEDERE, VOLEES, dansLaPercee } from './belvedere.ts'
 import { EMPRISE_CHANTIER } from './chantier.ts'
 import { hauteurDuParc } from './relief.ts'
 import type { Plan, Rect } from './types.ts'
@@ -112,6 +113,11 @@ export function generateur(texte: string): () => number {
   }
 }
 
+/** Le rectangle arrondi aux mètres qui le contiennent : les mailles de la pelouse (`ParkLayer`). */
+const maille = (r: Rect): Rect => {
+  const [x0, z0] = [Math.floor(r.x), Math.floor(r.z)]
+  return { x: x0, z: z0, width: Math.ceil(r.x + r.width) - x0, depth: Math.ceil(r.z + r.depth) - z0 }
+}
 const elargi = (r: Rect, m: number): Rect => ({ x: r.x - m, z: r.z - m, width: r.width + 2 * m, depth: r.depth + 2 * m })
 const dansRect = (r: Rect, x: number, z: number, marge = 0) =>
   x >= r.x - marge && x <= r.x + r.width + marge && z >= r.z - marge && z <= r.z + r.depth + marge
@@ -453,8 +459,9 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
   planter('rocher-1', sx - vx * 0.5, sz - vz * 0.5, 0.95, -0.25)
   for (const s of [-1, 1]) planter(s < 0 ? 'rocher-3' : 'rocher-5', sx + vx * 0.7 - vz * s * (sw / 2 + 0.5), sz + vz * 0.7 + vx * s * (sw / 2 + 0.5), 0.6, -0.15)
 
-  // La pelouse s'arrête où commence le sol creusé du jardin (build-jardin.py).
-  const sol = JARDIN.zones.reduce((rs, zone) => rs.flatMap((r) => couronne(r, zone)), couronne(terrain, parvis))
+  // La pelouse s'arrête où commence le sol creusé du jardin (build-jardin.py),
+  // et sous le belvédère : ses pierres couvrent le sol, maille entière (`belvedere.ts`).
+  const sol = [...JARDIN.zones, ...EMPRISE_BELVEDERE.map(maille)].reduce((rs, zone) => rs.flatMap((r) => couronne(r, zone)), couronne(terrain, parvis))
   // Les vieilles souches des berges (`ruisseau.ts`) tiennent leur place : rien ne
   // pousse dans leurs racines. Retirés après coup, sans rebattre aucun tirage.
   const souches = JARDIN.souches.sujets
@@ -463,7 +470,32 @@ export function parkPlacements(plan: Plan, graine = 'parc'): Parc {
   // d'encombrement d'un bon mètre), et de la pelouse autour.
   const libres = plantations.filter((p) => !souches.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < 0.9 * s.echelle + p.rayon * 0.5)
     && distanceRect(EMPRISE_CHANTIER, p.x, p.z) > p.rayon * (p.espece.startsWith('erable') ? 1.4 : 1) + 1)
-  return { terrain, parvis, sol, dalles: couronne(parvis, emprise), allees, plantations: libres, berges: semerBerges(allees, libres, graine) }
+  // Le belvédère et son roji (`belvedere.ts`), posés APRÈS le tirage : le reste
+  // du parc garde chaque arbre à sa place. On retire seulement ce qui pousserait
+  // dans la pierre, sur le roji, dans la palissade, ou dans la percée (les grands
+  // arbres seuls : boules et azalées font le premier plan) ; les houppiers qui
+  // débordent sur le roji restent — c'est le tunnel du chemin de thé.
+  const { roji: J, sujets } = BELVEDERE
+  // Il file sous les deux premières marches : son bout rond, et sa bordure, se perdent sous la pierre.
+  const roji = serpenter({ x: J.x, z: J.z0 }, { x: PIED_DE_L_ESCALIER[0], z: VOLEES[0].u0 + 1.2 }, J.ondulation, J.largeur)
+  const grand = (p: PlantPlacement) => p.espece.startsWith('erable')
+  const pied = (p: PlantPlacement) => (grand(p) ? 0.5 * p.scale : p.rayon)
+  const gardes = libres.filter((p) =>
+    !EMPRISE_BELVEDERE.some((r) => distanceRect(r, p.x, p.z) < pied(p) + 0.6)
+    && !OBSTACLES_BELVEDERE.some((r) => distanceRect(r, p.x, p.z) < pied(p) + 0.3)
+    && !surUneAllee(roji, p.x, p.z, pied(p) + BORD)
+    && !(grand(p) && dansLaPercee(p.x, p.z))
+    && !sujets.some((s) => Math.hypot(s.x - p.x, s.z - p.z) < (RAYON[s.espece] * s.scale + p.rayon) * 0.6)
+    // Les pas japonais de la rive sud : les boules et les azalées sur leur passage leur cèdent la place.
+    && !PAS_DE_LA_RIVE.some((s) => Math.hypot(s.x - p.x, s.z - p.z) < s.rayon + pied(p) * 0.8 + 0.15))
+  // Les sujets plantés à dessein : l'érable pourpre de la terrasse, qui penche
+  // sur le parapet, et la paire qui encadre la façade au bout de l'axe.
+  for (const s of sujets) {
+    const y = s.belvedere ? BELVEDERE.cote : Math.min(...[[0.5, 0], [-0.5, 0], [0, 0.5], [0, -0.5]].map(([dx, dz]) => hauteurDuParc(s.x + dx, s.z + dz)))
+    gardes.push({ espece: s.espece, x: s.x, z: s.z, rotation: s.lacet ?? generateur(`${graine}:${s.x}`)() * Math.PI * 2, scale: s.scale, rayon: RAYON[s.espece] * s.scale, y: s.espece === 'lierre' ? y - 0.05 : y })
+  }
+  const toutes = [...allees, ...roji]
+  return { terrain, parvis, sol, dalles: couronne(parvis, emprise), allees: toutes, plantations: gardes, berges: semerBerges(toutes, gardes, graine) }
 }
 
 /**

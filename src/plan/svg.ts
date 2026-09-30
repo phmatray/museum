@@ -9,6 +9,7 @@
  * Pur : (plan, niveau) → chaîne. Le même rendu sert au dossier `docs/plan` et
  * pourra servir à la minimap.
  */
+import { BELVEDERE, EMPRISE_BELVEDERE, VOLEES } from './belvedere.ts'
 import { CHANTIER, EMPRISE_CHANTIER } from './chantier.ts'
 import { MODULE, cimaisesDe } from './cimaises.ts'
 import { guardrails, isNordSud } from './geometry.ts'
@@ -191,12 +192,14 @@ function halo(fill: string) {
  * Le cadre du plan vu du DEHORS : celui du bâtiment, élargi jusqu'à la baraque
  * du chantier (`chantier.ts`), sur la pelouse sud-ouest.
  */
+/** Ce que le plan du dehors doit montrer, en plus du musée : la baraque du chantier et le belvédère. */
+const DEHORS = [EMPRISE_CHANTIER, BELVEDERE.emprise]
+
 export function cadreDehors(plan: Plan): [number, number, number, number] {
   const [x, y, w, h] = cadre(plan)
-  const c = EMPRISE_CHANTIER
   const m = 40
-  const [x0, y0] = [Math.min(x, n(c.x) - m), Math.min(y, n(c.z) - m)]
-  const [x1, y1] = [Math.max(x + w, n(c.x + c.width) + m), Math.max(y + h, n(c.z + c.depth) + m)]
+  const [x0, y0] = [Math.min(x, ...DEHORS.map((c) => n(c.x) - m)), Math.min(y, ...DEHORS.map((c) => n(c.z) - m))]
+  const [x1, y1] = [Math.max(x + w, ...DEHORS.map((c) => n(c.x + c.width) + m)), Math.max(y + h, ...DEHORS.map((c) => n(c.z + c.depth) + m))]
   return [x0, y0, x1 - x0, y1 - y0]
 }
 
@@ -209,6 +212,7 @@ export function renderDehors(plan: Plan, levelId: number): string {
   const [X, Y, W, H] = cadreDehors(plan)
   const [bx, by] = cadre(plan)
   const c = EMPRISE_CHANTIER
+  const b = BELVEDERE.emprise
   const e = CHANTIER.mur
   const porte = { x: c.x + c.width - e, z: CHANTIER.porte.z - CHANTIER.porte.largeur / 2, width: 2 * e, depth: CHANTIER.porte.largeur }
   return [
@@ -218,6 +222,10 @@ export function renderDehors(plan: Plan, levelId: number): string {
     rect(c, `fill="${C.honneur}" stroke="${C.poche}" stroke-width="${n(e) * 2}"`),
     rect(porte, `fill="${C.honneur}"`, 0.02),
     text(n(c.x + c.width / 2), n(c.z + c.depth / 2) + 5, 'Chantier du musée', `text-anchor="middle" font-size="14" class="lbl" ${halo(C.honneur)}`),
+    // Le belvédère du fond du jardin : sa terrasse, sa volée au nord, son nom.
+    ...EMPRISE_BELVEDERE.map((r) => rect(r, `fill="${C.honneur}" stroke="${C.poche}" stroke-width="${n(BELVEDERE.mur)}"`)),
+    ...VOLEES.map((v) => rect(v.rect, `fill="${C.honneur}"`, 0.02)),
+    text(n(b.x + b.width / 2), n(b.z + b.depth / 2) + 5, 'Belvédère', `text-anchor="middle" font-size="14" class="lbl" ${halo(C.honneur)}`),
     `</svg>`,
   ].join('\n')
 }

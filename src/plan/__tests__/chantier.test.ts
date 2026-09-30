@@ -68,11 +68,11 @@ describe('la baraque du chantier', () => {
   })
 
   it('finit la visite guidée : de la salle d’honneur à la baraque, à pied', () => {
-    const arret = VISITE[VISITE.length - 1]
-    expect(arret.roomId).toBe('chantier')
-    const avant = VISITE[VISITE.length - 2].points.at(-1)!
+    const i = VISITE.findIndex((s) => s.roomId === 'chantier')
+    const arret = VISITE[i]
+    const avant = VISITE[i - 1].points.at(-1)!
     let w: Walker = { level: 1, surface: '1:honneur', x: avant[0], z: avant[1], y: MUSEE.storey, yaw: 0 }
-    let c = { stop: VISITE.length - 1, point: 0 }
+    let c = { stop: i, point: 0 }
     for (let n = 0; n < 240 / DT && c.point < arret.points.length; n++) {
       c = avancer(VISITE, c, w)
       if (c.point >= arret.points.length) break

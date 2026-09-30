@@ -17,6 +17,7 @@
  * Une fonction pure : la marche (`walk.ts`), les plantations (`park.ts`), la
  * pelouse, les allées et l'herbe la lisent, et tombent d'accord au millimètre.
  */
+import { coteDuBelvedere } from './belvedere.ts'
 import { CHANTIER, EMPRISE_CHANTIER } from './chantier.ts'
 import { JARDIN, TABLIER, creuxDuRuisseau } from './jardin.ts'
 import type { Rect } from './types.ts'
@@ -107,8 +108,14 @@ export function distanceParvis(r: Rect, x: number, z: number): number {
   return Math.hypot(Math.max(dx, 0), Math.max(dz, 0)) + Math.min(Math.max(dx, dz), 0) - e
 }
 
-/** La cote de la pelouse en (x, z), en mètres : 0 au parvis, jusqu'à ~3,5 m aux confins. */
+/**
+ * La cote de la pelouse en (x, z), en mètres : 0 au parvis, jusqu'à ~3,5 m aux
+ * confins — et le sol du belvédère (`belvedere.ts`) là où il est bâti : sa
+ * terrasse, et sa volée en plan incliné.
+ */
 export function hauteurDuParc(x: number, z: number): number {
+  const belvedere = coteDuBelvedere(x, z)
+  if (belvedere !== null) return belvedere
   const lit = distanceRect(TABLIER, x, z) > 0 ? creuxDuRuisseau(x, z) : 0
   const m = masqueDuRelief(x, z)
   const k = lisse(Math.min(1, Math.max(0, (distanceRect(EMPRISE_CHANTIER, x, z) - PLAT_CHANTIER) / FONDU_CHANTIER)))

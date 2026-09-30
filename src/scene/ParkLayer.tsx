@@ -16,6 +16,7 @@ import type { Rect } from '../plan/types'
 import { REGLAGE_MATIERE, repetitionMetrique, useCartes, useMatiere } from './materials'
 import { creerBrique, creerPierre } from './pierre'
 import { enceinte } from '../plan/enceinte'
+import { pierresDuBelvedere } from '../plan/belvedere'
 import { Boites } from './PlanBuilding'
 import { AlleesDuParc } from './AlleesDuParc'
 import { parkAssetsResource, type ParkAssets, type ParkPiece } from './parkAssets'
@@ -97,7 +98,7 @@ export function ParkLayer({ placements }: { placements: Parc }) {
     <group name="parc">
       <mesh geometry={sol} material={herbe} />
       <mesh geometry={campagne} material={herbe} />
-      <Enceinte parc={placements} />
+      <Enceinte parc={placements} dallage={dallage} />
       <mesh geometry={parvis} material={dallage} />
       <AlleesDuParc parc={placements} dallage={dallage} />
       <Gazon parc={placements} />
@@ -112,9 +113,15 @@ export function ParkLayer({ placements }: { placements: Parc }) {
   )
 }
 
-/** Le mur d'enceinte (`plan/enceinte.ts`) : brique et pierre du musée, grilles de fer. Trois appels de dessin. */
-function Enceinte({ parc }: { parc: Parc }) {
+/** Le mur d'enceinte (`plan/enceinte.ts`) : brique et pierre du musée, grilles de fer ; et le belvédère. Quatre appels de dessin. */
+function Enceinte({ parc, dallage }: { parc: Parc; dallage: THREE.Material }) {
   const mur = useMemo(() => enceinte(parc.terrain, parc.allees), [parc])
+  // Les murs et le parapet du belvédère (`plan/belvedere.ts`) : la même pierre, le même lot ;
+  // son dallage et ses marches, la pierre foulée du parvis.
+  const [pierres, foulees] = useMemo(() => {
+    const b = pierresDuBelvedere(hauteurDuParc)
+    return [[...mur.pierre, ...b.filter((x) => x.kind === 'wall')], b.filter((x) => x.kind !== 'wall')]
+  }, [mur])
   const mats = useMemo(() => {
     const m = { brique: creerBrique(), pierre: creerPierre(), fer: new THREE.MeshStandardMaterial({ color: '#1c1e1d', metalness: 0.7, roughness: 0.45 }) }
     // La mousse du chaperon d'abord : la neige tient par-dessus.
@@ -128,7 +135,8 @@ function Enceinte({ parc }: { parc: Parc }) {
   return (
     <>
       <Boites boites={mur.brique} material={mats.brique} />
-      <Boites boites={mur.pierre} material={mats.pierre} />
+      <Boites boites={pierres} material={mats.pierre} />
+      <Boites boites={foulees} material={dallage} />
       <Boites boites={mur.fer} material={mats.fer} />
       <Lierre plaques={mur.plaques} />
     </>

@@ -3,6 +3,7 @@
  * parvis, ni dans une allée, et le sol ne passe pas sous le musée.
  */
 import { describe, expect, it } from 'vitest'
+import { BELVEDERE } from '../belvedere.ts'
 
 import { MUSEE } from '../musee.ts'
 import { presDeLEau, TABLIER } from '../jardin.ts'
@@ -28,7 +29,12 @@ describe('parkPlacements', () => {
   })
 
   it('ne plante rien dans une allée', () => {
-    for (const p of parc.plantations) expect(surUneAllee(parc.allees, p.x, p.z, p.rayon)).toBe(false)
+    // Les houppiers penchent sur le roji (son tunnel), et la paire plantée à dessein encadre l'axe : pour eux, le tronc seul.
+    const pres = (p: { x: number; z: number }) => BELVEDERE.sujets.some((s) => s.x === p.x && s.z === p.z) || Math.abs(p.x - BELVEDERE.roji.x) < 6 && p.z > BELVEDERE.roji.z0
+    for (const p of parc.plantations) {
+      const r = p.espece.startsWith('erable') && pres(p) ? 0.5 * p.scale : p.rayon
+      expect(surUneAllee(parc.allees, p.x, p.z, r), `${p.espece} (${p.x.toFixed(1)}, ${p.z.toFixed(1)})`).toBe(false)
+    }
   })
 
   it('perce le sol et le parvis de l’emprise : rien ne recouvre la dalle', () => {

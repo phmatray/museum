@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { centreDesChutes, hauteurDesToits, sousLesToits } from '../toits'
+import { BELVEDERE } from '../belvedere'
+import { centreDesChutes, hauteurDesToits, sousLesToits, toitsGlsl } from '../toits'
 
 /** La boîte de pluie de `MeteoLayer` : 26 × 16 × 26 m, poussée de 0,45 × 26 m devant le regard. */
 const BOITE = { l: 26, h: 16 }
@@ -30,6 +31,33 @@ describe('les toits du musée', () => {
   it('la voûte de la nef culmine au faîte et retombe vers les murs', () => {
     expect(hauteurDesToits(24, 26)).toBeGreaterThan(20)
     expect(hauteurDesToits(16.5, 26)).toBeLessThan(hauteurDesToits(24, 26))
+  })
+})
+
+describe('les abris du jardin', () => {
+  const { pavillon: P, cote: H, porte: G, roji: J } = BELVEDERE
+
+  it('le pavillon du belvédère abrite qui s’y tient, jusqu’au bout de son débord, pas la terrasse à côté', () => {
+    expect(sousLesToits(P.x, H + 1.7, P.z)).toBe(true)
+    expect(sousLesToits(P.x + P.cote / 2 + P.debord - 0.1, H + 1.7, P.z)).toBe(true)
+    expect(sousLesToits(P.x - P.cote / 2 - P.debord - 0.3, H + 1.7, P.z)).toBe(false)
+    // Au faîte, plus haut qu'à l'égout.
+    expect(hauteurDesToits(P.x, P.z)).toBeGreaterThan(hauteurDesToits(P.x + P.cote / 2, P.z) + 1)
+  })
+
+  it('la porte du roji abrite son passage, pas le roji devant ni derrière', () => {
+    expect(sousLesToits(J.x, 1.7, G.z)).toBe(true)
+    expect(sousLesToits(J.x, 1.7, G.z - 1.5)).toBe(false)
+    expect(sousLesToits(J.x, 1.7, G.z + 1.5)).toBe(false)
+  })
+
+  it('sous le pavillon, la pluie reste centrée sur le visiteur : elle tombe tout autour', () => {
+    expect(centreDesChutes({ x: P.x, y: H + 1.7, z: P.z }, { x: 0, z: -1 }, 0.45 * BOITE.l, BOITE.h / 2)).toEqual({ x: P.x, y: H + 1.7, z: P.z })
+  })
+
+  it('la copie GLSL porte les mêmes cotes', () => {
+    const glsl = toitsGlsl('toit')
+    for (const v of [P.x, P.z, G.z]) expect(glsl).toContain(v.toFixed(3))
   })
 })
 

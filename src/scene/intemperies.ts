@@ -13,6 +13,7 @@
  * son texte, et une greffe ancrée là disparaissait — les flaques du gravier ne
  * compilaient plus (`iFlaque` non déclaré), la pierre ne se mouillait pas.
  */
+import { abrisGlsl } from '../plan/toits'
 import * as THREE from 'three'
 
 export const INTEMPERIES = {
@@ -56,7 +57,9 @@ float iBruit(vec2 p) {
   return mix(mix(iHash(i), iHash(i + vec2(1, 0)), u.x), mix(iHash(i + vec2(0, 1)), iHash(i + vec2(1, 1)), u.x), u.y);
 }
 // Sous les toits du musée (emprise 0–48 × 0–40, toits vers 9,5 m) : ni pluie ni neige.
-float iInterieur(vec3 p) { return step(-0.2, p.x) * step(p.x, 48.2) * step(-0.2, p.z) * step(p.z, 40.2) * step(p.y, 9.3); }
+// Ni sous les abris du jardin (toits.ts), 20 cm sous le dessus de leur toit (le lambris du dessous compris) : les tuiles, elles, se mouillent.
+${abrisGlsl('iAbri')}
+float iInterieur(vec3 p) { return max(step(-0.2, p.x) * step(p.x, 48.2) * step(-0.2, p.z) * step(p.z, 40.2) * step(p.y, 9.3), step(p.y, iAbri(p.xz) - 0.2)); }
 // Les ronds de pluie sur une eau calme (l'étang, les flaques) : la pente, en xz, à ajouter à la normale.
 vec2 iRonds(vec2 xz) {
   vec2 iG = vec2(0.0);

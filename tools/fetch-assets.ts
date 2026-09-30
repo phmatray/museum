@@ -270,6 +270,12 @@ const ARCHITECTURE = [
     usage: 'la baraque du chantier du musée, sur la pelouse sud-ouest, où s’accroche le journal de chantier',
   },
   {
+    id: 'belvedere',
+    source: '`tools/blender/build-belvedere.py` : pavillon de thé (azumaya) à toit en pavillon, palissade de bambou kenninji-gaki et porte couverte du roji',
+    licence: 'œuvre originale du dépôt',
+    usage: 'le belvédère au fond du jardin et le chemin de thé qui y mène',
+  },
+  {
     id: 'accessoires',
     source:
       'Meshy (généré par IA, texte → 3D, texture PBR), mis à l’échelle et allégé par `tools/blender/build-accessoires.py` ; prompts : ' +

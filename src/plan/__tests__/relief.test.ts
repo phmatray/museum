@@ -3,6 +3,7 @@
  * le parvis, l'axe de l'entrée, le sol creusé du jardin (Blender le pose à 0).
  */
 import { describe, expect, it } from 'vitest'
+import { dansLeBelvedere } from '../belvedere.ts'
 
 import { BERGE_RUISSEAU, JARDIN, TABLIER, creuxDuRuisseau, distanceRuisseau } from '../jardin.ts'
 import { MUSEE } from '../musee.ts'
@@ -36,7 +37,8 @@ describe('hauteurDuParc', () => {
     const tablier = (x: number, z: number) => x > TABLIER.x - 0.2 && x < TABLIER.x + TABLIER.width + 0.2 && z > TABLIER.z - 0.2 && z < TABLIER.z + TABLIER.depth + 0.2
     for (const [x, z] of points(0.5)) {
       // Le lit du ruisseau et le rebord raide de sa berge ne se marchent pas ; le tablier l'enjambe, de plain-pied.
-      if (distanceRuisseau(x, z) < 0.5 || tablier(x, z)) continue
+      // Le belvédère est bâti : ses murs sont des falaises qu'on ne franchit pas, sa volée un escalier.
+      if (distanceRuisseau(x, z) < 0.5 || tablier(x, z) || dansLeBelvedere(x, z, 0.1)) continue
       const h = hauteurDuParc(x, z)
       expect(Math.abs(hauteurDuParc(x + e, z) - h) / e).toBeLessThan(0.4)
       expect(Math.abs(hauteurDuParc(x, z + e) - h) / e).toBeLessThan(0.4)
@@ -48,7 +50,8 @@ describe('hauteurDuParc', () => {
     for (const r of plats)
       for (let z = r.z; z <= r.z + r.depth; z += 0.5)
         for (let x = r.x; x <= r.x + r.width; x += 0.5) {
-          if (distanceRuisseau(x, z) < BERGE_RUISSEAU) continue
+          // Et hors du pied de la volée ouest du belvédère, qui mord sur le sol du jardin.
+          if (distanceRuisseau(x, z) < BERGE_RUISSEAU || dansLeBelvedere(x, z)) continue
           expect(hauteurDuParc(x, z), `(${x}, ${z})`).toBe(0)
         }
   })
