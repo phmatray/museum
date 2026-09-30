@@ -11,6 +11,7 @@ import { GuidedTour } from './components/GuidedTour'
 import { BoutonSon } from './components/BoutonSon'
 import { EcranChargement } from './components/EcranChargement'
 import { MessagePartage } from './components/Partage'
+import { useGameStore } from './stores/gameStore'
 
 // La 3D (three, R3F, la scène) est un morceau à part : l'accueil s'affiche sans
 // l'attendre. Ses fichiers se téléchargent dès le HTML (`modulepreload`, voir
@@ -39,19 +40,25 @@ function Musee3DPlusTard() {
  */
 export default function App() {
   const isMobile = useIsMobile()
+  // En VR, rien par-dessus la scène : au casque on ne le verrait pas, au
+  // Cardboard ce serait un aplat collé devant les deux yeux. Masqué, pas
+  // démonté : la visite guidée, le son et les cartels gardent leur état.
+  const enVR = useGameStore((s) => s.enVR)
   return (
     <>
-      <PointerLockOverlay />
-      <TourExitButton />
-      <GuidedTour />
-      {isMobile && <MobileControlsOverlay />}
-      <Minimap />
-      <CarteOeuvre />
-      <BorneOeuvre />
-      <CarteBavette />
-      <CarteEtape />
-      <BoutonSon />
-      <MessagePartage />
+      <div style={{ display: enVR ? 'none' : 'contents' }}>
+        <PointerLockOverlay />
+        <TourExitButton />
+        <GuidedTour />
+        {isMobile && <MobileControlsOverlay />}
+        <Minimap />
+        <CarteOeuvre />
+        <BorneOeuvre />
+        <CarteBavette />
+        <CarteEtape />
+        <BoutonSon />
+        <MessagePartage />
+      </div>
       <Musee3DPlusTard />
       <EcranChargement />
     </>
