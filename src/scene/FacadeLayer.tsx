@@ -18,6 +18,7 @@ import { useMatiere } from './materials'
 import { Boites } from './PlanBuilding'
 import { creerVitrage } from '../builders/glazing'
 import { intemperer } from './intemperies'
+import { userFacade } from './usure'
 import { creerBrique, creerCannelure, creerGranit, creerPierre } from './pierre'
 
 const FACADE = facade(MUSEE)
@@ -37,7 +38,11 @@ export function FacadeLayer() {
       // Le verre des portes : clair, on voit le hall au travers.
       clair: creerVitrage(),
     }
-    // La brique fonce sous la pluie ; la neige tient sur les corniches et les appuis (`intemperies.ts`).
+    // Des années de pluie : coulures sous les saillies, pied éclaboussé, arêtes épaufrées (`usure.ts`)…
+    userFacade(m.brique)
+    userFacade(m.pierre, { pierre: true })
+    userFacade(m.cannelure, { pierre: true })
+    // … et le temps qu'il fait : la brique fonce sous la pluie ; la neige tient sur les corniches et les appuis (`intemperies.ts`).
     for (const k of ['brique', 'pierre', 'cannelure', 'metal'] as const) intemperer(m[k])
     return m
   }, [])

@@ -14,6 +14,7 @@ import type { Parc } from '../plan/park'
 import { COTE_DALLAGE, hauteurDuParc } from '../plan/relief'
 import { PARC } from '../plan/visibilite'
 import { intemperer } from './intemperies'
+import { pietiner } from './usure'
 import { REGLAGE_MATIERE, repetitionMetrique, useMatiere } from './materials'
 
 /** Le sol des allées, 3 cm au-dessus de la pelouse : assez pour ne pas scintiller avec elle. */
@@ -54,6 +55,8 @@ export function AlleesDuParc({ parc, dallage }: { parc: Parc; dallage: THREE.Mat
   // Mouillé sous la pluie, blanc sous la neige (`intemperies.ts`) : greffé sur chaque matière neuve.
   useMemo(() => {
     for (const m of [cailloux, pierre, dalle]) intemperer(m)
+    // Le milieu foulé, les bords verdis (`usure.ts`), sous la pluie et ses flaques.
+    pietiner(gravier)
     intemperer(gravier, { flaques: true })
     /* eslint-disable react-hooks/immutability -- la matière des dalles lit la patine de leurs sommets */
     dalle.vertexColors = true
