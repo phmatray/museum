@@ -152,6 +152,8 @@ export default defineConfig({
           includeDependenciesRecursively: false,
           groups: [
             { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store|zod)[\\/]/, priority: 40 },
+            // Babylon (`?moteur=babylon`) à part : sans ce groupe, il tombait dans `r3f` et l'app three le téléchargeait.
+            { name: 'babylon', test: /node_modules[\\/]@babylonjs[\\/]/, priority: 35 },
             { name: 'postprocessing', test: /node_modules[\\/](postprocessing|@react-three[\\/]postprocessing|n8ao)[\\/]/, priority: 30 },
             // Les chargeurs (glTF, Draco, KTX2) à part du cœur de three.
             { name: 'three-addons', test: /node_modules[\\/]three[\\/]examples[\\/]/, priority: 25 },
