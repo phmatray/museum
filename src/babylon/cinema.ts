@@ -35,7 +35,7 @@ import type { Scene } from '@babylonjs/core/scene'
 
 import { affiche, type Seance } from '../domain/cinema.ts'
 import {
-  APPLIQUES, CABINE, CAISSON, COTE_PROMENOIR, ECRAN, ENCEINTES, GRADINS, LAMBRIS, LUMIERES_MARCHES,
+  APPLIQUES, CABINE, CAISSON, COTE_PROMENOIR, ECRAN, ENCEINTES, LAMBRIS, LUMIERES_MARCHES,
   PLAFOND, RIDEAUX, SALLE, SCENE, SIEGES, SOL, SPOTS,
 } from '../plan/cinema.ts'
 import { PROMENOIR, VOLEES_CINEMA } from '../plan/cinema.ts'
@@ -55,6 +55,8 @@ export const SURFACES_CINEMA = new Set(['-1:cinema', ...VOLEES_CINEMA.map((f) =>
 /** L'épaisseur du revêtement posé sur la face des cloisons (évite le même plan que le mur). */
 const PEAU = 0.02
 const CHAUD = new Color3(1, 0.78, 0.52)
+/** Un fauteuil de cinéma, dossier compris (m). */
+const HAUTEUR_FAUTEUIL = 1.0
 
 const pbr = (scene: Scene, nom: string, couleur: Color3, rugosite: number, metal = 0) => {
   const m = new PBRMaterial(nom, scene)
@@ -298,14 +300,11 @@ export async function monterCinema(
     v.material = vitre
   }
 
-  // ── Les objets Meshy : rangées de fauteuils (trois par modèle), appliques, enceintes ──
+  // ── Les objets Meshy : fauteuils, appliques, enceintes ──
   const [fauteuils, appliques, enceintes] = await Promise.all(['fauteuil', 'applique', 'enceinte'].map((n) => glbOuRien(scene, `assets/cinema/${n}.glb`)))
   if (fauteuils) {
-    const rangees = GRADINS.flatMap((g) => {
-      const rang = SIEGES.filter((s) => s.rang === g.rang).sort((a, b) => a.x - b.x)
-      return Array.from({ length: Math.floor(rang.length / 3) }, (_, k) => rang[k * 3 + 1]).map((s) => ({ x: s.x, y: s.y, z: s.z, lacet: Math.PI }))
-    })
-    salle.push(...poser(fauteuils, rangees, 3 * 0.55 * 0.98, 'x', false))
+    // Un fauteuil par place (`SIEGES`), ramené à 1,00 m de haut (dossier compris), face à l'écran.
+    salle.push(...poser(fauteuils, SIEGES.map((s) => ({ x: s.x, y: s.y, z: s.z, lacet: s.lacet })), HAUTEUR_FAUTEUIL, 'y', false))
   }
   const auMur = (p: (typeof APPLIQUES)[number], recul: number) => ({ x: p.x + p.nx * recul, y: p.y, z: p.z, lacet: Math.atan2(p.nx, p.nz) })
   if (appliques) salle.push(...poser(appliques, APPLIQUES.map((p) => auMur(p, 0.16)), 0.95, 'y', true))
@@ -364,23 +363,7 @@ export async function monterCinema(
   })
 
   // ── La séance : le lecteur sur la toile, la salle qui s'éteint ──
-  // Le lecteur (16:9) sur le milieu de la toile scope : la vidéo la remplit, sans bandes noires dans le lecteur.
-  const demi = (ECRAN.hauteur * 16) / 9 / 2
-  const video: Coins = [
-    new Vector3(ECRAN.x - demi, ECRAN.bas + ECRAN.hauteur, ECRAN.z),
-    new Vector3(ECRAN.x + demi, ECRAN.bas + ECRAN.hauteur, ECRAN.z),
-    new Vector3(ECRAN.x + demi, ECRAN.bas, ECRAN.z),
-    new Vector3(ECRAN.x - demi, ECRAN.bas, ECRAN.z),
-  ]
-  // La séance se voit assis : au milieu du deuxième rang, les yeux à 1,15 m de l'assise.
-  const rang = SIEGES.filter((s) => s.rang === 1)
-  const place = rang[Math.floor(rang.length / 2)]
-  const oeil = place.y + 1.15
-  const siege = {
-    level: -1, surface: '-1:cinema', x: place.x, z: place.z, y: oeil - 1.62, yaw: 0,
-    pitch: Math.atan2(ECRAN.bas + ECRAN.hauteur / 2 - oeil, place.z - ECRAN.z),
-  }
-  const seance = monterSeance(scene, camera, toile, racine, video, programme, {
+  const seance = monterSeance(scene, camera, toile, racine, coins, programme, {
     debut() {
       for (const l of lampes) l.intensity = 1.4
       reflet.intensity = 6
@@ -388,7 +371,6 @@ export async function monterCinema(
       projette = true
       signaler('cinema')
     },
-    siege,
     fin() {
       for (const l of lampes) l.intensity = 4
       reflet.intensity = 0

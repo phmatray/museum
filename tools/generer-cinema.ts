@@ -20,9 +20,11 @@ const ETAT = resolve(DOSSIER, 'cinema.json')
 
 export const OBJETS = {
   fauteuil: {
-    prompt: 'A single classic cinema theater seat, deep red velvet upholstered backrest and folded-down cushion, ' +
-      'dark wooden armrests on both sides, black metal legs, front view facing forward, game-ready, clean, realistic.',
-    polys: 2500,
+    // Un SEUL fauteuil : « a single seat » avait donné un groupe de trois, en quinconce.
+    prompt: 'ONE single isolated cinema theater armchair, exactly one seat and nothing else, no other chairs: ' +
+      'deep red velvet upholstered high backrest and seat cushion, a padded armrest on each side, a short black metal base, ' +
+      'centered, front view facing forward, game-ready, clean, realistic.',
+    polys: 2000,
   },
   applique: {
     prompt: 'An ornate gilded brass wall sconce lamp for an old theater, a curved wall plate with five elegant scrolled arms ' +
