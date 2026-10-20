@@ -9,6 +9,12 @@
  * - la toile regardée (`toileRegardee`) allume sa lentille et UNE SpotLight
  *   partie de son projecteur, toujours dans la scène (en ajouter ou en retirer
  *   une recompilerait toutes les matières), fondue 0 ↔ 9 ;
+ * - chaque projecteur verse sa flaque chaude sur sa toile : 116 SpotLight hors
+ *   scène, dans un ClusteredLightContainer (forward+, WebGPU et WebGL2 à
+ *   tampons flottants mélangeables ; sans lui, pas de flaques). Une matière
+ *   ne le voit que si elle l'accepte (`sousLesProjecteurs` : 6 lumières au lieu
+ *   de 4, chute glTF pour que la portée coupe le pinceau avant le mur voisin,
+ *   la lumière ne connaissant pas les murs) ;
  * - un halo doré autour de chaque toile poussée dans l'année (`eclat`), additif ;
  * - les disques des 25 spots sous les balcons et des 9 projecteurs de façade.
  *
@@ -18,8 +24,10 @@
  * dans three où le ToneMapping final passe sur toute l'image (`toneMapped: false` n'y change rien).
  */
 import { Constants } from '@babylonjs/core/Engines/constants'
+import { ClusteredLightContainer } from '@babylonjs/core/Lights/Clustered/clusteredLightContainer'
 import { Light } from '@babylonjs/core/Lights/light'
 import { SpotLight } from '@babylonjs/core/Lights/spotLight'
+import type { Material } from '@babylonjs/core/Materials/material'
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture'
 import { Color3 } from '@babylonjs/core/Maths/math.color'
@@ -72,6 +80,62 @@ const PENOMBRE = 0.65
 const PORTEE = 7
 const DECAY = 1.2
 const BLANC_CHAUD = lin('#ffd7a8').scale(3)
+/**
+ * La flaque d'un projecteur : demi-angle 0,5 rad (la toile et 40 cm autour), le cœur
+ * plein sur 0,2 ; portée 5,2 m en chute glTF : la toile, à 3,2 m de sa lentille (3,7 en
+ * salle d'honneur), en garde plus de la moitié ; le sol de la salle voisine, que le
+ * pinceau atteint à travers le mur (la lumière ne connaît pas les murs), au-delà de
+ * 5 m, 2 % au plus. Blanc chaud, plus doux que la toile regardée.
+ */
+export const FLAQUE = { intensite: 25, demiAngle: 0.5, coeur: 0.2, portee: 5.2, couleur: '#ffd9ae' }
+
+/** Les spots des flaques, un par projecteur, de son étrier vers sa toile ; hors scène (le conteneur les prend). */
+export function spotsDesFlaques(tous: readonly Projecteur[], scene: Scene): SpotLight[] {
+  const couleur = lin(FLAQUE.couleur)
+  return tous.map((p) => {
+    const [x, y, z] = p.source
+    const s = new SpotLight(`flaque:${p.key}`, new Vector3(x, y, z), new Vector3(p.cible[0] - x, p.cible[1] - y, p.cible[2] - z).normalize(),
+      2 * FLAQUE.demiAngle, 1, scene, true)
+    s.innerAngle = 2 * FLAQUE.coeur
+    s.diffuse = couleur
+    s.specular = couleur
+    s.intensity = FLAQUE.intensite
+    s.range = FLAQUE.portee
+    s.shadowEnabled = false
+    return s
+  })
+}
+
+/**
+ * Les flaques en grappes, ou null si le moteur ne sait pas (WebGL2 sans tampon
+ * flottant mélangeable) : la visite garde alors la seule toile regardée.
+ */
+export function monterFlaques(tous: readonly Projecteur[], scene: Scene): ClusteredLightContainer | null {
+  // Toutes d'un coup au constructeur (une à une, chaque ajout repasse les maillages de la scène).
+  const grappe = new ClusteredLightContainer('flaques', spotsDesFlaques(tous, scene), scene)
+  if (!grappe.isSupported) {
+    grappe.dispose()
+    return null
+  }
+  // Des tuiles carrées d'environ 25 px en 16:9.
+  grappe.horizontalTiles = 64
+  grappe.verticalTiles = 36
+  return grappe
+}
+
+/**
+ * Les matières qui reçoivent les flaques : la grappe vient en 5ᵉ lumière (soleil, ciel,
+ * lampe d'honneur, toile regardée) ; les autres en restent à 4 et ne la compilent pas.
+ * Chute glTF : seules les flaques suivent la chute de la matière (les autres lumières ont la leur).
+ */
+export function sousLesProjecteurs(matieres: Iterable<Material>): void {
+  for (const m of matieres) {
+    if (!(m instanceof PBRMaterial)) continue
+    m.maxSimultaneousLights = Math.max(m.maxSimultaneousLights, 6)
+    m.useGLTFLightFalloff = true
+  }
+}
+
 /** Les halos (EveilLayer) : or × 0,45 × éclat, débord de 0,7 m sur le cadre. */
 const OR = lin('#ffb54a')
 const DEBORD = 0.7
@@ -193,6 +257,8 @@ export async function monterEclairage(
   spot.intensity = 0
 
   const tous = projecteurs(MUSEE, avecVitrines(accrochage))
+  // Les flaques aussi avant le chargement (la grappe est une lumière : elle entre dans la première compilation).
+  monterFlaques(tous, scene)
   const c = await chargerGlb(scene, 'assets/architecture/projecteur.glb')
   c.addAllToScene()
   const piece = (nom: string) => c.meshes.find((m) => m.name === nom) as Mesh

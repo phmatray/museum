@@ -6,7 +6,7 @@ import LUMIERE from '../../plan/lumiere.json' with { type: 'json' }
 import { MUSEE } from '../../plan/musee'
 import { COULEURS_SALLES, plinthes } from '../../plan/parement'
 import { plafonds } from '../../plan/plafonds'
-import { attributsDUsure, codeDuParement, matieresDuParement, type Parement, revetements } from '../parement'
+import { attributsDUsure, codeDuParement, matieresDuParement, type Parement, PENOMBRE, revetements } from '../parement'
 
 describe('revetements', () => {
   const r = revetements(MUSEE)
@@ -67,6 +67,15 @@ describe('codeDuParement', () => {
   })
 })
 
+describe('la pénombre des galeries', () => {
+  it('baisse la lumière cuite sous PM_PENOMBRE, avant les lumières, en GLSL et en WGSL', () => {
+    const glsl = Object.values(codeDuParement(false, MUSEE).fragment).join('\n')
+    const wgsl = Object.values(codeDuParement(true, MUSEE).fragment).join('\n')
+    expect(glsl).toContain(`#if defined(LIGHTMAP) && defined(PM_PENOMBRE)\nlightmapColor.rgb *= ${PENOMBRE};`)
+    expect(wgsl).toContain(`lightmapColor = vec4f(lightmapColor.rgb * ${PENOMBRE}, lightmapColor.a);`)
+  })
+})
+
 describe('matieresDuParement', () => {
   it('greffe le plugin réglé comme les matières de three', () => {
     const scene = new Scene(new NullEngine())
@@ -74,8 +83,9 @@ describe('matieresDuParement', () => {
     const r = (k: keyof typeof m) => m[k].pluginManager!.getPlugin<Parement>('Parement')!.reglages
     expect(r('platre')).toEqual({ rebond: 0.14 })
     expect(r('peinture').tenture).toBe(true)
-    expect(r('terrazzo')).toEqual({ rebond: 0.24, terrazzo: true, hall: true })
-    expect(r('parquet-galeries').batons).toBe(true)
+    expect(r('terrazzo')).toEqual({ rebond: 0.24, terrazzo: true, hall: true, miroir: 'net' })
+    expect(r('parquet-galeries')).toMatchObject({ batons: true, miroir: 'doux', penombre: true })
+    expect(r('peinture').penombre).toBe(true)
     expect(r('pierre')).toEqual({ usure: true, eclats: true })
     expect(r('granit')).toEqual({ usure: true })
     scene.getEngine().dispose()

@@ -1,3 +1,6 @@
+import { NullEngine } from '@babylonjs/core/Engines/nullEngine'
+import { Light } from '@babylonjs/core/Lights/light'
+import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { Color3 } from '@babylonjs/core/Maths/math.color'
 import { Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { describe, expect, it } from 'vitest'
@@ -7,7 +10,8 @@ import type { Accrochage } from '../../plan/hang'
 import { MUSEE } from '../../plan/musee'
 import { projecteurs } from '../../plan/projecteurs'
 import { avecVitrines } from '../../plan/vitrines'
-import { depoli, halos, matriceDePiece } from '../eclairage'
+import { Scene } from '@babylonjs/core/scene'
+import { depoli, FLAQUE, halos, matriceDePiece, monterFlaques, sousLesProjecteurs, spotsDesFlaques } from '../eclairage'
 
 const lin = (hex: string) => Color3.FromHexString(hex).toLinearSpace()
 
@@ -73,5 +77,42 @@ describe('halos', () => {
     expect(m[14]).toBeCloseTo(p.z + p.normal[1] * 0.004, 5)
     // L'axe z local (la face du plan) suit la normale du mur.
     expect(m[8] * p.normal[0] + m[10] * p.normal[1]).toBeCloseTo(1, 5)
+  })
+})
+
+describe('les flaques des projecteurs', () => {
+  const tous = projecteurs(MUSEE, avecVitrines(ACCROCHAGE as unknown as Accrochage))
+
+  it('un spot hors scène par projecteur, de l’étrier vers la toile, qui l’atteint avant sa portée', () => {
+    const scene = new Scene(new NullEngine())
+    const spots = spotsDesFlaques(tous, scene)
+    expect(spots).toHaveLength(116)
+    expect(scene.lights).toHaveLength(0)
+    spots.forEach((s, i) => {
+      const p = tous[i]
+      expect(s.falloffType).toBe(Light.FALLOFF_DEFAULT)
+      expect(s.position.asArray()).toEqual(p.source)
+      const vers = Vector3.FromArray(p.cible).subtract(s.position)
+      expect(Vector3.Dot(s.direction, vers.normalizeToNew())).toBeCloseTo(1, 5)
+      // Chute glTF (1 − (d/portée)⁴)² : la toile garde plus de la moitié de sa lumière.
+      expect((1 - (vers.length() / FLAQUE.portee) ** 4) ** 2).toBeGreaterThan(0.5)
+    })
+    scene.getEngine().dispose()
+  })
+
+  it('sans forward+ (NullEngine), pas de grappe et aucune lumière laissée', () => {
+    const scene = new Scene(new NullEngine())
+    expect(monterFlaques(tous, scene)).toBeNull()
+    expect(scene.lights).toHaveLength(0)
+    scene.getEngine().dispose()
+  })
+
+  it('une matière sous les projecteurs prend six lumières et la chute glTF', () => {
+    const scene = new Scene(new NullEngine())
+    const m = new PBRMaterial('m', scene)
+    sousLesProjecteurs([m])
+    expect(m.maxSimultaneousLights).toBe(6)
+    expect(m.useGLTFLightFalloff).toBe(true)
+    scene.getEngine().dispose()
   })
 })

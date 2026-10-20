@@ -12,6 +12,7 @@ import type { Scene } from '@babylonjs/core/scene'
 import { boitesDesCimaises } from '../plan/cimaises.ts'
 import type { Plan } from '../plan/types.ts'
 import { cubes, matiere } from './boites.ts'
+import { sousLesProjecteurs } from './eclairage.ts'
 import { brancherLueurs } from './lueurs.ts'
 
 export function monterCimaises(scene: Scene, plan: Plan): Mesh[] {
@@ -20,6 +21,7 @@ export function monterCimaises(scene: Scene, plan: Plan): Mesh[] {
   const alu = matiere('cimaise:alu', scene, '#a7acb1', 0.45)
   alu.metallic = 0.55
   brancherLueurs([stratifie, alu])
+  sousLesProjecteurs([stratifie, alu])
   const ms = [
     cubes('cimaises:panneaux', niveaux.flatMap((n) => n.panneaux), scene, stratifie),
     cubes('cimaises:alu', niveaux.flatMap((n) => n.alu), scene, alu),

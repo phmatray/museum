@@ -206,7 +206,8 @@ export async function monterSculptures(scene: Scene, base: string): Promise<Mesh
     for (const m of pieces) {
       m.receiveShadows = true
       m.isPickable = false
-      if (m.material instanceof PBRMaterial) m.material.maxSimultaneousLights = 6
+      // Soleil, ciel, lampe d'honneur, toile regardée, grappe des flaques (eclairage.ts), puis les deux projecteurs.
+      if (m.material instanceof PBRMaterial) m.material.maxSimultaneousLights = 7
     }
     for (const { nom, vers, couleur } of PROJECTEURS) {
       const l = new DirectionalLight(`sculptures:${nom}`, vers.normalizeToNew().negate(), scene)
