@@ -174,6 +174,14 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   await Promise.all(couches)
   monterContact(scene, meubles)
   await cartesChargees()
+  // Un lot vide pour l'instant (sujets au loin, `cacherAuLoin`) se compilerait sans ses instances : la variante
+  // à instances (caméra et carte d'ombre) attendrait sa première apparition, en pleine marche (~200 ms à 43 m de la façade).
+  for (const m of scene.meshes as Mesh[]) {
+    if (m.thinInstanceCount !== 0 || !m._thinInstanceDataStorage?.matrixData) continue
+    m.thinInstanceCount = 1
+    m.isReady(true)
+    m.thinInstanceCount = 0
+  }
   await scene.whenReadyAsync()
   qualite.demarrer()
   // Les porteurs immobiles fondus par case (soleil.ts), sur les lots complets : la carte d'ombre en un appel par case.

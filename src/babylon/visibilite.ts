@@ -260,6 +260,9 @@ export function monterVisibilite(scene: Scene, camera: Camera, plan: Plan): { li
     }
   }
   scene.onBeforeRenderObservable.add(() => {
+    // La vue d'abord : elle recale `globalPosition` sur la caméra déplacée (sinon la place de l'image
+    // d'avant, puis la nouvelle au milieu du tri : sur le seuil, dedans d'un côté, cône de l'autre).
+    const [v, pr] = [camera.getViewMatrix(), camera.getProjectionMatrix()]
     const p = camera.globalPosition
     const dedans = p.x > 0 && p.x < plan.width && p.z > 0 && p.z < plan.depth
     const t = performance.now()
@@ -282,7 +285,6 @@ export function monterVisibilite(scene: Scene, camera: Camera, plan: Plan): { li
       }
     }
     // Le champ et les cônes des portes, refaits seulement quand la caméra a bougé.
-    const [v, pr] = [camera.getViewMatrix(), camera.getProjectionMatrix()]
     if (v.updateFlag !== drapeau[0] || pr.updateFlag !== drapeau[1]) {
       drapeau = [v.updateFlag, pr.updateFlag]
       Frustum.GetPlanesToRef(camera.getTransformationMatrix(), champ)

@@ -6,8 +6,10 @@
  *   (centre du hall, à 3 m) et une pour le CIEL (le dôme seul ; sans dôme, le
  *   fond de l'heure). Captures linéaires en demi-flottant : ni rendu des tons
  *   ni gamma dedans (la passe d'écran s'en charge).
- * - Rendues UNE PAR IMAGE, en file : au montage, à +9 s, à `rafraichir()`
- *   (tout arrivé) et quand le soleil a tourné d'environ une heure. Une sonde
+ * - Rendues UNE PAR IMAGE, en file : au montage, à `rafraichir()` (tout
+ *   arrivé) et quand le soleil a tourné d'environ une heure. Pas de passe à
+ *   +9 s comme three : `rafraichir()` la remplace, et elle tombait en pleine
+ *   marche (seize images de 500 à 1 000 appels) quand tout était arrivé avant. Une sonde
  *   de salle voit le ciel dans les métaux (la sonde du ciel sert d'environnement
  *   le temps de sa capture), toute la scène (lots décompactés, `toutMontrer`,
  *   recompactés après la sixième face : `retrier`) restreinte aux zones que sa
@@ -47,8 +49,6 @@ const TAILLE = 128
 const LOD = 0.8
 /** L'intensité des reflets, dehors et dedans, et la part qui en reste la nuit. */
 const INTENSITE = { ciel: 0.6, dedans: 0.8, nuit: 0.25 }
-/** La seconde passe, quand les modèles et les textures sont arrivés (ms). */
-const RATTRAPAGE = 9000
 
 /** Le centre de chaque salle à 2 m du plancher, la nef à 3 m au-dessus du hall ; les balcons n'en ont pas. */
 export function sondes(plan: Plan): Map<string, [number, number, number]> {
@@ -212,7 +212,6 @@ export function monterReflets(
     if (e !== epoque) file = [...toutes]
     epoque = e
   })
-  setTimeout(reprendre, RATTRAPAGE)
 
   /** Ce que la sonde `cle` dessine : le dôme pour le ciel ; pour une salle, ce qui touche une zone qu'elle voit. */
   const aDessiner = (cle: string): AbstractMesh[] => {
