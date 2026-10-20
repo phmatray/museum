@@ -2,45 +2,76 @@
  * Les contrôles tactiles (MobileControls.tsx, #31) : la moitié gauche de
  * l'écran est un joystick de marche, la droite un glissé de regard. Rien n'est
  * décidé ici : les deux gestes s'écrivent dans `toucher`, que visiteur.ts lit
- * (bornage, 0,002 rad/px, reprise de la main, ignoré en pause). Présent
+ * (lissage, 0,002 rad/px, reprise de la main, ignoré en pause). Présent
  * seulement sous un pointeur grossier (useIsMobile) ; la VR Babylon n’est pas portée.
+ *
+ * Le joystick est flottant : sa base naît sous le pouce et le suit au-delà du
+ * débattement (revenir en arrière répond aussitôt) ; une zone morte et une
+ * courbe douce donnent les petits pas sans à-coup.
  */
 import { toucher } from '../etat.ts'
 import { el } from './dom.ts'
+import './mobile.css'
 
 /** Pixels de débattement pour un joystick à fond. */
 const RAYON_JOYSTICK = 50
+/** Part du débattement ignorée (le pouce posé tremble). */
+const ZONE_MORTE = 0.12
 
-const cercle = (cote: 'left' | 'right') =>
-  el('div', { style: `position:absolute;${cote}:10%;bottom:15%;width:120px;height:120px;border-radius:50%;border:2px solid rgba(255,255,255,0.3);pointer-events:none` })
+/** Le vecteur du pouce (en rayons) → la marche : zone morte puis courbe (petits gestes = petits pas). */
+export function inclinaison(dx: number, dy: number): { strafe: number; forward: number } {
+  const l = Math.hypot(dx, dy)
+  if (l <= ZONE_MORTE) return { strafe: 0, forward: 0 }
+  const n = Math.min(1, (l - ZONE_MORTE) / (1 - ZONE_MORTE))
+  const f = (n * n * (3 - 2 * n)) / l // smoothstep : doux au départ, franc à fond
+  return { strafe: dx * f, forward: -dy * f } // doigt vers le haut = avancer
+}
 
 /** Monte la surcouche tactile ; rend le démontage (qui relâche le joystick). */
 export function monterMobile(racine: HTMLElement = document.body): () => void {
-  const couche = el('div', { style: 'position:fixed;inset:0;z-index:100;touch-action:none' }, cercle('left'), cercle('right'))
+  const bouton = el('div', { class: 'joystick-bouton' })
+  const base = el('div', { class: 'joystick', hidden: true }, bouton)
+  const couche = el('div', { class: 'tactile' }, base)
   racine.append(couche)
   let joystick: { id: number; x: number; y: number } | null = null
   const regards = new Map<number, { x: number; y: number }>()
+  const lacher = () => {
+    joystick = null
+    base.hidden = true
+    toucher.forward = toucher.strafe = 0
+  }
   // Masqué doigt posé (un clavier branché, la VR) : le joystick ne doit pas rester enfoncé.
   const relacher = () => {
-    joystick = null
+    lacher()
     regards.clear()
-    toucher.forward = toucher.strafe = 0
   }
 
   couche.addEventListener('touchstart', (e) => {
     for (const t of Array.from(e.changedTouches)) {
-      if (t.clientX < window.innerWidth / 2 && !joystick) joystick = { id: t.identifier, x: t.clientX, y: t.clientY }
-      else regards.set(t.identifier, { x: t.clientX, y: t.clientY })
+      if (t.clientX < window.innerWidth / 2 && !joystick) {
+        joystick = { id: t.identifier, x: t.clientX, y: t.clientY }
+        base.style.transform = `translate(${t.clientX}px, ${t.clientY}px)`
+        bouton.style.transform = ''
+        base.hidden = false
+      } else regards.set(t.identifier, { x: t.clientX, y: t.clientY })
     }
-  })
+  }, { passive: true })
   couche.addEventListener('touchmove', (e) => {
     for (const t of Array.from(e.changedTouches)) {
       if (joystick && t.identifier === joystick.id) {
-        const dx = (t.clientX - joystick.x) / RAYON_JOYSTICK
-        const dy = (t.clientY - joystick.y) / RAYON_JOYSTICK
-        const l = Math.max(1, Math.hypot(dx, dy))
-        toucher.strafe = dx / l
-        toucher.forward = -dy / l // doigt vers le haut = avancer
+        let dx = t.clientX - joystick.x
+        let dy = t.clientY - joystick.y
+        const l = Math.hypot(dx, dy)
+        if (l > RAYON_JOYSTICK) {
+          // La base suit le pouce : le bouton reste au bord, l'origine glisse derrière.
+          joystick.x += (dx * (l - RAYON_JOYSTICK)) / l
+          joystick.y += (dy * (l - RAYON_JOYSTICK)) / l
+          dx = t.clientX - joystick.x
+          dy = t.clientY - joystick.y
+          base.style.transform = `translate(${joystick.x}px, ${joystick.y}px)`
+        }
+        bouton.style.transform = `translate(${dx}px, ${dy}px)`
+        Object.assign(toucher, inclinaison(dx / RAYON_JOYSTICK, dy / RAYON_JOYSTICK))
         continue
       }
       const avant = regards.get(t.identifier)
@@ -49,13 +80,10 @@ export function monterMobile(racine: HTMLElement = document.body): () => void {
       toucher.lookY += t.clientY - avant.y
       regards.set(t.identifier, { x: t.clientX, y: t.clientY })
     }
-  })
+  }, { passive: true })
   const fin = (e: TouchEvent) => {
     for (const t of Array.from(e.changedTouches)) {
-      if (t.identifier === joystick?.id) {
-        joystick = null
-        toucher.forward = toucher.strafe = 0
-      }
+      if (t.identifier === joystick?.id) lacher()
       regards.delete(t.identifier)
     }
   }

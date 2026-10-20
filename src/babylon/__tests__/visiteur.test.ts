@@ -12,7 +12,7 @@ import { choisirVitrines, SALLE_VITRINES } from '../../plan/vitrines'
 import { marquerPret } from '../chargement'
 import { partie, toucher } from '../etat'
 import { MUSEE } from '../../plan/musee'
-import { departDuVisiteur, monterVisiteur } from '../visiteur'
+import { champVertical, departDuVisiteur, monterVisiteur } from '../visiteur'
 
 const accrochage = JSON.parse(readFileSync('public/data/accrochage.json', 'utf8')) as Accrochage
 const catalogue = JSON.parse(readFileSync('public/data/catalogue.json', 'utf8')) as Catalogue
@@ -116,12 +116,15 @@ describe('pause, toucher et visite guidée', () => {
     fin()
   })
 
-  it('le glissé du doigt tourne le regard et se consomme', () => {
+  it('le glissé du doigt tourne le regard en douceur et se consomme tout entier', () => {
     marquerPret()
     const { camera, images, fin } = monter()
     partie.setState({ paused: false })
     toucher.lookX = 100
     images(1)
+    expect(camera.rotation.y).toBeLessThan(0)
+    expect(camera.rotation.y).toBeGreaterThan(-0.2)
+    images(10)
     expect(camera.rotation.y).toBeCloseTo(-0.2)
     expect(toucher.lookX).toBe(0)
     fin()
@@ -142,5 +145,14 @@ describe('pause, toucher et visite guidée', () => {
     dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW' }))
     expect(partie.getState()).toMatchObject({ tourActive: false, paused: false })
     fin()
+  })
+})
+
+describe('champVertical', () => {
+  it('le réglage en paysage, élargi en portrait pour tenir 60° à l’horizontale', () => {
+    expect(champVertical(75, 16 / 9)).toBeCloseTo((75 * Math.PI) / 180)
+    const portrait = champVertical(75, 390 / 844)
+    expect(portrait).toBeGreaterThan((75 * Math.PI) / 180)
+    expect(2 * Math.atan(Math.tan(portrait / 2) * (390 / 844))).toBeCloseTo(Math.PI / 3)
   })
 })

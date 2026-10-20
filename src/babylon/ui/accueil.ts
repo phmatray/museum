@@ -47,7 +47,7 @@ export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: 
   const bEntrer = el('button', { type: 'button', class: 'billet-entrer', autofocus: true }, 'Composter et entrer')
   const bGuide = el('button', { type: 'button', class: 'billet-guide' }, 'Visite guidée')
   const consignes = doigt
-    ? el('p', { class: 'billet-consignes' }, 'Pouce gauche pour marcher, glisser à droite pour regarder, toucher le plan pour l’agrandir.')
+    ? el('p', { class: 'billet-consignes' }, 'Pouce gauche pour marcher, glisser à droite pour regarder.')
     : el('p', { class: 'billet-consignes' },
       el('kbd', {}, 'Z'), el('kbd', {}, 'Q'), el('kbd', {}, 'S'), el('kbd', {}, 'D'), ' ou flèches pour marcher, ',
       el('kbd', {}, 'Maj'), ' pour presser le pas, ', el('kbd', {}, 'Espace'), ' pour sauter, la souris pour regarder, ',

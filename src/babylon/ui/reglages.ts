@@ -106,6 +106,8 @@ export function monterReglages(racine: HTMLElement, o: {
   const sensibilite = glissiere('Sensibilité de la souris', BORNES.sensibilite, 0.05, (sensibilite) => regler({ sensibilite }))
   const inverserY = interrupteur(['Inverser l’axe vertical'], (inverserY) => regler({ inverserY }))
   const plan = interrupteur(['Afficher le plan'], (plan) => regler({ plan }))
+  // Au doigt : ni plan (masqué), ni souris à régler.
+  plan.bloc.dataset.souris = sensibilite.bloc.dataset.souris = inverserY.bloc.dataset.souris = ''
   const mouvement = choix('Mouvement', [['systeme', 'Comme l’appareil'], ['reduit', 'Réduit'], ['normal', 'Normal']], (mouvement) => regler({ mouvement }))
 
   // Heure et météo.
