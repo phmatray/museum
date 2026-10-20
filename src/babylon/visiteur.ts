@@ -96,7 +96,7 @@ function reprendreLaMain(toile?: HTMLCanvasElement) {
  */
 export function monterVisiteur(
   scene: Scene, toile: HTMLCanvasElement, depart: Arrivee,
-): FreeCamera & { placer(a: Arrivee): void; walker(): Walker; brancherVR(p: PorteVR): void } {
+): FreeCamera & { placer(a: Arrivee): void; walker(): Walker; brancherVR(p: PorteVR): void; asseoir(a: Arrivee, oeil: number): void } {
   const camera = new FreeCamera('visiteur', new Vector3(depart.x, depart.y + OEIL, depart.z), scene)
   camera.inputs.clear()
   camera.minZ = 0.1
@@ -197,6 +197,8 @@ export function monterVisiteur(
     return { forward: 0, strafe: 0, yaw: w.yaw }
   }
 
+  /** Assis (`asseoir`) : le marcheur d'où l'on s'est assis, rendu en se levant. */
+  let debout: Walker | null = null
   let reste = 0
   /** La marche du joystick, lissée vers `toucher`. */
   const pouce = { forward: 0, strafe: 0 }
@@ -235,6 +237,13 @@ export function monterVisiteur(
       yaw: regard,
       hate: touche('ShiftLeft', 'ShiftRight') > 0,
     }
+    // Assis : le regard tourne, les pieds restent ; une touche de marche relève, à la place d'où l'on s'est assis.
+    if (debout) {
+      if (!(input.forward || input.strafe) || visite) return poser()
+      w = debout
+      debout = null
+      partie.setState({ assis: false })
+    }
     for (let i = 0; i < pas; i++) {
       const entree = visite ? guider(w, PAS_FIXE) : input
       if (!entree) {
@@ -265,6 +274,15 @@ export function monterVisiteur(
       poser()
     },
     walker: () => w,
+    /** S'assied : l'œil à `oeil` m au-dessus du sol du plan, tourné vers `yaw` ; avancer relève. */
+    asseoir: (a: Arrivee, oeil: number) => {
+      debout ??= { ...w }
+      w = { level: a.level, surface: a.surface, x: a.x, z: a.z, y: oeil - OEIL, yaw: a.yaw }
+      regard = a.yaw
+      pitch = a.pitch
+      partie.setState({ assis: true })
+      poser()
+    },
     brancherVR: (p: PorteVR) => void (porte = p),
   })
 }

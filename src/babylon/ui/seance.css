@@ -4,11 +4,5 @@
 /* Projeté : un rien moins lumineux et saturé qu'un écran d'ordinateur, sans bord. */
 .seance-film { position: absolute; left: 0; top: 0; transform-origin: 0 0; border: 0; background: #000; pointer-events: auto;
   filter: brightness(.92) saturate(.94) contrast(.97); backface-visibility: hidden; }
-.seance-quitter { position: absolute; left: 50%; bottom: max(1rem, env(safe-area-inset-bottom)); translate: -50% 0; pointer-events: auto;
-  padding: .55rem 1.1rem; min-height: 44px; border-radius: 6px; cursor: pointer;
-  background: var(--hud-fond); color: var(--hud-texte); border: 1px solid var(--hud-filet); font: 14px/1.3 var(--sans);
-  transition: background-color .15s; }
-.seance-quitter:hover { background: rgba(40,34,28,.92); }
-.seance-quitter:focus-visible { outline: 2px solid var(--hud-or); outline-offset: 2px; }
 /* Pendant la séance, rien d'autre que la toile : le plan s'efface. */
 body:has(.seance:not([hidden])) .minimap { display: none; }

@@ -152,11 +152,22 @@ const MURS = [
   { x: SALLE.x + SALLE.width - 0.15, nx: -1 },
 ]
 
-/** Les appliques dorées, à 2,60 m du sol, en avant des gradins : rien ne passe dessous qu'on toucherait. */
-export const APPLIQUES: Point[] = MURS.flatMap(({ x, nx }) => [4.6, 9.4, 13.6].map((z) => ({ x, y: SOL + 2.6, z, nx, nz: 0 })))
+/** Le sol le long d'un mur latéral : le fond de la salle, puis l'allée en escalier (en rampe), puis le promenoir. */
+export function solLeLongDesMurs(z: number): number {
+  const f = VOLEES_CINEMA[0]
+  if (z <= f.z) return SOL
+  if (z >= f.z + f.depth) return COTE_PROMENOIR
+  return SOL + ((z - f.z) / f.depth) * (COTE_PROMENOIR - SOL)
+}
 
-/** Les enceintes noires, entre les appliques, plus haut : au-dessus du linteau de la porte (z 6–8 à l'est). */
-export const ENCEINTES: Point[] = MURS.flatMap(({ x, nx }) => [7, 11.5].map((z) => ({ x, y: SOL + 3.4, z, nx, nz: 0 })))
+/**
+ * Les appliques dorées, à 2,40 m au-dessus du sol QU'ELLES SURPLOMBENT : au fond, l'allée monte avec
+ * le gradin, et une applique posée à hauteur fixe se trouvait à hauteur de tête dans l'escalier.
+ */
+export const APPLIQUES: Point[] = MURS.flatMap(({ x, nx }) => [4.6, 9.4, 13.6].map((z) => ({ x, y: solLeLongDesMurs(z) + 2.4, z, nx, nz: 0 })))
+
+/** Les enceintes noires, entre les appliques, plus haut (au-dessus du linteau de la porte, z 6–8 à l'est), sous le plafond. */
+export const ENCEINTES: Point[] = MURS.flatMap(({ x, nx }) => [7, 11.5].map((z) => ({ x, y: Math.min(solLeLongDesMurs(z) + 3.2, PLAFOND - 0.45), z, nx, nz: 0 })))
 
 /** Les spots du plafond à caissons : un au centre de chaque caisson. */
 export const CAISSON = 2.6
@@ -168,3 +179,28 @@ export const SPOTS: Point[] = (() => {
       out.push({ x: SALLE.x + ((i + 0.5) * SALLE.width) / nx, y: PLAFOND, z: SALLE.z + ((j + 0.5) * SALLE.depth) / nz, nx: 0, nz: 0 })
   return out
 })()
+
+/** La portée (m) à laquelle on peut viser un fauteuil pour s'y asseoir : la largeur d'un rang, depuis l'allée. */
+export const PORTEE_ASSISE = 11
+/** L'écart (m) toléré entre le regard et le dossier visé. */
+const TOLERANCE = 0.4
+
+/**
+ * Le fauteuil que le regard désigne : le plus proche dont le centre (à mi-hauteur) passe à moins de
+ * `TOLERANCE` du rayon, devant l'œil et à portée ; null sinon. Pur : l'œil et la direction (unitaire) en mètres.
+ */
+export function siegeVise(o: { x: number; y: number; z: number }, d: { x: number; y: number; z: number }, sieges: readonly Siege[] = SIEGES): Siege | null {
+  let meilleur: Siege | null = null
+  let tMin = Infinity
+  for (const s of sieges) {
+    const c = { x: s.x - o.x, y: s.y + 0.55 - o.y, z: s.z - o.z }
+    const t = c.x * d.x + c.y * d.y + c.z * d.z
+    if (t <= 0 || t > PORTEE_ASSISE || t >= tMin) continue
+    const ecart = Math.hypot(c.x - t * d.x, c.y - t * d.y, c.z - t * d.z)
+    if (ecart < TOLERANCE) {
+      meilleur = s
+      tMin = t
+    }
+  }
+  return meilleur
+}

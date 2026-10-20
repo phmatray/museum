@@ -24,18 +24,19 @@ describe('la séance', () => {
   const s = monterSeance(scene, camera, toile, document.body, coins, PROGRAMME, { debut: () => (effets += 'd'), fin: () => (effets += 'f') })
   const film = () => document.querySelector<HTMLIFrameElement>('.seance-film')!
 
-  it('lancée : pause sans billet, lecteur sur la vidéo, posé sur la toile par une matrice', () => {
+  it('lancée : la visite continue, lecteur sur la vidéo, posé sur la toile par une matrice', () => {
     scene.render()
+    partie.setState({ paused: false })
     s.lancer()
-    expect(partie.getState()).toMatchObject({ seance: true, paused: true })
+    expect(partie.getState()).toMatchObject({ seance: true, paused: false })
     expect(film().src).toContain('/embed/cHgop3wo3iM')
     expect(film().style.transform).toMatch(/^matrix3d\(/)
     expect(document.querySelector<HTMLElement>('.seance')!.hidden).toBe(false)
     expect(effets).toBe('d')
   })
 
-  it('« Quitter la séance » coupe le lecteur et rend la main', () => {
-    document.querySelector<HTMLButtonElement>('.seance-quitter')!.click()
+  it('finir coupe le lecteur et efface la projection', () => {
+    s.finir()
     expect(partie.getState().seance).toBe(false)
     expect(film().src).toBe('about:blank')
     expect(document.querySelector<HTMLElement>('.seance')!.hidden).toBe(true)

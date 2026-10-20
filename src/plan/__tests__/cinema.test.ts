@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  APPLIQUES, BLOC_GRADINS, CABINE, TETE_ASSISE, COTE_PROMENOIR, ECRAN, ENCEINTES, FAUTEUIL, GRADINS, LUMIERES_MARCHES, PLAFOND, PROMENOIR, RIDEAUX,
+  APPLIQUES, BLOC_GRADINS, CABINE, TETE_ASSISE, solLeLongDesMurs, siegeVise, COTE_PROMENOIR, ECRAN, ENCEINTES, FAUTEUIL, GRADINS, LUMIERES_MARCHES, PLAFOND, PROMENOIR, RIDEAUX,
   SALLE, SCENE, SIEGES, SOL, SPOTS, VOLEES_CINEMA,
 } from '../cinema'
 import { MUSEE } from '../musee'
@@ -82,5 +82,22 @@ describe('le cinéma', () => {
       const bas = source.y + t * (ECRAN.bas - source.y)
       expect(bas - (s.y + TETE_ASSISE), `rang ${s.rang}`).toBeGreaterThan(0.15)
     }
+  })
+
+  it('appliques et enceintes au-dessus des têtes, partout où l’on marche le long des murs', () => {
+    for (const p of [...APPLIQUES, ...ENCEINTES]) {
+      expect(p.y - solLeLongDesMurs(p.z), `(${p.x}, ${p.z})`).toBeGreaterThan(2.2)
+      expect(p.y).toBeLessThan(PLAFOND)
+    }
+  })
+
+  it('siegeVise : le fauteuil que le regard désigne, le plus proche, à portée', () => {
+    const s = SIEGES.find((x) => x.rang === 1)!
+    const oeil = { x: 3.8, y: s.y + 1.2, z: s.z }
+    const vers = { x: s.x - oeil.x, y: s.y + 0.55 - oeil.y, z: 0 }
+    const n = Math.hypot(vers.x, vers.y)
+    expect(siegeVise(oeil, { x: vers.x / n, y: vers.y / n, z: 0 })?.rang).toBe(1)
+    // Le dos tourné : rien.
+    expect(siegeVise(oeil, { x: -1, y: 0, z: 0 })).toBeNull()
   })
 })

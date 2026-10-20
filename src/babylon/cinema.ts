@@ -36,11 +36,12 @@ import type { Scene } from '@babylonjs/core/scene'
 import { affiche, type Seance } from '../domain/cinema.ts'
 import {
   APPLIQUES, CABINE, CAISSON, COTE_PROMENOIR, ECRAN, ENCEINTES, LAMBRIS, LUMIERES_MARCHES,
-  PLAFOND, RIDEAUX, SALLE, SCENE, SIEGES, SOL, SPOTS,
+  PLAFOND, RIDEAUX, SALLE, SCENE, SIEGES, SOL, SPOTS, siegeVise, solLeLongDesMurs,
 } from '../plan/cinema.ts'
 import { PROMENOIR, VOLEES_CINEMA } from '../plan/cinema.ts'
 import { MUSEE } from '../plan/musee.ts'
 import { LINTEAU } from '../plan/portes.ts'
+import type { Arrivee } from '../plan/arrivee.ts'
 import type { Walker } from '../plan/walk.ts'
 import { partie, VIVANTES } from './etat.ts'
 import { glbOuRien } from './glb.ts'
@@ -72,14 +73,6 @@ function translations(points: [number, number, number][]): Float32Array {
   const out = new Float32Array(points.length * 16)
   points.forEach(([x, y, z], i) => Matrix.Translation(x, y, z).copyToArray(out, i * 16))
   return out
-}
-
-/** La hauteur du sol de la salle le long d'un mur latéral (l'allée en escalier, lissée en rampe). */
-function solLeLong(z: number): number {
-  const f = VOLEES_CINEMA[0]
-  if (z <= f.z) return SOL
-  if (z >= f.z + f.depth) return COTE_PROMENOIR
-  return SOL + ((z - f.z) / f.depth) * (COTE_PROMENOIR - SOL)
 }
 
 /** Un bandeau vertical le long d'un mur latéral (x fixe), du sol (suivi) à `haut(z)`, face vers `nx`. */
@@ -192,7 +185,7 @@ function afficheSur(scene: Scene, programme: Seance | null): DynamicTexture {
 
 export async function monterCinema(
   scene: Scene,
-  camera: FreeCamera & { walker(): Walker },
+  camera: FreeCamera & { walker(): Walker; asseoir(a: Arrivee, oeil: number): void },
   toile: HTMLCanvasElement,
   racine: HTMLElement,
   base: string,
@@ -235,8 +228,8 @@ export async function monterCinema(
   // ── Les murs : tissu rouge au-dessus du lambris, qui suit le gradin ──
   const [xO, xE] = [SALLE.x + 0.15 + PEAU, SALLE.x + SALLE.width - 0.15 - PEAU]
   const [zN, zS] = [SALLE.z + 0.15 + PEAU, SALLE.z + SALLE.depth - 0.15 - PEAU]
-  const sol = (z: number) => solLeLong(z) - 0.02
-  const lam = (z: number) => solLeLong(z) + LAMBRIS.hauteur
+  const sol = (z: number) => solLeLongDesMurs(z) - 0.02
+  const lam = (z: number) => solLeLongDesMurs(z) + LAMBRIS.hauteur
   // La porte du foyer (dans le mur est) : ni lambris ni tissu dans la baie, du tissu au-dessus du linteau.
   const porte = MUSEE.levels.flatMap((l) => l.openings).find((o) => o.kind === 'door' && (o.a === 'cinema' || o.b === 'cinema'))
   const baie = porte ? [porte.z - porte.width / 2, porte.z + porte.width / 2] as const : null
@@ -349,7 +342,7 @@ export async function monterCinema(
 
   // La lueur que la toile renvoie sur les premiers rangs, pendant la séance.
   const reflet = new PointLight('cinema:reflet', new Vector3(ECRAN.x, ECRAN.bas + ECRAN.hauteur / 2, ECRAN.z + 1.2), scene)
-  reflet.diffuse = new Color3(0.75, 0.82, 1)
+  reflet.diffuse = new Color3(0.85, 0.88, 1)
   reflet.specular = Color3.Black()
   // Allumé par l'intensité, jamais éteint : une lumière qu'on retire recompilerait les matières en pleine séance.
   reflet.intensity = 0
@@ -366,7 +359,7 @@ export async function monterCinema(
   const seance = monterSeance(scene, camera, toile, racine, coins, programme, {
     debut() {
       for (const l of lampes) l.intensity = 1.4
-      reflet.intensity = 6
+      reflet.intensity = 3.5
       ecranMat.emissiveColor = Color3.Black()
       projette = true
       signaler('cinema')
@@ -380,17 +373,46 @@ export async function monterCinema(
     },
   })
 
-  // L'invitation, tant qu'on est dans la salle : Entrée au clavier, un bouton au doigt.
+  // Ce qu'on peut faire dans la salle, annoncé en bas de l'écran : la séance (Entrée), s'asseoir (E) ou se lever.
   const doigt = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
-  const invitation = el('button', { type: 'button', class: 'cinema-invitation', hidden: true },
-    programme ? `${doigt ? 'Touchez ici' : 'Entrée'} : voir « ${programme.titre} »` : 'Pas de séance aujourd’hui')
-  invitation.addEventListener('click', () => seance.lancer())
+  const bSeance = el('button', { type: 'button' })
+  const bSiege = el('button', { type: 'button', hidden: true })
+  const invitation = el('div', { class: 'cinema-invitation', hidden: true }, bSeance, bSiege)
   racine.append(invitation)
   const dansLaSalle = () => SURFACES_CINEMA.has(camera.walker().surface)
-  partie.subscribe((s) => { invitation.hidden = !programme || s.seance || s.paused || !dansLaSalle() })
+  const regard = new Vector3()
+  let vise: (typeof SIEGES)[number] | null = null
+  const asseoir = (s: (typeof SIEGES)[number]) => {
+    // Face à la toile (cap 0 : vers le nord), les yeux d'une personne assise.
+    const oeil = s.y + 1.15
+    camera.asseoir({ level: -1, surface: '-1:cinema', x: s.x, z: s.z, y: s.y, yaw: 0, pitch: Math.atan2(ECRAN.bas + ECRAN.hauteur / 2 - oeil, s.z - ECRAN.z) }, oeil)
+  }
+  const touche = (k: string) => (doigt ? '' : `${k} : `)
+  const mettreAJour = () => {
+    const st = partie.getState()
+    const ici = dansLaSalle() || st.assis
+    // Sortir de la salle arrête la séance.
+    if (st.seance && !ici) seance.finir()
+    invitation.hidden = st.paused || !ici
+    if (invitation.hidden) return
+    bSeance.hidden = !programme
+    if (programme) bSeance.textContent = st.seance ? `${touche('Entrée')}arrêter la séance` : `${touche('Entrée')}voir « ${programme.titre} »`
+    camera.getDirectionToRef(Vector3.Forward(true), regard)
+    vise = st.assis ? null : siegeVise(camera.position, regard)
+    bSiege.hidden = !st.assis && !vise
+    bSiege.textContent = st.assis ? (doigt ? 'Avancez pour vous lever' : 'Z ou flèches : se lever') : `${touche('E')}s’asseoir (rang ${(vise?.rang ?? 0) + 1})`
+    bSiege.disabled = st.assis
+  }
+  let compte = 0
+  scene.onAfterRenderObservable.add(() => { if (++compte % 6 === 0) mettreAJour() })
+  partie.subscribe(mettreAJour)
+  const basculer = () => (partie.getState().seance ? seance.finir() : seance.lancer())
+  bSeance.addEventListener('click', basculer)
+  bSiege.addEventListener('click', () => vise && asseoir(vise))
   addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' || e.repeat || partie.getState().paused || !dansLaSalle()) return
-    seance.lancer()
+    if (e.repeat || partie.getState().paused || !(dansLaSalle() || partie.getState().assis)) return
+    if (e.key === 'Enter') basculer()
+    else if (e.code === 'KeyE' && vise) asseoir(vise)
   })
 
   // Au foyer, à côté de la porte : la boîte lumineuse « À l'affiche ».

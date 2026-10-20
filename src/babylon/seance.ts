@@ -5,12 +5,12 @@
  * YouTube ne se lit pas en texture (CORS, et ses conditions l'interdisent) : le
  * lecteur intégré (un iframe) est posé AU-DESSUS du canevas, déformé à chaque
  * image par une homographie (`domain/projection.ts`, en `matrix3d` CSS) pour
- * épouser exactement les quatre coins projetés de la toile. La caméra ne bouge
- * pas pendant la séance (la visite est en pause, `partie.seance` : pas de billet),
- * le regard peut encore tourner : la projection suit.
+ * épouser exactement les quatre coins projetés de la toile. La visite continue
+ * pendant la séance (`partie.seance`) : on marche, on s'assied, la projection suit,
+ * et disparaît dès que la toile sort du champ.
  *
- * `lancer` vient d'un geste (clic sur la toile, touche) : il en faut un pour le son.
- * « Quitter la séance » (ou Échap, quand le lecteur n'a pas le clavier) rend la main.
+ * `lancer` vient d'un geste (touche, bouton) : il en faut un pour le son. `finir` :
+ * Entrée de nouveau ou le bouton de la salle, la sortie de la salle (cinema.ts) ou la pause.
  */
 import type { FreeCamera } from '@babylonjs/core/Cameras/freeCamera'
 import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector'
@@ -30,7 +30,7 @@ const LARGEUR = 1600
 
 export interface Seances {
   lancer(): void
-  finir(geste: boolean): void
+  finir(): void
 }
 
 export function monterSeance(
@@ -50,11 +50,9 @@ export function monterSeance(
   })
   film.style.width = `${LARGEUR}px`
   film.style.height = `${hauteur}px`
-  const quitter = el('button', { type: 'button', class: 'seance-quitter' }, 'Quitter la séance')
-  const salle = el('div', { class: 'seance', hidden: true, role: 'dialog', 'aria-label': programme ? `Séance : ${programme.titre}` : 'Séance' }, film, quitter)
+  const salle = el('div', { class: 'seance', hidden: true, role: 'dialog', 'aria-label': programme ? `Séance : ${programme.titre}` : 'Séance' }, film)
   racine.append(salle)
 
-  let reprendre = false
   const ecran: Point[] = [[0, 0], [0, 0], [0, 0], [0, 0]]
   const p = new Vector3()
 
@@ -79,39 +77,25 @@ export function monterSeance(
   const suivre = scene.onAfterCameraRenderObservable
 
   let observateur: ReturnType<typeof suivre.add> | null = null
-  const finir = (geste: boolean) => {
+  const finir = () => {
     if (!partie.getState().seance) return
     film.src = 'about:blank'
     salle.hidden = true
     if (observateur) suivre.remove(observateur)
     observateur = null
     effets.fin()
-    if (geste && reprendre) {
-      // Le clic qui referme est un geste : le navigateur rend la souris.
-      Promise.resolve(toile.requestPointerLock?.()).catch(() => {})
-      partie.setState({ seance: false, paused: false })
-    } else partie.setState({ seance: false })
-    reprendre = false
+    partie.setState({ seance: false })
   }
   const lancer = () => {
     if (!programme || partie.getState().seance || partie.getState().enVR) return
-    reprendre = !!document.pointerLockElement
-    partie.setState({ seance: true, paused: true })
-    if (reprendre) document.exitPointerLock()
+    partie.setState({ seance: true })
     film.src = lecteur(programme.video)
     salle.hidden = false
     poser()
     observateur = suivre.add(poser)
     effets.debut()
   }
-  quitter.addEventListener('click', () => finir(true))
-  addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && partie.getState().seance) {
-      e.stopPropagation()
-      finir(false)
-    }
-  }, true)
-  // La VR reprend la caméra : la séance s'arrête.
-  partie.subscribe((s, a) => { if (s.enVR && !a.enVR) finir(false) })
+  // La pause (Échap, le billet) ou la VR, qui reprend la caméra : la séance s'arrête.
+  partie.subscribe((s, a) => { if ((s.paused && !a.paused) || (s.enVR && !a.enVR)) finir() })
   return { lancer, finir }
 }

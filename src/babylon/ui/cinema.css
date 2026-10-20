@@ -1,6 +1,8 @@
 /* L'invitation à la séance (cinema.ts), tant qu'on est dans la salle. */
-.cinema-invitation { position: fixed; left: 50%; bottom: max(1rem, env(safe-area-inset-bottom)); translate: -50% 0; z-index: 210;
-  max-width: calc(100vw - 2rem); min-height: 44px; padding: .55rem 1.1rem; border-radius: 6px; cursor: pointer;
+.cinema-invitation { position: fixed; left: 50%; bottom: max(1rem, env(safe-area-inset-bottom)); translate: -50% 0; z-index: 910;
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: calc(100vw - 2rem); }
+.cinema-invitation[hidden], .cinema-invitation button[hidden] { display: none; }
+.cinema-invitation button { min-height: 44px; padding: .55rem 1.1rem; border-radius: 6px; cursor: pointer;
   background: var(--hud-fond); color: var(--hud-texte); border: 1px solid var(--hud-filet); font: 14px/1.3 var(--sans); }
-.cinema-invitation[hidden] { display: none; }
-.cinema-invitation:focus-visible { outline: 2px solid var(--hud-or); outline-offset: 2px; }
+.cinema-invitation button:disabled { cursor: default; color: var(--hud-texte-2); }
+.cinema-invitation button:focus-visible { outline: 2px solid var(--hud-or); outline-offset: 2px; }
