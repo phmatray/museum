@@ -227,6 +227,17 @@ describe('le sous-sol', () => {
     expect(Math.hypot(w.x - 24, w.z - 37)).toBeLessThan(0.05)
   })
 
+  it('traverse la salle par le dernier rang, d’une allée à l’autre', () => {
+    // En haut de l'allée est, puis vers l'ouest le long du dernier rang (la traverse), jusqu'à l'allée ouest.
+    let w = vers(parcours(AU_CINEMA), 15.25, 15.3)
+    const vues = new Set<string>()
+    w = vers(w, 9.5, 15.3, (w) => vues.add(w.surface))
+    w = vers(w, 3.75, 15.3, (w) => vues.add(w.surface))
+    expect(vues.has('palier:traverse')).toBe(true)
+    expect(w.surface).toBe('volee:gradins-o')
+    expect(Math.hypot(w.x - 3.75, w.z - 15.3)).toBeLessThan(0.05)
+  })
+
   it('ne passe ni par-dessus le parapet de la trémie, ni sous le promenoir', () => {
     // Dans le hall, droit vers l'ouest au-dessus de la trémie : l'obstacle sous la volée ouest arrête.
     let w = vers(vers(depart(), 20, 21), 20, 18)

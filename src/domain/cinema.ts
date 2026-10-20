@@ -16,6 +16,8 @@ export interface Seance {
   titre: string
   /** ISO 8601. */
   publie: string
+  /** Les séances précédentes (les plus récentes d'abord), affichées au foyer. */
+  precedentes?: { video: string; titre: string }[]
 }
 
 export interface Entree { video: string; titre: string; publie: string }

@@ -11,9 +11,11 @@
  * La salle (x 3–16, z 2–20) est sous les galeries ouest du rez-de-chaussée :
  * 4,50 m sous plafond. L'écran est au nord, au-dessus de la scène. Les gradins
  * montent vers le sud : deux allées en escalier contre les murs latéraux
- * (`VOLEES_CINEMA`, 15 contremarches de 15 cm), et entre elles cinq rangs de
- * trois marches (0,96 m de profondeur, 0,45 m de hauteur). Au sommet, le
- * promenoir (`PROMENOIR`, à −2,55) laisse 2,25 m sous la dalle.
+ * (`VOLEES_CINEMA`, 15 contremarches de 15 cm), ouvertes sur les rangs (on y entre
+ * comme dans une vraie salle, sans garde-corps), et entre elles cinq rangs de
+ * trois marches (0,96 m de profondeur, 0,45 m de hauteur). Le dernier, sans
+ * fauteuils, est l'allée transversale (`TRAVERSE`) qui relie les deux allées au
+ * promenoir (`PROMENOIR`, à −2,55), lequel laisse 2,25 m sous la dalle.
  *
  * Pur : ni three ni React. `musee.ts` importe les volées, le palier et les
  * obstacles ; le rendu lit le reste.
@@ -35,13 +37,22 @@ const DEBUT = 11
 /** La cote du promenoir : le dessus du dernier rang. */
 export const COTE_PROMENOIR = SOL + RANGS * RANG.hauteur
 
-/** Le bloc des fauteuils, entre les deux allées. */
+/** Le bloc des gradins, entre les deux allées (son dernier rang est la traverse). */
 export const BLOC_GRADINS: Rect = { x: 4.5, z: DEBUT, width: 10, depth: RANGS * RANG.profondeur }
+/** Les rangs à fauteuils : tous sauf le dernier, où l'on circule (et où passerait le faisceau, à hauteur des têtes). */
+const ASSIS: Rect = { ...BLOC_GRADINS, depth: (RANGS - 1) * RANG.profondeur }
 
 export const VOLEES_CINEMA: Flight[] = [
-  { id: 'gradins-o', x: SALLE.x, z: DEBUT, width: 1.5, depth: BLOC_GRADINS.depth, direction: 'south', bottom: SOL, top: COTE_PROMENOIR, risers: RANGS * PAR_RANG },
-  { id: 'gradins-e', x: BLOC_GRADINS.x + BLOC_GRADINS.width, z: DEBUT, width: 1.5, depth: BLOC_GRADINS.depth, direction: 'south', bottom: SOL, top: COTE_PROMENOIR, risers: RANGS * PAR_RANG },
+  { id: 'gradins-o', x: SALLE.x, z: DEBUT, width: 1.5, depth: BLOC_GRADINS.depth, direction: 'south', bottom: SOL, top: COTE_PROMENOIR, risers: RANGS * PAR_RANG, ouverts: ['east'] },
+  { id: 'gradins-e', x: BLOC_GRADINS.x + BLOC_GRADINS.width, z: DEBUT, width: 1.5, depth: BLOC_GRADINS.depth, direction: 'south', bottom: SOL, top: COTE_PROMENOIR, risers: RANGS * PAR_RANG, ouverts: ['west'] },
 ]
+
+/** Le dernier rang, de plain-pied avec le promenoir : l'allée transversale, d'une allée à l'autre. */
+export const TRAVERSE: Landing = {
+  id: 'traverse', x: BLOC_GRADINS.x, z: DEBUT + ASSIS.depth, width: BLOC_GRADINS.width, depth: RANG.profondeur, elevation: COTE_PROMENOIR,
+  // Une marche de rang (0,45 m) au-dessus du dernier rang assis : pas de garde-corps, qui barrerait la vue de l'écran.
+  ouverts: ['north'],
+}
 
 export const PROMENOIR: Landing = {
   id: 'promenoir', x: SALLE.x, z: DEBUT + BLOC_GRADINS.depth, width: SALLE.width,
@@ -51,11 +62,23 @@ export const PROMENOIR: Landing = {
 /** La scène, toute la largeur de la salle, sa façade de bois au sud. */
 export const SCENE = { x: SALLE.x, z: SALLE.z, width: SALLE.width, depth: 2, hauteur: 0.5 }
 
-/** Ce que la marche contourne au sous-sol : la scène, les fauteuils, le dessous du promenoir. */
+/**
+ * Le foyer (x 16–32, z 4–12) : on y descend par le coin sud-ouest, la porte de la salle est
+ * au mur ouest. Un comptoir de confiserie contre le mur est, face à l'arrivée ; les affiches
+ * au mur nord, au-dessus et de part et d'autre de la banquette (mobilier.ts, x 26).
+ */
+export const FOYER: Rect = { x: 16, z: 4, width: 16, depth: 8 }
+/** Le comptoir et l'espace du vendeur derrière lui, jusqu'au mur est. */
+export const COMPTOIR: Rect = { x: 29.6, z: 6, width: FOYER.x + FOYER.width - 0.15 - 29.6, depth: 4 }
+/** Le centre des affiches au mur nord (sa face z = 4,15), de 1,0 × 1,45 m. */
+export const AFFICHES = [19.5, 22.5, 29.5].map((x) => ({ x, y: SOL + 1.65, z: FOYER.z + 0.15, largeur: 1.0, hauteur: 1.45 }))
+
+/** Ce que la marche contourne au sous-sol : la scène, les rangs de fauteuils, le dessous de la traverse et du promenoir, le comptoir. */
 export const OBSTACLES_CINEMA: Rect[] = [
   { x: SCENE.x, z: SCENE.z, width: SCENE.width, depth: SCENE.depth },
   BLOC_GRADINS,
   { x: PROMENOIR.x, z: PROMENOIR.z, width: PROMENOIR.width, depth: PROMENOIR.depth },
+  COMPTOIR,
 ]
 
 /** Un rang : la bande `z0–z1` de son plancher, à la cote `dessus`. */
@@ -66,7 +89,7 @@ export interface Rang {
   dessus: number
 }
 
-/** Le plancher de chaque rang, du premier (devant) au dernier. Le dernier affleure le promenoir. */
+/** Le plancher de chaque rang, du premier (devant) au dernier, la traverse, qui affleure le promenoir. */
 export const GRADINS: Rang[] = Array.from({ length: RANGS }, (_, k) => ({
   rang: k,
   z0: DEBUT + k * RANG.profondeur,
@@ -86,11 +109,7 @@ export interface Siege {
 export const FAUTEUIL = { largeur: 0.55, profondeur: 0.6 }
 const PAR_RANGEE = Math.floor(BLOC_GRADINS.width / FAUTEUIL.largeur)
 
-/**
- * Dix-huit fauteuils par rang, adossés au fond du rang : le passage est devant. Pas sur le
- * dernier rang (au niveau du promenoir) : c'est la circulation transversale, et le faisceau
- * du projecteur, sous un plafond de 4,50 m, y passerait à hauteur des têtes.
- */
+/** Dix-huit fauteuils par rang, adossés au fond du rang : le passage est devant. Pas sur la traverse. */
 export const SIEGES: Siege[] = GRADINS.slice(0, -1).flatMap((g) => {
   const marge = (BLOC_GRADINS.width - PAR_RANGEE * FAUTEUIL.largeur) / 2
   return Array.from({ length: PAR_RANGEE }, (_, i) => ({
@@ -105,10 +124,15 @@ export const SIEGES: Siege[] = GRADINS.slice(0, -1).flatMap((g) => {
 /** Une tête assise : au-dessus de l'assise du rang (le dessus de sa marche). */
 export const TETE_ASSISE = 1.3
 
-/** Les fenêtres de la cabine de projection, dans le mur du fond (sa face z = 19,85), juste sous le plafond. */
-export const CABINE: { x: number; y0: number; y1: number; largeur: number; z: number }[] = [8, 11].map((x) => ({
-  x, y0: PLAFOND - 0.6, y1: PLAFOND - 0.15, largeur: 0.8, z: SALLE.z + SALLE.depth - 0.15,
-}))
+/**
+ * Les fenêtres de la cabine, dans le mur du fond (sa face z = 19,85), juste sous le plafond : au
+ * milieu, la lucarne de projection (l'objectif du projecteur, d'où part le faisceau), à côté, celle
+ * du projectionniste.
+ */
+export const CABINE: { x: number; y0: number; y1: number; largeur: number; z: number; projection: boolean }[] = [
+  { x: SALLE.x + SALLE.width / 2, largeur: 1.1, projection: true },
+  { x: SALLE.x + SALLE.width / 2 + 1.7, largeur: 0.7, projection: false },
+].map((f) => ({ ...f, y0: PLAFOND - 0.6, y1: PLAFOND - 0.15, z: SALLE.z + SALLE.depth - 0.15 }))
 
 /**
  * L'écran, sur le mur nord (face à z = 2,20), au-dessus de la scène, au format scope (2,39:1).

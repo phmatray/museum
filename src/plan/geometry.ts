@@ -68,13 +68,18 @@ export function guardrails(plan: Plan, levelId: number): GuardrailSegment[] {
   if (!level) return []
   const inLevel = (e: number) => e >= level.elevation - EPS && e < level.elevation + plan.storey - EPS
 
-  const hautes: { rect: Rect; elevation: number; ends: Edge[]; kind: GuardrailSegment['kind'] }[] = []
+  const hautes: { rect: Rect; elevation: number; ends: Edge[]; kind: GuardrailSegment['kind']; ouverts?: Edge[] }[] = []
   for (const l of plan.levels)
     for (const r of l.rooms) if (r.kind === 'balcony') hautes.push({ rect: r, elevation: l.elevation, ends: [], kind: 'flat' })
-  for (const l of plan.landings) hautes.push({ rect: l, elevation: l.elevation, ends: [], kind: 'flat' })
+  for (const l of plan.landings) {
+    const [n, s, w, e] = edges(l)
+    const cote = { north: n, south: s, west: w, east: e }
+    hautes.push({ rect: l, elevation: l.elevation, ends: [], kind: 'flat', ouverts: l.ouverts?.map((d) => cote[d]) })
+  }
   for (const f of plan.flights) {
     const [n, s, w, e] = edges(f)
-    hautes.push({ rect: f, elevation: f.bottom, ends: isNordSud(f) ? [n, s] : [w, e], kind: 'flight' })
+    const cote = { north: n, south: s, west: w, east: e }
+    hautes.push({ rect: f, elevation: f.bottom, ends: isNordSud(f) ? [n, s] : [w, e], kind: 'flight', ouverts: f.ouverts?.map((d) => cote[d]) })
   }
 
   // Les murs : les arêtes des salles qui ne sont pas des balcons, à tout niveau
@@ -90,7 +95,7 @@ export function guardrails(plan: Plan, levelId: number): GuardrailSegment[] {
     if (!inLevel(h.elevation)) continue
     const ici = murs(h.elevation)
     for (const e of edges(h.rect)) {
-      if (h.ends.some((x) => sameLine(x, e))) continue
+      if (h.ends.some((x) => sameLine(x, e)) || h.ouverts?.some((x) => sameLine(x, e))) continue
       const cuts: Interval[] = []
       for (const m of ici) if (sameLine(m, e)) cuts.push(m.span)
       // Surfaces voisines de même cote, et bouts de volées posés sur cette arête.
@@ -100,6 +105,8 @@ export function guardrails(plan: Plan, levelId: number): GuardrailSegment[] {
           if (!sameLine(f, e)) continue
           if (Math.abs(o.elevation - h.elevation) < EPS && !o.ends.length) cuts.push(f.span)
           if (o.ends.some((x) => sameLine(x, f))) cuts.push(f.span)
+          // Le côté ouvert d'une volée (une allée de gradins) : ni d'un côté ni de l'autre.
+          if (o.ouverts?.some((x) => sameLine(x, f))) cuts.push(f.span)
         }
       }
       for (const f of plan.flights) {

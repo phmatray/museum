@@ -24,8 +24,9 @@ describe('trierBoites', () => {
     expect(lots.mains.every((b) => b.kind === 'handrail')).toBe(true)
     // Les 808 surfaces cuites sont au parement (parement.test.ts).
     const n = 808 + lots.mains.length + lots.marches.length + lots.verre.length + lots.lanterneau.flat().length
-    // 977 hors sol, plus les mains courantes et le verre des garde-corps du sous-sol.
-    expect(n).toBe(1027)
+    // 977 hors sol, plus les mains courantes et le verre des garde-corps du sous-sol
+    // (aucun entre les allées du cinéma et leurs rangs, ni devant la traverse : ils s'y ouvrent).
+    expect(n).toBe(1009)
   })
 
   it('range le dépoli des lanterneaux par niveau, les deux niveaux en ayant', () => {

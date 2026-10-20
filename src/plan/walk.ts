@@ -225,6 +225,18 @@ function mursDuParc(plan: Plan): Segment[] {
  * visite guidée y passe son allure propre. Les sous-pas la bornent comme les
  * autres, donc aucune valeur ne fait traverser un mur.
  */
+/**
+ * L'écart de cote qu'on franchit par le côté ouvert d'une volée : deux marches, car la cote d'une
+ * volée est une rampe, quand le pied, lui, est posé sur une marche, jusqu'à une contremarche plus haut.
+ */
+const contremarche = (f: Flight) => 2 * (f.top - f.bottom) / f.risers
+
+/** Le palier sous (x, z) dont la cote est à `marche` près de `cote`, ou null. */
+function paliersVoisins(plan: Plan, x: number, z: number, cote: number, marche: number): string | null {
+  const l = plan.landings.find((l) => dedans(l, x, z) && Math.abs(l.elevation - cote) <= marche + EPS)
+  return l ? `palier:${l.id}` : null
+}
+
 export function step(
   plan: Plan,
   walker: Walker,
@@ -260,12 +272,17 @@ export function step(
     let suivante: string | null
     if (s.volee) {
       // Sortir d'une volée, c'est franchir un de ses bouts : on pose le pied à sa cote.
-      suivante = dedans(s.volee, p.x, p.z) ? surface : surfaceAt(plan, p.x, p.z, s.cote(p.x, p.z))
+      // Ou un côté ouvert (une allée de gradins) : sur le palier voisin, s'il est à une marche près.
+      const v = s.volee
+      suivante = dedans(v, p.x, p.z) ? surface : surfaceAt(plan, p.x, p.z, s.cote(p.x, p.z))
+        ?? (v.ouverts ? paliersVoisins(plan, p.x, p.z, s.cote(p.x, p.z), contremarche(v)) : null)
     } else {
-      // Les côtés d'une volée sont des garde-corps : y entrer, c'est passer par un bout à notre cote.
+      // Les côtés d'une volée sont des garde-corps : y entrer, c'est passer par un bout à notre cote,
+      // ou par un côté ouvert, à une marche près.
       // Au parc, la surface se cherche au plancher du rez-de-chaussée : une butte n'est pas un étage.
       const e = surface === PARC ? 0 : s.cote(p.x, p.z)
-      const f = plan.flights.find((f) => dedans(f, p.x, p.z) && (Math.abs(f.bottom - e) < EPS || Math.abs(f.top - e) < EPS))
+      const f = plan.flights.find((f) => dedans(f, p.x, p.z) && (Math.abs(f.bottom - e) < EPS || Math.abs(f.top - e) < EPS
+        || (!!f.ouverts && Math.abs(flightElevation(f, p.x, p.z) - e) <= contremarche(f) + EPS)))
       suivante = f ? `volee:${f.id}` : surfaceAt(plan, p.x, p.z, e)
     }
     // Plus de sol sous le pied (le vide du hall, si un garde-corps manquait) : on n'y va pas.

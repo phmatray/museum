@@ -23,13 +23,19 @@ async function estUnShort(video: string): Promise<boolean> {
 
 const flux = await (await fetch(`https://www.youtube.com/feeds/videos.xml?channel_id=${CHAINE.id}`)).text()
 const entrees = lireFlux(flux)
-let choisie = null
+/** Les affiches du foyer : la séance et ses précédentes. */
+const AFFICHES = 5
+const films = []
 for (const e of entrees) {
   if (titreDeShort(e.titre) || (await estUnShort(e.video))) continue
-  choisie = e
-  break
+  films.push(e)
+  if (films.length === AFFICHES) break
 }
+const [choisie, ...avant] = films
 if (!choisie) throw new Error(`aucune vidéo (hors Shorts) dans le flux de ${CHAINE.nom} (${entrees.length} entrées)`)
-const seance: Seance = { schemaVersion: 1, generatedAt: new Date().toISOString(), chaine: CHAINE.nom, ...choisie }
+const seance: Seance = {
+  schemaVersion: 1, generatedAt: new Date().toISOString(), chaine: CHAINE.nom, ...choisie,
+  precedentes: avant.map(({ video, titre }) => ({ video, titre })),
+}
 await writeFile(SORTIE, `${JSON.stringify(seance, null, 2)}\n`)
 console.log(`cinéma : « ${seance.titre} » (${seance.video}, ${seance.publie.slice(0, 10)})`)

@@ -36,6 +36,8 @@ import { dialecte, greffer } from './greffe.ts'
 import { AIR, bruit, METEO, toits } from './intemperies.ts'
 import { lin } from './lueurs.ts'
 
+/** Sous cette cote, on est sous terre (le sous-sol commence sous la dalle du rez-de-chaussée, à −0,30). */
+const SOUS_TERRE = -0.5
 /** Sous les toits, l'air ne porte qu'un quart de la brume du dehors. */
 const BRUME_DEDANS = 0.25
 const FLASH = lin('#dfe6ff').scale(2.2 / Math.PI)
@@ -277,13 +279,15 @@ ${V('aS', 'float', '1.0 - smoothstep(0.25, 1.5, max(finalColor.r, max(finalColor
 finalColor = vec4(mix(finalColor.rgb, airCouleur(normalize(aV)), step(brumeToit(${P}.xz), ${P}.y) * aS * airVoile(${O}, ${P})), finalColor.a);
 }
 ${V('bF', 'float', '1.0')}
+// Sous terre (le sous-sol, sous la dalle du rez-de-chaussée), ni brume ni éclair : rien n'y entre.
+${V('bD', 'float', `step(${SOUS_TERRE.toFixed(2)}, ${P}.y)`)}
 #ifdef LIGHTMAP
 bF = lightmapColor.g / max(1e-4, ${wgsl ? `select(select(${H}.x, ${H}.z, normalW.y < -0.5), ${H}.y, normalW.y > 0.5)` : `normalW.y > 0.5 ? ${H}.y : normalW.y < -0.5 ? ${H}.z : ${H}.x`});
 #endif
 // L'éclair : une ambiante bleutée (albedo / π × couleur × force), sous le facteur de la lumière cuite.
-${V('bC', 'vec3', `finalColor.rgb + surfaceAlbedo.rgb * ${E}.rgb * bF`)}
+${V('bC', 'vec3', `finalColor.rgb + surfaceAlbedo.rgb * ${E}.rgb * bF * bD`)}
 // La brume exp2 tient au LIEU du fragment : sous les toits, un quart de la profondeur.
-${V('bP', 'float', `abs((${wgsl ? 'scene.view' : 'view'} * vec4(${P}, 1.0)).z) * mix(${BRUME_DEDANS.toFixed(2)}, 1.0, step(brumeToit(${P}.xz), ${P}.y)) * ${A}.w`)}
+${V('bP', 'float', `abs((${wgsl ? 'scene.view' : 'view'} * vec4(${P}, 1.0)).z) * mix(${BRUME_DEDANS.toFixed(2)}, 1.0, step(brumeToit(${P}.xz), ${P}.y)) * ${A}.w * bD`)}
 finalColor = vec4(mix(bC, ${A}.rgb, 1.0 - exp(-bP * bP)), finalColor.a);
 }
 `),

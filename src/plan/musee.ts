@@ -23,7 +23,7 @@ import { OBSTACLES_ATELIERS } from './ateliers.ts'
 import { OBSTACLES_GRANDS_ARBRES } from './arbres.ts'
 import { OBSTACLES_BELVEDERE } from './belvedere.ts'
 import { OBSTACLES_CHANTIER } from './chantier.ts'
-import { OBSTACLES_CINEMA, PROMENOIR, SALLE as CINEMA, VOLEES_CINEMA } from './cinema.ts'
+import { OBSTACLES_CINEMA, PROMENOIR, SALLE as CINEMA, TRAVERSE, VOLEES_CINEMA } from './cinema.ts'
 import { obstaclesDesCimaises } from './cimaises.ts'
 import { OBSTACLES_PORTES_ENTREE, OBSTACLES_PORTIQUE } from './facade.ts'
 import { OBSTACLES_JARDIN } from './jardin.ts'
@@ -50,7 +50,7 @@ export const MUSEE: Plan = {
     { id: 'volee-sous-sol', x: 16, z: 12, width: 3, depth: 8, direction: 'south', bottom: -STOREY, top: 0, risers: 28 },
     ...VOLEES_CINEMA,
   ],
-  landings: [{ id: 'palier', x: 16, z: 12, width: 16, depth: 3.5, elevation: LANDING }, PROMENOIR],
+  landings: [{ id: 'palier', x: 16, z: 12, width: 16, depth: 3.5, elevation: LANDING }, PROMENOIR, TRAVERSE],
   levels: [
     {
       id: 0,

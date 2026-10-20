@@ -1,8 +1,14 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-20T19:20:34.126Z",
+  "generatedAt": "2026-10-20T22:40:08.993Z",
   "chaine": "Atypical Craft",
   "video": "cHgop3wo3iM",
   "titre": "Claude Code : apprends à forcer ton IA à bien coder",
-  "publie": "2026-10-14T16:00:34+00:00"
+  "publie": "2026-10-14T16:00:34+00:00",
+  "precedentes": [
+    {
+      "video": "pLT7bAfsApg",
+      "titre": "J'ai construit un musée 3D pour mes projets GitHub (visite dans le navigateur)"
+    }
+  ]
 }

@@ -24,6 +24,7 @@
  * dans three où le ToneMapping final passe sur toute l'image (`toneMapped: false` n'y change rien).
  */
 import { Constants } from '@babylonjs/core/Engines/constants'
+import { ShaderStore } from '@babylonjs/core/Engines/shaderStore'
 import { ClusteredLightContainer } from '@babylonjs/core/Lights/Clustered/clusteredLightContainer'
 import { Light } from '@babylonjs/core/Lights/light'
 import { SpotLight } from '@babylonjs/core/Lights/spotLight'
@@ -36,6 +37,8 @@ import { CreateDisc } from '@babylonjs/core/Meshes/Builders/discBuilder'
 import { CreatePlane } from '@babylonjs/core/Meshes/Builders/planeBuilder'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
 import '@babylonjs/core/Meshes/thinInstanceMesh'
+import '@babylonjs/core/Shaders/ShadersInclude/pbrClusteredLightingFunctions'
+import '@babylonjs/core/ShadersWGSL/ShadersInclude/pbrClusteredLightingFunctions'
 import type { Scene } from '@babylonjs/core/scene'
 
 import { DEFAULT_ASPECT } from '../domain/hanging.ts'
@@ -105,6 +108,17 @@ export function spotsDesFlaques(tous: readonly Projecteur[], scene: Scene): Spot
     return s
   })
 }
+
+/**
+ * Babylon 9.31 : dans `computeClusteredLighting`, le velours (SHEEN) lit `normalW`, une variable
+ * du shader appelant, au lieu de sa normale `N` : toute matière à reflet de velours sous la grappe
+ * ne compile plus, et disparaît (le tissu et les rideaux du cinéma). GLSL et WGSL.
+ */
+export function corrigerVeloursDesGrappes(): void {
+  for (const store of [ShaderStore.IncludesShadersStore, ShaderStore.IncludesShadersStoreWGSL])
+    store.pbrClusteredLightingFunctions = store.pbrClusteredLightingFunctions.replace('computeSheenLighting(preInfo,normalW,', 'computeSheenLighting(preInfo,N,')
+}
+corrigerVeloursDesGrappes()
 
 /**
  * Les flaques en grappes, ou null si le moteur ne sait pas (WebGL2 sans tampon

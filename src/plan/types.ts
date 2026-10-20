@@ -73,11 +73,15 @@ export interface Flight extends Rect {
   bottom: number
   top: number
   risers: number
+  /** Les côtés sans garde-corps : une allée de gradins s'ouvre sur ses rangs. */
+  ouverts?: Direction[]
 }
 
 export interface Landing extends Rect {
   id: string
   elevation: number
+  /** Les côtés sans garde-corps : une marche de gradin (0,45 m) n'en demande pas. */
+  ouverts?: Direction[]
 }
 
 export interface Plan {

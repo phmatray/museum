@@ -6,9 +6,10 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  APPLIQUES, BLOC_GRADINS, CABINE, TETE_ASSISE, solLeLongDesMurs, siegeVise, COTE_PROMENOIR, ECRAN, ENCEINTES, FAUTEUIL, GRADINS, LUMIERES_MARCHES, PLAFOND, PROMENOIR, RIDEAUX,
-  SALLE, SCENE, SIEGES, SOL, SPOTS, VOLEES_CINEMA,
+  AFFICHES, APPLIQUES, BLOC_GRADINS, COMPTOIR, FOYER, CABINE, TETE_ASSISE, solLeLongDesMurs, siegeVise, COTE_PROMENOIR, ECRAN, ENCEINTES, FAUTEUIL, GRADINS, LUMIERES_MARCHES, PLAFOND, PROMENOIR, RIDEAUX,
+  SALLE, SCENE, SIEGES, SOL, SPOTS, TRAVERSE, VOLEES_CINEMA,
 } from '../cinema'
+import { guardrails } from '../geometry'
 import { MUSEE } from '../musee'
 import { contains, flightElevation } from '../rules'
 
@@ -22,6 +23,22 @@ describe('le cinéma', () => {
     expect(COTE_PROMENOIR).toBeCloseTo(-2.55, 6)
     // 2,25 m sous la dalle du rez-de-chaussée : la règle de hauteur libre en demande 2,20.
     expect(PLAFOND - COTE_PROMENOIR).toBeGreaterThanOrEqual(2.2)
+  })
+
+  it('meuble le foyer sans couper le chemin de l’escalier à la porte de la salle', () => {
+    const porte = MUSEE.levels.find((l) => l.id === -1)!.openings.find((o) => o.b === 'cinema')!
+    // Le chemin de l'arrivée (17,5 ; 12) à la porte (16 ; 7) longe le mur ouest : rien n'y empiète.
+    expect(contains(COMPTOIR, 17.5, 9)).toBe(false)
+    expect(COMPTOIR.x).toBeGreaterThan(porte.x + 6)
+    expect(COMPTOIR.x + COMPTOIR.width).toBeLessThanOrEqual(FOYER.x + FOYER.width - 0.15 + 1e-9)
+    for (const a of AFFICHES) expect(a.x - a.largeur / 2).toBeGreaterThan(FOYER.x + 0.15)
+  })
+
+  it('ouvre les allées sur les rangs : pas de garde-corps entre une allée et ses fauteuils', () => {
+    const bords = guardrails(MUSEE, -1).filter((g) => g.x1 === g.x2 && (Math.abs(g.x1 - BLOC_GRADINS.x) < 1e-9 || Math.abs(g.x1 - BLOC_GRADINS.x - BLOC_GRADINS.width) < 1e-9))
+    expect(bords).toEqual([])
+    // Ni devant la traverse : une marche de rang, et l'écran derrière.
+    expect(guardrails(MUSEE, -1).filter((g) => g.z1 === g.z2 && Math.abs(g.z1 - TRAVERSE.z) < 1e-9)).toEqual([])
   })
 
   it('pose chaque rang au niveau de la marche des allées qui le borde au fond', () => {
