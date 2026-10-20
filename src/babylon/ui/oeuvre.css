@@ -51,7 +51,7 @@
 }
 .borne-oeuvre kbd { border: 1px solid rgba(241,228,198,0.45); border-bottom-width: 2px; border-radius: 4px; padding: 0 6px; font: 600 12px var(--sans); color: var(--creme) }
 .borne-oeuvre > img {
-  display: block; width: 100%; max-height: 28vh; object-fit: cover; object-position: top;
+  display: block; width: 100%; max-height: 28vh; max-height: 28dvh; object-fit: cover; object-position: top;
   border-radius: 6px 6px 0 0; border-bottom: 1px solid rgba(224,176,96,0.35); flex-shrink: 0;
 }
 .borne-oeuvre header { padding: 22px 28px 14px }

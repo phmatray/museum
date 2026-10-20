@@ -1,6 +1,6 @@
 /* Le carnet de visite (carnet.ts) : le papier du billet, les tampons violets de son composteur. */
 .carnet { --papier: #f4ecda; --encre: #1c2530; --encre-2: #4a4f55; --violet: #5a3b8f; --filet: rgba(28,37,48,.16);
-  width: min(720px, calc(100vw - 32px)); max-height: min(86vh, 900px); margin: auto; padding: 0; border: 0; border-radius: 6px; overflow: auto; overscroll-behavior: contain;
+  width: min(720px, calc(100vw - 32px)); max-height: min(86vh, 900px); max-height: min(86dvh, 900px); margin: auto; padding: 0; border: 0; border-radius: 6px; overflow: auto; overscroll-behavior: contain;
   color: var(--encre); font: 400 15px/1.45 var(--sans);
   background: linear-gradient(175deg, #f8f2e4 0%, var(--papier) 60%, #ece1c8 100%);
   box-shadow: 0 30px 70px -18px rgba(0,0,0,.6), 0 3px 8px rgba(0,0,0,.28); }
@@ -48,7 +48,7 @@
 @keyframes billet-coup { from { opacity: 0; scale: 1.35; filter: blur(2px); } to { opacity: .9; scale: 1; filter: blur(0); } }
 
 @media (max-width: 600px) {
-  .carnet { width: 100vw; max-width: 100vw; max-height: 88vh; margin: auto 0 0; border-radius: 12px 12px 0 0; }
+  .carnet { width: 100vw; max-width: 100vw; max-height: 88vh; max-height: 88dvh; margin: auto 0 0; border-radius: 12px 12px 0 0; }
   .carnet header { padding: 18px 12px 12px 20px; }
   .carnet-pages { padding: 4px 20px 22px; }
   .carnet ul { grid-template-columns: 1fr; }
