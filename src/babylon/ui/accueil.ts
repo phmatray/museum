@@ -70,7 +70,7 @@ export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: 
       tampon))
   // Repère stable pour un navigateur piloté, qui escamote cet écran avant de mesurer la scène.
   const voile = el('div', { 'data-museum-overlay': 'accueil', class: 'billet-voile' }, article)
-  const quitter = el('button', { type: 'button', class: 'visite-quitter', hidden: true }, 'Quitter la visite (Échap) · ou marchez pour reprendre la main')
+  const quitter = el('button', { type: 'button', class: 'visite-quitter', hidden: true }, doigt ? 'Quitter la visite · ou marchez pour reprendre la main' : 'Quitter la visite (Échap) · ou marchez pour reprendre la main')
   racine.append(voile, quitter)
 
   /** Réimprime les lignes du billet (accrochage, vitrines, rendez-vous, numéro). */
