@@ -4,6 +4,12 @@
  * catalogue en innerHTML), `observer` suit une part d'un store zustand/vanilla,
  * `themeName` nomme une salle comme hooks/useAccrochage (qui tire React).
  */
+import '@fontsource/marcellus/latin-400.css'
+import '@fontsource/marcellus/latin-ext-400.css'
+import '@fontsource/source-sans-3/latin-400.css'
+import '@fontsource/source-sans-3/latin-600.css'
+import '@fontsource/source-sans-3/latin-ext-400.css'
+
 import type { Accrochage } from '../../plan/hang.ts'
 
 type Attributs = Record<string, string | number | boolean | null | undefined>

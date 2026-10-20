@@ -50,7 +50,7 @@ export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: 
   const bVR = el('button', { type: 'button', class: 'billet-guide', hidden: true })
   const consignesVR = el('p', { class: 'billet-consignes', hidden: true })
   const consignes = doigt
-    ? el('p', { class: 'billet-consignes' }, 'Pouce gauche pour marcher, glisser à droite pour regarder, toucher le plan pour l’agrandir.')
+    ? el('p', { class: 'billet-consignes' }, 'Pouce gauche pour marcher, glisser à droite pour regarder.')
     : el('p', { class: 'billet-consignes' },
       el('kbd', {}, 'Z'), el('kbd', {}, 'Q'), el('kbd', {}, 'S'), el('kbd', {}, 'D'), ' ou flèches pour marcher, ',
       el('kbd', {}, 'Maj'), ' pour presser le pas, ', el('kbd', {}, 'Espace'), ' pour sauter, la souris pour regarder, ',

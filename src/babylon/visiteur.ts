@@ -41,11 +41,23 @@ const SENSIBILITE = 0.002
 const PAUSE_VISITE = 4
 /** Vitesse de convergence du regard vers le cap de la visite, en s⁻¹. */
 const TAUX_REGARD = 3.5
+/** Lissage du doigt, en s⁻¹ : le glissé est rendu sur ~40 ms, la marche du joystick monte sur ~80 ms (les touchmove arrivent hors cadence). */
+const TAUX_DOIGT = 25
+const TAUX_JOYSTICK = 12
 /** Les touches qui font marcher ou sauter : pendant la visite guidée, elles la font cesser. */
 const TOUCHES_DE_MARCHE = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'])
 /** Champ vertical de la FreeCamera en VR (rad) : il couvre les deux yeux, sinon le tri par salle (visibilite.ts) retire ce que voit l'autre œil. */
 const CHAMP_VR = 1.9
 const borne = (v: number, a = 1) => Math.max(-a, Math.min(a, v))
+/** L'horizontale minimale, en degrés : en portrait, le champ vertical s'ouvre jusqu'à la tenir. */
+const CHAMP_HORIZONTAL_MIN = 60
+
+/** Le champ vertical (radians) pour un réglage en degrés et un rapport largeur/hauteur. */
+export function champVertical(degres: number, aspect: number): number {
+  const reglage = (degres * Math.PI) / 180
+  const minimum = 2 * Math.atan(Math.tan((CHAMP_HORIZONTAL_MIN * Math.PI) / 360) / aspect)
+  return Math.max(reglage, minimum)
+}
 
 /**
  * Le départ du visiteur : devant la toile demandée (accrochée ou en vitrine, `vitrines` = leurs clés),
@@ -88,10 +100,12 @@ export function monterVisiteur(
   camera.inputs.clear()
   camera.minZ = 0.1
   camera.maxZ = 1000
-  // Le champ de vision du réglage (vertical, comme three), suivi en direct ; large en VR.
-  const champ = () => (camera.fov = partie.getState().enVR ? CHAMP_VR : (reglages.getState().champ * Math.PI) / 180)
+  // Le champ de vision du réglage (vertical, comme three), suivi en direct ; large en VR ; en portrait, élargi pour
+  // garder CHAMP_HORIZONTAL_MIN à l'horizontale (sinon un téléphone debout voit le monde par une fente).
+  const champ = () => (camera.fov = partie.getState().enVR ? CHAMP_VR : champVertical(reglages.getState().champ, scene.getEngine().getAspectRatio(camera)))
   champ()
   reglages.subscribe((r, a) => r.champ !== a.champ && champ())
+  scene.getEngine().onResizeObservable.add(champ)
 
   const enfoncees = new Set<string>()
   addEventListener('keydown', (e) => {
@@ -183,6 +197,8 @@ export function monterVisiteur(
   }
 
   let reste = 0
+  /** La marche du joystick, lissée vers `toucher`. */
+  const pouce = { forward: 0, strafe: 0 }
   scene.onBeforeRenderObservable.add(() => {
     // En pause, rien n'avance, pas même le cadenceur (les glissés du doigt attendent la reprise).
     if (partie.getState().paused || !pret()) return
@@ -191,10 +207,20 @@ export function monterVisiteur(
     reste = r
     if (toucher.lookX || toucher.lookY) {
       if (partie.getState().tourActive) reprendreLaMain()
-      regard -= toucher.lookX * SENSIBILITE
-      pitch = borne(pitch - toucher.lookY * SENSIBILITE, Math.PI / 2)
-      toucher.lookX = toucher.lookY = 0
+      // Le glissé est consommé en douceur ; le reliquat (sous le demi-pixel) est soldé d'un coup.
+      const k = 1 - Math.exp(-TAUX_DOIGT * dt)
+      const lx = Math.abs(toucher.lookX) < 0.5 ? toucher.lookX : toucher.lookX * k
+      const ly = Math.abs(toucher.lookY) < 0.5 ? toucher.lookY : toucher.lookY * k
+      regard -= lx * SENSIBILITE
+      pitch = borne(pitch - ly * SENSIBILITE, Math.PI / 2)
+      toucher.lookX -= lx
+      toucher.lookY -= ly
     }
+    const kj = 1 - Math.exp(-TAUX_JOYSTICK * dt)
+    pouce.forward += (toucher.forward - pouce.forward) * kj
+    pouce.strafe += (toucher.strafe - pouce.strafe) * kj
+    if (Math.abs(pouce.forward) < 1e-3 && !toucher.forward) pouce.forward = 0
+    if (Math.abs(pouce.strafe) < 1e-3 && !toucher.strafe) pouce.strafe = 0
     if (partie.getState().tourActive && (toucher.forward || toucher.strafe)) reprendreLaMain()
     const visite = partie.getState().tourActive
     const xr = tete()
@@ -203,8 +229,8 @@ export function monterVisiteur(
     // En VR, les manettes ou le Cardboard (vrEntrees.ts), vers où regarde la tête. Sinon,
     // clavier et joystick s'additionnent, bornés à [−1, 1] comme l'attend `step`.
     const input = d ? { forward: vrEntree.avance, strafe: vrEntree.cote, yaw: capDuRegard(d.x, d.z), hate: vrEntree.hate } : {
-      forward: borne(touche('KeyW', 'ArrowUp') - touche('KeyS', 'ArrowDown') + toucher.forward),
-      strafe: borne(touche('KeyD', 'ArrowRight') - touche('KeyA', 'ArrowLeft') + toucher.strafe),
+      forward: borne(touche('KeyW', 'ArrowUp') - touche('KeyS', 'ArrowDown') + pouce.forward),
+      strafe: borne(touche('KeyD', 'ArrowRight') - touche('KeyA', 'ArrowLeft') + pouce.strafe),
       yaw: regard,
       hate: touche('ShiftLeft', 'ShiftRight') > 0,
     }

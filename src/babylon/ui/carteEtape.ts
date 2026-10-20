@@ -4,8 +4,6 @@
  * `partie.etape`), l'étape s'y raconte — image, numéro, catégorie, PR — et
  * « Lire dans le journal » ouvre la page du journal à son ancre (Entrée, ou J).
  */
-import '@fontsource/marcellus/latin-400.css'
-import '@fontsource/source-sans-3/latin-400.css'
 import '@fontsource/source-sans-3/latin-600.css'
 
 import type { Journal } from '../../domain/journal.ts'

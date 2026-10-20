@@ -6,13 +6,15 @@
   margin: 0;
   width: min(220px, 30vw);
   z-index: 200;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--hud-fond);
+  border: 1px solid var(--hud-filet);
   border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   cursor: zoom-in;
 }
-.minimap figcaption { color: white; font: 12px system-ui, sans-serif; padding: 4px 8px; }
+.minimap figcaption { color: var(--hud-texte); font: 600 12px/1.3 var(--sans); padding: 5px 9px 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (pointer: coarse) { .minimap { display: none; } }
 .minimap-dessin { position: relative; }
 .minimap-dessin img { display: block; width: 100%; }
 .minimap-dessin svg { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -38,20 +40,21 @@
   align-items: center;
   gap: 8px;
   padding: max(12px, env(safe-area-inset-top)) 12px 8px;
-  color: white;
-  font: 15px system-ui, sans-serif;
+  color: var(--hud-texte);
+  font: 600 15px var(--sans);
 }
 .minimap-barre span { flex: 1; }
 .minimap-barre button {
   width: 44px;
   height: 44px;
   border-radius: 22px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
-  font: 22px system-ui, sans-serif;
+  border: 1px solid var(--hud-filet);
+  background: var(--hud-fond);
+  color: var(--hud-texte);
+  font: 22px var(--sans);
   cursor: pointer;
 }
+.minimap-barre button:focus-visible { outline: 2px solid var(--hud-or); outline-offset: 2px; }
 .minimap-cadre {
   position: relative;
   flex: 1;

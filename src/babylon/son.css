@@ -8,7 +8,7 @@
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 999px;
   color: #c9c2b4;
-  font: 13px system-ui, sans-serif;
+  font: 600 13px var(--sans);
   cursor: pointer;
   backdrop-filter: blur(6px);
 }
@@ -22,6 +22,9 @@
   border-bottom-width: 2px;
   border-radius: 4px;
   padding: 0 5px;
-  font: 600 11px system-ui;
+  font: 600 11px var(--sans);
   opacity: 0.8;
 }
+.bouton-son:focus-visible { outline: 2px solid var(--hud-or); outline-offset: 2px; }
+.bouton-son:hover { color: var(--hud-texte); }
+@media (pointer: coarse) { .bouton-son kbd { display: none; } }

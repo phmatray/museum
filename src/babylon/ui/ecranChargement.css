@@ -19,7 +19,7 @@
 [data-museum-overlay='chargement'][aria-busy='false'] { opacity: 0; pointer-events: none; }
 [data-museum-overlay='chargement'] h1 {
   margin: 0;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--serif);
   font-weight: 400;
   font-size: clamp(1.8rem, 6vw, 2.8rem);
   letter-spacing: 0.06em;

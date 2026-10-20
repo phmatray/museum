@@ -140,9 +140,11 @@ export function monterMinimap(racine: HTMLElement, accrochage: Accrochage | null
 
   // Le dessin : redessiné quand le visiteur bouge, quand Bavette bouge, ou quand l'encart réapparaît.
   let bavette: Chat = null
+  // Au doigt, pas de plan : il mange le coin du pouce droit sur un téléphone.
+  const tactile = typeof matchMedia === 'function' ? matchMedia('(pointer: coarse)') : null
   const rendre = () => {
     const w = partie.getState().visiteur
-    const visible = !!w && reglages.getState().plan
+    const visible = !!w && reglages.getState().plan && !tactile?.matches
     encart.hidden = !visible
     if (!visible) return refermer()
     const { level, room, player: p, viewBox, dehors } = projectForMinimap(MUSEE, w)
@@ -167,6 +169,7 @@ export function monterMinimap(racine: HTMLElement, accrochage: Accrochage | null
   }
   observer(partie, (s) => s.visiteur, rendre)
   observer(reglages, (s) => s.plan, rendre)
+  tactile?.addEventListener?.('change', rendre)
   // Bavette sondée à 10 Hz : redessin seulement si elle a bougé.
   setInterval(() => {
     const b = chat()

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { partie, toucher } from '../etat'
-import { monterMobile } from '../ui/mobile'
+import { inclinaison, monterMobile } from '../ui/mobile'
 
 const INITIAL = partie.getState()
 let ecouteur: ((e: { matches: boolean }) => void) | null = null
@@ -46,8 +46,12 @@ describe('commandes tactiles', () => {
     doigt('touchmove', couche(), 1, 200, 400)
     expect(toucher.forward).toBe(1)
     expect(toucher.strafe).toBeCloseTo(0)
-    doigt('touchmove', couche(), 1, 225, 500)
-    expect(toucher.strafe).toBe(0.5)
+    // La base a suivi le pouce (origine en 200, 450) : un pas à droite dans la zone morte ne bouge rien.
+    doigt('touchmove', couche(), 1, 205, 450)
+    expect(toucher.forward).toBe(0)
+    expect(toucher.strafe).toBe(0)
+    doigt('touchmove', couche(), 1, 250, 450)
+    expect(toucher.strafe).toBe(1)
     doigt('touchend', couche(), 1, 225, 500)
     expect(toucher.forward).toBe(0)
     expect(toucher.strafe).toBe(0)
@@ -89,5 +93,13 @@ describe('commandes tactiles', () => {
     expect(toucher.forward).toBe(0)
     partie.setState({ enVR: false })
     expect(couche().hidden).toBe(false)
+  })
+
+  it('inclinaison : zone morte, courbe douce, pleine à fond', () => {
+    expect(inclinaison(0.1, 0)).toEqual({ strafe: 0, forward: 0 })
+    const mi = inclinaison(0.5, 0).strafe
+    expect(mi).toBeGreaterThan(0.2)
+    expect(mi).toBeLessThan(0.5)
+    expect(inclinaison(0, -1).forward).toBeCloseTo(1)
   })
 })
