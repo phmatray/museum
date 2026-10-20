@@ -76,8 +76,8 @@ export function tenues(graine = 1867): Tenue[] {
       qui: s.qui,
       taille: s.taille,
       prompt: `Full-body ${s.qui} visiting an art museum, ${coiffures[n % coiffures.length]}, ${habits}. ` +
-        'Realistic proportions, natural colours, neutral relaxed face, A-pose with arms slightly away from the body, ' +
-        'feet flat, nothing in the hands, clean game-ready character.',
+        'Realistic proportions, natural colours, neutral relaxed face, standing in a strict T-pose: arms straight out ' +
+        'horizontally, palms facing down, fingers together, feet flat shoulder-width apart, nothing in the hands, clean game-ready character.',
     }
   })
 }
@@ -89,7 +89,7 @@ const cle = process.env.MESHY_API_KEY
 const entetes = () => ({ Authorization: `Bearer ${cle}`, 'Content-Type': 'application/json' })
 const attendre = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-async function appel(chemin: string, corps?: unknown): Promise<any> { // eslint-disable-line @typescript-eslint/no-explicit-any -- réponses Meshy
+export async function appel(chemin: string, corps?: unknown): Promise<any> { // eslint-disable-line @typescript-eslint/no-explicit-any -- réponses Meshy
   for (let essai = 0; ; essai++) {
     const r = await fetch(`${API}${chemin}`, { method: corps ? 'POST' : 'GET', headers: entetes(), body: corps ? JSON.stringify(corps) : undefined })
     if (r.status === 429 && essai < 8) { await attendre(5000 * (essai + 1)); continue }
@@ -99,7 +99,7 @@ async function appel(chemin: string, corps?: unknown): Promise<any> { // eslint-
 }
 
 /** Lance une tâche et attend sa fin ; rend la tâche terminée. */
-async function tache(chemin: string, corps: unknown | null, id: string | undefined, noter: (id: string) => void, nom: string): Promise<any> { // eslint-disable-line @typescript-eslint/no-explicit-any
+export async function tache(chemin: string, corps: unknown | null, id: string | undefined, noter: (id: string) => void, nom: string): Promise<any> { // eslint-disable-line @typescript-eslint/no-explicit-any
   if (!id) {
     id = (await appel(chemin, corps)).result as string
     noter(id)
@@ -118,7 +118,7 @@ async function generer(t: Tenue, etat: Etat, sauver: () => void): Promise<void> 
   const k = e.taches
   const nom = `pnj-${t.n}`
   const noter = (champ: keyof Taches) => (id: string) => { k[champ] = id; sauver() }
-  await tache('/v2/text-to-3d', { mode: 'preview', prompt: t.prompt, model_type: 'smart-topology', target_polycount: 9000, pose_mode: 'a-pose', target_formats: ['glb'] }, k.apercu, noter('apercu'), `${nom} modèle`)
+  await tache('/v2/text-to-3d', { mode: 'preview', prompt: t.prompt, model_type: 'smart-topology', target_polycount: 9000, pose_mode: 't-pose', target_formats: ['glb'] }, k.apercu, noter('apercu'), `${nom} modèle`)
   await tache('/v2/text-to-3d', { mode: 'refine', preview_task_id: k.apercu, texture_resolution: '2k', target_formats: ['glb'] }, k.texture, noter('texture'), `${nom} texture`)
   await tache('/v1/rigging', { input_task_id: k.texture, height_meters: t.taille }, k.squelette, noter('squelette'), `${nom} squelette`)
   const a = await tache('/v1/animations', { rig_task_id: k.squelette, action_ids: [ACTIONS.marche, ACTIONS.attente, ACTIONS.regard] }, k.animation, noter('animation'), `${nom} animations`)

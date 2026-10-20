@@ -3,12 +3,12 @@
     "n": 0,
     "qui": "young woman in her twenties",
     "taille": 1.66,
-    "prompt": "Full-body young woman in her twenties visiting an art museum, blonde bob haircut, wearing an olive green parka, khaki chinos and brown leather boots, with round glasses. Realistic proportions, natural colours, neutral relaxed face, A-pose with arms slightly away from the body, feet flat, nothing in the hands, clean game-ready character.",
+    "prompt": "Full-body young woman in her twenties visiting an art museum, blonde bob haircut, wearing an olive green parka, khaki chinos and brown leather boots, with round glasses. Realistic proportions, natural colours, neutral relaxed face, standing in a strict T-pose: arms straight out horizontally, palms facing down, fingers together, feet flat shoulder-width apart, nothing in the hands, clean game-ready character.",
     "taches": {
-      "apercu": "01a15aac-3b55-76e8-bd1a-80774e2af6bc",
-      "texture": "01a15aac-d86d-76fd-afbe-211df47a46eb",
-      "squelette": "01a15aad-4316-76d6-9b6f-61987c272c3a",
-      "animation": "01a15aad-6e8d-7169-ae0d-226347f21512",
+      "apercu": "01a15aea-b037-7691-afba-95e1a39d4ffc",
+      "texture": "01a15aeb-5f29-77b3-9eca-8222db4d5763",
+      "squelette": "01a15aeb-c47c-7661-b7e7-ab4404cb1cae",
+      "animation": "01a15aeb-ef69-752a-8a67-14c053717b99",
       "fichier": "pnj-0.glb"
     }
   },
@@ -16,12 +16,12 @@
     "n": 1,
     "qui": "man in his thirties",
     "taille": 1.79,
-    "prompt": "Full-body man in his thirties visiting an art museum, closely shaved head, wearing a mustard turtleneck sweater, brown corduroy trousers and canvas shoes, with a canvas tote bag on the shoulder. Realistic proportions, natural colours, neutral relaxed face, A-pose with arms slightly away from the body, feet flat, nothing in the hands, clean game-ready character.",
+    "prompt": "Full-body man in his thirties visiting an art museum, closely shaved head, wearing a mustard turtleneck sweater, brown corduroy trousers and canvas shoes, with a canvas tote bag on the shoulder. Realistic proportions, natural colours, neutral relaxed face, standing in a strict T-pose: arms straight out horizontally, palms facing down, fingers together, feet flat shoulder-width apart, nothing in the hands, clean game-ready character.",
     "taches": {
-      "apercu": "01a15aae-3a0a-7155-963c-a365d751d42a",
-      "texture": "01a15aaf-907a-744e-bac5-1549ca88acf8",
-      "squelette": "01a15ab0-15ee-7753-b722-205a8e214d85",
-      "animation": "01a15ab0-430a-7435-9899-84d5f28af8dd",
+      "apercu": "01a15aee-b879-7219-87d7-9d15c0e8df0f",
+      "texture": "01a15aef-4832-752c-9ba4-ec6a9c80a5b3",
+      "squelette": "01a15aef-cd5f-731d-8e04-f231b0ead7ef",
+      "animation": "01a15aef-f724-7185-a8ae-c03227649f07",
       "fichier": "pnj-1.glb"
     }
   },
@@ -29,12 +29,12 @@
     "n": 2,
     "qui": "elderly woman in her seventies",
     "taille": 1.6,
-    "prompt": "Full-body elderly woman in her seventies visiting an art museum, long straight auburn hair, wearing a burgundy cardigan, a pleated plaid skirt and black loafers, with a small backpack. Realistic proportions, natural colours, neutral relaxed face, A-pose with arms slightly away from the body, feet flat, nothing in the hands, clean game-ready character.",
+    "prompt": "Full-body elderly woman in her seventies visiting an art museum, long straight auburn hair, wearing a burgundy cardigan, a pleated plaid skirt and black loafers, with a small backpack. Realistic proportions, natural colours, neutral relaxed face, standing in a strict T-pose: arms straight out horizontally, palms facing down, fingers together, feet flat shoulder-width apart, nothing in the hands, clean game-ready character.",
     "taches": {
-      "apercu": "01a15aae-3ab3-7403-9779-78f5c4649b8b",
-      "texture": "01a15aaf-b101-70a1-9750-d5345f9f2f0f",
-      "squelette": "01a15ab0-37e1-746a-b841-4d68e0ba706d",
-      "animation": "01a15ab0-86ac-7186-8c8e-a0c661248a5f",
+      "apercu": "01a15aee-b922-75df-821e-3558c6cd9d25",
+      "texture": "01a15aef-684a-777b-8756-b8943ebd3b9e",
+      "squelette": "01a15aef-eea0-7497-a14a-5e829e0cf436",
+      "animation": "01a15af0-37f1-77d4-ba37-65c0c93b6122",
       "fichier": "pnj-2.glb"
     }
   },
@@ -42,12 +42,12 @@
     "n": 3,
     "qui": "elderly man in his seventies",
     "taille": 1.72,
-    "prompt": "Full-body elderly man in his seventies visiting an art museum, messy chestnut hair, wearing a striped breton shirt, dark blue jeans and white sneakers, with a small backpack. Realistic proportions, natural colours, neutral relaxed face, A-pose with arms slightly away from the body, feet flat, nothing in the hands, clean game-ready character.",
+    "prompt": "Full-body elderly man in his seventies visiting an art museum, messy chestnut hair, wearing a striped breton shirt, dark blue jeans and white sneakers, with a small backpack. Realistic proportions, natural colours, neutral relaxed face, standing in a strict T-pose: arms straight out horizontally, palms facing down, fingers together, feet flat shoulder-width apart, nothing in the hands, clean game-ready character.",
     "taches": {
-      "apercu": "01a15aae-3aaf-769b-8b41-eb8fde8de745",
-      "texture": "01a15aae-e8dd-7614-b0ca-56521f2c9e18",
-      "squelette": "01a15aaf-6f37-70cd-bed1-f38803445a44",
-      "animation": "01a15aaf-bde1-71dd-940f-67e7cd0c3d03",
+      "apercu": "01a15aee-b91f-7060-b994-002a4397371b",
+      "texture": "01a15aef-8af6-751a-a5dc-8f77c1c8546e",
+      "squelette": "01a15aef-ee99-75de-aa41-cdbc45fc1bef",
+      "animation": "01a15af0-386b-7766-b77c-0b780c901d32",
       "fichier": "pnj-3.glb"
     }
   },
@@ -55,12 +55,12 @@
     "n": 4,
     "qui": "teenage girl",
     "taille": 1.6,
-    "prompt": "Full-body teenage girl visiting an art museum, sleek black ponytail, wearing a light grey hoodie, black leggings and brown leather boots. Realistic proportions, natural colours, neutral relaxed face, A-pose with arms slightly away from the body, feet flat, nothing in the hands, clean game-ready character.",
+    "prompt": "Full-body teenage girl visiting an art museum, sleek black ponytail, wearing a light grey hoodie, black leggings and brown leather boots. Realistic proportions, natural colours, neutral relaxed face, standing in a strict T-pose: arms straight out horizontally, palms facing down, fingers together, feet flat shoulder-width apart, nothing in the hands, clean game-ready character.",
     "taches": {
-      "apercu": "01a15aae-3aad-779c-86d2-fa2db4c02bb4",
-      "texture": "01a15aaf-0b64-7025-a810-a270e3c8d4ee",
-      "squelette": "01a15aaf-907e-7085-9920-42dd6e87befc",
-      "animation": "01a15aaf-da04-70e9-8b17-6ac3383eb896",
+      "apercu": "01a15aee-b921-751f-8ab1-b12fa1c344a9",
+      "texture": "01a15aef-47b5-72cc-add6-02cf8e5a98c9",
+      "squelette": "01a15aef-cdf3-738c-8538-5f38603b7708",
+      "animation": "01a15af0-17b4-7650-8de8-f798be86168a",
       "fichier": "pnj-4.glb"
     }
   },
@@ -68,12 +68,12 @@
     "n": 5,
     "qui": "middle-aged woman",
     "taille": 1.68,
-    "prompt": "Full-body middle-aged woman visiting an art museum, wavy brown hair under a knitted beanie, wearing a rust-coloured knit sweater, charcoal trousers and canvas shoes, with a small backpack. Realistic proportions, natural colours, neutral relaxed face, A-pose with arms slightly away from the body, feet flat, nothing in the hands, clean game-ready character.",
+    "prompt": "Full-body middle-aged woman visiting an art museum, wavy brown hair under a knitted beanie, wearing a rust-coloured knit sweater, charcoal trousers and canvas shoes, with a small backpack. Realistic proportions, natural colours, neutral relaxed face, standing in a strict T-pose: arms straight out horizontally, palms facing down, fingers together, feet flat shoulder-width apart, nothing in the hands, clean game-ready character.",
     "taches": {
-      "apercu": "01a15aae-3aaf-769d-a1a2-165e7ee3eafe",
-      "texture": "01a15aae-ea1a-766c-8dd3-fcbcbf8d6d46",
-      "squelette": "01a15aaf-6fc3-763a-995f-1cc1b6d04423",
-      "animation": "01a15aaf-b9fe-7414-a724-4167106f576b",
+      "apercu": "01a15aee-b91d-715f-947d-d62a3ab11690",
+      "texture": "01a15aef-edf0-74d0-af96-9d212ff6c44d",
+      "squelette": "01a15af0-6f2e-761c-94ee-cc5a2f094b26",
+      "animation": "01a15af0-9887-71a0-9ea3-5f1685fced29",
       "fichier": "pnj-5.glb"
     }
   },
@@ -81,12 +81,12 @@
     "n": 6,
     "qui": "young man in his twenties",
     "taille": 1.83,
-    "prompt": "Full-body young man in his twenties visiting an art museum, short silver hair, wearing a denim jacket over a white t-shirt, khaki chinos and black loafers, with a small backpack. Realistic proportions, natural colours, neutral relaxed face, A-pose with arms slightly away from the body, feet flat, nothing in the hands, clean game-ready character.",
+    "prompt": "Full-body young man in his twenties visiting an art museum, short silver hair, wearing a denim jacket over a white t-shirt, khaki chinos and black loafers, with a small backpack. Realistic proportions, natural colours, neutral relaxed face, standing in a strict T-pose: arms straight out horizontally, palms facing down, fingers together, feet flat shoulder-width apart, nothing in the hands, clean game-ready character.",
     "taches": {
-      "apercu": "01a15aae-3ab2-716d-92ca-9b8885a2a7b2",
-      "texture": "01a15aaf-9078-76a2-9185-330fb21504a0",
-      "squelette": "01a15ab0-1696-74e0-8fd8-9ab456077d0b",
-      "animation": "01a15ab0-6296-7153-8f05-d42d26a82f43",
+      "apercu": "01a15aee-b920-77a9-8862-061307cb3cdb",
+      "texture": "01a15aef-68f3-7390-ae99-64c49417370e",
+      "squelette": "01a15aef-eea4-73b9-9450-45d6f476eaec",
+      "animation": "01a15af0-46f8-70b5-8001-573cfef52253",
       "fichier": "pnj-6.glb"
     }
   },
@@ -94,12 +94,12 @@
     "n": 7,
     "qui": "middle-aged man",
     "taille": 1.76,
-    "prompt": "Full-body middle-aged man visiting an art museum, long dark braids, wearing a navy wool coat, brown corduroy trousers and white sneakers. Realistic proportions, natural colours, neutral relaxed face, A-pose with arms slightly away from the body, feet flat, nothing in the hands, clean game-ready character.",
+    "prompt": "Full-body middle-aged man visiting an art museum, long dark braids, wearing a navy wool coat, brown corduroy trousers and white sneakers. Realistic proportions, natural colours, neutral relaxed face, standing in a strict T-pose: arms straight out horizontally, palms facing down, fingers together, feet flat shoulder-width apart, nothing in the hands, clean game-ready character.",
     "taches": {
-      "apercu": "01a15aae-3aaf-769f-bfc5-bdd84959bdba",
-      "texture": "01a15aaf-2c9f-728a-bd4b-ee166adb1895",
-      "squelette": "01a15aaf-907c-70e3-9599-08696e06774d",
-      "animation": "01a15aaf-bafe-71df-909f-21ed6b5916dd",
+      "apercu": "01a15aee-b921-7521-a7ec-9e6a9d280365",
+      "texture": "01a15aef-68ff-77e6-85d4-6dc25dff3023",
+      "squelette": "01a15aef-eea7-76c9-b6b1-4df6335644c7",
+      "animation": "01a15af0-478e-754e-a5e0-76d4f1e9f9f4",
       "fichier": "pnj-7.glb"
     }
   }
