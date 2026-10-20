@@ -8,7 +8,7 @@
  *
  * Pour chaque visiteur : modèle (text-to-3d preview, topologie « smart » allégée, A-pose),
  * texture (refine), squelette (rigging, taille du visiteur), puis UN fichier avec trois
- * actions de la bibliothèque (marche décontractée, attente, regard qui flâne).
+ * actions de la bibliothèque (marche décontractée, attente bras ballants (Idle 4 : l'Idle 0 est une garde de combat), regard qui flâne).
  * Sortie : `public/assets/pnj/pnj-<n>.glb` (à passer ensuite par `node tools/compresser-glb.ts`)
  * et `public/assets/pnj/pnj.json` (tenue, taille, tâches Meshy : on reprend là où l'on s'est arrêté).
  *
@@ -23,7 +23,7 @@ const ETAT = resolve(DOSSIER, 'pnj.json')
 /** Combien de visiteurs distincts (les PNJ du musée et du jardin se les partagent). */
 export const NOMBRE = 8
 /** Les actions de la bibliothèque Meshy : marche, attente, regard qui flâne (devant une toile). */
-export const ACTIONS = { marche: 30, attente: 0, regard: 338 } as const
+export const ACTIONS = { marche: 30, attente: 244, regard: 338 } as const
 
 /** Un générateur pseudo-aléatoire reproductible (mulberry32). */
 export function hasard(graine: number): () => number {

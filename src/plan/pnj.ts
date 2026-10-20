@@ -2,10 +2,12 @@
  * Les visiteurs du musée (PNJ) : où ils vont, comment ils y vont, ce qu'ils y font.
  *
  * Un PNJ est un marcheur (`walk.ts`) mené par le même `step()` que le visiteur :
- * mêmes murs, mêmes volées, mêmes obstacles. Il va de toile en toile (au musée)
- * ou de coin calme en coin calme (au jardin), par les chemins de la visite
- * guidée (`grapheEtEntree`, `chemin` : de porte en porte, le mobilier
- * contourné), puis s'arrête et regarde. Devant quelqu'un (le visiteur ou un
+ * mêmes murs, mêmes volées, mêmes obstacles. Au musée, il va de toile en toile
+ * par les chemins de la visite guidée (`grapheEtEntree`, `chemin` : de porte en
+ * porte, le mobilier contourné), puis s'arrête et regarde. Au jardin, il suit le
+ * circuit de la visite (belvédère puis rive sud, bouclé vers la baraque) dans un
+ * sens ou dans l'autre : jamais à travers les arbres, l'étang ou les massifs, que
+ * `step()` ne connaît pas tous ; il s'arrête parfois à un point de vue. Devant quelqu'un (le visiteur ou un
  * autre PNJ), il se range à droite ; coincé, il change d'idée.
  *
  * Pur : ni Babylon ni DOM. `avancerPnj` modifie le PNJ en place (douze PNJ à
@@ -14,8 +16,9 @@
 import { arriveeDevant, cibleDe } from './arrivee.ts'
 import type { Accrochage } from './hang.ts'
 import type { Lieu } from './promenade.ts'
-import { PARC } from './rules.ts'
-import { capVers, chemin, grapheEtEntree } from './tour.ts'
+import { contourner } from './mobilier.ts'
+import { PARC as SURFACE_PARC, surfaceAt } from './rules.ts'
+import { capVers, chemin, grapheEtEntree, VISITE } from './tour.ts'
 import type { Plan } from './types.ts'
 import { step, type Walker } from './walk.ts'
 
@@ -30,6 +33,9 @@ const PROGRES = 0.3
 const COINCE = 2
 /** Le temps passé devant une toile, ou dans un coin du jardin (s). */
 const REGARD: [number, number] = [6, 16]
+/** Au jardin, à chaque point du circuit : la chance de s'arrêter regarder, puis celle de rebrousser chemin. */
+const HALTE = 0.1
+const DEMI_TOUR = 0.3
 
 export type Activite = 'marche' | 'attente' | 'regarde'
 export type Zone = 'musee' | 'jardin'
@@ -50,6 +56,9 @@ export interface Pnj {
   graine: number
   /** Pour juger qu'il est coincé : temps et distance depuis le dernier relevé. */
   releve: { t: number; x: number; z: number }
+  /** Au jardin : le point visé du circuit et le sens de marche (±1). */
+  etape: number
+  sens: 1 | -1
 }
 
 export interface Monde {
@@ -59,6 +68,15 @@ export interface Monde {
   toiles: Destination[]
   /** Les coins du jardin (lieux calmes du parc). */
   jardin: Destination[]
+  /** Le circuit du jardin (boucle fermée), et ses points au niveau du parc (où l'on peut apparaître). */
+  circuit: [number, number][]
+  departs: number[]
+}
+
+/** La boucle du jardin : le belvédère et la rive sud de la visite guidée, refermée vers son début. */
+export function circuitDuJardin(): [number, number][] {
+  const pts = VISITE.filter((s) => s.roomId === 'belvedere' || s.roomId === 'rive').flatMap((s) => s.points)
+  return [...pts, ...contourner(SURFACE_PARC, pts[pts.length - 1], pts[0]).slice(0, -1)]
 }
 
 /** Le hasard du PNJ (mulberry32), qui fait avancer sa graine. */
@@ -79,14 +97,26 @@ export function monde(plan: Plan, accrochage: Accrochage | null, lieux: readonly
       const a = c && arriveeDevant(plan, c)
       if (a) toiles.push({ surface: a.surface, level: a.level, x: a.x, z: a.z, y: a.y, cap: a.yaw })
     }
-  const jardin = lieux.filter((l) => l.surface === PARC && !l.couchette).map((l) => ({ surface: l.surface, level: 0, x: l.x, z: l.z, y: 0, cap: l.cap }))
-  return { plan, graphe: grapheEtEntree(plan), toiles, jardin }
+  const jardin = lieux.filter((l) => l.surface === SURFACE_PARC && !l.couchette).map((l) => ({ surface: l.surface, level: 0, x: l.x, z: l.z, y: 0, cap: l.cap }))
+  const circuit = circuitDuJardin()
+  const departs = circuit.flatMap(([x, z], i) => (surfaceAt(plan, x, z, 0) === SURFACE_PARC ? [i] : []))
+  return { plan, graphe: grapheEtEntree(plan), toiles, jardin, circuit, departs }
 }
 
 const choix = <T>(p: Pnj, l: readonly T[]): T => l[Math.floor(hasard(p) * l.length)]
 
 /** Choisit une destination atteignable et le chemin pour y aller ; rien s'il n'y en a pas. */
 function partir(m: Monde, p: Pnj): void {
+  if (p.zone === 'jardin' && m.circuit.length > 1) {
+    // Le point suivant du circuit, dans le sens de marche.
+    const n = m.circuit.length
+    p.etape = (p.etape + p.sens + n) % n
+    p.chemin = [m.circuit[p.etape]]
+    p.activite = 'marche'
+    p.releve = { t: 0, x: p.w.x, z: p.w.z }
+    destinations.delete(p)
+    return
+  }
   const liste = p.zone === 'musee' ? m.toiles : m.jardin
   for (let essai = 0; essai < 6 && liste.length > 0; essai++) {
     const d = choix(p, liste)
@@ -114,7 +144,7 @@ export function pnjInitiaux(m: Monde, combien: { musee: number; jardin: number }
       const n = out.length
       const p: Pnj = {
         n, modele: n % modeles, zone, chemin: [], activite: 'regarde', reste: 0, graine: (graine + n * 7919) >>> 0,
-        w: { level: 0, surface: '', x: 0, z: 0, y: 0, yaw: 0 }, releve: { t: 0, x: 0, z: 0 },
+        w: { level: 0, surface: '', x: 0, z: 0, y: 0, yaw: 0 }, releve: { t: 0, x: 0, z: 0 }, etape: 0, sens: 1,
       }
       // Des places toutes différentes : on avance dans la liste d'un pas premier avec la taille.
       const d = liste[(Math.floor(hasard(p) * liste.length) + i * 37) % liste.length]
@@ -124,7 +154,22 @@ export function pnjInitiaux(m: Monde, combien: { musee: number; jardin: number }
     }
   }
   prendre('musee', m.toiles, combien.musee)
-  prendre('jardin', m.jardin, combien.jardin)
+  if (m.circuit.length > 1 && m.departs.length > 0) {
+    for (let i = 0; i < combien.jardin; i++) {
+      const n = out.length
+      const p: Pnj = {
+        n, modele: n % modeles, zone: 'jardin', chemin: [], activite: 'regarde', reste: 0, graine: (graine + n * 7919) >>> 0,
+        w: { level: 0, surface: SURFACE_PARC, x: 0, z: 0, y: 0, yaw: 0 }, releve: { t: 0, x: 0, z: 0 }, etape: 0, sens: 1,
+      }
+      // Répartis le long de la boucle, dans les deux sens.
+      p.etape = m.departs[Math.floor(((i + hasard(p) * 0.5) / combien.jardin) * m.departs.length) % m.departs.length]
+      p.sens = hasard(p) < 0.5 ? 1 : -1
+      const [x, z] = m.circuit[p.etape]
+      p.w = { level: 0, surface: SURFACE_PARC, x, z, y: 0, yaw: hasard(p) * Math.PI * 2 }
+      p.reste = 1 + hasard(p) * 6
+      out.push(p)
+    }
+  } else prendre('jardin', m.jardin, combien.jardin)
   return out
 }
 
@@ -151,6 +196,14 @@ export function avancerPnj(m: Monde, p: Pnj, dt: number, autres: readonly { x: n
     return
   }
   while (p.chemin.length > 0 && Math.hypot(p.chemin[0][0] - p.w.x, p.chemin[0][1] - p.w.z) < ATTEINT) p.chemin.shift()
+  if (p.chemin.length === 0 && p.zone === 'jardin' && m.circuit.length > 1) {
+    if (hasard(p) < HALTE) {
+      p.activite = 'regarde'
+      p.reste = REGARD[0] + hasard(p) * (REGARD[1] - REGARD[0])
+      if (hasard(p) < DEMI_TOUR) p.sens = p.sens === 1 ? -1 : 1
+    } else partir(m, p)
+    return
+  }
   if (p.chemin.length === 0) {
     // Arrivé : on se tourne vers ce qu'on est venu voir.
     const d = destinations.get(p)

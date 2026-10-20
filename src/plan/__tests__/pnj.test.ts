@@ -50,4 +50,27 @@ describe('les visiteurs PNJ', () => {
     const auMusee = pnj.filter((p) => p.zone === 'musee')
     expect(auMusee.reduce((n, p) => n + arrets.get(p)!, 0)).toBeGreaterThanOrEqual(auMusee.length * 2)
   })
+
+  it('au jardin, ils restent sur le circuit de la visite (jamais à travers arbres et massifs)', () => {
+    const pnj = pnjInitiaux(M, { musee: 0, jardin: 4 }, 8, 3)
+    expect(pnj.every((p) => p.zone === 'jardin')).toBe(true)
+    const segments = M.circuit.map((a, i) => [a, M.circuit[(i + 1) % M.circuit.length]] as const)
+    const ecart = (x: number, z: number) => Math.min(...segments.map(([[ax, az], [bx, bz]]) => {
+      const [dx, dz] = [bx - ax, bz - az]
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1)))
+      return Math.hypot(x - ax - t * dx, z - az - t * dz)
+    }))
+    let pire = 0
+    let parcouru = 0
+    for (let t = 0; t < 240; t += 1 / 20)
+      for (const p of pnj) {
+        const [x0, z0] = [p.w.x, p.w.z]
+        avancerPnj(M, p, 1 / 20, pnj.filter((o) => o !== p).map((o) => ({ x: o.w.x, z: o.w.z, level: o.w.level })))
+        parcouru += Math.hypot(p.w.x - x0, p.w.z - z0)
+        pire = Math.max(pire, ecart(p.w.x, p.w.z))
+      }
+    // Se ranger à droite pour croiser quelqu'un écarte d'un mètre au plus.
+    expect(pire).toBeLessThan(1.2)
+    expect(parcouru).toBeGreaterThan(4 * 60)
+  })
 })
