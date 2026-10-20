@@ -48,6 +48,10 @@
   mix-blend-mode: multiply; opacity: 0; pointer-events: none; }
 .billet-tampon span { display: block; font-variant-numeric: tabular-nums; letter-spacing: .06em; }
 .billet[data-composte] .billet-tampon { opacity: .88; animation: billet-coup 260ms cubic-bezier(.16,1,.3,1) both; }
+/* La pause : le billet déjà composté garde son tampon, sans le rejouer ; il s'efface sans délai à la reprise. */
+.billet[data-pause] .billet-compostage { color: transparent; }
+.billet[data-pause] .billet-tampon { opacity: .88; }
+.billet-voile[data-sortie]:has(.billet[data-pause]:not([data-composte])), .billet-voile[data-sortie]:has(.billet[data-pause]:not([data-composte])) .billet { transition-delay: 0ms; }
 @keyframes billet-coup { from { opacity: 0; scale: 1.35; filter: blur(2px); } to { opacity: .88; scale: 1; filter: blur(0); } }
 @media (max-width: 600px) {
   .billet { grid-template-columns: 1fr;

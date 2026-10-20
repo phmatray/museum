@@ -32,6 +32,7 @@ import { step, type Walker } from '../plan/walk.ts'
 
 import { pret } from './chargement.ts'
 import { partie, publier, reglages, toucher, vrEntree, type Partie } from './etat.ts'
+import { signaler } from './succes.ts'
 import type { PorteVR } from './vr.ts'
 
 const OEIL = 1.62
@@ -239,6 +240,7 @@ export function monterVisiteur(
       if (!entree) {
         // Fin de visite : retour au billet d'accueil.
         curseur = null
+        signaler('visite')
         partie.setState({ tourActive: false, paused: true })
         break
       }

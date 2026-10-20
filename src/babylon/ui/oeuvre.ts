@@ -22,6 +22,7 @@ import { ilYA } from '../../plan/eveil.ts'
 import { CARTEL_BAVETTE } from '../../plan/promenade.ts'
 import { readmeEnBlocs } from '../../plan/vitrines.ts'
 import { catalogue, partie, readme } from '../etat.ts'
+import { signaler } from '../succes.ts'
 import { el, observer, svg } from './dom.ts'
 import { partager } from './partage.ts'
 import './oeuvre.css'
@@ -58,10 +59,12 @@ const chiffres = (o: Artwork) => el('div', { class: 'chiffres' }, `⑂ ${o.forks
 function pied(o: Artwork, cles: readonly string[], titrePartage: string): Node[] {
   const partage = el('button', { type: 'button', title: titrePartage }, el('kbd', {}, 'P'), ' Partager ce tableau')
   partage.addEventListener('click', () => partager(o.key, o.name, cles))
+  const etoile = el('a', { class: 'etoile', href: o.url, target: '_blank', rel: 'noopener', title: 'Ouvre le dépôt sur GitHub : le bouton Star y est à un clic' },
+    el('kbd', {}, 'E'), ' ★ Mettre une étoile', el('span', {}, o.stars.toLocaleString('fr-FR')))
+  etoile.addEventListener('click', () => signaler('etoile'))
   return [
     o.site && el('span', { class: 'site' }, el('kbd', {}, 'Entrée'), ' visiter le site'),
-    el('a', { class: 'etoile', href: o.url, target: '_blank', rel: 'noopener', title: 'Ouvre le dépôt sur GitHub : le bouton Star y est à un clic' },
-      el('kbd', {}, 'E'), ' ★ Mettre une étoile', el('span', {}, o.stars.toLocaleString('fr-FR'))),
+    etoile,
     partage,
   ].filter((n): n is HTMLElement => !!n)
 }
@@ -142,7 +145,10 @@ export function monterOeuvre(racine: HTMLElement, base: string): void {
   addEventListener('keydown', (e) => {
     if (!actif || e.repeat) return
     const { o, defile } = actif
-    if (e.code === 'KeyE') ouvrir(o.url)
+    if (e.code === 'KeyE') {
+      signaler('etoile')
+      ouvrir(o.url)
+    }
     else if (e.code === 'KeyP') partager(o.key, o.name, cles)
     else if (o.site && (SITE.includes(e.code) || (defile && e.code === 'KeyH'))) ouvrir(o.site)
     else if (defile && (e.code === 'PageDown' || e.code === 'PageUp')) defile.scrollBy({ top: (e.code === 'PageDown' ? 0.85 : -0.85) * defile.clientHeight, behavior: 'smooth' })

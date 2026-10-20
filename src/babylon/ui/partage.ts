@@ -6,6 +6,7 @@
  */
 import config from '../../../museum.config.json'
 import { lienVers } from '../../domain/lien.ts'
+import { signaler } from '../succes.ts'
 import { el } from './dom.ts'
 import './partage.css'
 
@@ -32,6 +33,7 @@ export function direPartage(copie: boolean, lien: string): void {
 
 /** Partage la toile `cle` ; `cles`, les clés du catalogue, décident du nom court. */
 export function partager(cle: string, nom: string, cles: readonly string[]): void {
+  signaler('partage')
   // En production, la page `p/<nom>/` du build, qui porte l'aperçu du projet.
   const url = lienVers(cle, cles, `${location.origin}${import.meta.env.BASE_URL}`, import.meta.env.PROD)
   if (matchMedia('(pointer: coarse)').matches && typeof navigator.share === 'function') {

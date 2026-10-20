@@ -59,7 +59,22 @@ describe('accueil', () => {
     expect(lock).toHaveBeenCalledOnce()
   })
 
-  it('« Visite guidée » lance la visite sans verrou, Échap la quitte et ramène le billet focalisé', () => {
+  it('après l’entrée, la pause rouvre le billet composté : « Reprendre la visite », sans nouveau tampon', () => {
+    monter()
+    bouton('Composter').click()
+    vi.advanceTimersByTime(1004)
+    partie.setState({ paused: true })
+    expect(voile().hidden).toBe(false)
+    expect(document.querySelector('article.billet')!.hasAttribute('data-pause')).toBe(true)
+    expect(document.activeElement).toBe(bouton('Reprendre la visite'))
+    expect(document.querySelector('.billet-accroche')!.textContent).toMatch(/pause/)
+    bouton('Reprendre la visite').click()
+    expect(document.querySelector('article.billet')!.hasAttribute('data-composte')).toBe(false)
+    vi.advanceTimersByTime(260)
+    expect(partie.getState().paused).toBe(false)
+  })
+
+  it('« Visite guidée » lance la visite sans verrou, Échap la quitte et ramène le billet de la pause focalisé', () => {
     monter()
     bouton('Visite guidée').click()
     expect(document.querySelector('.billet-tampon')!.textContent).toMatch(/^Visite guidée/)
@@ -70,7 +85,7 @@ describe('accueil', () => {
     touche('Escape')
     expect(partie.getState()).toMatchObject({ paused: true, tourActive: false })
     expect(bouton('Quitter la visite').hidden).toBe(true)
-    expect(document.activeElement).toBe(bouton('Composter'))
+    expect(document.activeElement).toBe(bouton('Reprendre la visite'))
   })
 
   it('le bouton « Quitter la visite » remet en pause', () => {

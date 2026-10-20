@@ -103,6 +103,10 @@ accepted and ignored.
   `recherche()`). `chargement.ts` + `ui/ecranChargement.ts`: the loading screen.
 - `ui/`: native DOM + CSS (accueil, carteEtape, dom `el`/`svg`/`observer`/`themeName`, ecranChargement, minimap,
   mobile, oeuvre, partage, reglages, visite). Text goes in `textContent`, never catalogue data in `innerHTML` (`dom.ts`).
+- Visitor's stamp book: pure rules in `domain/succes.ts` (`SUCCES`, `noter`, `tamponner`), wiring in `succes.ts`
+  (game state → facts, nothing noted before the ticket is punched, `signaler(geste)` for star/share/tour end,
+  localStorage `museum:carnet`), `ui/carnet.ts` (the `<dialog>`, key C, the stamp toast). A new stamp = one `SUCCES`
+  entry plus the fact that earns it.
 - VR: `vr.ts`/`vrEntrees.ts`/`vrRendu.ts` (+ `io/xr.ts`, pure input logic in `domain/vr.ts`): a bare
   `WebXRExperienceHelper` opened in the ticket's gesture, the rig at the walker's feet, `'local-floor'` else
   `'local'`, a per-eye pass attached to the eye cameras (tone mapping, grading, glow, comfort vignette), MSAA 4.

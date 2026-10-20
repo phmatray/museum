@@ -6,7 +6,9 @@
  * Le billet est imprimé du vrai musée (`domain/billet.ts`) : l'accrochage (lu
  * plus tard que le montage, relu à chaque changement de `partie` en pause),
  * les vitrines du catalogue, l'heure figée au montage, le numéro du compteur.
- * Le verrou du pointeur et sa perte (Échap) restent à visiteur.ts.
+ * Le verrou du pointeur et sa perte (Échap) restent à visiteur.ts. Après la première
+ * entrée, une pause rouvre le MÊME billet, déjà composté (`data-pause`) : « Reprendre la
+ * visite », sans nouveau coup de composteur.
  * Le bouton VR n'apparaît qu'une fois la porte (`vr.ts`) résolue : un casque, ou le Cardboard d'un téléphone.
  */
 import '@fontsource/marcellus/latin-400.css'
@@ -24,6 +26,7 @@ import type { Accrochage } from '../../plan/hang.ts'
 import { choisirVitrines } from '../../plan/vitrines.ts'
 import { catalogue, mouvementReduit, partie, recherche } from '../etat.ts'
 import type { PorteVR } from '../vr.ts'
+import { compteDuCarnet, ouvrir as ouvrirCarnet } from './carnet.ts'
 import { el, observer } from './dom.ts'
 
 /** Le coup de composteur, la lecture du tampon, l'effacement du billet (ms). */
@@ -38,6 +41,8 @@ export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: 
   let visite: number | null = null
   let vitrines = 0
   let sortie: 'entree' | 'visite' | null = null
+  /** Le billet a déjà été composté : une pause n'est pas une nouvelle entrée. */
+  let composte = false
 
   const dl = el('dl')
   const absent = el('p', { class: 'billet-absent', hidden: true })
@@ -48,6 +53,8 @@ export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: 
   const bEntrer = el('button', { type: 'button', class: 'billet-entrer', autofocus: true }, 'Composter et entrer')
   const bGuide = el('button', { type: 'button', class: 'billet-guide' }, 'Visite guidée')
   const bVR = el('button', { type: 'button', class: 'billet-guide', hidden: true })
+  // Seulement en pause : le carnet de tampons de la visite en cours (ui/carnet.ts).
+  const bCarnet = el('button', { type: 'button', class: 'billet-guide', hidden: true })
   const consignesVR = el('p', { class: 'billet-consignes', hidden: true })
   const consignes = doigt
     ? el('p', { class: 'billet-consignes' }, 'Pouce gauche pour marcher, glisser à droite pour regarder.')
@@ -55,13 +62,15 @@ export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: 
       el('kbd', {}, 'Z'), el('kbd', {}, 'Q'), el('kbd', {}, 'S'), el('kbd', {}, 'D'), ' ou flèches pour marcher, ',
       el('kbd', {}, 'Maj'), ' pour presser le pas, ', el('kbd', {}, 'Espace'), ' pour sauter, la souris pour regarder, ',
       el('kbd', {}, 'Échap'), ' pour la pause.')
+  const ACCROCHE = 'Les projets GitHub de Philippe Matray, accrochés comme des tableaux dans une ancienne gare.'
+  const accroche = el('p', { class: 'billet-accroche' }, ACCROCHE)
   const article = el('article', { class: 'billet', 'aria-labelledby': 'billet-titre' },
     el('div', { class: 'billet-corps' },
       el('header', {},
         el('h1', { id: 'billet-titre' }, config.name),
-        el('p', { class: 'billet-accroche' }, 'Les projets GitHub de Philippe Matray, accrochés comme des tableaux dans une ancienne gare.')),
+        accroche),
       dl, absent,
-      el('div', { class: 'billet-actions' }, bEntrer, bGuide, bVR),
+      el('div', { class: 'billet-actions' }, bEntrer, bGuide, bVR, bCarnet),
       consignesVR, consignes),
     el('aside', { class: 'billet-talon', 'aria-label': 'Talon du billet' },
       el('div', {}, el('div', { class: 'entree' }, 'ENTRÉE'), el('p', { class: 'tarif' }, '1 personne · gratuit')),
@@ -92,24 +101,39 @@ export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: 
   void laVisite().then((n) => { if (monte) { visite = n; imprimer() } })
   void catalogue(o.base).then((c) => { if (monte && c) { vitrines = choisirVitrines(c.artworks, c.owners).length; imprimer() } })
 
+  /** Le billet de la pause : déjà composté, il propose de reprendre. */
+  const enPause = (v: boolean) => {
+    article.toggleAttribute('data-pause', v)
+    bEntrer.textContent = v ? 'Reprendre la visite' : 'Composter et entrer'
+    accroche.textContent = v ? 'Visite en pause. Votre billet est composté : reprenez là où vous étiez.' : ACCROCHE
+    bCarnet.hidden = !v
+    const [n, total] = compteDuCarnet()
+    bCarnet.textContent = `Carnet de visite · ${n} / ${total}`
+  }
+
   const entrer = (comment: 'entree' | 'visite') => {
     if (sortie) return
     // Le verrou part du geste lui-même ; absent sur iPhone, refusé au toucher : la visite démarre quand même.
     if (comment === 'entree') Promise.resolve(toile.requestPointerLock?.()).catch(() => {})
     sortie = comment
-    texteTampon.data = comment === 'visite' ? 'Visite guidée' : 'Composté'
+    // Reprendre ne recomposte pas : le billet s'efface seulement, le tampon d'entrée reste.
+    const reprise = composte && comment === 'entree'
+    if (!reprise) texteTampon.data = comment === 'visite' ? 'Visite guidée' : 'Composté'
     voile.setAttribute('data-sortie', '')
-    article.setAttribute('data-composte', '')
+    if (!reprise) article.setAttribute('data-composte', '')
     setTimeout(() => {
       // Le billet se réimprime pour la prochaine pause (Échap).
       sortie = null
+      composte = true
       voile.removeAttribute('data-sortie')
       article.removeAttribute('data-composte')
+      enPause(true)
       if (monte) partie.setState(comment === 'visite' ? { tourActive: true, paused: false } : { paused: false })
-    }, mouvementReduit() ? 0 : COUP + LECTURE + EFFACEMENT * 0.7)
+    }, mouvementReduit() ? 0 : reprise ? EFFACEMENT * 0.5 : COUP + LECTURE + EFFACEMENT * 0.7)
   }
   bEntrer.addEventListener('click', () => entrer('entree'))
   bGuide.addEventListener('click', () => entrer('visite'))
+  bCarnet.addEventListener('click', () => ouvrirCarnet())
   // La session s'ouvre dans le geste même : la porte est déjà résolue, rien n'attend entre le clic et elle.
   let porte: Pick<PorteVR, 'mode' | 'entrer'> | null = null
   bVR.addEventListener('click', () => void porte?.entrer().catch((e: unknown) => console.warn('VR refusée', e)))
@@ -138,6 +162,7 @@ export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: 
   const fins = [
     observer(partie, (s) => s.paused, (v) => {
       voile.hidden = !v
+      if (v && composte) enPause(true)
       if (v) bEntrer.focus()
     }),
     observer(partie, (s) => s.tourActive, (v) => { quitter.hidden = !v }),

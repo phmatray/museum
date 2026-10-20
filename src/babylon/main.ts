@@ -74,6 +74,8 @@ import { monterEcranChargement } from './ui/ecranChargement.ts'
 import { monterMinimap } from './ui/minimap.ts'
 import { monterMobile } from './ui/mobile.ts'
 import { monterOeuvre } from './ui/oeuvre.ts'
+import { monterSucces } from './succes.ts'
+import { monterCarnet } from './ui/carnet.ts'
 import { monterReglages } from './ui/reglages.ts'
 import { monterVisite } from './ui/visite.ts'
 import { observer } from './ui/dom.ts'
@@ -123,7 +125,9 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   // L'interface autour de la scène (ui/, son.ts) : le bouton son entre dans le groupe des réglages.
   monterSon(scene, camera)
   const interSon = { bouton: monterBoutonSon(), actif: () => son.getState().actif, basculer: basculerSon, abonner: (f: () => void) => son.subscribe(f) }
-  monterReglages(racine, { toile, son: interSon })
+  // Le carnet de tampons (succes.ts, ui/carnet.ts) : les faits notés dès le compostage, le carnet à côté de la roue.
+  monterSucces(accrochage, enVitrine?.length ?? 0)
+  monterReglages(racine, { toile, son: interSon, carnet: monterCarnet(racine, toile) })
   monterMinimap(racine, accrochage, () => (BAVETTE.monte ? BAVETTE : null))
   monterOeuvre(racine, base)
   monterVisite(racine, accrochage)

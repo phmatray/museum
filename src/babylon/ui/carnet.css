@@ -1,0 +1,58 @@
+/* Le carnet de visite (carnet.ts) : le papier du billet, les tampons violets de son composteur. */
+.carnet { --papier: #f4ecda; --encre: #1c2530; --encre-2: #4a4f55; --violet: #5a3b8f; --filet: rgba(28,37,48,.16);
+  width: min(720px, calc(100vw - 32px)); max-height: min(86vh, 900px); margin: auto; padding: 0; border: 0; border-radius: 6px; overflow: auto; overscroll-behavior: contain;
+  color: var(--encre); font: 400 15px/1.45 var(--sans);
+  background: linear-gradient(175deg, #f8f2e4 0%, var(--papier) 60%, #ece1c8 100%);
+  box-shadow: 0 30px 70px -18px rgba(0,0,0,.6), 0 3px 8px rgba(0,0,0,.28); }
+.carnet[open] { animation: carnet-entree .32s cubic-bezier(.16,1,.3,1) both; }
+@keyframes carnet-entree { from { opacity: 0; transform: translateY(10px) scale(.985); } }
+.carnet::backdrop { background: rgba(12,15,20,.45); }
+.carnet ::selection { background: #d1a54a; color: var(--encre); }
+.carnet header { position: sticky; top: 0; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 22px 18px 16px 28px; background: inherit; border-bottom: 2px dashed rgba(28,37,48,.22); }
+.carnet h2 { margin: 0; font: 400 30px/1.05 var(--serif); letter-spacing: .01em; }
+.carnet-compte { margin: 6px 0 0; color: var(--encre-2); font-variant-numeric: tabular-nums; }
+.carnet-fermer { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 4px; background: transparent; color: var(--encre); cursor: pointer; }
+.carnet-fermer:hover { background: rgba(28,37,48,.08); }
+.carnet-fermer:focus-visible { outline: 2px solid var(--or, #a97c26); outline-offset: 2px; }
+.carnet-pages { padding: 6px 28px 26px; }
+.carnet section { padding-top: 18px; }
+.carnet h3 { margin: 0 0 10px; font-size: 12px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--encre-2); }
+.carnet ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 14px; }
+.carnet .case { display: grid; grid-template-columns: 86px 1fr; align-items: center; gap: 12px; min-height: 64px; }
+.carnet .case p { margin: 0; font-size: 14px; color: var(--encre-2); text-wrap: pretty; }
+.carnet .case.obtenue p { color: var(--encre); }
+.carnet .avancee { font-weight: 600; color: var(--encre); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.carnet .lecteur { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.case-vide { height: 54px; display: grid; place-items: center; border: 1px dashed rgba(28,37,48,.28); border-radius: 3px;
+  font: 400 22px/1 var(--serif); color: rgba(28,37,48,.3); }
+/* L'empreinte : encre violette du composteur, un peu de travers, comme frappée à la main. */
+.tampon-empreinte { display: grid; place-content: center; gap: 2px; min-height: 54px; padding: 6px 8px; box-sizing: border-box; text-align: center;
+  border: 2px solid var(--violet, #5a3b8f); border-radius: 3px; color: var(--violet, #5a3b8f); mix-blend-mode: multiply; rotate: -6deg; opacity: .9; }
+.case:nth-child(3n+2) .tampon-empreinte { rotate: 4deg; }
+.case:nth-child(3n) .tampon-empreinte { rotate: -2deg; }
+.tampon-titre { font: 600 11px/1.15 var(--sans); letter-spacing: .1em; text-transform: uppercase; }
+.tampon-date { font: 600 10px/1 var(--sans); letter-spacing: .04em; font-variant-numeric: tabular-nums; opacity: .85; }
+
+/* L'annonce d'un tampon frappé : un petit carton en haut, l'empreinte qui tombe. */
+.tampon-annonce { --violet: #5a3b8f; position: fixed; top: 16px; left: 50%; translate: -50% 0; z-index: 1600; max-width: calc(100vw - 32px);
+  display: grid; grid-template-columns: 96px 1fr; align-items: center; gap: 14px; padding: 12px 18px 12px 14px; box-sizing: border-box;
+  color: #1c2530; font: 400 14px/1.35 var(--sans); background: linear-gradient(175deg, #f8f2e4 0%, #f4ecda 60%, #ece1c8 100%);
+  border-radius: 6px; box-shadow: 0 14px 34px -10px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.25); pointer-events: none; }
+.tampon-annonce[hidden] { display: none; }
+.tampon-annonce strong { display: block; font: 400 18px/1.2 var(--serif); }
+.tampon-annonce.frappe { animation: annonce-entree 360ms cubic-bezier(.16,1,.3,1) both, annonce-sortie 400ms ease-in 3800ms both; }
+.tampon-annonce.frappe .tampon-empreinte { animation: billet-coup 260ms cubic-bezier(.16,1,.3,1) 220ms both; }
+@keyframes annonce-entree { from { opacity: 0; translate: -50% -10px; } }
+@keyframes annonce-sortie { to { opacity: 0; translate: -50% -6px; } }
+@keyframes billet-coup { from { opacity: 0; scale: 1.35; filter: blur(2px); } to { opacity: .9; scale: 1; filter: blur(0); } }
+
+@media (max-width: 600px) {
+  .carnet { width: 100vw; max-width: 100vw; max-height: 88vh; margin: auto 0 0; border-radius: 12px 12px 0 0; }
+  .carnet header { padding: 18px 12px 12px 20px; }
+  .carnet-pages { padding: 4px 20px 22px; }
+  .carnet ul { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .carnet[open], .tampon-annonce.frappe, .tampon-annonce.frappe .tampon-empreinte { animation: none; }
+}
