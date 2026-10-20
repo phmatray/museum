@@ -22,7 +22,8 @@
  *
  * Le spéculaire seul, comme three : un polynôme sphérique nul tient lieu
  * d'irradiance, le diffus ambiant reste l'hémisphérique et la lumière cuite.
- * ponytail : pas de VR (aucun casque en Babylon pour l'instant).
+ * En VR, les captures en file attendent la fin de la session (celle en cours
+ * s'achève) ; le fondu entre sondes continue (texture procédurale de la scène).
  */
 import { Constants } from '@babylonjs/core/Engines/constants'
 import { ProceduralTexture } from '@babylonjs/core/Materials/Textures/Procedurals/proceduralTexture'
@@ -40,7 +41,7 @@ import type { Plan } from '../plan/types.ts'
 import { NEF, zonesDuVolume, zonesVisibles } from '../plan/visibilite.ts'
 import type { Walker } from '../plan/walk.ts'
 
-import { auCiel, vivant } from './etat.ts'
+import { auCiel, partie, vivant } from './etat.ts'
 import { retrier, toutMontrer } from './visibilite.ts'
 
 /** Côté d'une face : les reflets sont flous, 128 suffit. */
@@ -245,7 +246,7 @@ export function monterReflets(
       enCours = null
     }
     if (file.length === 0 && enCours === null) attentes.splice(0).forEach((f) => f())
-    const cle = enCours ? undefined : file.shift()
+    const cle = enCours || partie.getState().enVR ? undefined : file.shift()
     if (cle !== undefined) {
       if (cle === 'ciel' && ciel && !ciel.charge()) file.push(cle) // le ciel n'est pas encore chargé : plus tard
       else {

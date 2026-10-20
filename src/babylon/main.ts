@@ -10,6 +10,7 @@ import { SceneInstrumentation } from '@babylonjs/core/Instrumentation/sceneInstr
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
 
 import config from '../../museum.config.json'
+import { vrDisponible } from '../io/xr.ts'
 import { qualiteDemandee } from '../scene/qualite.ts'
 import type { Accrochage } from '../plan/hang.ts'
 import { MUSEE } from '../plan/musee.ts'
@@ -66,6 +67,7 @@ import { monterVegetation } from './vegetation.ts'
 import { monterVisibilite, retrier, toutMontrer } from './visibilite.ts'
 import { departDuVisiteur, monterVisiteur } from './visiteur.ts'
 import { monterVitrines } from './vitrines.ts'
+import type { PorteVR } from './vr.ts'
 import { monterAccueil } from './ui/accueil.ts'
 import { monterCarteEtape } from './ui/carteEtape.ts'
 import { monterEcranChargement } from './ui/ecranChargement.ts'
@@ -74,6 +76,7 @@ import { monterMobile } from './ui/mobile.ts'
 import { monterOeuvre } from './ui/oeuvre.ts'
 import { monterReglages } from './ui/reglages.ts'
 import { monterVisite } from './ui/visite.ts'
+import { observer } from './ui/dom.ts'
 
 export async function demarrer(racine: HTMLElement): Promise<void> {
   const toile = document.createElement('canvas')
@@ -85,7 +88,10 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   // L'écran de chargement et le billet d'accueil (ui/) : avant le socle, la visite en pause jusqu'au prêt.
   monterEcranChargement(racine)
   let accrochageCharge: Accrochage | null = null
-  monterAccueil(racine, toile, { accrochage: () => accrochageCharge, base })
+  // La porte de la VR (vr.ts) arrive après le socle ; le billet l'attend pour proposer « En VR » (null : pas de VR ici).
+  let ouvrirVR: (p: Pick<PorteVR, 'mode' | 'entrer'> | null) => void = () => {}
+  const porteVR = new Promise<Pick<PorteVR, 'mode' | 'entrer'> | null>((ok) => (ouvrirVR = ok))
+  monterAccueil(racine, toile, { accrochage: () => accrochageCharge, base, vr: porteVR })
   // La brume et l'éclair (meteo.ts) : greffés sur toute PBRMaterial créée ensuite.
   enregistrerBrume()
   const { engine, scene } = await creerSocle(toile)
@@ -125,6 +131,27 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   monterMobile(racine)
   // Le post-traitement HDR (postTraitement.ts) : avant toute matière, l'image processing quitte les matières pour la passe d'écran.
   monterPostTraitement(scene, camera, qualiteDemandee(recherche()) === 'basse')
+  // La VR (vr.ts), en tâche de fond : sur un téléphone, vrDisponible charge le polyfill Cardboard (la visite n'attend pas).
+  // Montée seulement si elle est possible ici, avec la marche (vrEntrees.ts, visiteur.ts) et le rendu par œil (vrRendu.ts).
+  // Sur WebGPU (un téléphone : le socle n'a pris WebGL2 que pour un casque ou `?vr=`), le bouton recharge en `?vr=1`,
+  // où le socle prend WebGL2 ; le visiteur le presse alors une seconde fois (la session exige un geste).
+  vrDisponible().then(async (mode) => {
+    if (!mode) return ouvrirVR(null)
+    if (engine.isWebGPU) {
+      return ouvrirVR({ mode, entrer: async () => {
+        const u = new URL(location.href)
+        u.searchParams.set('vr', '1')
+        location.replace(u)
+      } })
+    }
+    const vr = (await import('./vr.ts')).monterVR(scene, camera, mode)
+    camera.brancherVR(vr)
+    ;(await import('./vrEntrees.ts')).monterEntreesVR(scene, vr)
+    ;(await import('./vrRendu.ts')).monterRenduVR(scene, vr)
+    ouvrirVR(vr)
+  }).catch((e: unknown) => console.error('VR indisponible', e))
+  // En VR, l'interface DOM se retire sans être démontée (App.tsx) : `[data-vr]` sur la racine (CSS de ui/).
+  observer(partie, (s) => s.enVR, (v) => racine.toggleAttribute('data-vr', v))
   // Les reflets (reflets.ts) : une sonde par salle, l'environnement posé avant la première compilation.
   const reflets = monterReflets(scene, MUSEE, () => camera.walker(), ciel3d)
   // Le marcheur relu sur la caméra (yeux à 1,62 m), pour les couches qui regardent ce qu'il regarde.

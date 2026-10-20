@@ -22,6 +22,8 @@
  *   rendez-vous de `?p=`, visiteur publié (minimap), ce que le regard désigne (toile,
  *   borne, Bavette, étape du journal). `publier(partie, p)` n'écrit que ce qui change
  *   (sûr à chaque image). `toucher` : le joystick et le glissé du doigt, mutables.
+ *   `enVR` : une session VR ouverte (vr.ts) ; `vrEntree` : ce que les manettes ou le
+ *   Cardboard demandent à la marche, et la vignette de confort, mutables (gameStore.vrEntree).
  * - `changerReglages(p)` : écrit les réglages (et localStorage) ; `demarrerCycle`
  *   republie alors le ciel, la saison et la météo s'ils en dépendent.
  */
@@ -180,6 +182,8 @@ export interface Partie {
   borne: string | null
   bavette: boolean
   etape: string | null
+  /** Une session VR est ouverte (vr.ts) : le casque tient la caméra, l'interface DOM se retire. */
+  enVR: boolean
 }
 export const partie = createStore<Partie>(() => ({
   paused: true,
@@ -191,6 +195,7 @@ export const partie = createStore<Partie>(() => ({
   borne: null,
   bavette: false,
   etape: null,
+  enVR: false,
 }))
 
 /** N'écrit dans `store` que les champs qui changent (rien du tout si aucun) : sûr à chaque image. */
@@ -201,3 +206,9 @@ export function publier<S extends object>(store: { getState(): S; setState(p: Pa
 
 /** Le joystick et le glissé du doigt (ui/mobile.ts) : forward/strafe dans [−1, 1], look en pixels accumulés que le visiteur consomme. */
 export const toucher = { forward: 0, strafe: 0, lookX: 0, lookY: 0 }
+
+/**
+ * La VR (vr.ts) : `avance`/`cote` dans [−1, 1] et `hate` pour la marche, `sansSol` quand l'espace
+ * de référence n'est pas 'local-floor' (l'œil est alors posé à 1,62 m), `confort` la vignette 0-1.
+ */
+export const vrEntree = { avance: 0, cote: 0, hate: false, sansSol: false, confort: 0 }

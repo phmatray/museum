@@ -3,10 +3,11 @@
  * l'écran est un joystick de marche, la droite un glissé de regard. Rien n'est
  * décidé ici : les deux gestes s'écrivent dans `toucher`, que visiteur.ts lit
  * (bornage, 0,002 rad/px, reprise de la main, ignoré en pause). Présent
- * seulement sous un pointeur grossier (useIsMobile) ; la VR Babylon n’est pas portée.
+ * seulement sous un pointeur grossier (useIsMobile), et jamais en VR : un
+ * tapotement Cardboard ne doit pas devenir un pas de joystick.
  */
-import { toucher } from '../etat.ts'
-import { el } from './dom.ts'
+import { partie, toucher } from '../etat.ts'
+import { el, observer } from './dom.ts'
 
 /** Pixels de débattement pour un joystick à fond. */
 const RAYON_JOYSTICK = 50
@@ -65,14 +66,15 @@ export function monterMobile(racine: HTMLElement = document.body): () => void {
   const mq = window.matchMedia('(pointer: coarse)')
   let mobile = mq.matches
   const montrer = () => {
-    couche.hidden = !mobile
+    couche.hidden = !mobile || partie.getState().enVR
     if (couche.hidden) relacher()
   }
   const changer = (e: MediaQueryListEvent) => { mobile = e.matches; montrer() }
   mq.addEventListener('change', changer)
-  montrer()
+  const finVR = observer(partie, (s) => s.enVR, montrer)
 
   return () => {
+    finVR()
     mq.removeEventListener('change', changer)
     couche.remove()
     relacher()

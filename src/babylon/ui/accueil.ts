@@ -7,7 +7,7 @@
  * plus tard que le montage, relu à chaque changement de `partie` en pause),
  * les vitrines du catalogue, l'heure figée au montage, le numéro du compteur.
  * Le verrou du pointeur et sa perte (Échap) restent à visiteur.ts.
- * ponytail : pas de bouton VR, la VR Babylon n'est pas portée (entrerEnVR fermerait la session).
+ * Le bouton VR n'apparaît qu'une fois la porte (`vr.ts`) résolue : un casque, ou le Cardboard d'un téléphone.
  */
 import '@fontsource/marcellus/latin-400.css'
 import '@fontsource/marcellus/latin-ext-400.css'
@@ -23,6 +23,7 @@ import { laVisite } from '../../io/visite.ts'
 import type { Accrochage } from '../../plan/hang.ts'
 import { choisirVitrines } from '../../plan/vitrines.ts'
 import { catalogue, mouvementReduit, partie, recherche } from '../etat.ts'
+import type { PorteVR } from '../vr.ts'
 import { el, observer } from './dom.ts'
 
 /** Le coup de composteur, la lecture du tampon, l'effacement du billet (ms). */
@@ -31,7 +32,7 @@ const LECTURE = 380
 const EFFACEMENT = 520
 
 /** Monte le billet et le bouton de sortie de visite ; rend le démontage (tests). */
-export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: { accrochage: () => Accrochage | null; base: string }): () => void {
+export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: { accrochage: () => Accrochage | null; base: string; vr?: Promise<Pick<PorteVR, 'mode' | 'entrer'> | null> }): () => void {
   const quand = heureDemandee(recherche(), new Date()) ?? new Date()
   const doigt = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
   let visite: number | null = null
@@ -46,6 +47,8 @@ export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: 
   const tampon = el('div', { class: 'billet-tampon', 'aria-hidden': 'true' }, texteTampon, heureTampon)
   const bEntrer = el('button', { type: 'button', class: 'billet-entrer', autofocus: true }, 'Composter et entrer')
   const bGuide = el('button', { type: 'button', class: 'billet-guide' }, 'Visite guidée')
+  const bVR = el('button', { type: 'button', class: 'billet-guide', hidden: true })
+  const consignesVR = el('p', { class: 'billet-consignes', hidden: true })
   const consignes = doigt
     ? el('p', { class: 'billet-consignes' }, 'Pouce gauche pour marcher, glisser à droite pour regarder, toucher le plan pour l’agrandir.')
     : el('p', { class: 'billet-consignes' },
@@ -58,8 +61,8 @@ export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: 
         el('h1', { id: 'billet-titre' }, config.name),
         el('p', { class: 'billet-accroche' }, 'Les projets GitHub de Philippe Matray, accrochés comme des tableaux dans une ancienne gare.')),
       dl, absent,
-      el('div', { class: 'billet-actions' }, bEntrer, bGuide),
-      consignes),
+      el('div', { class: 'billet-actions' }, bEntrer, bGuide, bVR),
+      consignesVR, consignes),
     el('aside', { class: 'billet-talon', 'aria-label': 'Talon du billet' },
       el('div', {}, el('div', { class: 'entree' }, 'ENTRÉE'), el('p', { class: 'tarif' }, '1 personne · gratuit')),
       el('div', { class: 'billet-compostage' }, 'Compostage'),
@@ -107,6 +110,19 @@ export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: 
   }
   bEntrer.addEventListener('click', () => entrer('entree'))
   bGuide.addEventListener('click', () => entrer('visite'))
+  // La session s'ouvre dans le geste même : la porte est déjà résolue, rien n'attend entre le clic et elle.
+  let porte: Pick<PorteVR, 'mode' | 'entrer'> | null = null
+  bVR.addEventListener('click', () => void porte?.entrer().catch((e: unknown) => console.warn('VR refusée', e)))
+  void o.vr?.then((p) => {
+    if (!monte || !p) return
+    porte = p
+    const carton = p.mode === 'cardboard'
+    bVR.textContent = carton ? 'Avec un Cardboard' : 'En VR'
+    consignesVR.textContent = carton
+      ? 'Dans le Cardboard : un tapotement pour marcher droit devant le regard, un autre pour s’arrêter.'
+      : 'Au casque : stick gauche pour marcher (enfoncé pour presser le pas), stick droit pour tourner.'
+    bVR.hidden = consignesVR.hidden = false
+  })
   const finVisite = () => partie.setState({ tourActive: false, paused: true })
   quitter.addEventListener('click', finVisite)
 

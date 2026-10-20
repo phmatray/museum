@@ -78,4 +78,16 @@ describe('commandes tactiles', () => {
     expect(toucher.forward).toBe(0)
     expect(document.body.children.length).toBe(0)
   })
+
+  it('masquée en VR, joystick relâché ; réapparaît à la sortie', () => {
+    media(true)
+    monterMobile()
+    doigt('touchstart', couche(), 1, 200, 500)
+    doigt('touchmove', couche(), 1, 200, 400)
+    partie.setState({ enVR: true })
+    expect(couche().hidden).toBe(true)
+    expect(toucher.forward).toBe(0)
+    partie.setState({ enVR: false })
+    expect(couche().hidden).toBe(false)
+  })
 })

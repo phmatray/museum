@@ -29,8 +29,9 @@ interface Vue {
   /** Bavette posée en (x, z), tournée vers `yaw`, l'action `anim` figée à 0,4 s (`__BAVETTE__`). */
   bavette?: { x: number; z: number; yaw: number; anim: string }
   /** L'interface (vague 5) : `chargement` capturé tôt, `accueil` sans reprendre, `visite` par le bouton du billet,
-   * `reglages` par la roue, `partage` par la touche P devant une toile. */
-  ui?: 'chargement' | 'accueil' | 'visite' | 'reglages' | 'partage'
+   * `reglages` par la roue, `partage` par la touche P devant une toile ; `vr` (vague 6) : le bouton Cardboard du billet
+   * (avec `q: 'vr=cardboard'`), après la pose du visiteur, puisque le gréement prend sa place à l'entrée. */
+  ui?: 'chargement' | 'accueil' | 'visite' | 'reglages' | 'partage' | 'vr'
   /** Téléphone : 390×844, tactile. */
   mobile?: boolean
 }
@@ -70,6 +71,12 @@ const VUES: Vue[] = [
   { nom: 'ui-visite', heure: '15:00', ui: 'visite' },
   { nom: 'ui-mobile', heure: '15:00', mobile: true },
   { nom: 'ui-partage', heure: '15:00', p: 'AspireStrapi', ui: 'partage' },
+  // Vague 6 : la réalité virtuelle (Cardboard du polyfill, forcé sur le bureau).
+  { nom: 'vr-billet', heure: '15:00', q: 'meteo=clair&vr=cardboard', ui: 'accueil' },
+  { nom: 'vr-nuit', heure: '22:00', q: 'meteo=clair&vr=cardboard', ui: 'vr', x: 24, z: 37, y: 0, yaw: 0, pitch: 0 },
+  { nom: 'vr-hall', heure: '15:00', q: 'meteo=clair&vr=cardboard', ui: 'vr', x: 24, z: 37, y: 0, yaw: 0, pitch: 0 },
+  { nom: 'vr-jardin', heure: '15:00', q: 'meteo=clair&vr=cardboard', ui: 'vr', x: 50, z: 65, y: 0, yaw: -0.6, pitch: 0 },
+  { nom: 'vr-oeuvre', heure: '15:00', q: 'meteo=clair&vr=cardboard', ui: 'vr', p: 'AspireStrapi' },
 ]
 const choisies = option('vues')?.split(',')
 
@@ -97,7 +104,7 @@ try {
         continue
       }
       await page.waitForFunction('window.__PLAN__ || window.__BABYLON__', { timeout: 120_000 })
-      const enPause = vue.ui === 'accueil' || vue.ui === 'visite'
+      const enPause = vue.ui === 'accueil' || vue.ui === 'visite' || vue.ui === 'vr'
       if (!enPause) await page.evaluate('(window.__PLAN__ ?? window.__BABYLON__)?.reprendre?.()')
       await page.waitForFunction('window.__PLAN__ ? window.__PLAN__.gl.info.render.frame > 0 : window.__PRET__ === true', { timeout: 120_000 })
       if (vue.x !== undefined) {
@@ -120,6 +127,11 @@ try {
           /* eslint-enable @typescript-eslint/no-explicit-any */
         }, vue, new URL(base).pathname)
         if (erreur) console.error(`  ! ${vue.nom} : ${erreur}`)
+      }
+      // three referme la session tant que sa VRLayer n'est pas branchée : quelques secondes avant le geste.
+      if (vue.ui === 'vr') {
+        await new Promise((r) => setTimeout(r, 3000))
+        await page.click('::-p-text(Avec un Cardboard)')
       }
       // Le temps des GLB, des cartes et des toiles (non bloquants des deux côtés).
       await new Promise((r) => setTimeout(r, 12_000))

@@ -6,7 +6,8 @@
  * Sans three ni React : l'accueil (HTML pur) le lit pour savoir s'il propose la
  * VR, et c'est son bouton qui ouvre la session — DANS le geste du visiteur, sans
  * rien attendre avant, sinon le navigateur la refuse. La scène (`VRLayer`) s'y
- * branche ensuite (`brancherVR`).
+ * branche ensuite (`brancherVR`) ; Babylon (babylon/vr.ts) ouvre lui-même la
+ * session et ne reprend que `vrDisponible` et `permettreGyroscope`.
  *
  * `?vr=cardboard` force le Cardboard sur un ordinateur (pour l'essayer, ou le
  * piloter en test).
@@ -65,14 +66,19 @@ export function vrDisponible(): Promise<ModeVR | null> {
   return disponible
 }
 
+/** La permission du gyroscope (iOS), demandée dans le geste du visiteur ; ailleurs, rien. */
+export function permettreGyroscope(): void {
+  const permission = (globalThis.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> } | undefined)?.requestPermission
+  permission?.call(DeviceOrientationEvent).catch(() => {})
+}
+
 /**
  * Dans le geste du visiteur : la permission du gyroscope (iOS) et la session
  * partent tout de suite, sans attente entre le clic et elles. La scène prend
  * ensuite la session ; sans scène prête, on la referme.
  */
 export function entrerEnVR(): Promise<void> {
-  const permission = (DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> }).requestPermission
-  permission?.().catch(() => {})
+  permettreGyroscope()
   const xr = navigator.xr
   if (xr === undefined) return Promise.reject(new Error('pas de WebXR'))
   return xr

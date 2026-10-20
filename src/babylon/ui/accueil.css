@@ -68,3 +68,5 @@
 /* Le bouton de sortie de la visite guidée (TourExitButton). */
 .visite-quitter { position: fixed; top: 1rem; right: 1rem; padding: .5rem 1rem; background: rgba(12,15,20,.6); color: white;
   border: 1px solid rgba(255,255,255,.3); border-radius: 4px; cursor: pointer; z-index: 1000; }
+/* En VR le casque tient la caméra : l'interface DOM se retire (main.ts pose data-vr sur la racine), la boîte de partage aussi. */
+[data-vr] > :not(canvas), body:has([data-vr]) > [data-partage] { display: none !important; }

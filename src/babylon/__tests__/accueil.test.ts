@@ -111,4 +111,46 @@ describe('accueil', () => {
     partie.setState({ rendezVous: null })
     expect(document.querySelector('dl')!.textContent).toContain('2 œuvres · 1 salle, un jardin, un chat')
   })
+
+  describe('bouton VR', () => {
+    const vr = (o: Parameters<typeof monterAccueil>[2]['vr']) => {
+      toile = document.createElement('canvas')
+      fin = monterAccueil(document.body, toile, { accrochage: () => null, base: '/', vr: o })
+    }
+    const bVR = () => document.querySelectorAll<HTMLButtonElement>('.billet-actions button')[2]
+    const consignesVR = () => document.querySelectorAll<HTMLElement>('.billet-consignes')[0]
+
+    it('absent sans porte ou avec une porte nulle', async () => {
+      vr(undefined)
+      expect(bVR().hidden).toBe(true)
+      fin()
+      document.body.replaceChildren()
+      vr(Promise.resolve(null))
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(bVR().hidden).toBe(true)
+      expect(consignesVR().hidden).toBe(true)
+    })
+
+    it('Cardboard : libellé, consignes de three, le clic ouvre la session sans attendre', async () => {
+      const entrer = vi.fn(() => Promise.resolve())
+      vr(Promise.resolve({ mode: 'cardboard', entrer }))
+      await vi.waitFor(() => expect(bVR().hidden).toBe(false))
+      expect(bVR().textContent).toBe('Avec un Cardboard')
+      expect(consignesVR().hidden).toBe(false)
+      expect(consignesVR().textContent).toBe('Dans le Cardboard : un tapotement pour marcher droit devant le regard, un autre pour s’arrêter.')
+      bVR().click()
+      expect(entrer).toHaveBeenCalledOnce()
+    })
+
+    it('casque : « En VR » et ses consignes ; un refus est seulement signalé', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      vr(Promise.resolve({ mode: 'natif', entrer: () => Promise.reject(new Error('non')) }))
+      await vi.waitFor(() => expect(bVR().textContent).toBe('En VR'))
+      expect(consignesVR().textContent).toBe('Au casque : stick gauche pour marcher (enfoncé pour presser le pas), stick droit pour tourner.')
+      bVR().click()
+      await vi.waitFor(() => expect(warn).toHaveBeenCalledWith('VR refusée', expect.any(Error)))
+      warn.mockRestore()
+    })
+  })
 })

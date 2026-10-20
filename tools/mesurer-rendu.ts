@@ -2,7 +2,9 @@
  * La mesure de rendu : three et Babylon au même point de vue (l'arrivée), même
  * heure, même fenêtre, pour comparer le temps par image, les appels et les triangles.
  *
- *   node tools/mesurer-rendu.ts [http://localhost:5173/] [--ombres=0] [--gpu=0] [--p=<dépôt>] [--lieu=x,z,yaw] [--captures=<dossier>]
+ *   node tools/mesurer-rendu.ts [http://localhost:5173/] [--ombres=0] [--gpu=0] [--p=<dépôt>] [--lieu=x,z,yaw] [--vr=1] [--captures=<dossier>]
+ *
+ * `--vr=1` : dans le Cardboard du polyfill (`?vr=cardboard`, bouton du billet), les deux yeux comptés ensemble.
  *
  * `--lieu=50,65,-0.6` : le visiteur posé au sol en (x, z), tourné vers `yaw` (0 = nord),
  * dans les deux moteurs (au milieu du jardin, par exemple), comme comparer-captures.ts.
@@ -22,7 +24,7 @@ const option = (nom: string) => args.find((a) => a.startsWith(`--${nom}=`))?.spl
 const base = args.find((a) => !a.startsWith('--')) ?? 'http://localhost:5173/'
 const captures = option('captures') ?? tmpdir()
 // `--p=<dépôt>` : devant cette toile plutôt qu'à l'arrivée (pour juger les tableaux sur la capture).
-const suffixe = (option('ombres') === '0' ? '&ombres=0' : '') + (option('gpu') === '0' ? '&gpu=0' : '') + (option('p') ? `&p=${option('p')}` : '')
+const suffixe = (option('ombres') === '0' ? '&ombres=0' : '') + (option('gpu') === '0' ? '&gpu=0' : '') + (option('p') ? `&p=${option('p')}` : '') + (option('vr') === '1' ? '&vr=cardboard' : '')
 const commun = `?qualite=haute&heure=15:00&meteo=clair${suffixe}`
 const IMAGES = 300
 const lieu = option('lieu')?.split(',').map(Number)
@@ -44,7 +46,8 @@ try {
     await page.goto(base + commun + (moteur === 'babylon' ? '&moteur=babylon' : ''), { waitUntil: 'load' })
     await page.waitForFunction('window.__PLAN__ || window.__BABYLON__', { timeout: 120_000 })
     // three ouvre en pause derrière l'écran de chargement : on reprend la visite sans clic.
-    await page.evaluate('(window.__PLAN__ ?? window.__BABYLON__)?.reprendre?.()')
+    // En VR, le billet reste : c'est son bouton qui ouvre la session.
+    if (option('vr') !== '1') await page.evaluate('(window.__PLAN__ ?? window.__BABYLON__)?.reprendre?.()')
     // Le hook arrive avant la première image de three (une dizaine de secondes de compilation) :
     // on attend qu'il dessine vraiment, ou que la scène Babylon soit prête, puis 3 s de chauffe.
     await page.waitForFunction('window.__PLAN__ ? window.__PLAN__.gl.info.render.frame > 0 : window.__PRET__ === true', { timeout: 120_000 })
@@ -68,6 +71,10 @@ try {
       await new Promise((r) => setTimeout(r, 12_000))
     }
     await new Promise((r) => setTimeout(r, 3000))
+    if (option('vr') === '1') {
+      await page.click('::-p-text(Avec un Cardboard)')
+      await new Promise((r) => setTimeout(r, 6000))
+    }
 
     const { images, gpu } = await page.evaluate((n) => new Promise<{ images: Image[]; gpu: string }>((fin) => {
       // Les outils n'ont pas la lib DOM : `globalThis` est la fenêtre de la page.

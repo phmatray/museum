@@ -24,12 +24,14 @@
  * du seuil du bloom, pas de flou Kawase des rayons.
  */
 import type { Camera } from '@babylonjs/core/Cameras/camera'
+import type { AbstractEngine } from '@babylonjs/core/Engines/abstractEngine'
 import { Constants } from '@babylonjs/core/Engines/constants'
 // Le prepass rend dans plusieurs cibles à la fois (MRT) : extensions des deux moteurs, absentes du cœur importé.
 import '@babylonjs/core/Engines/Extensions/engine.multiRender'
 import '@babylonjs/core/Engines/WebGPU/Extensions/engine.multiRender'
 import { ShaderStore } from '@babylonjs/core/Engines/shaderStore'
 import { ShaderLanguage } from '@babylonjs/core/Materials/shaderLanguage'
+import type { Effect } from '@babylonjs/core/Materials/effect'
 import { Texture } from '@babylonjs/core/Materials/Textures/texture'
 import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { FxaaPostProcess } from '@babylonjs/core/PostProcesses/fxaaPostProcess'
@@ -115,10 +117,15 @@ fn main(input: FragmentInputs) -> FragmentOutputs {
 
 // L'entrée est la sortie de l'image processing de Babylon (pow 1/2,2, saturée) : défaite par pow 2,2,
 // l'étalonnage et la vignette se font en linéaire comme dans three, la sortie en sRGB exact.
-ShaderStore.ShadersStore.etalonnagePixelShader = `
+// `vr` ('etalonnageVR', vrRendu.ts) : sans rayons, et la vignette de confort de SortieVR (VRLayer.tsx) par œil à la place de celle d'écran.
+export function etalonnage(vr: boolean): void {
+  const nom = vr ? 'etalonnageVRPixelShader' : 'etalonnagePixelShader'
+  const vignette = `smoothstep(0.8, ${VIGNETTE.offset} * 0.799, distance(vUV, vec2(0.5)) * (${VIGNETTE.darkness} + ${VIGNETTE.offset}))`
+  const confort = (u: string) => `(1.0 - ${u} * smoothstep(0.52 - 0.22 * ${u}, 0.62, length((vUV - 0.5) * vec2(1.0, 1.15))))`
+  ShaderStore.ShadersStore[nom] = `
 varying vec2 vUV;
 uniform sampler2D textureSampler;
-uniform sampler2D rayons;
+${vr ? 'uniform float confort;' : 'uniform sampler2D rayons;'}
 uniform vec3 lift;
 uniform vec3 gamma;
 uniform vec3 gain;
@@ -128,8 +135,7 @@ uniform float nuit;
 ${SRGB_GLSL}
 void main(void) {
   vec3 brut = pow(texture2D(textureSampler, vUV).rgb, vec3(2.2));
-  vec3 r = texture2D(rayons, vUV).rgb;
-  brut = clamp(1.0 - (1.0 - brut) * (1.0 - r), 0.0, 1.0);
+  ${vr ? '' : 'vec3 r = texture2D(rayons, vUV).rgb;\n  brut = clamp(1.0 - (1.0 - brut) * (1.0 - r), 0.0, 1.0);'}
   vec3 c = gain * brut + lift * (1.0 - brut);
   c = pow(max(c, 0.0), 1.0 / gamma);
   vec3 s = sqrt(c);
@@ -139,16 +145,14 @@ void main(void) {
   c = max(mix(vec3(l), c, saturation), 0.0);
   float source = nuit * smoothstep(0.12, 0.45, max(brut.r, max(brut.g, brut.b)));
   c = mix(c, max(c, brut), source);
-  float d = distance(vUV, vec2(0.5));
-  c *= smoothstep(0.8, ${VIGNETTE.offset} * 0.799, d * (${VIGNETTE.darkness} + ${VIGNETTE.offset}));
+  c *= ${vr ? confort('confort') : vignette};
   gl_FragColor = vec4(srgb(c), 1.0);
 }`
-ShaderStore.ShadersStoreWGSL.etalonnagePixelShader = `
+  ShaderStore.ShadersStoreWGSL[nom] = `
 varying vUV: vec2f;
 var textureSamplerSampler: sampler;
 var textureSampler: texture_2d<f32>;
-var rayonsSampler: sampler;
-var rayons: texture_2d<f32>;
+${vr ? 'uniform confort: f32;' : 'var rayonsSampler: sampler;\nvar rayons: texture_2d<f32>;'}
 uniform lift: vec3f;
 uniform gamma: vec3f;
 uniform gain: vec3f;
@@ -159,8 +163,7 @@ ${SRGB_WGSL}
 @fragment
 fn main(input: FragmentInputs) -> FragmentOutputs {
   var brut = pow(textureSample(textureSampler, textureSamplerSampler, input.vUV).rgb, vec3f(2.2));
-  let r = textureSample(rayons, rayonsSampler, input.vUV).rgb;
-  brut = clamp(1.0 - (1.0 - brut) * (1.0 - r), vec3f(0.0), vec3f(1.0));
+  ${vr ? '' : 'let r = textureSample(rayons, rayonsSampler, input.vUV).rgb;\n  brut = clamp(1.0 - (1.0 - brut) * (1.0 - r), vec3f(0.0), vec3f(1.0));'}
   var c = uniforms.gain * brut + uniforms.lift * (1.0 - brut);
   c = pow(max(c, vec3f(0.0)), 1.0 / uniforms.gamma);
   var s = sqrt(c);
@@ -170,15 +173,47 @@ fn main(input: FragmentInputs) -> FragmentOutputs {
   c = max(mix(vec3f(l), c, uniforms.saturation), vec3f(0.0));
   let source = uniforms.nuit * smoothstep(0.12, 0.45, max(brut.r, max(brut.g, brut.b)));
   c = mix(c, max(c, brut), source);
-  let d = distance(input.vUV, vec2f(0.5));
-  c *= smoothstep(0.8, ${VIGNETTE.offset} * 0.799, d * (${VIGNETTE.darkness} + ${VIGNETTE.offset}));
+  c *= ${(vr ? confort('uniforms.confort') : vignette).replaceAll('vec2(', 'vec2f(').replaceAll('vUV', 'input.vUV')};
   fragmentOutputs.color = vec4f(srgb(c), 1.0);
 }`
+}
+etalonnage(false)
+
+/** Les uniformes de l'étalonnage, lus dans le ciel vivant ; il ne change qu'avec le ciel (toutes les 30 s au plus) : recalculé seulement alors. */
+export function appliquerEtalonnage(e: Effect): void {
+  const { ciel } = vivant.getState()
+  if (ciel !== pour) [pour, t] = [ciel, etalonnageDuCiel(ciel)]
+  e.setFloat3('lift', ...t.lift)
+  e.setFloat3('gamma', ...t.gamma)
+  e.setFloat3('gain', ...t.gain)
+  e.setFloat('saturation', t.saturation)
+  e.setFloat('contraste', t.contraste)
+  e.setFloat('nuit', 1 - ciel.jour)
+}
+let pour: unknown = null
+let t = etalonnageDuCiel(vivant.getState().ciel)
 
 // ponytail: `basse` (moins d'AO et de rayons) est lu au montage : la qualité choisie dans les réglages ne le change qu'au rechargement (la densité de pixels, elle, suit tout de suite, qualite.ts).
+/** Le bloom et le rendu des tons, à l'écran comme dans chaque œil (vrRendu.ts). */
+export function bloomEtTons(nom: string, scene: Scene, cameras: Camera[]): DefaultRenderingPipeline {
+  const rendu = new DefaultRenderingPipeline(nom, true, scene, cameras)
+  rendu.bloomEnabled = true
+  // Babylon compare luma(couleur × exposition) à seuil^(1/2,2) : ce seuil-ci revient au 1 linéaire de three, avant l'exposition.
+  rendu.bloomThreshold = (BLOOM.seuil * scene.imageProcessingConfiguration.exposure) ** 2.2
+  rendu.bloomWeight = BLOOM.poids
+  rendu.bloomKernel = 64
+  rendu.bloomScale = 0.5
+  rendu.imageProcessingEnabled = true
+  rendu.fxaaEnabled = false
+  return rendu
+}
+
+/** La langue des passes maison : WGSL sur WebGPU, GLSL sur WebGL2. */
+export const langueDe = (engine: AbstractEngine): ShaderLanguage => (engine.isWebGPU ? ShaderLanguage.WGSL : ShaderLanguage.GLSL)
+
 export function monterPostTraitement(scene: Scene, camera: Camera, basse: boolean): void {
   const engine = scene.getEngine()
-  const langue = engine.isWebGPU ? ShaderLanguage.WGSL : ShaderLanguage.GLSL
+  const langue = langueDe(engine)
 
   // 1) L'AO : demi-flottant, sinon l'HDR serait écrasé avant le bloom ; le prepass (pas de GeometryBufferRenderer : un rendu de scène de plus).
   const ao = new SSAO2RenderingPipeline('ao', scene, { ssaoRatio: 0.5, blurRatio: 0.5 }, [camera], false, Constants.TEXTURETYPE_HALF_FLOAT)
@@ -193,15 +228,7 @@ export function monterPostTraitement(scene: Scene, camera: Camera, basse: boolea
   ao.base = 0
 
   // 2) Bloom et rendu des tons (scene.imageProcessingConfiguration : Neutral 1,15, sans la vignette de Babylon, qui passe avant la courbe).
-  const rendu = new DefaultRenderingPipeline('rendu', true, scene, [camera])
-  rendu.bloomEnabled = true
-  // Babylon compare luma(couleur × exposition) à seuil^(1/2,2) : ce seuil-ci revient au 1 linéaire de three, avant l'exposition.
-  rendu.bloomThreshold = (BLOOM.seuil * scene.imageProcessingConfiguration.exposure) ** 2.2
-  rendu.bloomWeight = BLOOM.poids
-  rendu.bloomKernel = 64
-  rendu.bloomScale = 0.5
-  rendu.imageProcessingEnabled = true
-  rendu.fxaaEnabled = false
+  const rendu = bloomEtTons('rendu', scene, [camera])
 
   // 3) Les rayons. Une passe dessine dans la texture d'ENTRÉE de la suivante, à la taille de celle-ci : le ratio des
   // rayons (1) est donc celui de l'image tone mappée qu'ils reçoivent, et leur demi-résolution (le quart en basse
@@ -230,24 +257,14 @@ export function monterPostTraitement(scene: Scene, camera: Camera, basse: boolea
   }
 
   // 4) Étalonnage, rayons en SCREEN, vignette, sRGB. L'image est celle du rendu des tons, pas celle des rayons.
-  const etalonnage = new PostProcess('etalonnage', 'etalonnage', ['lift', 'gamma', 'gain', 'saturation', 'contraste', 'nuit'], ['rayons'], basse ? 0.25 : 0.5, camera,
+  const passeEtalonnage = new PostProcess('etalonnage', 'etalonnage', ['lift', 'gamma', 'gain', 'saturation', 'contraste', 'nuit'], ['rayons'], basse ? 0.25 : 0.5, camera,
     Texture.BILINEAR_SAMPLINGMODE, engine, false, null, Constants.TEXTURETYPE_UNSIGNED_BYTE, undefined, undefined, false, undefined, langue)
-  etalonnage.externalTextureSamplerBinding = true
-  // L'étalonnage ne change qu'avec le ciel (toutes les 30 s au plus) : recalculé seulement alors.
-  let pour: unknown = null
-  let t = etalonnageDuCiel(vivant.getState().ciel)
-  etalonnage.onApply = (e) => {
+  passeEtalonnage.externalTextureSamplerBinding = true
+  passeEtalonnage.onApply = (e) => {
     // Relu à chaque image : le pipeline recrée sa passe à chaque reconstruction.
     e.setTextureFromPostProcessOutput('textureSampler', rendu.imageProcessing)
     e.setTextureFromPostProcessOutput('rayons', rayons)
-    const { ciel } = vivant.getState()
-    if (ciel !== pour) [pour, t] = [ciel, etalonnageDuCiel(ciel)]
-    e.setFloat3('lift', ...t.lift)
-    e.setFloat3('gamma', ...t.gamma)
-    e.setFloat3('gain', ...t.gain)
-    e.setFloat('saturation', t.saturation)
-    e.setFloat('contraste', t.contraste)
-    e.setFloat('nuit', 1 - ciel.jour)
+    appliquerEtalonnage(e)
   }
 
   // 5) L'anticrénelage, sur l'image finie.

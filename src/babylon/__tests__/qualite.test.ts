@@ -2,6 +2,7 @@ import { NullEngine } from '@babylonjs/core/Engines/nullEngine'
 import { Scene } from '@babylonjs/core/scene'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
+import { partie } from '../etat.ts'
 import { monterQualite, verdictImages } from '../qualite.ts'
 
 describe('qualite', () => {
@@ -35,6 +36,24 @@ describe('qualite', () => {
     // 20 im/s : 10 fenêtres de 250 ms, puis le verdict.
     for (let i = 0; i < 60; i++) image(50)
     expect(pose).toHaveBeenLastCalledWith(1 / 0.75)
+    vi.unstubAllGlobals()
+  })
+
+  it('se tient tranquille en VR', () => {
+    vi.stubGlobal('devicePixelRatio', 1)
+    const engine = new NullEngine()
+    const pose = vi.spyOn(engine, 'setHardwareScalingLevel')
+    const scene = new Scene(engine)
+    monterQualite(engine, scene, () => null).demarrer()
+    let t = 0
+    vi.spyOn(performance, 'now').mockImplementation(() => t)
+    partie.setState({ enVR: true })
+    for (let i = 0; i < 60; i++) {
+      t += 50
+      scene.onBeforeRenderObservable.notifyObservers(scene)
+    }
+    expect(pose).toHaveBeenCalledTimes(1)
+    partie.setState({ enVR: false })
     vi.unstubAllGlobals()
   })
 

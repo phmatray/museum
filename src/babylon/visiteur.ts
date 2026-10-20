@@ -9,6 +9,11 @@
  * PointerLockCamera de three : la perte du pointeur verrouillé met en pause ;
  * pendant la visite guidée, une touche de marche, un clic sur la scène ou le
  * doigt rendent la main sur place.
+ *
+ * En VR (`brancherVR`, `partie.enVR`) : la marche suit `vrEntree` (vrEntrees.ts) vers
+ * où regarde la tête, le gréement de la caméra XR est posé au pied du marcheur, et
+ * la FreeCamera recopie la tête à chaque image (les couches qui la lisent, tri par
+ * salle compris, voient ce que voit le casque), avec un champ large pour les deux yeux.
  */
 import { FreeCamera } from '@babylonjs/core/Cameras/freeCamera'
 import { Vector3 } from '@babylonjs/core/Maths/math.vector'
@@ -19,13 +24,15 @@ import { projetDemande, resoudre } from '../domain/lien.ts'
 import { arriveeDevant, cibleDe, type Arrivee } from '../plan/arrivee.ts'
 import type { Accrochage } from '../plan/hang.ts'
 import { MUSEE } from '../plan/musee.ts'
+import { capDuRegard } from '../domain/vr.ts'
 import { surfaceAt } from '../plan/rules.ts'
 import { VISITE, avancer, capVers, type Curseur } from '../plan/tour.ts'
 import type { Plan } from '../plan/types.ts'
 import { step, type Walker } from '../plan/walk.ts'
 
 import { pret } from './chargement.ts'
-import { partie, publier, reglages, toucher, type Partie } from './etat.ts'
+import { partie, publier, reglages, toucher, vrEntree, type Partie } from './etat.ts'
+import type { PorteVR } from './vr.ts'
 
 const OEIL = 1.62
 /** Radians par pixel, souris (multipliée par le réglage) et doigt (tel quel, comme three). */
@@ -36,6 +43,8 @@ const PAUSE_VISITE = 4
 const TAUX_REGARD = 3.5
 /** Les touches qui font marcher ou sauter : pendant la visite guidée, elles la font cesser. */
 const TOUCHES_DE_MARCHE = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'])
+/** Champ vertical de la FreeCamera en VR (rad) : il couvre les deux yeux, sinon le tri par salle (visibilite.ts) retire ce que voit l'autre œil. */
+const CHAMP_VR = 1.9
 const borne = (v: number, a = 1) => Math.max(-a, Math.min(a, v))
 
 /**
@@ -72,13 +81,15 @@ function reprendreLaMain(toile?: HTMLCanvasElement) {
  * `toucher` (ui/mobile.ts) et la visite guidée. `placer` téléporte le visiteur, même en pause (captures
  * comparées, `tools/comparer-captures.ts`) ; `walker` rend le marcheur courant, surface comprise.
  */
-export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: Arrivee): FreeCamera & { placer(a: Arrivee): void; walker(): Walker } {
+export function monterVisiteur(
+  scene: Scene, toile: HTMLCanvasElement, depart: Arrivee,
+): FreeCamera & { placer(a: Arrivee): void; walker(): Walker; brancherVR(p: PorteVR): void } {
   const camera = new FreeCamera('visiteur', new Vector3(depart.x, depart.y + OEIL, depart.z), scene)
   camera.inputs.clear()
   camera.minZ = 0.1
   camera.maxZ = 1000
-  // Le champ de vision du réglage (vertical, comme three), suivi en direct.
-  const champ = () => (camera.fov = (reglages.getState().champ * Math.PI) / 180)
+  // Le champ de vision du réglage (vertical, comme three), suivi en direct ; large en VR.
+  const champ = () => (camera.fov = partie.getState().enVR ? CHAMP_VR : (reglages.getState().champ * Math.PI) / 180)
   champ()
   reglages.subscribe((r, a) => r.champ !== a.champ && champ())
 
@@ -97,8 +108,25 @@ export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: A
   let regard = depart.yaw
   let w: Walker = { level: depart.level, surface: depart.surface, x: depart.x, z: depart.z, y: depart.y, yaw: depart.yaw }
   let saut = AU_SOL
+  let porte: PorteVR | null = null
+  // Où regarde la tête : un seul vecteur, relu à chaque image en VR.
+  const devant = Vector3.Forward(true)
+  const regardTete = new Vector3()
+  /** La caméra XR (la tête), seulement en VR. */
+  const tete = () => (partie.getState().enVR ? porte?.xr()?.camera : null) ?? null
   const poser = (publie = true) => {
-    camera.position.set(w.x, w.y + OEIL + saut.h, w.z)
+    const xr = tete()
+    if (xr && porte) {
+      // La hauteur vient du casque en local-floor ; sans sol (Cardboard), le gréement porte l'œil.
+      porte.gree.position.set(w.x, w.y + (vrEntree.sansSol ? OEIL : 0), w.z)
+      porte.gree.computeWorldMatrix(true)
+      xr.getViewMatrix(true)
+      camera.position.copyFrom(xr.globalPosition)
+      xr.getDirectionToRef(devant, regardTete)
+      const d = regardTete
+      regard = capDuRegard(d.x, d.z)
+      pitch = Math.asin(borne(d.y))
+    } else camera.position.set(w.x, w.y + OEIL + saut.h, w.z)
     // En main droite, yaw 0 regarde −z et un pitch positif lève les yeux, comme three.
     camera.rotation.set(pitch, regard, 0)
     // Publié seulement s'il a bougé ou tourné : à l'arrêt, la minimap ne se redessine pas.
@@ -114,7 +142,15 @@ export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: A
     pitch = borne(pitch - e.movementY * SENSIBILITE * sensibilite * (inverserY ? -1 : 1), Math.PI / 2)
   })
   document.addEventListener('pointerlockchange', () => {
-    if (document.pointerLockElement !== toile) partie.setState({ paused: true })
+    // En VR, le verrou tombe (plein écran du polyfill, focus du casque) sans que la visite s'arrête.
+    if (document.pointerLockElement !== toile && !partie.getState().enVR) partie.setState({ paused: true })
+  })
+  // Sortie de VR : on garde le cap de la tête, les yeux à l'horizon, au champ du réglage.
+  partie.subscribe((s, a) => {
+    if (s.enVR === a.enVR) return
+    if (!s.enVR) pitch = 0
+    champ()
+    poser()
   })
 
   // La visite guidée : chaque visite repart du départ du plan, où commence son itinéraire.
@@ -161,8 +197,12 @@ export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: A
     }
     if (partie.getState().tourActive && (toucher.forward || toucher.strafe)) reprendreLaMain()
     const visite = partie.getState().tourActive
-    // Clavier et joystick s'additionnent, bornés à [−1, 1] comme l'attend `step`.
-    const input = {
+    const xr = tete()
+    xr?.getDirectionToRef(devant, regardTete)
+    const d = xr ? regardTete : null
+    // En VR, les manettes ou le Cardboard (vrEntrees.ts), vers où regarde la tête. Sinon,
+    // clavier et joystick s'additionnent, bornés à [−1, 1] comme l'attend `step`.
+    const input = d ? { forward: vrEntree.avance, strafe: vrEntree.cote, yaw: capDuRegard(d.x, d.z), hate: vrEntree.hate } : {
       forward: borne(touche('KeyW', 'ArrowUp') - touche('KeyS', 'ArrowDown') + toucher.forward),
       strafe: borne(touche('KeyD', 'ArrowRight') - touche('KeyA', 'ArrowLeft') + toucher.strafe),
       yaw: regard,
@@ -178,7 +218,7 @@ export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: A
       }
       // Toujours le même objet MUSEE : `walk.ts` y accroche son cache de murs.
       w = step(MUSEE, w, entree, PAS_FIXE)
-      saut = sauter(saut, !visite && touche('Space') > 0, PAS_FIXE)
+      saut = sauter(saut, !visite && !xr && touche('Space') > 0, PAS_FIXE)
     }
     if (visite) {
       // Le regard rejoint le cap de la marche, amorti et indépendant de la cadence.
@@ -197,5 +237,6 @@ export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: A
       poser()
     },
     walker: () => w,
+    brancherVR: (p: PorteVR) => void (porte = p),
   })
 }

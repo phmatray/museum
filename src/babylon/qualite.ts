@@ -4,13 +4,14 @@
  * Le moniteur reproduit le PerformanceMonitor de drei (réglages par défaut) :
  * une moyenne d'images par seconde toutes les 250 ms, un verdict toutes les
  * 10 moyennes. Il ne tourne qu'une fois le musée prêt (`demarrer()`) et jamais
- * sous `?qualite=haute|basse` (ou le réglage « Qualité »).
+ * sous `?qualite=haute|basse` (ou le réglage « Qualité »), ni en VR : la densité de
+ * l'écran ne touche pas la couche XR (son échelle est fixée à l'entrée, vr.ts).
  */
 import type { AbstractEngine } from '@babylonjs/core/Engines/abstractEngine'
 import type { Scene } from '@babylonjs/core/scene'
 
 import { ajusterQualite, paliersPour, QUALITE_INITIALE, type QualiteForcee } from '../scene/qualite.ts'
-import { reglages } from './etat.ts'
+import { partie, reglages } from './etat.ts'
 
 const FENETRE = 250
 const MOYENNES = 10
@@ -48,6 +49,8 @@ export function monterQualite(engine: AbstractEngine, scene: Scene, demandee: ()
 
   scene.onBeforeRenderObservable.add(() => {
     if (!pret || forcee) return
+    // En VR, la fenêtre repart à zéro : une moyenne d'avant la session fausserait la première d'après.
+    if (partie.getState().enVR) return void (images = [])
     const t = performance.now()
     images.push(t)
     const ecoule = t - images[0]
