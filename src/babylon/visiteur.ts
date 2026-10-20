@@ -14,7 +14,7 @@ import type { Accrochage } from '../plan/hang.ts'
 import { MUSEE } from '../plan/musee.ts'
 import { surfaceAt } from '../plan/rules.ts'
 import type { Plan } from '../plan/types.ts'
-import { step } from '../plan/walk.ts'
+import { step, type Walker } from '../plan/walk.ts'
 
 const OEIL = 1.62
 const SENSIBILITE = 0.002
@@ -39,9 +39,10 @@ export function departDuVisiteur(plan: Plan, accrochage: Accrochage | null, rech
 
 /**
  * La caméra du visiteur, menée par le clavier (codes positionnels : ZQSD en AZERTY) et la souris verrouillée.
- * `placer` téléporte le visiteur (captures comparées, `tools/comparer-captures.ts`).
+ * `placer` téléporte le visiteur (captures comparées, `tools/comparer-captures.ts`) ; `walker` rend le
+ * marcheur courant, surface comprise (la promenade de Bavette la lit).
  */
-export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: Arrivee): FreeCamera & { placer(a: Arrivee): void } {
+export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: Arrivee): FreeCamera & { placer(a: Arrivee): void; walker(): Walker } {
   const camera = new FreeCamera('visiteur', new Vector3(depart.x, depart.y + OEIL, depart.z), scene)
   camera.inputs.clear()
   camera.fov = (75 * Math.PI) / 180
@@ -56,7 +57,7 @@ export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: A
 
   toile.onclick = () => { Promise.resolve(toile.requestPointerLock()).catch(() => {}) }
   let { pitch } = depart
-  let w = { level: depart.level, surface: depart.surface, x: depart.x, z: depart.z, y: depart.y, yaw: depart.yaw }
+  let w: Walker = { level: depart.level, surface: depart.surface, x: depart.x, z: depart.z, y: depart.y, yaw: depart.yaw }
   addEventListener('mousemove', (e) => {
     if (document.pointerLockElement !== toile) return
     w.yaw -= e.movementX * SENSIBILITE
@@ -83,5 +84,6 @@ export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: A
     placer: (a: Arrivee) => {
       ;({ pitch, ...w } = a)
     },
+    walker: () => w,
   })
 }

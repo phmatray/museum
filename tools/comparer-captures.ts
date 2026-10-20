@@ -23,7 +23,11 @@ const dossier = option('dossier') ?? join(tmpdir(), 'comparaison')
 mkdirSync(dossier, { recursive: true })
 
 /** Un point de vue : yaw 0 regarde le nord (−z), π/2 l'ouest ; `y` est le plancher cherché. Sans `x`, l'arrivée de l'adresse. */
-interface Vue { nom: string; heure: string; x?: number; z?: number; y?: number; yaw?: number; pitch?: number; p?: string }
+interface Vue {
+  nom: string; heure: string; x?: number; z?: number; y?: number; yaw?: number; pitch?: number; p?: string
+  /** Bavette posée en (x, z), tournée vers `yaw`, l'action `anim` figée à 0,4 s (`__BAVETTE__`). */
+  bavette?: { x: number; z: number; yaw: number; anim: string }
+}
 const VUES: Vue[] = [
   { nom: 'arrivee', heure: '15:00', x: 24, z: 37, y: 0, yaw: 0, pitch: 0.05 },
   { nom: 'arrivee-nuit', heure: '22:00', x: 24, z: 37, y: 0, yaw: 0, pitch: 0.05 },
@@ -38,6 +42,13 @@ const VUES: Vue[] = [
   { nom: 'constellation', heure: '23:00', x: 24, z: 30, y: 0, yaw: 0, pitch: 0.55 },
   { nom: 'cloche', heure: '15:00', x: 24, z: 24, y: 0, yaw: 0, pitch: 0.5 },
   { nom: 'chantier', heure: '15:00', x: 7, z: 59.5, y: 0, yaw: 0, pitch: 0 },
+  // Vague 3 : le jardin.
+  { nom: 'jardin', heure: '15:00', x: 50, z: 65, y: 0, yaw: -0.6, pitch: -0.05 },
+  { nom: 'jardin-couchant', heure: '20:30', x: 50, z: 65, y: 0, yaw: -0.6, pitch: -0.05 },
+  { nom: 'jardin-facade', heure: '15:00', x: 44, z: 78, y: 0, yaw: 0.45, pitch: 0.12 },
+  { nom: 'ruisseau', heure: '15:00', x: 72, z: 20, y: 0, yaw: -0.56, pitch: -0.25 },
+  { nom: 'grands-arbres', heure: '15:00', x: 20, z: 66, y: 0, yaw: 1.6, pitch: 0.22 },
+  { nom: 'bavette', heure: '15:00', x: 30, z: 63, y: 0, yaw: 0, pitch: -0.35, bavette: { x: 30, z: 60.5, yaw: 1.2, anim: 'Marche' } },
 ]
 const choisies = option('vues')?.split(',')
 
@@ -81,6 +92,15 @@ try {
       }
       // Le temps des GLB, des cartes et des toiles (non bloquants des deux côtés).
       await new Promise((r) => setTimeout(r, 12_000))
+      if (vue.bavette) {
+        await page.waitForFunction('window.__BAVETTE__', { timeout: 30_000 }).catch(() => console.error(`  ! ${vue.nom}/${moteur} : pas de __BAVETTE__`))
+        await page.evaluate((b) => {
+          const w = globalThis as unknown as { __BAVETTE__?: { placer(x: number, z: number, s?: string, yaw?: number): void; jouer(n: string, t?: number): void } }
+          w.__BAVETTE__?.placer(b.x, b.z, undefined, b.yaw)
+          w.__BAVETTE__?.jouer(b.anim, 0.4)
+        }, vue.bavette)
+        await new Promise((r) => setTimeout(r, 1500))
+      }
       const chemin = join(dossier, `${vue.nom}-${moteur}.png`) as `${string}.png`
       await page.screenshot({ path: chemin })
       console.log(chemin)

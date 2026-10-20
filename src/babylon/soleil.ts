@@ -14,7 +14,10 @@ import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator'
 import '@babylonjs/core/Lights/Shadows/shadowGeneratorSceneComponent'
 import { RenderTargetTexture } from '@babylonjs/core/Materials/Textures/renderTargetTexture'
 import { Color3, Color4 } from '@babylonjs/core/Maths/math.color'
+import { Frustum } from '@babylonjs/core/Maths/math.frustum'
+import { Plane } from '@babylonjs/core/Maths/math.plane'
 import { Vector3 } from '@babylonjs/core/Maths/math.vector'
+import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
 import type { Scene } from '@babylonjs/core/scene'
 
 import { cadrerOmbre } from '../domain/ombres.ts'
@@ -69,7 +72,9 @@ export function reglagesDuCiel(c: Ciel): Reglages {
  * Pose le soleil, l'hémisphérique et le fond. Avec `ombres`, la carte n'est
  * dessinée qu'à la demande (RENDER_ONCE) : quand la boîte, qui suit la caméra
  * active, glisse d'un pas, ou quand la direction du soleil change. Les
- * porteurs s'ajoutent par `generateur.addShadowCaster` (main.ts).
+ * porteurs s'ajoutent par `generateur.addShadowCaster` (main.ts) ; seuls ceux
+ * dont la boîte touche le volume de la lumière sont dessinés (Babylon ne trie
+ * pas une liste de porteurs : sans ce tri, tout le parc à chaque redessin).
  */
 export function monterSoleil(scene: Scene, c: Ciel, ombres: boolean): { hemi: HemisphericLight; generateur: ShadowGenerator | null } {
   const r = reglagesDuCiel(c)
@@ -101,6 +106,13 @@ export function monterSoleil(scene: Scene, c: Ciel, ombres: boolean): { hemi: He
   generateur.normalBias = 0.02
   const carte = generateur.getShadowMap()!
   carte.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE
+  const plans = Array.from({ length: 6 }, () => new Plane(0, 0, 0, 0))
+  carte.getCustomRenderList = (_, liste, n) => {
+    Frustum.GetPlanesToRef(generateur.getTransformMatrix(), plans)
+    const dans: AbstractMesh[] = []
+    for (let i = 0; i < n; i++) if (liste![i].isInFrustum(plans)) dans.push(liste![i])
+    return dans
+  }
 
   let cle = ''
   scene.onBeforeRenderObservable.add(() => {

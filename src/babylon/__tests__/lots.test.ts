@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
-import { matrices, posesDuMobilier } from '../lots'
+import { NullEngine } from '@babylonjs/core/Engines/nullEngine'
+import { FreeCamera } from '@babylonjs/core/Cameras/freeCamera'
+import { Vector3 } from '@babylonjs/core/Maths/math.vector'
+import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder'
+import { Scene } from '@babylonjs/core/scene'
+
+import { auLoin, cacherAuLoin, matrices, posesDuMobilier } from '../lots'
 
 describe('lots d’instances', () => {
   const poses = posesDuMobilier()
@@ -31,6 +37,8 @@ describe('lots d’instances', () => {
     expect(m[2]).toBeCloseTo(-1)
     const s = matrices([{ piece: 'Lyrata', x: 1, y: 2, z: 3, lacet: 0, echelle: 0.9 }]).get('Lyrata')!
     expect([s[0], s[5], s[10]]).toEqual([0.9, 0.9, 0.9].map(Math.fround))
+    const v = matrices([{ piece: 'buis', x: 0, y: 0, z: 0, lacet: 0, echelle: [1, 2, 3] }]).get('buis')!
+    expect([v[0], v[5], v[10]]).toEqual([1, 2, 3])
   })
 })
 
@@ -82,5 +90,47 @@ describe('instancier', () => {
     // Le fondu ne porte pas d'ombre.
     expect(porteurs).toEqual([cuve, bois])
     expect(cuve.material!.pluginManager?.getPlugin('Lueurs')).toBeTruthy()
+  })
+
+  it('auLoin : au loin au-delà de la portée, de retour 3 m en deçà', () => {
+    expect([auLoin(29, false, 30), auLoin(31, false, 30), auLoin(28, true, 30), auLoin(26, true, 30)]).toEqual([false, true, true, false])
+  })
+
+  it('cacherAuLoin : recompacte matrices et attributs des instances proches et dans le champ', () => {
+    const scene = new Scene(new NullEngine())
+    const cam = new FreeCamera('c', new Vector3(0, 1.6, 0), scene)
+    // Le regard vers +x.
+    cam.setTarget(new Vector3(10, 1.6, 0))
+    const m = CreateBox('b', { size: 0.2 }, scene)
+    const mats = matrices([5, 20, 50, -10].map((x) => ({ piece: 'p', x, y: 0, z: 0, lacet: 0 }))).get('p')!
+    const teinte = Float32Array.of(1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4)
+    m.thinInstanceSetBuffer('matrix', mats, 16)
+    m.thinInstanceSetBuffer('teinte', teinte, 4)
+    cacherAuLoin(scene, m, { matrix: [mats, 16], teinte: [teinte, 4] }, 30)
+    // Vue et projection recalculées comme par un rendu (le tri lit `getTransformationMatrix`).
+    const image = () => (cam.getViewMatrix(true), cam.getProjectionMatrix(true), scene.onBeforeRenderObservable.notifyObservers(scene))
+    image()
+    // 50 m : trop loin ; −10 m : dans le dos.
+    expect(m.thinInstanceCount).toBe(2)
+    expect([mats[12], mats[16 + 12]]).toEqual([5, 20])
+    expect(Array.from(teinte.slice(0, 8))).toEqual([1, 1, 1, 1, 2, 2, 2, 2])
+    // En x = 22, regard vers +x : 50 m est à 28 m, encore « au loin » (retour sous 27 m) ; le reste dans le dos.
+    cam.position.x = 22
+    cam.setTarget(new Vector3(60, 1.6, 0))
+    image()
+    expect(m.thinInstanceCount).toBe(0)
+    expect(m.isEnabled()).toBe(false)
+    // Deux mètres de plus : il revient, seul.
+    cam.position.x = 24
+    cam.setTarget(new Vector3(60, 1.6, 0))
+    image()
+    expect(m.thinInstanceCount).toBe(1)
+    expect(Array.from(teinte.slice(0, 4))).toEqual([3, 3, 3, 3])
+    // Demi-tour : 20 et 5 devant, −10 à 34 m, 50 dans le dos.
+    cam.setTarget(new Vector3(-60, 1.6, 0))
+    image()
+    expect(m.thinInstanceCount).toBe(2)
+    expect(Array.from(teinte.slice(0, 8))).toEqual([1, 1, 1, 1, 2, 2, 2, 2])
+    expect(m.isEnabled()).toBe(true)
   })
 })

@@ -71,6 +71,22 @@ export function glbOuRien(scene: Scene, chemin: string): Promise<AssetContainer 
   return chargerGlb(scene, chemin).catch((e: unknown) => (console.error(`${chemin} indisponible`, e), null))
 }
 
+const partages = new WeakMap<Scene, Map<string, Promise<AssetContainer | null>>>()
+/**
+ * Un GLB lu par PLUSIEURS couches (jardin.glb : le décor `Jardin_*` à jardin.ts,
+ * les sources `src_*` à vegetation.ts) : téléchargé et décodé une fois, déjà
+ * posé dans la scène (`addAllToScene`). Chaque couche prend ses maillages par
+ * préfixe de nom et ne jette QUE les siens ; matières et textures partagées
+ * restent (`dispose(false, false)`), ne jamais `c.dispose()`.
+ */
+export function glbPartage(scene: Scene, chemin: string): Promise<AssetContainer | null> {
+  const parChemin = partages.get(scene) ?? new Map<string, Promise<AssetContainer | null>>()
+  partages.set(scene, parChemin)
+  let p = parChemin.get(chemin)
+  if (!p) parChemin.set(chemin, (p = glbOuRien(scene, chemin).then((c) => (c?.addAllToScene(), c))))
+  return p
+}
+
 /**
  * `fusionnerParMatiere` de three : un maillage par matière (et par jeu
  * d'attributs, MergeMeshes refusant de mêler un maillage avec uv2 et un sans),

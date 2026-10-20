@@ -2,7 +2,7 @@
  * La tranche Babylon (`?moteur=babylon`) : le même plan, un autre moteur, sans
  * React. Câblage seul : charge les données, monte les modules, lance la boucle.
  * Ordre : socle → soleil → reflets → visiteur → boîtes et parement → toiles →
- * couches du bâtiment (vague 1) et de l'intérieur (vague 2), chacune non bloquante : un GLB absent n'arrête
+ * couches du bâtiment (vague 1), de l'intérieur (vague 2) et du jardin (vague 3), chacune non bloquante : un GLB absent n'arrête
  * pas la visite. Tout arrivé, les sondes de reflets sont prises et les matières
  * figées (sauf celles qui vivent).
  */
@@ -15,8 +15,10 @@ import type { Accrochage } from '../plan/hang.ts'
 import { MUSEE } from '../plan/musee.ts'
 
 import { monterAccessoires } from './accessoires.ts'
+import { monterAllees } from './allees.ts'
 import { monterAteliers } from './ateliers.ts'
 import { monterBatllo } from './batllo.ts'
+import { monterBavette } from './bavette.ts'
 import { monterBelvedere } from './belvedere.ts'
 import { monterBoites } from './boites.ts'
 import { monterCartels } from './cartels.ts'
@@ -26,9 +28,14 @@ import { monterCloche } from './cloche.ts'
 import { monterConstellation } from './constellation.ts'
 import { monterDeparts } from './departs.ts'
 import { monterEclairage } from './eclairage.ts'
+import { monterEnceinte } from './enceinte.ts'
 import { monterEscalier } from './escalier.ts'
 import { VIVANTES } from './etat.ts'
 import { monterFacade } from './facade.ts'
+import { monterFaune } from './faune.ts'
+import { monterFeuilles } from './feuilles.ts'
+import { monterJardin } from './jardin.ts'
+import { monterLierre } from './lierre.ts'
 import { reglerLueurs } from './lueurs.ts'
 import { cartesChargees } from './matieres.ts'
 import { monterMobilier } from './mobilier.ts'
@@ -38,11 +45,15 @@ import { monterParement } from './parement.ts'
 import { monterPortes } from './portes.ts'
 import { monterProps } from './props.ts'
 import { monterReflets } from './reflets.ts'
+import { monterRelief } from './relief.ts'
+import { monterRuisseau } from './ruisseau.ts'
 import { monterSalleHonneur } from './salleHonneur.ts'
 import { monterSculptures } from './sculptures.ts'
 import { creerSocle } from './socle.ts'
 import { monterSoleil } from './soleil.ts'
 import { monterToiles } from './toiles.ts'
+import { monterVegetation } from './vegetation.ts'
+import { monterVisibilite } from './visibilite.ts'
 import { departDuVisiteur, monterVisiteur } from './visiteur.ts'
 import { monterVitrines } from './vitrines.ts'
 
@@ -80,6 +91,14 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
     for (const m of ms) generateur?.addShadowCaster(m)
     generateur?.getShadowMap()?.resetRefreshCounter()
   }
+  // Les couches calculées sur le fil (100 à 400 ms chacune : relief, allées, feuilles, lierre, enceinte) :
+  // une par tâche, chacune après une image dessinée, pour que la visite s'affiche et ne fige pas d'un bloc.
+  let file: Promise<unknown> = Promise.resolve()
+  const apresUneImage = <T>(f: () => T | Promise<T>): Promise<T> => {
+    const p = file.then(() => new Promise<T>((ok, ko) => scene.onAfterRenderObservable.addOnce(() => setTimeout(() => Promise.resolve().then(f).then(ok, ko)))))
+    file = p.catch(() => {})
+    return p
+  }
   const couches = [
     accrochage ? monterToiles(scene, accrochage, base).then(ombrer, signaler('toiles')) : null,
     monterFacade(scene, MUSEE, ciel.jour, base).then(ombrer, signaler('façade')),
@@ -103,6 +122,17 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
     monterAteliers(scene, base, ciel.jour).then(ombrer, signaler('ateliers')),
     monterConstellation(scene, accrochage, base, ciel.jour).catch(signaler('constellation')),
     monterChantier(scene, base, ciel.jour, camera).then(ombrer, signaler('chantier')),
+    // Vague 3 : le jardin. La faune et Bavette s'animent : jamais dans la carte d'ombre.
+    apresUneImage(() => monterRelief(scene, camera)).then(ombrer, signaler('relief')),
+    apresUneImage(() => monterEnceinte(scene)).then(ombrer, signaler('enceinte')),
+    apresUneImage(() => monterAllees(scene)).then(ombrer, signaler('allées')),
+    monterVegetation(scene).then(ombrer, signaler('végétation')),
+    apresUneImage(() => monterFeuilles(scene)).catch(signaler('feuilles mortes')),
+    monterJardin(scene, ciel.jour).then(ombrer, signaler('jardin')),
+    monterRuisseau(scene).then(ombrer, signaler('ruisseau')),
+    monterFaune(scene, ciel, camera).catch(signaler('faune')),
+    monterBavette(scene, camera).catch(signaler('bavette')),
+    apresUneImage(() => monterLierre(scene)).then(ombrer, signaler('lierre')),
     atlas.catch(() => {}),
   ]
   if (import.meta.env.DEV) {
@@ -119,5 +149,7 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   await scene.whenReadyAsync()
   generateur?.getShadowMap()?.resetRefreshCounter()
   reflets.rafraichir()
+  // Les sondes prises (image suivante), le parc caché depuis l'intérieur (visibilite.ts).
+  scene.onAfterRenderObservable.addOnce(() => monterVisibilite(scene, camera, MUSEE))
   for (const m of scene.materials) if (!VIVANTES.has(m.name)) m.freeze()
 }

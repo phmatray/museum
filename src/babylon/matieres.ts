@@ -114,6 +114,10 @@ export interface Options {
   repli?: string
   /** Côté de la tuile en mètres ; `null` : UV déjà à l'échelle de la carte (1 × 1, parquet de la salle d'honneur). */
   motif?: number | null
+  /** Remplace le gain du réglage (1 : la teinte telle quelle, comme la pelouse de three). */
+  gain?: number
+  /** La carte couleur seule, sans normale ni rugosité (pelouse : un Lambert à carte). */
+  couleurSeule?: boolean
 }
 
 const habillages: Promise<void>[] = []
@@ -145,6 +149,8 @@ export function matierePBR(nom: string, id: MatiereId, scene: Scene, options: Op
       return k
     }
     m.albedoTexture = clone(c.couleur)
+    m.albedoColor = lin(teinte).scale(options.gain ?? r.gain)
+    if (options.couleurSeule) return
     m.bumpTexture = clone(c.normale)
     m.metallicTexture = clone(c.rugosite)
     m.useRoughnessFromMetallicTextureGreen = true
@@ -152,7 +158,6 @@ export function matierePBR(nom: string, id: MatiereId, scene: Scene, options: Op
     m.useRoughnessFromMetallicTextureAlpha = false
     m.useAmbientOcclusionFromMetallicTextureRed = false
     m.roughness = r.rugosite
-    m.albedoColor = lin(teinte).scale(r.gain)
   }).catch((e: unknown) => console.warn(`matière ${id} sans cartes`, e)).finally(() => (habillee = true))
   habillages.push(habillage)
   return m

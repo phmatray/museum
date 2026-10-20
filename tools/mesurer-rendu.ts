@@ -2,7 +2,10 @@
  * La mesure de rendu : three et Babylon au même point de vue (l'arrivée), même
  * heure, même fenêtre, pour comparer le temps par image, les appels et les triangles.
  *
- *   node tools/mesurer-rendu.ts [http://localhost:5173/] [--ombres=0] [--gpu=0] [--p=<dépôt>] [--captures=<dossier>]
+ *   node tools/mesurer-rendu.ts [http://localhost:5173/] [--ombres=0] [--gpu=0] [--p=<dépôt>] [--lieu=x,z,yaw] [--captures=<dossier>]
+ *
+ * `--lieu=50,65,-0.6` : le visiteur posé au sol en (x, z), tourné vers `yaw` (0 = nord),
+ * dans les deux moteurs (au milieu du jardin, par exemple), comme comparer-captures.ts.
  *
  * Contre `npm run dev`, lancé à côté : les hooks `__PLAN__` et `__BABYLON__` n'existent
  * qu'en DEV. Sortie : un tableau console, un JSON sur stdout et une capture par
@@ -22,6 +25,7 @@ const captures = option('captures') ?? tmpdir()
 const suffixe = (option('ombres') === '0' ? '&ombres=0' : '') + (option('gpu') === '0' ? '&gpu=0' : '') + (option('p') ? `&p=${option('p')}` : '')
 const commun = `?qualite=haute&heure=15:00&meteo=clair${suffixe}`
 const IMAGES = 300
+const lieu = option('lieu')?.split(',').map(Number)
 
 interface Image { dt: number; appels: number; triangles: number }
 
@@ -44,6 +48,25 @@ try {
     // Le hook arrive avant la première image de three (une dizaine de secondes de compilation) :
     // on attend qu'il dessine vraiment, ou que la scène Babylon soit prête, puis 3 s de chauffe.
     await page.waitForFunction('window.__PLAN__ ? window.__PLAN__.gl.info.render.frame > 0 : window.__BABYLON__.scene.isReady()', { timeout: 120_000 })
+    if (lieu) {
+      await page.evaluate(async ([x, z, yaw], racine) => {
+        /* eslint-disable @typescript-eslint/no-explicit-any -- modules et hooks de la page, non typés ici */
+        const w = globalThis as any
+        const { MUSEE } = await import(`${racine}src/plan/musee.ts`)
+        const { surfaceAt } = await import(`${racine}src/plan/rules.ts`)
+        const { step } = await import(`${racine}src/plan/walk.ts`)
+        const marcheur = step(MUSEE, { level: 0, surface: surfaceAt(MUSEE, x, z, 0), x, z, y: 0, yaw }, { forward: 0, strafe: 0, yaw }, 0.01)
+        if (w.__BABYLON__) w.__BABYLON__.camera.placer({ ...marcheur, pitch: 0 })
+        else {
+          Object.assign(w.__PLAN__.walker(), marcheur)
+          w.__PLAN__.camera.rotation.order = 'YXZ'
+          w.__PLAN__.camera.rotation.set(0, yaw, 0)
+        }
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+      }, lieu, new URL(base).pathname)
+      // Le temps des GLB du jardin et d'une carte d'ombre recalée.
+      await new Promise((r) => setTimeout(r, 12_000))
+    }
     await new Promise((r) => setTimeout(r, 3000))
 
     const { images, gpu } = await page.evaluate((n) => new Promise<{ images: Image[]; gpu: string }>((fin) => {

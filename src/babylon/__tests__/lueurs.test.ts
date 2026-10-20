@@ -58,11 +58,11 @@ describe('reglerLueurs', () => {
     const lu: Record<string, number[]> = {}
     const ubo = {
       updateFloat3: (n: string, ...v: number[]) => (lu[n] = v),
-      updateFloat2: (n: string, ...v: number[]) => (lu[n] = v),
     } as unknown as UniformBuffer
     m.pluginManager!.getPlugin('Lueurs')!.bindForSubMesh(ubo, scene, scene.getEngine(), null as never)
     expect(lu.lueursHemi.map((v) => +v.toFixed(6))).toEqual([0.5, 0.8, 0.2])
-    expect(lu.lueursLampes).toEqual([5, 10])
+    expect(lu.lueursLampes.map((v) => +v.toFixed(6))).toEqual([5, 10, +(0.8 / 1.1).toFixed(6)])
+    expect(lu.lueursCiel.map((v) => +v.toFixed(6))).toEqual([0.4, 0.8, 1.2])
     scene.getEngine().dispose()
   })
 })
