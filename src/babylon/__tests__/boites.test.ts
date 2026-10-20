@@ -7,30 +7,32 @@ import { describe, expect, it } from 'vitest'
 
 import LUMIERE from '../../plan/lumiere.json' with { type: 'json' }
 import { MUSEE } from '../../plan/musee'
-import { geometrieCuite, matriceDeBoite, tableDeLumiere, trierBoites } from '../boites'
+import { geometrieCuite, geometrieDeBoites, matriceDeBoite, tableDeLumiere, trierBoites, uvMetres } from '../boites'
 
 const INDEX = LUMIERE as { largeur: number; hauteur: number; boites: Record<string, (number[] | number)[]> }
 
 describe('trierBoites', () => {
   const lots = trierBoites(MUSEE)
 
-  it('cuit les 808 surfaces de lumiere.json, sans marche ni garde-corps', () => {
-    expect(lots.cuites).toHaveLength(808)
-    expect(lots.cuites.every((c) => c.cle in INDEX.boites)).toBe(true)
-    expect(lots.cuites.some((c) => c.b.kind === 'step' || c.b.kind === 'railing')).toBe(false)
+  it('range marches, palier et paillasses à part, et ne perd aucune boîte', () => {
+    expect(lots.marches.filter((b) => b.kind === 'step')).toHaveLength(45)
+    expect(lots.marches.some((b) => b.kind === 'landing')).toBe(true)
+    expect(lots.marches.some((b) => b.kind === 'slab')).toBe(true)
+    expect(lots.mains.every((b) => b.kind === 'handrail')).toBe(true)
+    // Les 808 surfaces cuites sont au parement (parement.test.ts).
+    const n = 808 + lots.mains.length + lots.marches.length + lots.verre.length + lots.lanterneau.flat().length
+    expect(n).toBe(977)
   })
 
-  it('range marches, palier et paillasses parmi les opaques, et ne perd aucune boîte', () => {
-    expect(lots.opaques.filter((t) => t.b.kind === 'step')).toHaveLength(45)
-    expect(lots.opaques.some((t) => t.b.kind === 'landing')).toBe(true)
-    expect(lots.opaques.some((t) => t.b.kind === 'slab')).toBe(true)
-    expect(lots.cuites.length + lots.opaques.length + lots.verre.length + lots.lanterneau.length).toBe(1237)
+  it('range le dépoli des lanterneaux par niveau, les deux niveaux en ayant', () => {
+    expect(lots.lanterneau).toHaveLength(MUSEE.levels.length)
+    expect(lots.lanterneau.every((v) => v.length > 0)).toBe(true)
   })
 })
 
 describe('matriceDeBoite', () => {
   it('cisaille une main courante de volée comme three, le long de son grand côté', () => {
-    const b = trierBoites(MUSEE).opaques.map((t) => t.b).find((b) => b.kind === 'handrail' && b.pente)!
+    const b = trierBoites(MUSEE).mains.find((b) => b.pente)!
     const m = new Float32Array(16)
     matriceDeBoite(b, m, 0)
     const lx = b.w > b.d
@@ -64,6 +66,38 @@ describe('geometrieCuite', () => {
     expect([g.positions[0], g.positions[1], g.positions[2]]).toEqual([0, 0, 0])
     expect(Array.from(g.colors.slice(0, 4))).toEqual([1, 0, 0, 1])
     expect(g.indices[12]).toBe(8)
+  })
+})
+
+describe('uvMetres', () => {
+  const b = { w: 2, h: 3, d: 5 }
+  it('couvre chaque face en mètres, depuis son coin, comme BoxGeometry × taille', () => {
+    // +x : u va vers −z (d), v vers +y (h).
+    expect(uvMetres(b, 0, [0.5, -0.5, 0.5])).toEqual([0, 0])
+    expect(uvMetres(b, 0, [0.5, 0.5, -0.5])).toEqual([5, 3])
+    expect(uvMetres(b, 1, [-0.5, 0.5, 0.5])).toEqual([5, 3])
+    // +y : u vers +x (w), v vers −z (d) ; −y : v vers +z.
+    expect(uvMetres(b, 2, [0.5, 0.5, -0.5])).toEqual([2, 5])
+    expect(uvMetres(b, 3, [0.5, -0.5, 0.5])).toEqual([2, 5])
+    // +z : u vers +x ; −z : u vers −x ; v toujours vers le haut.
+    expect(uvMetres(b, 4, [0.5, 0.5, 0.5])).toEqual([2, 3])
+    expect(uvMetres(b, 5, [-0.5, 0.5, -0.5])).toEqual([2, 3])
+  })
+
+  it('pose des UV en mètres dans la géométrie fusionnée', () => {
+    const gabarit = { positions: [0.5, -0.5, 0.5, 0.5, 0.5, -0.5], normals: [1, 0, 0, 1, 0, 0], indices: [0, 1, 0] }
+    const g = geometrieDeBoites(gabarit, [{ x: 10, y: 1.5, z: 0, w: 0.2, h: 3, d: 4, kind: 'wall' }])
+    expect(Array.from(g.uvs)).toEqual([0, 0, 4, 3])
+    expect(g.positions[0]).toBeCloseTo(10.1, 6)
+  })
+
+  it('cisaille une boîte rampante comme matriceDeBoite', () => {
+    const b = trierBoites(MUSEE).mains.find((b) => b.pente)!
+    const g = geometrieDeBoites({ positions: [0.5, 0.5, 0.5], normals: [0, 1, 0], indices: [0] }, [b])
+    const m = new Float32Array(16)
+    matriceDeBoite(b, m, 0)
+    const p = Vector3.TransformCoordinates(new Vector3(0.5, 0.5, 0.5), Matrix.FromArray(m))
+    expect([...g.positions].map((v) => +v.toFixed(4))).toEqual([p.x, p.y, p.z].map((v) => +v.toFixed(4)))
   })
 })
 

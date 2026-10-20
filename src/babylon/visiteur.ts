@@ -37,8 +37,11 @@ export function departDuVisiteur(plan: Plan, accrochage: Accrochage | null, rech
   return { level, surface, x, z, y, yaw: 0, pitch: 0 }
 }
 
-/** La caméra du visiteur, menée par le clavier (codes positionnels : ZQSD en AZERTY) et la souris verrouillée. */
-export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: Arrivee): FreeCamera {
+/**
+ * La caméra du visiteur, menée par le clavier (codes positionnels : ZQSD en AZERTY) et la souris verrouillée.
+ * `placer` téléporte le visiteur (captures comparées, `tools/comparer-captures.ts`).
+ */
+export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: Arrivee): FreeCamera & { placer(a: Arrivee): void } {
   const camera = new FreeCamera('visiteur', new Vector3(depart.x, depart.y + OEIL, depart.z), scene)
   camera.inputs.clear()
   camera.fov = (75 * Math.PI) / 180
@@ -76,5 +79,9 @@ export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: A
     // En main droite, yaw 0 regarde −z et un pitch positif lève les yeux, comme three.
     camera.rotation.set(pitch, w.yaw, 0)
   })
-  return camera
+  return Object.assign(camera, {
+    placer: (a: Arrivee) => {
+      ;({ pitch, ...w } = a)
+    },
+  })
 }

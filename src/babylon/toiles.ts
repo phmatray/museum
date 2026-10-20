@@ -166,7 +166,7 @@ async function repli(scene: Scene, base: string, peintes: { p: Pose; layer: numb
 }
 
 /** Coupe un titre en lignes au mot près (un mot trop long reste entier, `fillText` le serre). */
-function couper(g: CanvasRenderingContext2D, texte: string, largeur: number): string[] {
+export function couper(g: CanvasRenderingContext2D, texte: string, largeur: number): string[] {
   const lignes: string[] = []
   for (const mot of texte.split(/\s+/)) {
     const essai = lignes.length ? `${lignes[lignes.length - 1]} ${mot}` : mot
