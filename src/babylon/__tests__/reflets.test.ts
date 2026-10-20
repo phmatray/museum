@@ -1,5 +1,7 @@
 import { NullEngine } from '@babylonjs/core/Engines/nullEngine'
 import { Constants } from '@babylonjs/core/Engines/constants'
+import { FreeCamera } from '@babylonjs/core/Cameras/freeCamera'
+import { Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { Scene } from '@babylonjs/core/scene'
 import { describe, expect, it } from 'vitest'
 
@@ -45,5 +47,25 @@ describe('monterReflets sous NullEngine', () => {
     expect(scene.reflectionProbes.length).toBe(16)
     // Aucune sonde rendue d'office : la file les place une par image.
     expect(scene.customRenderTargets.length).toBe(0)
+  })
+})
+
+describe('prises', () => {
+  it('résolue une fois la file vidée, une sonde par image', async () => {
+    const scene = new Scene(new NullEngine())
+    scene.useRightHandedSystem = true
+    const r = monterReflets(scene, MUSEE, () => ({ level: 0, surface: '0:hall', x: 24, y: 0, z: 20, yaw: 0 }), null)
+    new FreeCamera('c', Vector3.Zero(), scene)
+    r.rafraichir()
+    let fini = false
+    void r.prises().then(() => (fini = true))
+    let images = 0
+    while (!fini && images < 100) {
+      scene.render()
+      images++
+      await Promise.resolve()
+    }
+    expect(fini).toBe(true)
+    expect(images).toBeGreaterThan(16)
   })
 })

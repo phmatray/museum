@@ -10,21 +10,23 @@
  * Avant, les cases portent une carte crème 2 × 2 ; à l'approche, l'atlas la
  * remplace : les deux matières d'images sont dans VIVANTES (etat.ts).
  *
- * ponytail : pas de carte d'étape (cadreVise → gameStore.etape de three) tant
- * que la tranche n'a pas d'interface ; `cadreVise` de plan/chantier.ts la donnera.
+ * Le cadre regardé (`cadreVise`, tous les dixièmes de seconde près de la
+ * baraque) est publié dans `partie.etape` : ui/carteEtape.ts le raconte, avec
+ * le journal chargé une fois (`journalDuChantier`).
  */
 import type { Camera } from '@babylonjs/core/Cameras/camera'
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture'
 import { Color3 } from '@babylonjs/core/Maths/math.color'
+import { Vector3 } from '@babylonjs/core/Maths/math.vector'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
 import type { Scene } from '@babylonjs/core/scene'
 
 import type { EtapeJournal, Journal } from '../domain/journal.ts'
 import type { Box } from '../plan/mesh.ts'
-import { accrocherChantier, CENTRE_CHANTIER, type CadreChantier } from '../plan/chantier.ts'
+import { accrocherChantier, cadreVise, CENTRE_CHANTIER, dansLeChantier, type CadreChantier } from '../plan/chantier.ts'
 import { boitesFusionnees, matiere } from './boites.ts'
-import { auCiel, auCielMatiere, VIVANTES } from './etat.ts'
+import { auCiel, auCielMatiere, partie, publier, VIVANTES } from './etat.ts'
 import { fusionnerParMatiere, glbOuRien } from './glb.ts'
 import { brancherLueurs } from './lueurs.ts'
 import { police } from './polices.ts'
@@ -47,7 +49,7 @@ const SANS = 'PT Sans'
 const TEINTE_CATEGORIE: Record<string, string> = {
   hall: '#b08d57', galeries: '#9a3b2c', jardin: '#5f7d3a', bavette: '#c47a36', ambiance: '#3e5c86', site: '#6b6660', idees: '#7d5f93',
 }
-const teinteCategorie = (c: string) => TEINTE_CATEGORIE[c] ?? '#6b6660'
+export const teinteCategorie = (c: string) => TEINTE_CATEGORIE[c] ?? '#6b6660'
 
 export interface Format { cols: number; cote: number; l: number; h: number }
 
@@ -243,17 +245,34 @@ function monterCadres(scene: Scene, base: string, journal: Journal, camera: Came
     scene.onBeforeRenderObservable.remove(suivi)
     peindre(scene, base, journal, cadres, formats, mats).catch((e: unknown) => console.error('journal du chantier indisponible', e))
   })
+
+  // Le cadre regardé : tous les dixièmes de seconde, et seulement près de la baraque.
+  const regard = new Vector3()
+  let t = 0
+  scene.onBeforeRenderObservable.add(() => {
+    t -= scene.getEngine().getDeltaTime() / 1000
+    if (t > 0) return
+    t = 0.1
+    const oeil = camera.globalPosition
+    camera.getDirectionToRef(Vector3.Forward(true), regard)
+    const c = dansLeChantier(oeil.x, oeil.z, 1) ? cadreVise(cadres, oeil, regard) : null
+    publier(partie, { etape: c ? journal.etapes[c.etape].ancre : null })
+  })
   return porteurs
+}
+
+let journalCharge: Promise<Journal | null> | null = null
+/** Le journal de chantier (data/chantier.json), chargé une fois : la baraque l'accroche, la carte d'étape le raconte. */
+export function journalDuChantier(base: string): Promise<Journal | null> {
+  journalCharge ??= fetch(`${base}data/chantier.json`)
+    .then((r) => (r.ok ? (r.json() as Promise<Journal>) : null))
+    .catch(() => null)
+  return journalCharge
 }
 
 /** Rend les porteurs d'ombre (le modèle sauf ses vitres, les moulures). */
 export async function monterChantier(scene: Scene, base: string, camera: Camera): Promise<Mesh[]> {
-  const [c, journal] = await Promise.all([
-    glbOuRien(scene, 'assets/architecture/chantier.glb'),
-    fetch(`${base}data/chantier.json`)
-      .then((r) => (r.ok ? (r.json() as Promise<Journal>) : null))
-      .catch(() => null),
-  ])
+  const [c, journal] = await Promise.all([glbOuRien(scene, 'assets/architecture/chantier.glb'), journalDuChantier(base)])
   c?.addAllToScene()
   for (const m of c?.materials ?? []) {
     if (!(m instanceof PBRMaterial)) continue

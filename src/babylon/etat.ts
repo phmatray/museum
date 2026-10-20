@@ -15,18 +15,27 @@
  * - `VIVANTES` : les matières que main.ts ne fige pas (leurs textures ou leurs
  *   uniforms changent à chaque image). Une couche y ajoute le NOM d'une matière
  *   avant la fin de `couches` ; une matière réglée par l'heure passe plutôt par `auCielMatiere`.
- * - `catalogue(base)` : data/catalogue.json chargé une fois pour toutes les couches.
+ * - `catalogue(base)` : data/catalogue.json chargé une fois pour toutes les couches ; `readme(base, cle)`
+ *   le README d'un dépôt des vitrines, une fois par clé (panneaux de vitrines.ts, carte de la borne).
  * - `mouvementReduit()` : le « calme » de reglagesStore.
+ * - `partie` : l'état de l'interface de la vague 5 (gameStore) : pause, visite guidée,
+ *   rendez-vous de `?p=`, visiteur publié (minimap), ce que le regard désigne (toile,
+ *   borne, Bavette, étape du journal). `publier(partie, p)` n'écrit que ce qui change
+ *   (sûr à chaque image). `toucher` : le joystick et le glissé du doigt, mutables.
+ * - `changerReglages(p)` : écrit les réglages (et localStorage) ; `demarrerCycle`
+ *   republie alors le ciel, la saison et la météo s'ils en dépendent.
  */
 import type { Material } from '@babylonjs/core/Materials/material'
 import { createStore } from 'zustand/vanilla'
 
 import config from '../../museum.config.json'
 import { CLAIR, meteoDemandee, meteoDuReleve, urlOpenMeteo, type Meteo, type Releve } from '../domain/meteo.ts'
-import { lireReglages, mouvementReduitPour, rechercheAvec, type Reglages } from '../domain/reglages.ts'
+import { ecrireReglages, lireReglages, mouvementReduitPour, rechercheAvec, type Reglages } from '../domain/reglages.ts'
 import { saisonA, type Saison } from '../domain/saisons.ts'
 import { cielA, heureDemandee, type Ciel } from '../domain/soleil.ts'
 import type { Artwork, Catalogue } from '../domain/types.ts'
+import { cheminReadme } from '../plan/vitrines.ts'
+import type { Walker } from '../plan/walk.ts'
 
 /** `at` : Date.now() à l'impact. */
 export const etat: { annonce: { key: string; tag: string; at: number } | null } = { annonce: null }
@@ -44,6 +53,14 @@ export function catalogue(base: string): Promise<(Catalogue & { parCle: Map<stri
   return promesse
 }
 
+const readmes = new Map<string, Promise<string | null>>()
+/** Le README d'un dépôt des vitrines, une fois par clé ; null s'il manque. */
+export function readme(base: string, cle: string): Promise<string | null> {
+  let p = readmes.get(cle)
+  if (!p) readmes.set(cle, (p = fetch(`${base}${cheminReadme(cle)}`).then((r) => (r.ok ? r.text() : null)).catch(() => null)))
+  return p
+}
+
 const CLE = 'museum:reglages'
 const lus = (): Reglages => {
   try {
@@ -54,6 +71,14 @@ const lus = (): Reglages => {
 }
 /** Relus au chargement. */
 export const reglages = createStore<Reglages>(lus)
+
+/** Les réglages changés, retenus sur cet appareil (navigation privée : en mémoire seulement). */
+export function changerReglages(p: Partial<Reglages>): void {
+  reglages.setState(p)
+  try {
+    localStorage.setItem(CLE, ecrireReglages(reglages.getState()))
+  } catch { /* stockage refusé */ }
+}
 
 /** L'adresse telle que la lisent les forçages : les réglages ajoutés, sans écraser l'adresse. */
 export const recherche = (): string => rechercheAvec(typeof location === 'undefined' ? '' : location.search, reglages.getState())
@@ -118,10 +143,16 @@ export function demarrerCycle(): () => void {
   }
   relever()
   const releve = setInterval(relever, QUART_D_HEURE)
+  // Le panneau des réglages : l'heure et la saison choisies tout de suite, la météo relevée à nouveau.
+  const desabonner = reglages.subscribe((r, a) => {
+    if (r.heure !== a.heure || r.saison !== a.saison) vivant.setState({ ciel: cielDuMoment(), saison: saisonA(new Date(), recherche()) })
+    if (r.meteo !== a.meteo) relever()
+  })
   return () => {
     clearInterval(cycle)
     clearInterval(releve)
     abandon.abort()
+    desabonner()
   }
 }
 
@@ -133,3 +164,40 @@ export function mouvementReduit(): boolean {
     return false
   }
 }
+
+export interface Partie {
+  /** La visite en pause (billet d'accueil, Échap, réglages ouverts) : le visiteur ne bouge pas. Vrai au départ. */
+  paused: boolean
+  tourActive: boolean
+  /** L'arrêt courant de la visite guidée (rang dans VISITE de plan/tour.ts). */
+  tourEtape: number
+  /** Le projet demandé par l'adresse (`?p=`) et sa clé, null s'il n'est pas exposé. */
+  rendezVous: { demande: string; cle: string | null } | null
+  /** Le marcheur, publié seulement quand il bouge ou tourne (minimap). */
+  visiteur: Walker | null
+  /** La toile regardée (eclairage.ts), la borne des vitrines (vitrines.ts), Bavette (bavette.ts), l'ancre du journal (chantier). */
+  toile: string | null
+  borne: string | null
+  bavette: boolean
+  etape: string | null
+}
+export const partie = createStore<Partie>(() => ({
+  paused: true,
+  tourActive: false,
+  tourEtape: 0,
+  rendezVous: null,
+  visiteur: null,
+  toile: null,
+  borne: null,
+  bavette: false,
+  etape: null,
+}))
+
+/** N'écrit dans `store` que les champs qui changent (rien du tout si aucun) : sûr à chaque image. */
+export function publier<S extends object>(store: { getState(): S; setState(p: Partial<S>): void }, p: Partial<S>): void {
+  const s = store.getState()
+  if ((Object.keys(p) as (keyof S)[]).some((k) => !Object.is(s[k], p[k]))) store.setState(p)
+}
+
+/** Le joystick et le glissé du doigt (ui/mobile.ts) : forward/strafe dans [−1, 1], look en pixels accumulés que le visiteur consomme. */
+export const toucher = { forward: 0, strafe: 0, lookX: 0, lookY: 0 }

@@ -112,7 +112,8 @@ export const photoUtile = (jour: number, a: { jour: boolean; nuit: boolean }): b
  * Monte la sphère (rayon 800, centrée à l'origine comme celle de three : pas
  * d'infiniteDistance, le ciel garde sa parallaxe ; en deçà du plan lointain 1000), éteinte jusqu'à
  * la photo utile ; uniformes posés à chaque image depuis `vivant`, METEO et AIR.
- * `charge()` : la photo utile est là (pour la sonde de reflets du dehors).
+ * `charge()` : la photo utile est là, ou plus rien n'est en route (photo absente : fond uni) — pour la sonde
+ * de reflets du dehors, qui sinon attendrait sans fin (et l'écran de chargement avec elle).
  */
 export function monterCiel(scene: Scene): { dome: Mesh; charge(): boolean } {
   const dome = CreateSphere('ciel', { diameter: 2, segments: 24 }, scene)
@@ -136,6 +137,8 @@ export function monterCiel(scene: Scene): { dome: Mesh; charge(): boolean } {
 
   const photos: { jour?: Texture; nuit?: Texture } = {}
   const voulues = new Set<keyof typeof photos>()
+  // Les photos en route (un Set : Babylon peut signaler deux fois l'échec d'une même photo).
+  const enRoute = new Set<keyof typeof photos>()
   const allumer = (c: Ciel) => {
     const la = photos.jour ?? photos.nuit
     if (!la) return
@@ -147,15 +150,18 @@ export function monterCiel(scene: Scene): { dome: Mesh; charge(): boolean } {
   const charger = (k: keyof typeof photos) => {
     if (voulues.has(k)) return
     voulues.add(k)
+    enRoute.add(k)
     const t: Texture = new Texture(`${import.meta.env.BASE_URL}${PHOTOS[k]}`, scene, {
       noMipmap: true,
       samplingMode: Texture.BILINEAR_SAMPLINGMODE,
       useSRGBBuffer: true,
       onLoad: () => {
+        enRoute.delete(k)
         photos[k] = t
         allumer(vivant.getState().ciel)
       },
       onError: (erreur) => {
+        enRoute.delete(k)
         console.warn('ciel indisponible, fond uni', erreur)
         t.dispose()
       },
@@ -185,5 +191,5 @@ export function monterCiel(scene: Scene): { dome: Mesh; charge(): boolean } {
     m.setVector4('airSoleil', soleil.set(AIR.soleil[0], AIR.soleil[1], AIR.soleil[2], a.diffusion))
     m.setVector3('airLueur', lueur.set(a.lueur[0], a.lueur[1], a.lueur[2]))
   })
-  return { dome, charge: () => dome.isEnabled() }
+  return { dome, charge: () => dome.isEnabled() || enRoute.size === 0 }
 }

@@ -37,6 +37,7 @@ import {
 import { surfaceAt } from '../plan/rules.ts'
 import type { Walker } from '../plan/walk.ts'
 import { matiereDeTache } from './contact.ts'
+import { partie, publier } from './etat.ts'
 import { glbOuRien } from './glb.ts'
 import { brancherLueurs } from './lueurs.ts'
 import { PARC } from './parc.ts'
@@ -52,8 +53,8 @@ const BOUCLES = new Set<Nom>(['Marche', 'Repos', 'Assis', 'Dort'])
 const PORTEE_REGARD = 3
 const DEG = Math.PI / 180
 
-/** Ce que les interfaces liront (CarteBavette, Minimap, ronron) quand elles viendront côté Babylon. */
-export const BAVETTE = { regarde: false, x: 0, z: 0, level: 0 }
+/** Ce que lisent la minimap et le ronron (sondage) ; `monte` : Bavette est là (avant, x/z valent 0). La carte suit `partie.bavette`. */
+export const BAVETTE = { regarde: false, x: 0, z: 0, level: 0, monte: false }
 
 // ── Le mixeur, pur ───────────────────────────────────────────────────────────
 
@@ -318,6 +319,7 @@ export async function monterBavette(scene: Scene, camera: FreeCamera & { walker(
     const [yaw, pitch] = [camera.rotation.y, camera.rotation.x]
     const regard = { x: -Math.sin(yaw) * Math.cos(pitch), y: Math.sin(pitch), z: -Math.cos(yaw) * Math.cos(pitch) }
     BAVETTE.regarde = regardeBavette(camera.position, regard, tete ? tete.getAbsolutePosition() : groupe.position)
-    Object.assign(BAVETTE, { x: w.x, z: w.z, level: w.level })
+    Object.assign(BAVETTE, { x: w.x, z: w.z, level: w.level, monte: true })
+    publier(partie, { bavette: BAVETTE.regarde })
   })
 }

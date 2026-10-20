@@ -28,7 +28,7 @@ import type { Scene } from '@babylonjs/core/scene'
 import { cadrerOmbre, ecartDeMatrice, redessinerOmbre } from '../domain/ombres.ts'
 import type { Meteo } from '../domain/meteo.ts'
 import { directionDuSoleil, type Ciel } from '../domain/soleil.ts'
-import { vivant } from './etat.ts'
+import { recherche, reglages, vivant } from './etat.ts'
 import { reglerLueurs } from './lueurs.ts'
 
 export interface Reglages {
@@ -124,9 +124,13 @@ function bouge(scene: Scene, d: Vector3, seuil: number): number {
   return min
 }
 
+/** Les ombres demandées : le réglage « Ombres du soleil », sauf `?ombres=` dans l'adresse. */
+const ombresDemandees = () => new URLSearchParams(recherche()).get('ombres') !== '0'
+
 /**
- * Pose le soleil, l'hémisphérique et le fond. Avec `ombres`, la carte n'est
- * dessinée qu'à la demande (RENDER_ONCE) : quand la boîte, qui suit la caméra
+ * Pose le soleil, l'hémisphérique et le fond. Le générateur existe toujours :
+ * `ombres` (puis le réglage, en direct) allume `soleil.shadowEnabled` et donne sa taille à la carte.
+ * La carte n'est dessinée qu'à la demande (RENDER_ONCE) : quand la boîte, qui suit la caméra
  * active, glisse d'un pas, quand la direction du soleil change, ou quand un
  * porteur qui bouge s'écarte de sa place (`bouge`, `redessinerOmbre` : à
  * chaque image à moins de 25 m, 15 fois par seconde jusqu'à 110 m). Les
@@ -138,7 +142,7 @@ export function monterSoleil(
   scene: Scene,
   c: Ciel,
   ombres: boolean,
-): { soleil: DirectionalLight; hemi: HemisphericLight; generateur: ShadowGenerator | null } {
+): { soleil: DirectionalLight; hemi: HemisphericLight; generateur: ShadowGenerator } {
   const soleil = new DirectionalLight('soleil', new Vector3(0, -1, 0), scene)
   soleil.specular = Color3.Black()
   const hemi = new HemisphericLight('ciel', new Vector3(0, 1, 0), scene)
@@ -153,34 +157,49 @@ export function monterSoleil(
     reglerLueurs(s.ciel.jour, hemi)
   })
 
-  if (!ombres) return { soleil, hemi, generateur: null }
-
   soleil.autoUpdateExtends = false
   soleil.orthoLeft = soleil.orthoBottom = -OMBRE.demi
   soleil.orthoRight = soleil.orthoTop = OMBRE.demi
   soleil.shadowMinZ = 1
   soleil.shadowMaxZ = 2 * OMBRE.recul
-  const generateur = new ShadowGenerator(OMBRE.carte, soleil)
+  // Éteintes, une carte d'un texel : rien d'alloué pour rien ; `mapSize` la recrée (liste de porteurs gardée) au réglage.
+  const generateur = new ShadowGenerator(ombres ? OMBRE.carte : 1, soleil)
   generateur.usePercentageCloserFiltering = true
   generateur.filteringQuality = ShadowGenerator.QUALITY_MEDIUM
   generateur.bias = 5e-4
   generateur.normalBias = 0.02
-  const carte = generateur.getShadowMap()!
-  carte.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE
+  let carte = generateur.getShadowMap()!
   const plans = Array.from({ length: 6 }, () => new Plane(0, 0, 0, 0))
-  carte.getCustomRenderList = (_, liste, n) => {
-    Frustum.GetPlanesToRef(generateur.getTransformMatrix(), plans)
-    const dans: AbstractMesh[] = []
-    for (let i = 0; i < n; i++) if (liste![i].isInFrustum(plans)) dans.push(liste![i])
-    return dans
+  const armer = () => {
+    carte = generateur.getShadowMap()!
+    carte.refreshRate = RenderTargetTexture.REFRESHRATE_RENDER_ONCE
+    carte.getCustomRenderList = (_, liste, n) => {
+      Frustum.GetPlanesToRef(generateur.getTransformMatrix(), plans)
+      const dans: AbstractMesh[] = []
+      for (let i = 0; i < n; i++) if (liste![i].isInFrustum(plans)) dans.push(liste![i])
+      return dans
+    }
   }
+  armer()
 
   let cle = ''
+  // Le réglage en direct : les matières gelées recompilent sans (ou avec) l'ombre, la carte se redessine au retour.
+  soleil.shadowEnabled = ombres
+  reglages.subscribe(() => {
+    const oui = ombresDemandees()
+    if (oui === soleil.shadowEnabled) return
+    soleil.shadowEnabled = oui
+    generateur.mapSize = oui ? OMBRE.carte : 1
+    armer()
+    for (const m of scene.materials) if (m.isFrozen) m.markDirty(true)
+    cle = ''
+  })
   let depuis = 0
   let enAttente = false
   scene.onBeforeRenderObservable.add(() => {
     const cam = scene.activeCamera
-    if (!cam) return
+    // Ombres éteintes : ni cadrage, ni veille des porteurs qui bougent.
+    if (!cam || !soleil.shadowEnabled) return
     depuis += scene.getEngine().getDeltaTime() / 1000
     // Le point `avance` m devant le visiteur, à l'horizontale, arrondi au pas.
     const avant = cam.getDirection(Vector3.Forward(scene.useRightHandedSystem))

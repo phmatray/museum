@@ -40,7 +40,7 @@ import { projecteurs, rails, type Projecteur } from '../plan/projecteurs.ts'
 import { solDuParc } from '../plan/relief.ts'
 import { avecVitrines } from '../plan/vitrines.ts'
 import { cubes, matiere } from './boites.ts'
-import { auCielMatiere } from './etat.ts'
+import { auCielMatiere, partie, publier } from './etat.ts'
 import { chargerGlb } from './glb.ts'
 import { ruisseler } from './intemperies.ts'
 import { brancherLueurs, lin, lueursDuJour } from './lueurs.ts'
@@ -234,6 +234,8 @@ export async function monterEclairage(
   let gain = 1
   scene.onBeforeRenderObservable.add(() => {
     const vue = toileRegardee(placements, visiteur())?.key ?? null
+    // La carte de l'œuvre (ui/oeuvre.ts) suit la même toile.
+    publier(partie, { toile: vue })
     const p = parCle.get(vue ?? '') ?? null
     if (p && p !== actif) {
       spot.position.set(...p.source)

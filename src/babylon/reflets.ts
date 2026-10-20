@@ -130,7 +130,7 @@ export function monterReflets(
   plan: Plan,
   visiteur: () => Walker,
   ciel: { dome: AbstractMesh; charge(): boolean } | null,
-): { rafraichir(): void } {
+): { rafraichir(): void; prises(): Promise<void> } {
   const positions = sondes(plan)
   const toutes = ['ciel', ...positions.keys()]
   const niveaux = new Map(plan.levels.map((l) => [l.id, l]))
@@ -234,6 +234,8 @@ export function monterReflets(
   let version = 0
   let dernier: unknown[] = []
   let pose: [string, string, number, number, number] = ['', '', 0, 0, -1]
+  // Ceux qui attendent que la file se vide (l'écran de chargement, par main.ts).
+  const attentes: (() => void)[] = []
   scene.onBeforeRenderObservable.add(() => {
     // La capture de l'image d'avant : faite (même partielle, la file la reprendra), on la retire.
     if (enCours && rendue) {
@@ -242,6 +244,7 @@ export function monterReflets(
       version++
       enCours = null
     }
+    if (file.length === 0 && enCours === null) attentes.splice(0).forEach((f) => f())
     const cle = enCours ? undefined : file.shift()
     if (cle !== undefined) {
       if (cle === 'ciel' && ciel && !ciel.charge()) file.push(cle) // le ciel n'est pas encore chargé : plus tard
@@ -273,5 +276,6 @@ export function monterReflets(
     env.resetRefreshCounter()
   })
 
-  return { rafraichir: reprendre }
+  /** `prises()` : résolue à la première image où toutes les sondes demandées sont prises. */
+  return { rafraichir: reprendre, prises: () => new Promise<void>((r) => attentes.push(r)) }
 }

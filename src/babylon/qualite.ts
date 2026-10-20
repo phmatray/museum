@@ -10,6 +10,7 @@ import type { AbstractEngine } from '@babylonjs/core/Engines/abstractEngine'
 import type { Scene } from '@babylonjs/core/scene'
 
 import { ajusterQualite, paliersPour, QUALITE_INITIALE, type QualiteForcee } from '../scene/qualite.ts'
+import { reglages } from './etat.ts'
 
 const FENETRE = 250
 const MOYENNES = 10
@@ -27,7 +28,7 @@ export function monterQualite(engine: AbstractEngine, scene: Scene, demandee: ()
   // Comme Musee3D : les paliers de l'écran du chargement.
   const P = paliersPour(devicePixelRatio)
   let etat = QUALITE_INITIALE
-  const forcee = demandee()
+  let forcee = demandee()
   let pret = false
   let images: number[] = []
   let moyennes: number[] = []
@@ -35,6 +36,15 @@ export function monterQualite(engine: AbstractEngine, scene: Scene, demandee: ()
 
   const poser = (d: number) => engine.setHardwareScalingLevel(1 / d)
   poser(forcee === 'basse' ? P[P.length - 1] : P[0])
+  // Le réglage « Qualité » en direct : forcée, la densité se fige ; revenue à « Auto », elle repart de la pleine qualité.
+  reglages.subscribe(() => {
+    if (demandee() === forcee) return
+    forcee = demandee()
+    etat = QUALITE_INITIALE
+    images = []
+    moyennes = []
+    poser(forcee === 'basse' ? P[P.length - 1] : P[0])
+  })
 
   scene.onBeforeRenderObservable.add(() => {
     if (!pret || forcee) return

@@ -10,7 +10,7 @@
  *   dont on réécrit les matrices pendant la rotation.
  *
  * Ni lightmap ni intempéries : hémisphérique, soleil, ombres et lueurs de la nef.
- * ponytail : le `volets` du cliquetis audio attend le portage de l'audio.
+ * Chaque nouvelle page fait cliqueter les palettes (`sonVolets`).
  */
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture'
@@ -31,6 +31,7 @@ import type { Accrochage } from '../plan/hang.ts'
 import { cubes, matiere } from './boites.ts'
 import { catalogue, etat, mouvementReduit, recherche } from './etat.ts'
 import { brancherLueurs } from './lueurs.ts'
+import { sonVolets } from './son.ts'
 import { canevasEnMetres, enSrgb, maillageDeQuads } from './textes.ts'
 
 // ── Le tableau ──
@@ -135,6 +136,7 @@ function monterTableau(scene: Scene, accrochage: Accrochage | null, base: string
       const nouvelles = page === -1 ? versionsRecentes(oeuvres.values(), new Date(), recherche()).slice(0, LIGNES).map((a) => ligneAnnonce(a, LARGEUR_LIGNE)) : []
       const lignes = lignesDeDeparts(oeuvres.values(), salles, new Date(), LIGNES * PAGES).slice(Math.max(0, page) * LIGNES, (Math.max(0, page) + 1) * LIGNES).map(ligneEnPalettes)
       Object.assign(e, { avant: e.apres, apres: [...nouvelles, ...lignes, ...vide].slice(0, LIGNES), annonces: nouvelles.length, debut: maintenant, page, fini: false })
+      sonVolets(dureeVolets(LARGEUR_LIGNE))
     }
     if (e.fini) return
     const ms = maintenant - e.debut

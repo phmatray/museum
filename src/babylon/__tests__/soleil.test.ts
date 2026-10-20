@@ -10,6 +10,7 @@ import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder'
 import '@babylonjs/core/Meshes/thinInstanceMesh'
 import { Matrix } from '@babylonjs/core/Maths/math.vector'
 
+import { changerReglages } from '../etat'
 import { fondrePorteurs, monterSoleil, reglagesDuCiel } from '../soleil'
 
 const bruxelles = (iso: string) => cielA(new Date(iso), 50.85, 4.35)
@@ -50,9 +51,15 @@ describe('monterSoleil', () => {
     expect(redessin).toHaveBeenCalledTimes(2)
   })
 
-  it('sans ombres, pas de générateur', () => {
+  it('sans ombres, le générateur attend : le réglage les rallume en direct', () => {
     const scene = new Scene(new NullEngine())
-    expect(monterSoleil(scene, bruxelles('2026-10-19T13:00:00Z'), false).generateur).toBeNull()
+    const { soleil, generateur } = monterSoleil(scene, bruxelles('2026-10-19T13:00:00Z'), false)
+    expect(generateur).toBeTruthy()
+    expect(soleil.shadowEnabled).toBe(false)
+    changerReglages({ ombres: true })
+    expect(soleil.shadowEnabled).toBe(true)
+    changerReglages({ ombres: false })
+    expect(soleil.shadowEnabled).toBe(false)
   })
 })
 

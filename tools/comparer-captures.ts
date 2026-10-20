@@ -28,6 +28,11 @@ interface Vue {
   nom: string; heure: string; q?: string; x?: number; z?: number; y?: number; yaw?: number; pitch?: number; p?: string
   /** Bavette posée en (x, z), tournée vers `yaw`, l'action `anim` figée à 0,4 s (`__BAVETTE__`). */
   bavette?: { x: number; z: number; yaw: number; anim: string }
+  /** L'interface (vague 5) : `chargement` capturé tôt, `accueil` sans reprendre, `visite` par le bouton du billet,
+   * `reglages` par la roue, `partage` par la touche P devant une toile. */
+  ui?: 'chargement' | 'accueil' | 'visite' | 'reglages' | 'partage'
+  /** Téléphone : 390×844, tactile. */
+  mobile?: boolean
 }
 const VUES: Vue[] = [
   { nom: 'arrivee', heure: '15:00', x: 24, z: 37, y: 0, yaw: 0, pitch: 0.05 },
@@ -56,6 +61,15 @@ const VUES: Vue[] = [
   { nom: 'jardin-nuit', heure: '23:00', x: 50, z: 65, y: 0, yaw: -0.6, pitch: 0.1 },
   { nom: 'vers-facade', heure: '15:00', x: 30, z: 80, y: 0, yaw: 0, pitch: 0.1 },
   { nom: 'bavette', heure: '15:00', x: 30, z: 63, y: 0, yaw: 0, pitch: -0.35, bavette: { x: 30, z: 60.5, yaw: 1.2, anim: 'Marche' } },
+  // Vague 5 : l'interface.
+  { nom: 'ui-chargement', heure: '15:00', ui: 'chargement' },
+  { nom: 'ui-accueil', heure: '15:00', ui: 'accueil' },
+  { nom: 'ui-reglages', heure: '15:00', ui: 'reglages' },
+  { nom: 'ui-oeuvre', heure: '15:00', p: 'AspireStrapi' },
+  { nom: 'ui-minimap', heure: '15:00', x: 24, z: 37, y: 0, yaw: 0.3, pitch: 0.05 },
+  { nom: 'ui-visite', heure: '15:00', ui: 'visite' },
+  { nom: 'ui-mobile', heure: '15:00', mobile: true },
+  { nom: 'ui-partage', heure: '15:00', p: 'AspireStrapi', ui: 'partage' },
 ]
 const choisies = option('vues')?.split(',')
 
@@ -68,14 +82,24 @@ try {
   for (const vue of VUES.filter((v) => !choisies || choisies.includes(v.nom))) {
     for (const moteur of ['three', 'babylon'] as const) {
       const page = await navigateur.newPage()
-      await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 })
+      await page.setViewport(vue.mobile ? { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true } : { width: 1280, height: 720, deviceScaleFactor: 1 })
+      if (vue.mobile) await page.emulateMediaFeatures([{ name: 'pointer', value: 'coarse' }]).catch(() => {})
       page.on('pageerror', (e) => console.error(`  ! ${vue.nom}/${moteur} : ${e instanceof Error ? e.message : e}`))
       page.on('console', (m) => { if (m.type() === 'error') console.error(`  ! ${vue.nom}/${moteur} : ${m.text()}`) })
       const url = `${base}?qualite=haute&${vue.q ?? 'meteo=clair'}&heure=${vue.heure}${vue.p ? `&p=${vue.p}` : ''}${moteur === 'babylon' ? '&moteur=babylon' : ''}`
       await page.goto(url, { waitUntil: 'load' })
+      const chemin = join(dossier, `${vue.nom}-${moteur}.png`) as `${string}.png`
+      if (vue.ui === 'chargement') {
+        await new Promise((r) => setTimeout(r, 1500))
+        await page.screenshot({ path: chemin })
+        console.log(chemin)
+        await page.close()
+        continue
+      }
       await page.waitForFunction('window.__PLAN__ || window.__BABYLON__', { timeout: 120_000 })
-      await page.evaluate('window.__PLAN__?.reprendre()')
-      await page.waitForFunction('window.__PLAN__ ? window.__PLAN__.gl.info.render.frame > 0 : window.__BABYLON__.scene.isReady()', { timeout: 120_000 })
+      const enPause = vue.ui === 'accueil' || vue.ui === 'visite'
+      if (!enPause) await page.evaluate('(window.__PLAN__ ?? window.__BABYLON__)?.reprendre?.()')
+      await page.waitForFunction('window.__PLAN__ ? window.__PLAN__.gl.info.render.frame > 0 : window.__PRET__ === true', { timeout: 120_000 })
       if (vue.x !== undefined) {
         const erreur = await page.evaluate(async (v, racine) => {
           /* eslint-disable @typescript-eslint/no-explicit-any -- modules et hooks de la page, non typés ici */
@@ -108,7 +132,18 @@ try {
         }, vue.bavette)
         await new Promise((r) => setTimeout(r, 1500))
       }
-      const chemin = join(dossier, `${vue.nom}-${moteur}.png`) as `${string}.png`
+      if (vue.ui === 'visite') {
+        await page.click('.billet-guide')
+        await new Promise((r) => setTimeout(r, 6000))
+      }
+      if (vue.ui === 'reglages') {
+        await page.click('[aria-label="Réglages"]')
+        await new Promise((r) => setTimeout(r, 800))
+      }
+      if (vue.ui === 'partage') {
+        await page.keyboard.press('KeyP')
+        await new Promise((r) => setTimeout(r, 600))
+      }
       await page.screenshot({ path: chemin })
       console.log(chemin)
       await page.close()

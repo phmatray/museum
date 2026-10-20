@@ -20,9 +20,9 @@ import { couleurDeLangage, partsDeLangages } from '../domain/langages.ts'
 import { adresseQr, matriceQr, QR_MARGE } from '../domain/qr.ts'
 import type { Artwork } from '../domain/types.ts'
 import type { Box } from '../plan/mesh.ts'
-import { borneRegardee, chapeau, cheminReadme, choisirVitrines, enColonnes, PANNEAU, readmeEnBlocs, TOILE, VITRINES, type Vitrine } from '../plan/vitrines.ts'
+import { borneRegardee, chapeau, choisirVitrines, enColonnes, PANNEAU, readmeEnBlocs, TOILE, VITRINES, type Vitrine } from '../plan/vitrines.ts'
 import { cubes, matiere } from './boites.ts'
-import { catalogue, vivant, VIVANTES } from './etat.ts'
+import { catalogue, partie, publier, readme, vivant, VIVANTES } from './etat.ts'
 import { glbOuRien } from './glb.ts'
 import { instancier, matrices, type Pose } from './lots.ts'
 import { brancherLueurs } from './lueurs.ts'
@@ -171,7 +171,7 @@ export async function monterVitrines(scene: Scene, base: string, visiteur: () =>
   )
 
   const [mds, images] = await Promise.all([
-    Promise.all(oeuvres.map((a) => fetch(`${base}${cheminReadme(a.key)}`).then((r) => (r.ok ? r.text() : null)).catch(() => null))),
+    Promise.all(oeuvres.map((a) => readme(base, a.key))),
     Promise.all(oeuvres.map((a) => chargerImage(`${base}media/near/${a.key.replace('/', '__')}.webp`, scene))),
     police('PT Sans'),
     police('PT Serif'),
@@ -251,6 +251,7 @@ export async function monterVitrines(scene: Scene, base: string, visiteur: () =>
     const nuit = 1 - vivant.getState().ciel.jour
     const rang = borneRegardee(visiteur())
     const borne = (rang !== null && oeuvres[rang]?.key) || null
+    publier(partie, { borne })
     const t = performance.now() / 1000
     oeuvres.forEach((a, i) => {
       const active = a.key === borne

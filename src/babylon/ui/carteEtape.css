@@ -1,0 +1,80 @@
+/* La carte d'une étape du journal (CarteEtape.tsx) : le papier pierre, le Marcellus, l'or du journal. */
+.carte-etape {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  width: min(380px, calc(100vw - 32px));
+  z-index: 10;
+  background: #efe9dc;
+  color: #2a2620;
+  border: 1px solid #cfc4ae;
+  border-radius: 4px;
+  padding: 14px 16px;
+  font: 400 14px/1.45 "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  animation: carte-etape 260ms ease-out;
+}
+@keyframes carte-etape {
+  from { opacity: 0; transform: translateY(8px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .carte-etape { animation: none !important; }
+}
+.carte-etape img {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  object-position: top;
+  border: 1px solid #cfc4ae;
+  background: #e4dccb;
+  margin-bottom: 10px;
+}
+.carte-etape .surtitre {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.carte-etape .numero { color: #946a22; }
+.carte-etape .categorie { display: inline-flex; align-items: center; gap: 6px; color: #6a6152; }
+.carte-etape .pastille { width: 8px; height: 8px; border-radius: 4px; }
+.carte-etape .titre {
+  font: 400 22px/1.15 Marcellus, "Times New Roman", serif;
+  margin: 4px 0 6px;
+  text-wrap: balance;
+}
+.carte-etape .statut { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #6a6152; }
+.carte-etape .statut.fait { color: #946a22; }
+.carte-etape .statut a { color: inherit; }
+.carte-etape .pied {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #cfc4ae;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.carte-etape .lire {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: 1px solid #946a22;
+  color: #2a2620;
+  font-weight: 600;
+  text-decoration: none;
+  background: rgba(148, 106, 34, 0.1);
+}
+.carte-etape kbd {
+  border: 1px solid #cfc4ae;
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  padding: 0 6px;
+  font: 600 11px "Source Sans 3", system-ui;
+  background: rgba(255, 255, 255, 0.45);
+}

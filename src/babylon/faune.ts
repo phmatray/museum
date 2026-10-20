@@ -33,7 +33,7 @@ import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData'
 import '@babylonjs/core/Meshes/thinInstanceMesh'
 import type { Scene } from '@babylonjs/core/scene'
 
-import { FAMILLE, avancerFamille, familleInitiale, type EtatHerisson, type Herisson } from '../domain/herisson.ts'
+import { ECHELLE_HERISSON, FAMILLE, avancerFamille, familleInitiale, type EtatHerisson, type Herisson } from '../domain/herisson.ts'
 import type { Saison } from '../domain/saisons.ts'
 import { SOURCES_LAMPADAIRES } from '../plan/eclairage.ts'
 import { CONTOUR_ETANG, JARDIN, TRACE_RUISSEAU } from '../plan/jardin.ts'
@@ -47,6 +47,7 @@ import { glbOuRien } from './glb.ts'
 import { dialecte, greffer } from './greffe.ts'
 import { brancherLueurs, lin, lueursDuJour, smoothstep } from './lueurs.ts'
 import { FOULE, PARC, retourner } from './parc.ts'
+import { froisser, son } from './son.ts'
 import { erablesCales, type Geo as GeoCalee } from './vegetation.ts'
 
 export interface Geo { positions: Float32Array; normals: Float32Array; indices: Uint32Array }
@@ -777,6 +778,9 @@ export async function monterFaune(scene: Scene, camera: Camera): Promise<void> {
     // Les hérissons dessinés, tassés en tête des buffers : ni ceux du nid, ni ceux à plus de
     // PORTEE_HERISSON (un hérisson de 25 cm y fait quelques pixels, et 14 000 triangles), ni ceux
     // hors du champ (le lot n'a pas de boîte qui vaille : Babylon les dessinerait tous).
+    // Les voix : on n'entend que les deux plus proches dehors (quatre qui fouillent, ce serait un vacarme) ; son coupé, personne.
+    const d2 = (b: Herisson) => (b.x - cam.x) ** 2 + (b.z - cam.z) ** 2
+    const proches = son.getState().actif ? famille.filter((b) => b.etat !== 'nid').sort((a, b) => d2(a) - d2(b)).slice(0, 2) : []
     let n = 0
     famille.forEach((b, i) => {
       const { echelle, demiLongueur } = FAMILLE[b.qui]
@@ -785,8 +789,13 @@ export async function monterFaune(scene: Scene, camera: Camera): Promise<void> {
       ;[FOULE[i][0], FOULE[i][1], FOULE[i][2]] = [b.x, b.z, dehorsDuNid ? 0.3 * echelle : 0]
       const hc = horloges[i]
       if (!dehorsDuNid) return
+      const foulee = Math.floor(hc.pas / Math.PI)
       hc.pas += dt * b.vitesse * ((2 * Math.PI) / (0.028 * echelle))
       hc.flair += dt
+      // Il froisse l'herbe : à chaque pas qu'il trotte, et par à-coups quand il fouille du museau (avant tout culling).
+      const voix = proches.indexOf(b)
+      const bruisse = b.etat === 'marche' ? Math.floor(hc.pas / Math.PI) !== foulee : b.etat === 'flaire' && Math.random() < dt * 2.5
+      if (voix >= 0 && bruisse && dt > 0) froisser(b.x, b.z, (b.etat === 'marche' ? 1 : 0.6) * Math.sqrt(echelle / ECHELLE_HERISSON), voix as 0 | 1)
       if (cache || Math.hypot(b.x - cam.x, b.z - cam.z) > PORTEE_HERISSON) return
       const y = solDuParc(b.x, b.z)
       if (champ.some((p) => p.normal.x * b.x + p.normal.y * y + p.normal.z * b.z + p.d < -0.5)) return

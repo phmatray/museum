@@ -1,0 +1,12 @@
+/* Le cartouche de la visite guidée (GuidedTour.tsx). */
+.visite-cartouche {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 200;
+  padding: 0.5rem 0.75rem;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border-radius: 4px;
+  font: 14px system-ui, sans-serif;
+}

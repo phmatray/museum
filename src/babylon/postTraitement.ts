@@ -175,6 +175,7 @@ fn main(input: FragmentInputs) -> FragmentOutputs {
   fragmentOutputs.color = vec4f(srgb(c), 1.0);
 }`
 
+// ponytail: `basse` (moins d'AO et de rayons) est lu au montage : la qualité choisie dans les réglages ne le change qu'au rechargement (la densité de pixels, elle, suit tout de suite, qualite.ts).
 export function monterPostTraitement(scene: Scene, camera: Camera, basse: boolean): void {
   const engine = scene.getEngine()
   const langue = engine.isWebGPU ? ShaderLanguage.WGSL : ShaderLanguage.GLSL

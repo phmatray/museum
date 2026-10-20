@@ -1,0 +1,42 @@
+/* L'écran de chargement (ecranChargement.ts), comme components/EcranChargement.tsx. */
+[data-museum-overlay='chargement'] {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.4rem;
+  background: radial-gradient(ellipse at 50% 42%, #26323f 0%, #1c2530 45%, #10151b 100%);
+  color: #f5eedc;
+  opacity: 1;
+  transition: opacity 700ms ease;
+  padding: 0 1rem;
+  text-align: center;
+}
+[data-museum-overlay='chargement'][hidden] { display: none; }
+[data-museum-overlay='chargement'][aria-busy='false'] { opacity: 0; pointer-events: none; }
+[data-museum-overlay='chargement'] h1 {
+  margin: 0;
+  font-family: Georgia, 'Times New Roman', serif;
+  font-weight: 400;
+  font-size: clamp(1.8rem, 6vw, 2.8rem);
+  letter-spacing: 0.06em;
+}
+[data-museum-overlay='chargement'] .etape {
+  margin: 0;
+  color: #d1a54a;
+  font-size: 0.75rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+[data-museum-overlay='chargement'] [role='progressbar'] {
+  width: min(260px, 70vw);
+  height: 2px;
+  background: rgba(209, 165, 74, 0.2);
+  border-radius: 1px;
+  overflow: hidden;
+}
+[data-museum-overlay='chargement'] [role='progressbar'] > div { height: 100%; width: 0; background: #d1a54a; }
+[data-museum-overlay='chargement'] .compteur { margin: 0; font-size: 0.75rem; opacity: 0.55; font-variant-numeric: tabular-nums; }

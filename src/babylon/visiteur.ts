@@ -1,88 +1,200 @@
 /**
  * Le visiteur : où il ouvre les yeux (le départ du plan, ou devant la toile de
- * `?p=<repo>`), puis la marche au clavier et le regard à la souris verrouillée.
+ * `?p=<repo>`, vitrines comprises), puis la marche (clavier, joystick) et le
+ * regard (souris verrouillée, glissé du doigt), ou la visite guidée (plan/tour).
  * La caméra est passive : `walk.ts` décide où va le pied, on y pose l'œil.
+ *
+ * Rien ne bouge tant que la visite est en pause (`partie.paused`, vrai au départ)
+ * ou que le chargement n'est pas fini (chargement.ts). Comme PlanPlayer et
+ * PointerLockCamera de three : la perte du pointeur verrouillé met en pause ;
+ * pendant la visite guidée, une touche de marche, un clic sur la scène ou le
+ * doigt rendent la main sur place.
  */
 import { FreeCamera } from '@babylonjs/core/Cameras/freeCamera'
 import { Vector3 } from '@babylonjs/core/Maths/math.vector'
 import type { Scene } from '@babylonjs/core/scene'
 
-import { PAS_FIXE, cadencer } from '../domain/locomotion.ts'
+import { AU_SOL, PAS_FIXE, VITESSE_VISITE, cadencer, sauter } from '../domain/locomotion.ts'
 import { projetDemande, resoudre } from '../domain/lien.ts'
 import { arriveeDevant, cibleDe, type Arrivee } from '../plan/arrivee.ts'
 import type { Accrochage } from '../plan/hang.ts'
 import { MUSEE } from '../plan/musee.ts'
 import { surfaceAt } from '../plan/rules.ts'
+import { VISITE, avancer, capVers, type Curseur } from '../plan/tour.ts'
 import type { Plan } from '../plan/types.ts'
 import { step, type Walker } from '../plan/walk.ts'
 
-const OEIL = 1.62
-const SENSIBILITE = 0.002
+import { pret } from './chargement.ts'
+import { partie, publier, reglages, toucher, type Partie } from './etat.ts'
 
-/** Le départ du visiteur : devant la toile demandée si elle est accrochée, sinon au départ du plan. */
-export function departDuVisiteur(plan: Plan, accrochage: Accrochage | null, recherche: string, hash: string, owners: readonly string[]): Arrivee {
-  const demande = projetDemande(recherche, hash)
-  if (demande && accrochage) {
-    const cles = accrochage.rooms.flatMap((r) => r.placements.map((p) => p.key))
+const OEIL = 1.62
+/** Radians par pixel, souris (multipliée par le réglage) et doigt (tel quel, comme three). */
+const SENSIBILITE = 0.002
+/** Secondes d'arrêt au bout de chaque arrêt de la visite. */
+const PAUSE_VISITE = 4
+/** Vitesse de convergence du regard vers le cap de la visite, en s⁻¹. */
+const TAUX_REGARD = 3.5
+/** Les touches qui font marcher ou sauter : pendant la visite guidée, elles la font cesser. */
+const TOUCHES_DE_MARCHE = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space'])
+const borne = (v: number, a = 1) => Math.max(-a, Math.min(a, v))
+
+/**
+ * Le départ du visiteur : devant la toile demandée (accrochée ou en vitrine, `vitrines` = leurs clés),
+ * sinon au départ du plan. `rendezVous` : ce que le billet dit de la demande (null sans `?p=`, ou si
+ * l'accrochage ou le catalogue (`vitrines` null) manque : on ne peut rien affirmer, comme PlanPlayer).
+ */
+export function departDuVisiteur(
+  plan: Plan, accrochage: Accrochage | null, recherche: string, hash: string, owners: readonly string[], vitrines: readonly string[] | null = [],
+): Arrivee & { rendezVous: Partie['rendezVous'] } {
+  const demande = accrochage && vitrines ? projetDemande(recherche, hash) : null
+  if (demande && accrochage && vitrines) {
+    const cles = [...accrochage.rooms.flatMap((r) => r.placements.map((p) => p.key)), ...vitrines]
     const cle = resoudre(demande, cles, owners)
-    // ponytail : pas de vitrines (`[]`) ; on les ajoutera avec la salle d'honneur.
-    const cible = cle ? cibleDe(cle, accrochage, []) : null
+    const cible = cle ? cibleDe(cle, accrochage, [...vitrines]) : null
     const arrivee = cible ? arriveeDevant(plan, cible) : null
-    if (arrivee) return arrivee
+    if (arrivee) return { ...arrivee, rendezVous: { demande, cle } }
   }
   const { level, x, z } = plan.spawn
   const y = plan.levels.find((l) => l.id === level)?.elevation ?? 0
   const surface = surfaceAt(plan, x, z, y)
   if (!surface) throw new Error(`Le départ (${x}, ${z}) n'est sur aucune surface`)
-  return { level, surface, x, z, y, yaw: 0, pitch: 0 }
+  return { level, surface, x, z, y, yaw: 0, pitch: 0, rendezVous: demande ? { demande, cle: null } : null }
+}
+
+/** La visite guidée reprise en main : on continue à pied là où l'on est, sans repasser par l'accueil. */
+function reprendreLaMain(toile?: HTMLCanvasElement) {
+  if (toile) Promise.resolve(toile.requestPointerLock?.()).catch(() => {})
+  partie.setState({ tourActive: false, paused: false })
 }
 
 /**
- * La caméra du visiteur, menée par le clavier (codes positionnels : ZQSD en AZERTY) et la souris verrouillée.
- * `placer` téléporte le visiteur (captures comparées, `tools/comparer-captures.ts`) ; `walker` rend le
- * marcheur courant, surface comprise (la promenade de Bavette la lit).
+ * La caméra du visiteur, menée par le clavier (codes positionnels : ZQSD en AZERTY), la souris verrouillée,
+ * `toucher` (ui/mobile.ts) et la visite guidée. `placer` téléporte le visiteur, même en pause (captures
+ * comparées, `tools/comparer-captures.ts`) ; `walker` rend le marcheur courant, surface comprise.
  */
 export function monterVisiteur(scene: Scene, toile: HTMLCanvasElement, depart: Arrivee): FreeCamera & { placer(a: Arrivee): void; walker(): Walker } {
   const camera = new FreeCamera('visiteur', new Vector3(depart.x, depart.y + OEIL, depart.z), scene)
   camera.inputs.clear()
-  camera.fov = (75 * Math.PI) / 180
   camera.minZ = 0.1
   camera.maxZ = 1000
+  // Le champ de vision du réglage (vertical, comme three), suivi en direct.
+  const champ = () => (camera.fov = (reglages.getState().champ * Math.PI) / 180)
+  champ()
+  reglages.subscribe((r, a) => r.champ !== a.champ && champ())
 
   const enfoncees = new Set<string>()
-  addEventListener('keydown', (e) => enfoncees.add(e.code))
+  addEventListener('keydown', (e) => {
+    enfoncees.add(e.code)
+    if (partie.getState().tourActive && TOUCHES_DE_MARCHE.has(e.code)) reprendreLaMain(toile)
+  })
   addEventListener('keyup', (e) => enfoncees.delete(e.code))
   addEventListener('blur', () => enfoncees.clear())
   const touche = (...codes: string[]) => Number(codes.some((c) => enfoncees.has(c)))
+  toile.addEventListener('pointerdown', () => partie.getState().tourActive && reprendreLaMain(toile))
 
-  toile.onclick = () => { Promise.resolve(toile.requestPointerLock()).catch(() => {}) }
   let { pitch } = depart
+  /** Le cap du regard : celui de la marche hors visite, qui rattrape celui de la visite pendant. */
+  let regard = depart.yaw
   let w: Walker = { level: depart.level, surface: depart.surface, x: depart.x, z: depart.z, y: depart.y, yaw: depart.yaw }
+  let saut = AU_SOL
+  const poser = (publie = true) => {
+    camera.position.set(w.x, w.y + OEIL + saut.h, w.z)
+    // En main droite, yaw 0 regarde −z et un pitch positif lève les yeux, comme three.
+    camera.rotation.set(pitch, regard, 0)
+    // Publié seulement s'il a bougé ou tourné : à l'arrêt, la minimap ne se redessine pas.
+    const v = partie.getState().visiteur
+    if (publie && (!v || v.x !== w.x || v.z !== w.z || v.yaw !== w.yaw || v.surface !== w.surface)) partie.setState({ visiteur: w })
+  }
+
+  // Le regard à la souris verrouillée ; Échap (le verrou tombe) met en pause.
   addEventListener('mousemove', (e) => {
     if (document.pointerLockElement !== toile) return
-    w.yaw -= e.movementX * SENSIBILITE
-    pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, pitch - e.movementY * SENSIBILITE))
+    const { sensibilite, inverserY } = reglages.getState()
+    regard -= e.movementX * SENSIBILITE * sensibilite
+    pitch = borne(pitch - e.movementY * SENSIBILITE * sensibilite * (inverserY ? -1 : 1), Math.PI / 2)
   })
+  document.addEventListener('pointerlockchange', () => {
+    if (document.pointerLockElement !== toile) partie.setState({ paused: true })
+  })
+
+  // La visite guidée : chaque visite repart du départ du plan, où commence son itinéraire.
+  const DEPART = departDuVisiteur(MUSEE, null, '', '', [])
+  let curseur: Curseur | null = null
+  let attente = 0
+  partie.subscribe((s, a) => {
+    if (s.tourActive === a.tourActive) return
+    curseur = null
+    attente = 0
+    if (s.tourActive) {
+      w = { level: DEPART.level, surface: DEPART.surface, x: DEPART.x, z: DEPART.z, y: DEPART.y, yaw: 0 }
+      partie.setState({ tourEtape: 0 })
+    }
+  })
+  /** L'entrée d'un pas de visite : marcher vers le prochain point de l'arrêt, puis s'y arrêter. `null` : visite finie. */
+  const guider = (w: Walker, dt: number) => {
+    const c = avancer(VISITE, curseur ?? { stop: 0, point: 0 }, w)
+    curseur = c
+    publier(partie, { tourEtape: c.stop })
+    const pts = VISITE[c.stop].points
+    if (c.point < pts.length) return { forward: 1, strafe: 0, yaw: capVers(w, ...pts[c.point]), vitesse: VITESSE_VISITE }
+    attente += dt
+    if (attente >= PAUSE_VISITE) {
+      attente = 0
+      if (c.stop + 1 >= VISITE.length) return null
+      curseur = { stop: c.stop + 1, point: 0 }
+    }
+    return { forward: 0, strafe: 0, yaw: w.yaw }
+  }
 
   let reste = 0
   scene.onBeforeRenderObservable.add(() => {
-    const { pas, reste: r } = cadencer(reste, scene.getEngine().getDeltaTime() / 1000)
+    // En pause, rien n'avance, pas même le cadenceur (les glissés du doigt attendent la reprise).
+    if (partie.getState().paused || !pret()) return
+    const dt = scene.getEngine().getDeltaTime() / 1000
+    const { pas, reste: r } = cadencer(reste, dt)
     reste = r
+    if (toucher.lookX || toucher.lookY) {
+      if (partie.getState().tourActive) reprendreLaMain()
+      regard -= toucher.lookX * SENSIBILITE
+      pitch = borne(pitch - toucher.lookY * SENSIBILITE, Math.PI / 2)
+      toucher.lookX = toucher.lookY = 0
+    }
+    if (partie.getState().tourActive && (toucher.forward || toucher.strafe)) reprendreLaMain()
+    const visite = partie.getState().tourActive
+    // Clavier et joystick s'additionnent, bornés à [−1, 1] comme l'attend `step`.
     const input = {
-      forward: touche('KeyW', 'ArrowUp') - touche('KeyS', 'ArrowDown'),
-      strafe: touche('KeyD', 'ArrowRight') - touche('KeyA', 'ArrowLeft'),
-      yaw: w.yaw,
+      forward: borne(touche('KeyW', 'ArrowUp') - touche('KeyS', 'ArrowDown') + toucher.forward),
+      strafe: borne(touche('KeyD', 'ArrowRight') - touche('KeyA', 'ArrowLeft') + toucher.strafe),
+      yaw: regard,
       hate: touche('ShiftLeft', 'ShiftRight') > 0,
     }
-    // Toujours le même objet MUSEE : `walk.ts` y accroche son cache de murs.
-    for (let i = 0; i < pas; i++) w = step(MUSEE, w, input, PAS_FIXE)
-    camera.position.set(w.x, w.y + OEIL, w.z)
-    // En main droite, yaw 0 regarde −z et un pitch positif lève les yeux, comme three.
-    camera.rotation.set(pitch, w.yaw, 0)
+    for (let i = 0; i < pas; i++) {
+      const entree = visite ? guider(w, PAS_FIXE) : input
+      if (!entree) {
+        // Fin de visite : retour au billet d'accueil.
+        curseur = null
+        partie.setState({ tourActive: false, paused: true })
+        break
+      }
+      // Toujours le même objet MUSEE : `walk.ts` y accroche son cache de murs.
+      w = step(MUSEE, w, entree, PAS_FIXE)
+      saut = sauter(saut, !visite && touche('Space') > 0, PAS_FIXE)
+    }
+    if (visite) {
+      // Le regard rejoint le cap de la marche, amorti et indépendant de la cadence.
+      const k = 1 - Math.exp(-TAUX_REGARD * dt)
+      regard += Math.atan2(Math.sin(w.yaw - regard), Math.cos(w.yaw - regard)) * k
+      pitch -= pitch * k
+    }
+    poser()
   })
+  // Comme three : au départ, publié seulement devant le tableau d'un rendez-vous (la minimap attend sinon le premier pas).
+  poser(Boolean(partie.getState().rendezVous?.cle))
   return Object.assign(camera, {
     placer: (a: Arrivee) => {
       ;({ pitch, ...w } = a)
+      regard = w.yaw
+      poser()
     },
     walker: () => w,
   })

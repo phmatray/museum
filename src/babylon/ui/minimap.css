@@ -1,0 +1,71 @@
+/* La minimap (Minimap.tsx) : l'encart en bas à droite, le plan ouvert en plein écran. */
+.minimap {
+  position: fixed;
+  bottom: 1rem;
+  right: 1rem;
+  margin: 0;
+  width: min(220px, 30vw);
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.minimap figcaption { color: white; font: 12px system-ui, sans-serif; padding: 4px 8px; }
+.minimap-dessin { position: relative; }
+.minimap-dessin img { display: block; width: 100%; }
+.minimap-dessin svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+.minimap-plan {
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(12, 14, 18, 0.94);
+  flex-direction: column;
+}
+.minimap-plan[open] { display: flex; }
+.minimap-plan::backdrop { background: transparent; }
+.minimap-barre {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: max(12px, env(safe-area-inset-top)) 12px 8px;
+  color: white;
+  font: 15px system-ui, sans-serif;
+}
+.minimap-barre span { flex: 1; }
+.minimap-barre button {
+  width: 44px;
+  height: 44px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  font: 22px system-ui, sans-serif;
+  cursor: pointer;
+}
+.minimap-cadre {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+}
+.minimap-contenu {
+  position: absolute;
+  inset: 0;
+  transform-origin: 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.minimap-contenu > div { width: min(100%, 1100px); padding: 12px; box-sizing: border-box; }

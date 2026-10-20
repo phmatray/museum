@@ -4,7 +4,7 @@
  * Ordre : socle → soleil et ciel → visiteur → post-traitement → reflets → boîtes et parement → tri des salles →
  * couches du bâtiment (vague 1), de l'intérieur (vague 2), du jardin (vague 3), des rayons et de la météo (vague 4), chacune non bloquante : un GLB absent n'arrête
  * pas la visite. Tout arrivé, les sondes de reflets sont prises et les matières
- * figées (sauf celles qui vivent).
+ * figées (sauf celles qui vivent). L’interface (ui/, vague 5) se monte autour : chargement et billet avant le socle.
  */
 import { SceneInstrumentation } from '@babylonjs/core/Instrumentation/sceneInstrumentation'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
@@ -13,17 +13,19 @@ import config from '../../museum.config.json'
 import { qualiteDemandee } from '../scene/qualite.ts'
 import type { Accrochage } from '../plan/hang.ts'
 import { MUSEE } from '../plan/musee.ts'
+import { choisirVitrines } from '../plan/vitrines.ts'
 
 import { monterAccessoires } from './accessoires.ts'
 import { monterAllees } from './allees.ts'
 import { monterAteliers } from './ateliers.ts'
 import { monterBatllo } from './batllo.ts'
-import { monterBavette } from './bavette.ts'
+import { BAVETTE, monterBavette } from './bavette.ts'
 import { monterBelvedere } from './belvedere.ts'
 import { monterBoites } from './boites.ts'
 import { monterCiel } from './ciel.ts'
 import { monterCartels } from './cartels.ts'
-import { monterChantier } from './chantier.ts'
+import { chargement, marquerPret, suivre } from './chargement.ts'
+import { journalDuChantier, monterChantier } from './chantier.ts'
 import { monterCimaises } from './cimaises.ts'
 import { monterCloche } from './cloche.ts'
 import { monterConstellation } from './constellation.ts'
@@ -32,7 +34,7 @@ import { monterDeparts } from './departs.ts'
 import { monterEclairage } from './eclairage.ts'
 import { monterEnceinte } from './enceinte.ts'
 import { monterEscalier } from './escalier.ts'
-import { demarrerCycle, recherche, vivant, VIVANTES } from './etat.ts'
+import { catalogue, demarrerCycle, partie, recherche, reglages, vivant, VIVANTES } from './etat.ts'
 import { monterFacade } from './facade.ts'
 import { monterFaune } from './faune.ts'
 import { monterFeuilles } from './feuilles.ts'
@@ -56,27 +58,46 @@ import { monterRelief } from './relief.ts'
 import { monterRuisseau } from './ruisseau.ts'
 import { monterSalleHonneur } from './salleHonneur.ts'
 import { monterSculptures } from './sculptures.ts'
+import { basculerSon, monterBoutonSon, monterSon, son } from './son.ts'
 import { creerSocle } from './socle.ts'
 import { fondrePorteurs, monterSoleil } from './soleil.ts'
 import { monterToiles } from './toiles.ts'
 import { monterVegetation } from './vegetation.ts'
-import { monterVisibilite, toutMontrer } from './visibilite.ts'
+import { monterVisibilite, retrier, toutMontrer } from './visibilite.ts'
 import { departDuVisiteur, monterVisiteur } from './visiteur.ts'
 import { monterVitrines } from './vitrines.ts'
+import { monterAccueil } from './ui/accueil.ts'
+import { monterCarteEtape } from './ui/carteEtape.ts'
+import { monterEcranChargement } from './ui/ecranChargement.ts'
+import { monterMinimap } from './ui/minimap.ts'
+import { monterMobile } from './ui/mobile.ts'
+import { monterOeuvre } from './ui/oeuvre.ts'
+import { monterReglages } from './ui/reglages.ts'
+import { monterVisite } from './ui/visite.ts'
 
 export async function demarrer(racine: HTMLElement): Promise<void> {
   const toile = document.createElement('canvas')
   // `display: block`, sinon la ligne de base d'un canvas en ligne ajoute une barre de défilement.
   toile.style.cssText = 'display:block;width:100vw;height:100vh;touch-action:none'
+  // À la place de l'écran statique d'index.html (fixe, il couvrirait la scène) ; l'interface (ui/) se monte ensuite à côté.
   racine.replaceChildren(toile)
+  const base = import.meta.env.BASE_URL
+  // L'écran de chargement et le billet d'accueil (ui/) : avant le socle, la visite en pause jusqu'au prêt.
+  monterEcranChargement(racine)
+  let accrochageCharge: Accrochage | null = null
+  monterAccueil(racine, toile, { accrochage: () => accrochageCharge, base })
   // La brume et l'éclair (meteo.ts) : greffés sur toute PBRMaterial créée ensuite.
   enregistrerBrume()
   const { engine, scene } = await creerSocle(toile)
   // La qualité adaptative (qualite.ts) : la densité posée tout de suite, le moniteur au point prêt.
   const qualite = monterQualite(engine, scene, () => qualiteDemandee(recherche()))
 
-  const base = import.meta.env.BASE_URL
-  const accrochage = await fetch(`${base}data/accrochage.json`).then((r) => r.json() as Promise<Accrochage>).catch(() => null)
+  // Le catalogue aussi (la même promesse que les couches) : les vitrines comptent pour le rendez-vous de `?p=`.
+  const [accrochage, cat] = await suivre(Promise.all([
+    fetch(`${base}data/accrochage.json`).then((r) => r.json() as Promise<Accrochage>).catch(() => null),
+    catalogue(base),
+  ]))
+  accrochageCharge = accrochage
   // L'état vivant (etat.ts) : le ciel toutes les 30 s, la météo tous les quarts d'heure ; METEO lissée à chaque image (intemperies.ts).
   demarrerCycle()
   animerIntemperies(scene)
@@ -85,11 +106,23 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   const { ciel } = vivant.getState()
 
   // Soleil, ombres (soleil.ts) et dôme du ciel (ciel.ts), qui suivent l'heure.
-  const { hemi, generateur } = monterSoleil(scene, ciel, forcages.get('ombres') !== '0')
+  const { soleil, hemi, generateur } = monterSoleil(scene, ciel, forcages.get('ombres') !== '0')
   const ciel3d = monterCiel(scene)
   // Les lueurs des lieux (lueurs.ts) : un état partagé, chaque couche y branche ses matières (soleil.ts les suit ensuite).
   reglerLueurs(ciel.jour, hemi)
-  const camera = monterVisiteur(scene, toile, departDuVisiteur(MUSEE, accrochage, location.search, location.hash, config.owners))
+  const enVitrine = cat ? choisirVitrines(cat.artworks, cat.owners).map((a) => a.key) : null
+  const depart = departDuVisiteur(MUSEE, accrochage, location.search, location.hash, config.owners, enVitrine)
+  partie.setState({ rendezVous: depart.rendezVous })
+  const camera = monterVisiteur(scene, toile, depart)
+  // L'interface autour de la scène (ui/, son.ts) : le bouton son entre dans le groupe des réglages.
+  monterSon(scene, camera)
+  const interSon = { bouton: monterBoutonSon(), actif: () => son.getState().actif, basculer: basculerSon, abonner: (f: () => void) => son.subscribe(f) }
+  monterReglages(racine, { toile, son: interSon })
+  monterMinimap(racine, accrochage, () => (BAVETTE.monte ? BAVETTE : null))
+  monterOeuvre(racine, base)
+  monterVisite(racine, accrochage)
+  monterCarteEtape(racine, journalDuChantier(base))
+  monterMobile(racine)
   // Le post-traitement HDR (postTraitement.ts) : avant toute matière, l'image processing quitte les matières pour la passe d'écran.
   monterPostTraitement(scene, camera, qualiteDemandee(recherche()) === 'basse')
   // Les reflets (reflets.ts) : une sonde par salle, l'environnement posé avant la première compilation.
@@ -103,7 +136,7 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   // Les meubles posés au sol, pour leurs ombres de contact (contact.ts).
   const meubles: Mesh[] = monterCimaises(scene, MUSEE)
   porteurs.push(...monterParement(scene, MUSEE, atlas), ...meubles, ...monterAccessoires(scene))
-  for (const m of porteurs) generateur?.addShadowCaster(m)
+  for (const m of porteurs) generateur.addShadowCaster(m)
   // Le tri entre salles (visibilite.ts) : tôt, il prend chaque maillage qui arrive.
   const { lieuDe } = monterVisibilite(scene, camera, MUSEE)
   const signaler = (quoi: string) => (e: unknown) => console.error(`${quoi} indisponible`, e)
@@ -111,8 +144,8 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   // Les couches du bâtiment, sans les attendre. Les porteurs arrivés après la
   // première carte d'ombre la font redessiner.
   const ombrer = (ms: Mesh[]) => {
-    for (const m of ms) generateur?.addShadowCaster(m)
-    generateur?.getShadowMap()?.resetRefreshCounter()
+    for (const m of ms) generateur.addShadowCaster(m)
+    generateur.getShadowMap()?.resetRefreshCounter()
   }
   const meuble = (ms: Mesh[]) => (meubles.push(...ms), ombrer(ms))
   // Les couches calculées sur le fil (100 à 400 ms chacune : relief, allées, feuilles, lierre, enceinte) :
@@ -161,11 +194,11 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
     Promise.resolve().then(() => monterRayons(scene)).catch(signaler('rayons')),
     Promise.resolve().then(() => monterMeteo(scene, camera)).catch(signaler('météo')),
     atlas.catch(() => {}),
-  ]
+  ].map((p) => (p ? suivre<unknown>(p) : p))
   if (import.meta.env.DEV) {
     // Pour les mesures headless ; l'instrumentation remet le compteur d'appels à zéro à chaque image.
     const instr = new SceneInstrumentation(scene)
-    ;(window as unknown as { __BABYLON__?: unknown }).__BABYLON__ = { engine, scene, camera, instr }
+    ;(window as unknown as { __BABYLON__?: unknown }).__BABYLON__ = { engine, scene, camera, instr, reprendre: () => partie.setState({ paused: false }) }
   }
   engine.runRenderLoop(() => scene.render())
   // Tout arrivé et compilé : la carte d'ombre redessinée, les sondes prises, les matières figées
@@ -173,7 +206,7 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   // suivante qui change une matière après coup la dégèle (`unfreeze`) ou s'ajoute à VIVANTES (etat.ts).
   await Promise.all(couches)
   monterContact(scene, meubles)
-  await cartesChargees()
+  await suivre(cartesChargees())
   // Un lot vide pour l'instant (sujets au loin, `cacherAuLoin`) se compilerait sans ses instances : la variante
   // à instances (caméra et carte d'ombre) attendrait sa première apparition, en pleine marche (~200 ms à 43 m de la façade).
   for (const m of scene.meshes as Mesh[]) {
@@ -183,12 +216,23 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
     m.thinInstanceCount = 0
   }
   await scene.whenReadyAsync()
-  qualite.demarrer()
+  chargement.setState({ etape: 'finition' })
   // Les porteurs immobiles fondus par case (soleil.ts), sur les lots complets : la carte d'ombre en un appel par case.
-  if (generateur) {
-    toutMontrer()
-    fondrePorteurs(scene, generateur, lieuDe)
+  // Ombres éteintes : seulement si le réglage les allume en cours de visite.
+  const fondre = () => (toutMontrer(), fondrePorteurs(scene, generateur, lieuDe), retrier())
+  if (soleil.shadowEnabled) fondre()
+  else {
+    const fin = reglages.subscribe(() => soleil.shadowEnabled && (fin(), fondre()))
   }
   reflets.rafraichir()
   for (const m of scene.materials) if (!VIVANTES.has(m.name)) m.freeze()
+  // Prêt une fois les sondes prises et 3 images dessinées : plus de rafale de compilation sous les pas.
+  await reflets.prises()
+  await new Promise<void>((ok) => {
+    let n = 0
+    const o = scene.onAfterRenderObservable.add(() => { if (++n === 3) { scene.onAfterRenderObservable.remove(o); ok() } })
+  })
+  marquerPret()
+  // La qualité adaptative, seulement une fois prêt (les compilations du chargement fausseraient la mesure).
+  qualite.demarrer()
 }

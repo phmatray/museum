@@ -44,10 +44,10 @@ try {
     await page.goto(base + commun + (moteur === 'babylon' ? '&moteur=babylon' : ''), { waitUntil: 'load' })
     await page.waitForFunction('window.__PLAN__ || window.__BABYLON__', { timeout: 120_000 })
     // three ouvre en pause derrière l'écran de chargement : on reprend la visite sans clic.
-    await page.evaluate('window.__PLAN__?.reprendre()')
+    await page.evaluate('(window.__PLAN__ ?? window.__BABYLON__)?.reprendre?.()')
     // Le hook arrive avant la première image de three (une dizaine de secondes de compilation) :
     // on attend qu'il dessine vraiment, ou que la scène Babylon soit prête, puis 3 s de chauffe.
-    await page.waitForFunction('window.__PLAN__ ? window.__PLAN__.gl.info.render.frame > 0 : window.__BABYLON__.scene.isReady()', { timeout: 120_000 })
+    await page.waitForFunction('window.__PLAN__ ? window.__PLAN__.gl.info.render.frame > 0 : window.__PRET__ === true', { timeout: 120_000 })
     if (lieu) {
       await page.evaluate(async ([x, z, yaw], racine) => {
         /* eslint-disable @typescript-eslint/no-explicit-any -- modules et hooks de la page, non typés ici */
