@@ -13,8 +13,8 @@
  * - les disques des 25 spots sous les balcons et des 9 projecteurs de façade.
  *
  * La lumière versée par ces spots et projecteurs est déjà dans lueurs.ts.
- * ponytail : `jour` figé au montage (comme main.ts) ; la lentille allumée et
- * les halos sont tone mappés (three : toneMapped false), un peu moins éclatants.
+ * ponytail : `jour` figé au montage (comme main.ts). Tout est tone mappé, comme
+ * dans three où le ToneMapping final passe sur toute l'image (`toneMapped: false` n'y change rien).
  */
 import { Constants } from '@babylonjs/core/Engines/constants'
 import { Light } from '@babylonjs/core/Lights/light'
@@ -225,7 +225,8 @@ export async function monterEclairage(
   /** three décroît en 1/d^1,2, Babylon en 1/d² : accordés sur la toile visée. */
   let gain = 1
   scene.onBeforeRenderObservable.add(() => {
-    const p = parCle.get(toileRegardee(placements, visiteur())?.key ?? '') ?? null
+    const vue = toileRegardee(placements, visiteur())?.key ?? null
+    const p = parCle.get(vue ?? '') ?? null
     if (p && p !== actif) {
       spot.position.set(...p.source)
       spot.direction.set(p.cible[0] - p.source[0], p.cible[1] - p.source[1], p.cible[2] - p.source[2])

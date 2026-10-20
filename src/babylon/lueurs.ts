@@ -113,7 +113,7 @@ ${fn('lueurs', [['p', T], ['n', T], ['nefCouleur', T], ['lampes', wgsl ? 'vec2f'
 
 class Lueurs extends MaterialPluginBase {
   constructor(m: Material) {
-    super(m, 'Lueurs', 200, undefined, true, true)
+    super(m, 'Lueurs', 200, { LUEURS: true }, true, true)
   }
 
   override getClassName(): string {

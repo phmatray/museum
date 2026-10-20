@@ -66,6 +66,11 @@ export async function chargerGlb(scene: Scene, chemin: string): Promise<AssetCon
   return c
 }
 
+/** `chargerGlb`, ou null si le fichier manque (signalé en console) : un GLB absent n'arrête pas sa couche. */
+export function glbOuRien(scene: Scene, chemin: string): Promise<AssetContainer | null> {
+  return chargerGlb(scene, chemin).catch((e: unknown) => (console.error(`${chemin} indisponible`, e), null))
+}
+
 /**
  * `fusionnerParMatiere` de three : un maillage par matière (et par jeu
  * d'attributs, MergeMeshes refusant de mêler un maillage avec uv2 et un sans),

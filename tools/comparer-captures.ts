@@ -33,6 +33,11 @@ const VUES: Vue[] = [
   { nom: 'facade', heure: '15:00', x: 24, z: 58, y: 0, yaw: 0, pitch: 0.15 },
   { nom: 'belvedere', heure: '15:00', x: 72, z: 80, y: 0, yaw: -0.74, pitch: 0.12 },
   { nom: 'batllo', heure: '15:00', x: 24, z: 14.5, y: 2.4, yaw: 0, pitch: 0.4 },
+  // Vague 2 : l'intérieur.
+  { nom: 'atelier', heure: '15:00', x: 24, z: 6.5, y: 0, yaw: 0, pitch: -0.3 },
+  { nom: 'constellation', heure: '23:00', x: 24, z: 30, y: 0, yaw: 0, pitch: 0.55 },
+  { nom: 'cloche', heure: '15:00', x: 24, z: 24, y: 0, yaw: 0, pitch: 0.5 },
+  { nom: 'chantier', heure: '15:00', x: 7, z: 59.5, y: 0, yaw: 0, pitch: 0 },
 ]
 const choisies = option('vues')?.split(',')
 

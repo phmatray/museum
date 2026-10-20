@@ -301,7 +301,7 @@ export async function chargerAtlas(scene: Scene, force: number, hemi: Hemispheri
  */
 class Fresnel extends MaterialPluginBase {
   constructor(m: Material) {
-    super(m, 'Fresnel', 200, undefined, true, true)
+    super(m, 'Fresnel', 200, { FRESNEL: true }, true, true)
   }
 
   override getClassName(): string {
