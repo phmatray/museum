@@ -37,6 +37,7 @@ import { plafonds } from '../plan/plafonds.ts'
 import type { Plan } from '../plan/types.ts'
 import { passagesDuHall } from '../plan/usure.ts'
 import { gabaritCube, geometrieCuite, refleterCuit, type Cuite, type Gabarit } from './boites.ts'
+import { sousLesProjecteurs } from './eclairage.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
 import { matierePBR, REGLAGES } from './matieres.ts'
 import { creerGranit, creerPierre } from './pierre.ts'
@@ -97,12 +98,18 @@ export interface Reglages {
   decale?: boolean
   /** Parquet à bâtons rompus (batonsRompus). */
   batons?: boolean
+  /** Le sol reflète au miroir d'écran (postTraitement.ts) : `net` (terrazzo du hall) ou `doux` (parquet des galeries). */
+  miroir?: 'net' | 'doux'
+  /** La lumière cuite baissée de PENOMBRE (galeries) : les flaques des projecteurs (eclairage.ts) s'y lisent. */
+  penombre?: boolean
   /** Pied encrassé (userInterieur) ; `eclats` : arêtes épaufrées. */
   usure?: boolean
   eclats?: boolean
 }
 
-const DEFINES = { PM_TENTURE: false, PM_TERRAZZO: false, PM_HALL: false, PM_DECALE: false, PM_BATONS: false, PM_USURE: false, PM_ECLATS: false }
+const DEFINES = { PM_TENTURE: false, PM_TERRAZZO: false, PM_HALL: false, PM_DECALE: false, PM_BATONS: false, PM_USURE: false, PM_ECLATS: false, PM_MIROIR: false, PM_MIROIR_DOUX: false, PM_PENOMBRE: false }
+/** La part de la lumière cuite gardée dans les galeries, sous les projecteurs des toiles. */
+export const PENOMBRE = 0.6
 
 const f = (x: number) => (Number.isInteger(x) ? x.toFixed(1) : String(+x.toFixed(6)))
 const REBOND = lin('#e4ddd0')
@@ -293,7 +300,8 @@ if (${P}.y < 0.1) {
     '!TEXRD\\(bumpSampler,': 'pmBosse(bumpSampler,',
     CUSTOM_FRAGMENT_UPDATE_ALPHA: tr(albedo),
     [wgsl ? '!var roughness: f32=reflectivityOut\\.roughness;' : '!float roughness=reflectivityOut\\.roughness;']:
-      '$0\nroughness = clamp(roughness + pmRugo, 0.0, 1.0);\nmicroSurface = 1.0 - roughness;',
+      '$0\nroughness = clamp(roughness + pmRugo, 0.0, 1.0);\nmicroSurface = 1.0 - roughness;\n#if defined(LIGHTMAP) && defined(PM_PENOMBRE)\n' +
+      (wgsl ? `lightmapColor = vec4f(lightmapColor.rgb * ${f(PENOMBRE)}, lightmapColor.a);` : `lightmapColor.rgb *= ${f(PENOMBRE)};`) + '\n#endif',
     CUSTOM_FRAGMENT_BEFORE_FINALCOLORCOMPOSITION: tr(
       `finalEmissive += surfaceAlbedo.rgb * vec3(${f(REBOND.r)}, ${f(REBOND.g)}, ${f(REBOND.b)}) * (${rebond} * clamp(-${NW}.y, 0.0, 1.0));`,
     ),
@@ -334,6 +342,7 @@ export class Parement extends MaterialPluginBase {
     Object.assign(defines, {
       PM_TENTURE: !!r.tenture, PM_TERRAZZO: !!r.terrazzo, PM_HALL: !!r.hall, PM_DECALE: !!r.decale,
       PM_BATONS: !!r.batons, PM_USURE: !!r.usure, PM_ECLATS: !!r.eclats,
+      PM_MIROIR: !!r.miroir, PM_MIROIR_DOUX: r.miroir === 'doux', PM_PENOMBRE: !!r.penombre,
     })
   }
 
@@ -367,11 +376,11 @@ export function matieresDuParement(scene: Scene, plan: Plan): Record<Revetement,
   return {
     platre: avec(matierePBR('parement-platre', 'platre', scene, { repli: '#dddad4' }), { rebond: REGLAGES.platre.rebond }),
     // Teinte par sommet : la couleur de la galerie (blanc × gain avec les cartes, aplat de la couleur sans).
-    peinture: avec(matierePBR('parement-peinture', 'platre', scene), { rebond: REGLAGES.platre.rebond, tenture: true }),
+    peinture: avec(matierePBR('parement-peinture', 'platre', scene), { rebond: REGLAGES.platre.rebond, tenture: true, penombre: true }),
     pierre: avec(creerPierre(scene, 'parement-pierre'), { usure: true, eclats: true }),
-    terrazzo: avec(matierePBR('parement-terrazzo', 'marbre', scene, { repli: '#c4bfba' }), { rebond: REGLAGES.marbre.rebond, terrazzo: true, hall: true }),
+    terrazzo: avec(matierePBR('parement-terrazzo', 'marbre', scene, { repli: '#c4bfba' }), { rebond: REGLAGES.marbre.rebond, terrazzo: true, hall: true, miroir: 'net' }),
     parquet: avec(matierePBR('parement-parquet', 'parquet', scene, { repli: '#997959' }), { rebond: REGLAGES.parquet.rebond, decale: true }),
-    'parquet-galeries': avec(matierePBR('parement-parquet-galeries', 'parquet', scene, { repli: '#997959' }), { rebond: REGLAGES.parquet.rebond, batons: true }),
+    'parquet-galeries': avec(matierePBR('parement-parquet-galeries', 'parquet', scene, { repli: '#997959' }), { rebond: REGLAGES.parquet.rebond, batons: true, miroir: 'doux', penombre: true }),
     granit: avec(creerGranit(scene, 'parement-granit'), { usure: true }),
   }
 }
@@ -401,5 +410,7 @@ export function monterParement(scene: Scene, plan: Plan, atlas: Promise<RawTextu
   Object.values(mats).forEach(refleterCuit)
   void atlas.then((t) => Object.values(mats).forEach((m) => (m.lightmapTexture = t))).catch(() => {})
   brancherLueurs(Object.values(mats))
+  // Les murs peints, le parquet et les plafonds des galeries reçoivent les flaques des projecteurs.
+  sousLesProjecteurs([mats.peinture, mats['parquet-galeries'], mats.platre])
   return maillages
 }

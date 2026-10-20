@@ -22,6 +22,7 @@ import { Color3 } from '@babylonjs/core/Maths/math.color'
 import { Vector3 } from '@babylonjs/core/Maths/math.vector'
 import type { Scene } from '@babylonjs/core/scene'
 
+import { sousLesProjecteurs } from './eclairage.ts'
 import { chargerGlb, eclairerModele, fusionnerParMatiere } from './glb.ts'
 import { auCiel, auCielMatiere } from './etat.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
@@ -98,5 +99,6 @@ export async function monterSalleHonneur(
     generateur?.addShadowCaster(m)
   }
   brancherLueurs(opaques)
+  sousLesProjecteurs(opaques)
   generateur?.getShadowMap()?.resetRefreshCounter()
 }

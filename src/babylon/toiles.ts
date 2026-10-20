@@ -33,6 +33,7 @@ import { INT } from '../plan/svg.ts'
 import { SALLE_VITRINES } from '../plan/vitrines.ts'
 import { matiere } from './boites.ts'
 import { catalogue } from './etat.ts'
+import { sousLesProjecteurs } from './eclairage.ts'
 import { brancherLueurs } from './lueurs.ts'
 import { police } from './polices.ts'
 import { atlasDeTextes, maillageDeQuads, matiereDeTexte } from './textes.ts'
@@ -206,6 +207,7 @@ export async function monterToiles(scene: Scene, accrochage: Accrochage, base: s
   // ArtworkLayer : #241f1b, rugosité 0,55 (le métal à 0,05 ne se voit pas sans environnement).
   const bois = matiere('cadres', scene, '#241f1b', 0.55)
   brancherLueurs([bois])
+  sousLesProjecteurs([bois])
   cadres.material = bois
   cadres.receiveShadows = true
   const matrices = new Float32Array(poses.length * 16)

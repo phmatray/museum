@@ -224,12 +224,13 @@ export async function monterVitrines(scene: Scene, base: string, visiteur: () =>
     const { base: b, normale: n } = ecrans[i]
     const ecran = new StandardMaterial(`vitrine-ecran-${i}`, scene)
     ecran.disableLighting = true
-    ecran.diffuseColor = Color3.Black()
+    // Spéculaire noir : sinon le prepass écrit une réflectivité de 1 et le miroir (postTraitement.ts) s'y poserait.
+    ecran.diffuseColor = ecran.specularColor = Color3.Black()
     // La couleur émissive s'AJOUTE à la carte : l'éclat passe par le niveau de la carte.
     const fond = (ecran.emissiveTexture = canevasEnMetres(`vitrine-ecran-${i}`, scene, W, H, 1, (g) => peindreEcran(g, oeuvres[i], v.rang)))
     const invite = new StandardMaterial(`vitrine-invite-${i}`, scene)
     invite.disableLighting = true
-    invite.diffuseColor = Color3.Black()
+    invite.diffuseColor = invite.specularColor = Color3.Black()
     invite.emissiveTexture = invite.opacityTexture = canevasEnMetres(`vitrine-invite-${i}`, scene, W, BANDEAU, 1, (g) => {
       g.fillStyle = '#ffd98a'
       g.font = '600 24px system-ui, sans-serif'
