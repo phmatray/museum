@@ -74,6 +74,7 @@ import { monterEcranChargement } from './ui/ecranChargement.ts'
 import { monterMinimap } from './ui/minimap.ts'
 import { monterMobile } from './ui/mobile.ts'
 import { monterOeuvre } from './ui/oeuvre.ts'
+import { monterPnj } from './pnj.ts'
 import { monterSucces } from './succes.ts'
 import { monterCarnet } from './ui/carnet.ts'
 import { monterReglages } from './ui/reglages.ts'
@@ -220,6 +221,8 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
     monterRuisseau(scene).then(ombrer, signaler('ruisseau')),
     monterFaune(scene, camera).catch(signaler('faune')),
     monterBavette(scene, camera).catch(signaler('bavette')),
+    // Les visiteurs du musée (pnj.ts) : huit modèles, leurs actions cuites, jamais dans la carte d'ombre.
+    monterPnj(scene, accrochage, () => camera.walker()).catch(signaler('visiteurs')),
     apresUneImage(() => monterLierre(scene)).then(ombrer, signaler('lierre')),
     // Vague 4 : les rayons de la nef et la météo (jamais dans la carte d'ombre).
     Promise.resolve().then(() => monterRayons(scene)).catch(signaler('rayons')),

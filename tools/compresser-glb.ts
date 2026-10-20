@@ -61,6 +61,7 @@ export const MODELES = [
   'sculptures/arborescence.glb',
   'sculptures/chandelles.glb',
   'sculptures/formulaire.glb',
+  ...Array.from({ length: 8 }, (_, n) => `pnj/pnj-${n}.glb`),
 ]
 
 const ASSETS = resolve(import.meta.dirname, '..', 'public', 'assets')
