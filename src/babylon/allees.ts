@@ -9,9 +9,10 @@
  * pour la main droite de Babylon (a, c, b), comme jardin.ts.
  * Porteurs d'ombre : bordure et piquets (le sol drapé, les galets, les dalles
  * irrégulières à 2 cm, les cordes et les touffes ne portent rien de visible).
- * ponytail : ni `pietiner` (milieu foulé du gravier) ni `intemperer` (pluie,
- * neige, flaques) : avec la vague météo ; les touffes au-delà de 35 m sont
- * cachées (`cacherAuLoin`), la bordure et les dalles fusionnées restent entières.
+ * Le gravier foulé au milieu, verdi aux bords (`pietiner`, usure.ts), puis le
+ * temps qu'il fait (`intemperer` : mouillé, neige, flaques).
+ * ponytail : les touffes au-delà de 35 m sont cachées (`cacherAuLoin`), la
+ * bordure et les dalles fusionnées restent entières.
  */
 import type { Material } from '@babylonjs/core/Materials/material'
 import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector'
@@ -30,6 +31,7 @@ import { intemperer } from './intemperies.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
 import { matierePBR, REGLAGES } from './matieres.ts'
 import { dallage, PARC, retourner } from './parc.ts'
+import { pietiner } from './usure.ts'
 
 /** Le sol des allées, 3 cm au-dessus de la pelouse : assez pour ne pas scintiller avec elle. */
 const RELIEF_ALLEE = 0.03
@@ -261,6 +263,7 @@ export function monterAllees(scene: Scene): Mesh[] {
   brancherLueurs([gravier, cailloux, pierre, dalle, bois, corde, herbe])
   // Mouillé sous la pluie, blanc sous la neige ; le gravier prend aussi ses flaques (intemperies.ts).
   for (const m of [cailloux, pierre, dalle, bois, herbe]) intemperer(m)
+  pietiner(gravier)
   intemperer(gravier, { flaques: true })
 
   // Les normales calculées avant la découpe : pas d'arête marquée au bord des carreaux.

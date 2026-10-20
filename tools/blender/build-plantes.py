@@ -5,7 +5,7 @@ un figuier lyre et un olivier dans des cuves de pierre.
     blender --background --factory-startup --python tools/blender/build-plantes.py -- <dossier des sources>
 
 Produit `public/assets/architecture/plantes.glb`, une pièce par nœud (`Kentia`,
-`Lyrata`, `Olivier`), instanciées par `src/scene/MobilierLayer.tsx` aux places
+`Lyrata`, `Olivier`), instanciées par `src/babylon/props.ts` aux places
 de `src/plan/mobilier.ts`.
 
 ── Pourquoi pas tout en Meshy ──

@@ -7,7 +7,7 @@ Le jardin japonais du parc, généré par Blender en headless.
 Produit `public/assets/jardin/jardin.glb`, d'après le jardin japonais de
 Hasselt : un ruisseau qui serpente, passe sous un pont de bois et tombe en
 petite cascade dans un étang sombre ; une lanterne de pierre,
-des pas japonais. Et les sujets que `src/scene/JardinLayer.tsx` instancie :
+des pas japonais. Et les sujets que `src/babylon/jardin.ts` instancie :
 érables du Japon rouge et vert, boules taillées (buis, azalée en fleur),
 rochers moussus et fougère.
 

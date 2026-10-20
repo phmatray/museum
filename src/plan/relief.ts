@@ -81,7 +81,7 @@ const BUTTES: [number, number, number, number][] = [[-24, 64, 13, 2.2], [-27, 20
 /** Le fond du parc, au nord : il monte d'autant sur ses 30 derniers mètres. */
 const MONTEE_NORD = 1.2
 
-/** Le dessus des dalles du parvis et de l'axe (`ParkLayer`) : 4 cm au-dessus du sol plat, 1 cm au-dessus du gravier. */
+/** Le dessus des dalles du parvis et de l'axe (`babylon/parc.ts`) : 4 cm au-dessus du sol plat, 1 cm au-dessus du gravier. */
 export const COTE_DALLAGE = 0.04
 
 /**

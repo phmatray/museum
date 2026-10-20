@@ -17,8 +17,8 @@
  * au bord du houppier, ou au bout des rameaux l'hiver (`bordsDuHouppier`, `rameaux`).
  * Une bête masquée (visibilite.ts : `layerMask`) continue de vivre, mais ses
  * tampons ne sont ni réécrits ni renvoyés au GPU.
- * ponytail : pas de froissement (pas de moteur audio dans la tranche), ronds
- * dans l'eau triés par distance avec l'eau (pas de renderOrder).
+ * Le froissement des feuilles passe par son.ts (`froisser`).
+ * ponytail : ronds dans l'eau triés par distance avec l'eau (pas de renderOrder).
  */
 import type { Camera } from '@babylonjs/core/Cameras/camera'
 import { Constants } from '@babylonjs/core/Engines/constants'

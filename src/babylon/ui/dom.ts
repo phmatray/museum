@@ -2,7 +2,7 @@
  * Les aides de l'interface native (vague 5), sans React ni Babylon :
  * `el`/`svg` créent un élément (textes par textContent : jamais de donnée du
  * catalogue en innerHTML), `observer` suit une part d'un store zustand/vanilla,
- * `themeName` nomme une salle comme hooks/useAccrochage (qui tire React).
+ * `themeName` nomme une salle (le thème d’accrochage ou le nom du plan).
  */
 import '@fontsource/marcellus/latin-400.css'
 import '@fontsource/marcellus/latin-ext-400.css'

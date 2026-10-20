@@ -1,4 +1,4 @@
-/** Le chargement du musée, sans état : la barre de l'écran de chargement (three et Babylon). */
+/** Le chargement du musée, sans état : la barre de l'écran de chargement (le gabarit statique puis Babylon). */
 
 export type Etape = 'chargement' | 'finition' | 'pret'
 

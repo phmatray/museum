@@ -7,7 +7,7 @@ Bavette, vivant : maillage allégé, squelette de quadrupède et trois boucles.
 Produit `public/assets/sculptures/bavette-anime.glb` : un maillage skinné et ses
 actions `Marche`, `Repos`, `Sasseoir` et `Assis`, et celles de la sieste sur un
 banc — `Saut`, `Enroule`, `Dort`, `Reveil`, `Descente` —, lues par
-`src/scene/BavetteLayer.tsx`.
+`src/babylon/bavette.ts`.
 
 ── Pourquoi une AUTRE source que `bavette.glb` ──
 
@@ -18,7 +18,7 @@ La source de ce script est la MÊME photo, redessinée de profil strict par Mesh
 (image-to-image, `nano-banana-pro`), puis remontée en volume (image-to-3D) —
 même robe tabby et blanche, tête dans l'axe, queue détachée des pattes.
 
-── Ce que le script GARANTIT, et dont `BavetteLayer.tsx` dépend ──
+── Ce que le script GARANTIT, et dont `bavette.ts` dépend ──
 
   1. l'échelle est RÉELLE (GARROT, mesuré sur Bavette) ;
   2. l'origine est AU SOL, centrée entre les pattes avant et arrière, et le

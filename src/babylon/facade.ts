@@ -8,7 +8,8 @@
  * à couleur par sommet). Une douzaine d'appels de dessin.
  * Le temps qu'il fait (`intemperer`) : la brique fonce sous la pluie, la neige
  * tient sur les corniches et les appuis. L'enseigne s'allume la nuit (`auCiel`).
- * ponytail : sans usure (`userFacade`), à greffer en plugin quand elle sera portée.
+ * Elle a vécu (`userFacade`, usure.ts) : coulures sous les saillies, pied
+ * éclaboussé, mousse au nord ; la pierre et les piliers épaufrés aux arêtes.
  */
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture'
@@ -33,6 +34,7 @@ import { matierePBR } from './matieres.ts'
 import { creerBrique, creerCannelure, creerGranit, creerPierre } from './pierre.ts'
 import { police, type Police } from './polices.ts'
 import { couper } from './toiles.ts'
+import { attributsFacade, userFacade } from './usure.ts'
 
 /** Les quatre carrés du logo Microsoft, dans l'ordre du logo. */
 const DRAPEAUX = ['#f25022', '#7fba00', '#00a4ef', '#ffb900']
@@ -251,6 +253,12 @@ export async function monterFacade(scene: Scene, plan: Plan, base: string): Prom
   porteurs.push(mats, drapeaux)
   for (const m of [...porteurs, portes]) m.receiveShadows = true
   brancherLueurs([...calques.map(([, , m]) => m), acier, etoffe])
+  // L'usure avant le temps qu'il fait : la pluie et la neige passent par-dessus.
+  userFacade(calques[0][2])
+  for (const k of [1, 2]) {
+    userFacade(calques[k][2], { pierre: true })
+    attributsFacade(porteurs[k], calques[k][1])
+  }
   for (const [nom, , m] of calques) if (nom !== 'facade-vitres') intemperer(m)
 
   // Mesurée et peinte en PT Sans : après la police.

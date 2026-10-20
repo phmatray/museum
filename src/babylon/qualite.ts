@@ -10,7 +10,7 @@
 import type { AbstractEngine } from '@babylonjs/core/Engines/abstractEngine'
 import type { Scene } from '@babylonjs/core/scene'
 
-import { ajusterQualite, paliersPour, QUALITE_INITIALE, type QualiteForcee } from '../scene/qualite.ts'
+import { ajusterQualite, paliersPour, QUALITE_INITIALE, type QualiteForcee } from '../domain/qualite.ts'
 import { partie, reglages } from './etat.ts'
 
 const FENETRE = 250

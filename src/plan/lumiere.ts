@@ -6,7 +6,7 @@
  * Le bâtiment est fait de boîtes alignées (`mesh.ts`, `parement.ts`,
  * `plafonds.ts`) : chaque face visible d'une boîte reçoit son rectangle dans un
  * atlas unique, à densité constante. Blender cuit sur ces rectangles, la scène
- * les relit par face (`scene/lumiere.ts`). Les deux côtés partagent la même
+ * les relit par face (`babylon/boites.ts`). Les deux côtés partagent la même
  * convention, décrite par `coordonneesDeFace`.
  *
  * Une boîte se retrouve par sa CLÉ — sa géométrie arrondie au millimètre — et

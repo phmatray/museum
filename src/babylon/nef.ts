@@ -13,7 +13,7 @@ import type { TransformNode } from '@babylonjs/core/Meshes/transformNode'
 import type { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator'
 import type { Scene } from '@babylonjs/core/scene'
 
-import { anglesHorloge } from '../scene/horloge.ts'
+import { anglesHorloge } from '../domain/horloge.ts'
 import { auCielMatiere } from './etat.ts'
 import { chargerGlb, fusionnerParMatiere } from './glb.ts'
 import { ruisseler } from './intemperies.ts'

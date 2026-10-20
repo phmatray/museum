@@ -8,8 +8,7 @@
  *
  * Le mur a vécu (`vieillirBrique`, `mousserChaperon` + `ECLATS(1)` de three) :
  * deux greffes, `VieuxMur` sur la brique et `Chaperon` sur la pierre, qui lisent
- * la position dans la boîte (`attributsDUsure`).
- * ponytail : pas d'`intemperer` (pluie, neige), comme le reste de la tranche : avec la météo.
+ * la position dans la boîte (`attributsDUsure`) ; puis `intemperer` (pluie, neige) par-dessus.
  */
 import type { Material } from '@babylonjs/core/Materials/material'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'

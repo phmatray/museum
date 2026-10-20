@@ -1,6 +1,6 @@
 /**
- * La tranche Babylon (`?moteur=babylon`) : le même plan, un autre moteur, sans
- * React. Câblage seul : charge les données, monte les modules, lance la boucle.
+ * Le musée en Babylon.js (entrée : src/main.ts) : le plan lu tel quel, sans
+ * framework. Câblage seul : charge les données, monte les modules, lance la boucle.
  * Ordre : socle → soleil et ciel → visiteur → post-traitement → reflets → boîtes et parement → tri des salles →
  * couches du bâtiment (vague 1), de l'intérieur (vague 2), du jardin (vague 3), des rayons et de la météo (vague 4), chacune non bloquante : un GLB absent n'arrête
  * pas la visite. Tout arrivé, les sondes de reflets sont prises et les matières
@@ -11,7 +11,7 @@ import type { Mesh } from '@babylonjs/core/Meshes/mesh'
 
 import config from '../../museum.config.json'
 import { vrDisponible } from '../io/xr.ts'
-import { qualiteDemandee } from '../scene/qualite.ts'
+import { qualiteDemandee } from '../domain/qualite.ts'
 import type { Accrochage } from '../plan/hang.ts'
 import { MUSEE } from '../plan/musee.ts'
 import { choisirVitrines } from '../plan/vitrines.ts'

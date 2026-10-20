@@ -20,7 +20,7 @@
  * jamais l'hiver — il hiberne sous son buis de la mi-novembre à la fin mars
  * (`pelouse.terne`).
  *
- * Pur : l'état entre, l'état sort ; `FauneLayer` ne fait que le montrer.
+ * Pur : l'état entre, l'état sort ; `babylon/faune.ts` ne fait que le montrer.
  */
 import { JARDIN, distanceRuisseau } from '../plan/jardin.ts'
 import { distanceEtang } from '../plan/koi.ts'
@@ -261,7 +261,7 @@ export function nid(qui = 1): [number, number] {
 
 /**
  * L'envie de sortir, de 0 à 1, selon la hauteur du soleil (degrés, celle de
- * `gameStore.ciel.elevation`) : pleine à la brune et à l'aube, du soleil à 4°
+ * `ciel.elevation` de l'état vivant) : pleine à la brune et à l'aube, du soleil à 4°
  * au-dessus de l'horizon jusqu'au crépuscule civil (−6°) ; encore forte en
  * pleine nuit (0,8) ; faible en plein jour (0,15) ; nulle en hibernation.
  */

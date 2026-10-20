@@ -1,20 +1,23 @@
 /**
- * Les captures comparées : three et Babylon au MÊME point de vue (position,
- * regard, heure), une paire d'images par vue, pour juger le portage à l'œil.
+ * Les captures du musée à des points de vue fixes (position, regard, heure), une image
+ * par vue, pour juger à l'œil qu'un changement ne déplace rien.
  *
- *   node tools/comparer-captures.ts [http://localhost:5173/] [--dossier=<dossier>] [--vues=arrivee,escalier]
+ *   node tools/comparer-captures.ts [http://localhost:5173/] [--dossier=<dossier>] [--vues=arrivee,escalier] [--avant=<dossier>]
  *
- * Contre `npm run dev`, lancé à côté (les hooks `__PLAN__` et `__BABYLON__` n'existent
- * qu'en DEV). Le visiteur est posé par le plan lui-même (`surfaceAt` puis un `step`
- * immobile pour la cote), importé dans la page : les deux moteurs reçoivent le même marcheur.
- * Sortie : `<dossier>/<vue>-three.png` et `<vue>-babylon.png`.
- * ponytail : un outil d'œil, pas un test ; aucune différence d'image n'est calculée.
+ * Contre `npm run dev`, lancé à côté (le hook `__BABYLON__` n'existe qu'en DEV). Le visiteur
+ * est posé par le plan lui-même (`surfaceAt` puis un `step` immobile pour la cote), importé dans la page.
+ * L'adresse garde `&moteur=babylon` : ignoré aujourd'hui, requis avant la bascule (vague 7), ce qui
+ * permet de photographier une ancienne version (worktree détaché) avec ce même script.
+ * Sortie : `<dossier>/<vue>.png`. Avec `--avant=<dossier>` (un jeu antérieur), l'écart absolu moyen
+ * par vue (0-255, tous canaux) s'affiche en fin de course.
+ * ponytail : un outil d'œil, pas un test ; l'écart s'affiche, aucun seuil n'échoue.
  */
-import { mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import puppeteer from 'puppeteer-core'
+import sharp from 'sharp'
 
 const args = process.argv.slice(2)
 const option = (nom: string) => args.find((a) => a.startsWith(`--${nom}=`))?.split('=')[1]
@@ -79,6 +82,8 @@ const VUES: Vue[] = [
   { nom: 'vr-oeuvre', heure: '15:00', q: 'meteo=clair&vr=cardboard', ui: 'vr', p: 'AspireStrapi' },
 ]
 const choisies = option('vues')?.split(',')
+const avant = option('avant')
+const ecarts: Record<string, number | string>[] = []
 
 const navigateur = await puppeteer.launch({
   executablePath: process.env.CHROME_PATH ?? '/usr/bin/chromium',
@@ -87,80 +92,87 @@ const navigateur = await puppeteer.launch({
 })
 try {
   for (const vue of VUES.filter((v) => !choisies || choisies.includes(v.nom))) {
-    for (const moteur of ['three', 'babylon'] as const) {
-      const page = await navigateur.newPage()
-      await page.setViewport(vue.mobile ? { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true } : { width: 1280, height: 720, deviceScaleFactor: 1 })
-      if (vue.mobile) await page.emulateMediaFeatures([{ name: 'pointer', value: 'coarse' }]).catch(() => {})
-      page.on('pageerror', (e) => console.error(`  ! ${vue.nom}/${moteur} : ${e instanceof Error ? e.message : e}`))
-      page.on('console', (m) => { if (m.type() === 'error') console.error(`  ! ${vue.nom}/${moteur} : ${m.text()}`) })
-      const url = `${base}?qualite=haute&${vue.q ?? 'meteo=clair'}&heure=${vue.heure}${vue.p ? `&p=${vue.p}` : ''}${moteur === 'babylon' ? '&moteur=babylon' : ''}`
-      await page.goto(url, { waitUntil: 'load' })
-      const chemin = join(dossier, `${vue.nom}-${moteur}.png`) as `${string}.png`
-      if (vue.ui === 'chargement') {
-        await new Promise((r) => setTimeout(r, 1500))
-        await page.screenshot({ path: chemin })
-        console.log(chemin)
-        await page.close()
-        continue
-      }
-      await page.waitForFunction('window.__PLAN__ || window.__BABYLON__', { timeout: 120_000 })
-      const enPause = vue.ui === 'accueil' || vue.ui === 'visite' || vue.ui === 'vr'
-      if (!enPause) await page.evaluate('(window.__PLAN__ ?? window.__BABYLON__)?.reprendre?.()')
-      await page.waitForFunction('window.__PLAN__ ? window.__PLAN__.gl.info.render.frame > 0 : window.__PRET__ === true', { timeout: 120_000 })
-      if (vue.x !== undefined) {
-        const erreur = await page.evaluate(async (v, racine) => {
-          /* eslint-disable @typescript-eslint/no-explicit-any -- modules et hooks de la page, non typés ici */
-          const w = globalThis as any
-          const { MUSEE } = await import(`${racine}src/plan/musee.ts`)
-          const { surfaceAt } = await import(`${racine}src/plan/rules.ts`)
-          const { step } = await import(`${racine}src/plan/walk.ts`)
-          const surface = surfaceAt(MUSEE, v.x, v.z, v.y)
-          if (!surface) return `aucune surface en (${v.x}, ${v.z}, ${v.y})`
-          const marcheur = step(MUSEE, { level: 0, surface, x: v.x, z: v.z, y: v.y, yaw: v.yaw }, { forward: 0, strafe: 0, yaw: v.yaw }, 0.01)
-          if (w.__BABYLON__) w.__BABYLON__.camera.placer({ ...marcheur, pitch: v.pitch })
-          else {
-            Object.assign(w.__PLAN__.walker(), marcheur)
-            w.__PLAN__.camera.rotation.order = 'YXZ'
-            w.__PLAN__.camera.rotation.set(v.pitch, v.yaw, 0)
-          }
-          return null
-          /* eslint-enable @typescript-eslint/no-explicit-any */
-        }, vue, new URL(base).pathname)
-        if (erreur) console.error(`  ! ${vue.nom} : ${erreur}`)
-      }
-      // three referme la session tant que sa VRLayer n'est pas branchée : quelques secondes avant le geste.
-      if (vue.ui === 'vr') {
-        await new Promise((r) => setTimeout(r, 3000))
-        await page.click('::-p-text(Avec un Cardboard)')
-      }
-      // Le temps des GLB, des cartes et des toiles (non bloquants des deux côtés).
-      await new Promise((r) => setTimeout(r, 12_000))
-      if (vue.bavette) {
-        await page.waitForFunction('window.__BAVETTE__', { timeout: 30_000 }).catch(() => console.error(`  ! ${vue.nom}/${moteur} : pas de __BAVETTE__`))
-        await page.evaluate((b) => {
-          const w = globalThis as unknown as { __BAVETTE__?: { placer(x: number, z: number, s?: string, yaw?: number): void; jouer(n: string, t?: number): void } }
-          w.__BAVETTE__?.placer(b.x, b.z, undefined, b.yaw)
-          w.__BAVETTE__?.jouer(b.anim, 0.4)
-        }, vue.bavette)
-        await new Promise((r) => setTimeout(r, 1500))
-      }
-      if (vue.ui === 'visite') {
-        await page.click('.billet-guide')
-        await new Promise((r) => setTimeout(r, 6000))
-      }
-      if (vue.ui === 'reglages') {
-        await page.click('[aria-label="Réglages"]')
-        await new Promise((r) => setTimeout(r, 800))
-      }
-      if (vue.ui === 'partage') {
-        await page.keyboard.press('KeyP')
-        await new Promise((r) => setTimeout(r, 600))
-      }
+    const page = await navigateur.newPage()
+    await page.setViewport(vue.mobile ? { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true } : { width: 1280, height: 720, deviceScaleFactor: 1 })
+    if (vue.mobile) await page.emulateMediaFeatures([{ name: 'pointer', value: 'coarse' }]).catch(() => {})
+    page.on('pageerror', (e) => console.error(`  ! ${vue.nom} : ${e instanceof Error ? e.message : e}`))
+    page.on('console', (m) => { if (m.type() === 'error') console.error(`  ! ${vue.nom} : ${m.text()}`) })
+    const url = `${base}?qualite=haute&${vue.q ?? 'meteo=clair'}&heure=${vue.heure}${vue.p ? `&p=${vue.p}` : ''}&moteur=babylon`
+    await page.goto(url, { waitUntil: 'load' })
+    const chemin = join(dossier, `${vue.nom}.png`) as `${string}.png`
+    if (vue.ui === 'chargement') {
+      await new Promise((r) => setTimeout(r, 1500))
       await page.screenshot({ path: chemin })
       console.log(chemin)
       await page.close()
+      await comparer(vue.nom, chemin)
+      continue
     }
+    await page.waitForFunction('window.__BABYLON__', { timeout: 120_000 })
+    const enPause = vue.ui === 'accueil' || vue.ui === 'visite' || vue.ui === 'vr'
+    if (!enPause) await page.evaluate('window.__BABYLON__.reprendre()')
+    await page.waitForFunction('window.__PRET__ === true', { timeout: 120_000 })
+    if (vue.x !== undefined) {
+      const erreur = await page.evaluate(async (v, racine) => {
+        /* eslint-disable @typescript-eslint/no-explicit-any -- modules et hooks de la page, non typés ici */
+        const w = globalThis as any
+        const { MUSEE } = await import(`${racine}src/plan/musee.ts`)
+        const { surfaceAt } = await import(`${racine}src/plan/rules.ts`)
+        const { step } = await import(`${racine}src/plan/walk.ts`)
+        const surface = surfaceAt(MUSEE, v.x, v.z, v.y)
+        if (!surface) return `aucune surface en (${v.x}, ${v.z}, ${v.y})`
+        const marcheur = step(MUSEE, { level: 0, surface, x: v.x, z: v.z, y: v.y, yaw: v.yaw }, { forward: 0, strafe: 0, yaw: v.yaw }, 0.01)
+        w.__BABYLON__.camera.placer({ ...marcheur, pitch: v.pitch })
+        return null
+        /* eslint-enable @typescript-eslint/no-explicit-any */
+      }, vue, new URL(base).pathname)
+      if (erreur) console.error(`  ! ${vue.nom} : ${erreur}`)
+    }
+    // Quelques secondes avant le geste, comme l'ancienne référence (three refermait la session trop tôt) : mêmes images.
+    if (vue.ui === 'vr') {
+      await new Promise((r) => setTimeout(r, 3000))
+      await page.click('::-p-text(Avec un Cardboard)')
+    }
+    // Le temps des GLB, des cartes et des toiles (non bloquants).
+    await new Promise((r) => setTimeout(r, 12_000))
+    if (vue.bavette) {
+      await page.waitForFunction('window.__BAVETTE__', { timeout: 30_000 }).catch(() => console.error(`  ! ${vue.nom} : pas de __BAVETTE__`))
+      await page.evaluate((b) => {
+        const w = globalThis as unknown as { __BAVETTE__?: { placer(x: number, z: number, s?: string, yaw?: number): void; jouer(n: string, t?: number): void } }
+        w.__BAVETTE__?.placer(b.x, b.z, undefined, b.yaw)
+        w.__BAVETTE__?.jouer(b.anim, 0.4)
+      }, vue.bavette)
+      await new Promise((r) => setTimeout(r, 1500))
+    }
+    if (vue.ui === 'visite') {
+      await page.click('.billet-guide')
+      await new Promise((r) => setTimeout(r, 6000))
+    }
+    if (vue.ui === 'reglages') {
+      await page.click('[aria-label="Réglages"]')
+      await new Promise((r) => setTimeout(r, 800))
+    }
+    if (vue.ui === 'partage') {
+      await page.keyboard.press('KeyP')
+      await new Promise((r) => setTimeout(r, 600))
+    }
+    await page.screenshot({ path: chemin })
+    console.log(chemin)
+    await page.close()
+    await comparer(vue.nom, chemin)
   }
 } finally {
   await navigateur.close()
+}
+if (ecarts.length) console.table(ecarts)
+
+/** L'écart absolu moyen avec la même vue du jeu `--avant`, s'il y en a une. */
+async function comparer(nom: string, chemin: string) {
+  const reference = avant && join(avant, `${nom}.png`)
+  if (!reference || !existsSync(reference)) return
+  const [a, b] = await Promise.all([reference, chemin].map((f) => sharp(f).removeAlpha().raw().toBuffer({ resolveWithObject: true })))
+  if (a.info.width !== b.info.width || a.info.height !== b.info.height) return void ecarts.push({ vue: nom, écart: 'tailles différentes' })
+  let somme = 0
+  for (let i = 0; i < a.data.length; i++) somme += Math.abs(a.data[i] - b.data[i])
+  ecarts.push({ vue: nom, écart: +(somme / a.data.length).toFixed(2) })
 }

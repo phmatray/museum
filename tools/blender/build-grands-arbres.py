@@ -5,7 +5,7 @@ Les grands arbres du parc, générés par Blender en headless.
     node tools/compresser-glb.ts public/assets/jardin/grands-arbres.glb
 
 Produit `public/assets/jardin/grands-arbres.glb`, des sujets à instancier, tous
-à l'origine, pied à z = 0 (`src/scene/parkAssets.ts` les lit par leur nom). Le
+à l'origine, pied à z = 0 (`src/babylon/vegetation.ts` les lit par leur nom). Le
 jardin était plat : des érables de 4,5 m, des boules, le ciel. Trois essences
 lui donnent une ligne d'horizon :
 

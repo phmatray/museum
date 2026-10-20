@@ -34,8 +34,8 @@
  *     node tools/compresser-glb.ts                              # tous ceux de la liste
  *     node tools/compresser-glb.ts public/assets/jardin/jardin.glb
  *
- * Côté site, `brancherKTX2` (`src/io/textures.ts`) donne le transcodeur à
- * chaque `GLTFLoader` qui lit ces fichiers.
+ * Côté site, le KhronosTextureContainer2 de Babylon (réglé par `src/babylon/glb.ts`)
+ * transcode ces textures au chargement des GLB.
  */
 import { resolve } from 'node:path'
 

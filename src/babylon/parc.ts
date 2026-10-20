@@ -14,7 +14,8 @@
  * - `retourner` : les faces de three dans le sens de Babylon ; `mulberry32` : l'aléa de three à graine numérique.
  *
  * Les deux matières prennent les lueurs (projecteurs de façade sur le parvis la nuit).
- * Les deux prennent les intempéries (saison de la pelouse, flaques du dallage). ponytail : pas de `pietiner` (usure des joints).
+ * Les deux prennent les intempéries (saison de la pelouse, flaques du dallage) ; le
+ * dallage, son usure (`pietiner` : poli au milieu, mousse dans les joints, usure.ts).
  */
 import type { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import type { Scene } from '@babylonjs/core/scene'
@@ -25,6 +26,7 @@ import { intemperer } from './intemperies.ts'
 import { brancherLueurs } from './lueurs.ts'
 import { matierePBR } from './matieres.ts'
 import { creerPierre } from './pierre.ts'
+import { pietiner } from './usure.ts'
 
 export const PARC = parkPlacements(MUSEE)
 
@@ -52,6 +54,7 @@ export const pelouse = uneParScene((scene) => {
 export const dallage = uneParScene((scene) => {
   const m = creerPierre(scene, 'dallage')
   brancherLueurs([m])
+  pietiner(m, { joints: true })
   intemperer(m, { flaques: true })
   return m
 })

@@ -41,7 +41,7 @@ import { coordonneesDeFace, MARGE, type Face } from '../plan/lumiere.ts'
 import LUMIERE from '../plan/lumiere.json' with { type: 'json' }
 import { meshLevel, type Box } from '../plan/mesh.ts'
 import { plafonds } from '../plan/plafonds.ts'
-import { sansBaieBatllo } from '../scene/batllo.ts'
+import { sansBaieBatllo } from '../plan/batllo.ts'
 import type { Plan } from '../plan/types.ts'
 import { greffer } from './greffe.ts'
 import { brancherLueurs, lin } from './lueurs.ts'

@@ -75,7 +75,7 @@ const LARGEUR_PERIPHERIQUE = 3
 const LARGEUR_ACCES = 2.4
 /**
  * L'axe de l'entrée, le plus large : la hiérarchie des allées se lit d'abord à
- * leur largeur. Trois dalles du parvis (1,20 m, `scene/pierre.ts`), centrées sur
+ * leur largeur. Trois dalles du parvis (1,20 m, `babylon/pierre.ts`), centrées sur
  * le portique : ses bords tombent sur les joints, l'appareil du parvis s'y
  * prolonge en dalles entières et en demi-dalles, sans lanière recoupée au bord.
  */
@@ -122,7 +122,7 @@ export function generateur(texte: string): () => number {
   }
 }
 
-/** Le rectangle arrondi aux mètres qui le contiennent : les mailles de la pelouse (`ParkLayer`). */
+/** Le rectangle arrondi aux mètres qui le contiennent : les mailles de la pelouse (`babylon/relief.ts`). */
 const maille = (r: Rect): Rect => {
   const [x0, z0] = [Math.floor(r.x), Math.floor(r.z)]
   return { x: x0, z: z0, width: Math.ceil(r.x + r.width) - x0, depth: Math.ceil(r.z + r.depth) - z0 }

@@ -5,7 +5,7 @@ par Blender en headless.
     blender --background --factory-startup --python tools/blender/build-vitrines.py
 
 Produit `public/assets/architecture/vitrines.glb`, trois pièces instanciées une
-fois par projet (`src/scene/VitrinesLayer.tsx`, placement dans
+fois par projet (`src/babylon/vitrines.ts`, placement dans
 `src/plan/vitrines.ts`) :
 
 - `Panneau` : le grand panneau de MDF peint en bordeaux, 4,20 × 3,60 m, fait de

@@ -309,7 +309,7 @@ export function monterVisibilite(scene: Scene, camera: Camera, plan: Plan): { li
     if (empreinte !== avant) for (const { g } of generateurs) g.getShadowMap()?.resetRefreshCounter()
     avant = empreinte
     estDedans = dedans
-    // `window.__TOUT_VOIR__` (DEV) : plus rien de caché, comme dans three.
+    // `window.__TOUT_VOIR__` (DEV) : plus rien de caché.
     const tout = import.meta.env.DEV && (window as { __TOUT_VOIR__?: boolean }).__TOUT_VOIR__
     for (const [m, lieu] of lieux) {
       if (m.isDisposed()) continue

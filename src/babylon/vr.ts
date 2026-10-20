@@ -6,8 +6,7 @@
  *   possible et que le socle (socle.ts) a pris WebGL2 (XR impossible sur WebGPU).
  * - L'expérience XR (`WebXRExperienceHelper`, nue : ni bouton, ni téléportation,
  *   ni modèles de manettes du CDN) n'est créée qu'au premier `entrer()`, DANS le
- *   geste du visiteur : Babylon ouvre lui-même la session (`enterXRAsync`), le
- *   `entrerEnVR` d'io/xr ne sert pas ici.
+ *   geste du visiteur : Babylon ouvre lui-même la session (`enterXRAsync`).
  * - Le GRÉEMENT ('vr:greement') porte la caméra XR : la tête bouge librement
  *   dedans, la marche (visiteur.ts) promène le gréement au pied du marcheur.
  *   À l'entrée, la caméra XR est remise à zéro dedans et le gréement prend la place

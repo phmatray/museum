@@ -7,10 +7,10 @@
  *
  * Décodeurs, servis par le site (`configurerDecodeurs`), en URL ABSOLUES (les
  * workers en blob ne résolvent pas les relatives) : Draco depuis `public/draco/`
- * (le même module emscripten que three, variante glTF, sans repli JS) ; KTX2
+ * (module emscripten, variante glTF, sans repli JS) ; KTX2
  * (`KHR_texture_basisu`, cartes `.ktx2` de matieres.ts) par le
  * KhronosTextureContainer2 de Babylon, son décodeur et ses transcodeurs dans
- * `public/ktx2/` (`public/basis/` est celui de three, incompatible). Par défaut
+ * `public/ktx2/`. Par défaut
  * Babylon les cherche sur un chemin versionné du CDN qui répond 404 en 9.31 :
  * le chargement d'un GLB texturé ne finissait jamais.
  */

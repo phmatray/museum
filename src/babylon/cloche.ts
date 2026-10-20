@@ -24,7 +24,7 @@ import { Mesh } from '@babylonjs/core/Meshes/mesh'
 import type { Scene } from '@babylonjs/core/scene'
 
 import { versionsRecentes } from '../domain/departs.ts'
-import { ENTRE_COUPS, coupDeCloche, coupsDeLHeure } from '../scene/horloge.ts'
+import { ENTRE_COUPS, coupDeCloche, coupsDeLHeure } from '../domain/horloge.ts'
 import { matiere } from './boites.ts'
 import { catalogue, etat, recherche } from './etat.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
