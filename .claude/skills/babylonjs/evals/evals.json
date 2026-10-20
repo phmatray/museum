@@ -1,0 +1,26 @@
+{
+  "skill_name": "babylonjs",
+  "evals": [
+    {
+      "id": 1,
+      "name": "brume-de-chaleur-fontaine",
+      "prompt": "Ajoute une brume de chaleur (l'air qui ondule) au-dessus de la fontaine du jardin les après-midi d'été. Ça doit marcher en WebGPU comme en WebGL2 et ne pas coûter plus de quelques appels de dessin.",
+      "expected_output": "A Babylon module (shader effect in GLSL + WGSL or a documented built-in) wired into the layers, with a short research note citing docs/typings, deep imports only.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "toucher-une-toile",
+      "prompt": "Sur mobile il n'y a pas de pointer lock : je voudrais qu'on puisse toucher une toile (ou cliquer dessus à la souris quand la visite est en pause) pour ouvrir sa carte d'œuvre. Implémente le picking des toiles.",
+      "expected_output": "Picking on the paintings' meshes (thin instances) using the right Babylon API and side-effect imports, publishing the picked painting to the existing state, with a research note.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "reflets-ecran-hall",
+      "prompt": "Le sol du hall manque de reflets nets. Ajoute des réflexions en espace écran (SSR) sur le sol du hall uniquement, en gardant le budget de rendu, et en restant compatible WebGPU.",
+      "expected_output": "Use of Babylon's SSR pipeline (or a justified alternative) restricted to the hall floor, compatible with the existing post-processing chain, research note citing docs/typings.",
+      "files": []
+    }
+  ]
+}
