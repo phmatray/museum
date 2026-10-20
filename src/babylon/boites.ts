@@ -19,6 +19,8 @@
  * multiplier une lumière par la lightmap : `LIGHTMAP_SHADOWSONLY` (soleil.ts) la
  * REMPLACE par la lightmap. L'atlas porte donc f × l'éclairement de
  * l'hémisphérique, ciel, sol ou mi-chemin selon la face (les boîtes sont droites).
+ * Son alpha porte min(f, 1), qui atténue le reflet de la sonde (`refleterCuit`) :
+ * un coin qui ne voit pas le ciel ne le reflète pas non plus (lumiere.ts de three).
  */
 import { Constants } from '@babylonjs/core/Engines/constants'
 import type { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight'
@@ -41,6 +43,7 @@ import { meshLevel, type Box } from '../plan/mesh.ts'
 import { plafonds } from '../plan/plafonds.ts'
 import { sansBaieBatllo } from '../scene/batllo.ts'
 import type { Plan } from '../plan/types.ts'
+import { greffer } from './greffe.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
 import { matierePBR } from './matieres.ts'
 
@@ -231,18 +234,32 @@ export function matiere(nom: string, scene: Scene, couleur = '#ffffff', rugosite
  * La table octet sRGB de l'atlas → octet de lightmap, par teinte (côté, dessus,
  * dessous) et par canal : f × teinte / niveau, `niveau` (le `level` de la
  * texture) valant ECHELLE × le plus fort canal des teintes. Les teintes sont
- * l'éclairement linéaire de l'hémisphérique sur chaque orientation.
+ * l'éclairement linéaire de l'hémisphérique sur chaque orientation. `reflet` :
+ * octet → min(f, 1) en octet, l'atténuation du reflet.
  */
-export function tableDeLumiere(force: number, teintes: number[][]): { table: Uint8Array; niveau: number } {
+export function tableDeLumiere(force: number, teintes: number[][]): { table: Uint8Array; niveau: number; reflet: Uint8Array } {
   const niveau = ECHELLE * Math.max(...teintes.flat())
   const table = new Uint8Array(teintes.length * 3 * 256)
+  const reflet = new Uint8Array(256)
   for (let c = 0; c < 256; c++) {
     const s = c / 255
     const lin = s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
     const f = Math.min(ECHELLE, 1 + (((lin * PLAFOND) / REFERENCE) ** CONTRASTE - 1) * force)
     teintes.forEach((t, k) => t.forEach((v, canal) => (table[(3 * k + canal) * 256 + c] = Math.round((255 * f * v) / niveau))))
+    reflet[c] = Math.round(255 * Math.min(f, 1))
   }
-  return { table, niveau }
+  return { table, niveau, reflet }
+}
+
+/**
+ * Le reflet atténué par la lumière cuite (`reflectedLight.indirectSpecular *= min(f, 1)`
+ * de lumiere.ts) : l'alpha de la lightmap. Sans lightmap (atlas absent), rien.
+ */
+export function refleterCuit(m: Material): void {
+  greffer(m, {
+    nom: 'RefletCuit',
+    code: () => ({ fragment: { CUSTOM_FRAGMENT_BEFORE_FINALCOLORCOMPOSITION: '#if defined(LIGHTMAP) && defined(REFLECTION)\nfinalRadianceScaled *= lightmapColor.a;\n#endif\n' } }),
+  })
 }
 
 /**
@@ -259,7 +276,7 @@ export async function chargerAtlas(scene: Scene, force: number, hemi: Hemispheri
   const src = ctx.getImageData(0, 0, L, H).data
   // L'hémisphérique de Babylon : mix(sol, ciel, n·haut × 0,5 + 0,5) × intensité. Côté, dessus, dessous.
   const teinte = (w: number) => Color3.Lerp(hemi.groundColor, hemi.diffuse, w).scale(hemi.intensity).asArray()
-  const { table, niveau } = tableDeLumiere(force, [teinte(0.5), teinte(1), teinte(0)])
+  const { table, niveau, reflet } = tableDeLumiere(force, [teinte(0.5), teinte(1), teinte(0)])
   // L'orientation de chaque texel : côté par défaut, dessus (face 2) ou dessous (face 3) sur leurs
   // rectangles élargis de la marge, que le bilinéaire du bord lit aussi.
   const sens = new Uint8Array(L * H)
@@ -279,12 +296,13 @@ export async function chargerAtlas(scene: Scene, force: number, hemi: Hemispheri
       data[4 * i] = table[t + src[de + 4 * x]]
       data[4 * i + 1] = table[t + 256 + src[de + 4 * x + 1]]
       data[4 * i + 2] = table[t + 512 + src[de + 4 * x + 2]]
-      data[4 * i + 3] = 255
+      data[4 * i + 3] = reflet[src[de + 4 * x + 1]]
     }
   }
   // Le texel (0, 0) : facteur 1 en teinte de côté, celui des faces sans rectangle.
   // ponytail : une face dessus ou dessous sans rectangle (cachée en pratique) prend aussi la teinte de côté.
   teinte(0.5).forEach((v, canal) => (data[canal] = Math.round((255 * v) / niveau)))
+  data[3] = 255
   const tex = RawTexture.CreateRGBATexture(data, L, H, scene, false, false, Texture.BILINEAR_SAMPLINGMODE)
   tex.gammaSpace = false
   tex.coordinatesIndex = 1

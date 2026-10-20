@@ -15,14 +15,15 @@ export async function creerSocle(toile: HTMLCanvasElement): Promise<{ engine: Ab
   const adaptateur = new URLSearchParams(location.search).get('gpu') !== '0' ? await navigator.gpu?.requestAdapter().catch(() => null) : null
   if (adaptateur && !adaptateur.info?.isFallbackAdapter) {
     try {
-      const gpu = new WebGPUEngine(toile, { antialias: true, adaptToDeviceRatio: true })
+      const gpu = new WebGPUEngine(toile, { antialias: false, adaptToDeviceRatio: true })
       await gpu.initAsync()
       engine = gpu
     } catch {
       engine = null
     }
   }
-  engine ??= new Engine(toile, true, { stencil: false }, true)
+  // Sans MSAA : l'écran ne reçoit plus que la dernière passe du post-traitement (FXAA), un quad plein écran.
+  engine ??= new Engine(toile, false, { stencil: false }, true)
 
   const scene = new Scene(engine)
   // Avant toute caméra ou tout maillage : le sens des faces en dépend.

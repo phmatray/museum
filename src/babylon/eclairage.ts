@@ -13,7 +13,8 @@
  * - les disques des 25 spots sous les balcons et des 9 projecteurs de façade.
  *
  * La lumière versée par ces spots et projecteurs est déjà dans lueurs.ts.
- * ponytail : `jour` figé au montage (comme main.ts). Tout est tone mappé, comme
+ * Le jour suit l'heure (`auCiel` : dépolis, disques des projecteurs) ; la pluie
+ * ruisselle sur le lanterneau sous le toit. Tout est tone mappé, comme
  * dans three où le ToneMapping final passe sur toute l'image (`toneMapped: false` n'y change rien).
  */
 import { Constants } from '@babylonjs/core/Engines/constants'
@@ -39,7 +40,9 @@ import { projecteurs, rails, type Projecteur } from '../plan/projecteurs.ts'
 import { solDuParc } from '../plan/relief.ts'
 import { avecVitrines } from '../plan/vitrines.ts'
 import { cubes, matiere } from './boites.ts'
+import { auCielMatiere } from './etat.ts'
 import { chargerGlb } from './glb.ts'
+import { ruisseler } from './intemperies.ts'
 import { brancherLueurs, lin, lueursDuJour } from './lueurs.ts'
 
 /** Le dépoli d'un niveau (PlanBuilding.tsx) : lerps en linéaire, comme `THREE.Color`. */
@@ -150,18 +153,22 @@ function disques(nom: string, points: [number, number, number][], rayon: number,
 export async function monterEclairage(
   scene: Scene,
   accrochage: Accrochage | null,
-  jour: number,
   lanterneaux: Mesh[],
   visiteur: () => { x: number; y: number; z: number; yaw: number },
 ): Promise<void> {
   // Les lanterneaux, un dépoli par niveau (le dernier est sous le toit).
   const ancien = lanterneaux[0]?.material
   lanterneaux.forEach((l, i) => {
-    const r = depoli(jour, i === lanterneaux.length - 1)
+    const sousLeToit = i === lanterneaux.length - 1
     const mat = matiere(`lanterneau-${i}`, scene, '#f4f1ea', 0.9)
-    mat.albedoColor = r.albedo
-    mat.emissiveColor = r.emissive
-    mat.emissiveIntensity = r.force
+    auCielMatiere(mat, (c) => {
+      const r = depoli(c.jour, sousLeToit)
+      mat.albedoColor = r.albedo
+      mat.emissiveColor = r.emissive
+      mat.emissiveIntensity = r.force
+    })
+    // Sous le toit, la pluie ruisselle sur le verre.
+    if (sousLeToit) ruisseler(mat)
     l.material = mat
   })
   ancien?.dispose()
@@ -169,8 +176,9 @@ export async function monterEclairage(
 
   // Les disques : spots 5 mm sous la dalle des balcons, projecteurs au ras du dallage (gris éteints).
   disques('spots-balcons', SPOTS_BALCON.map(([x, y, z]) => [x, y + 0.015, z]), 0.055, true, BLANC_CHAUD, scene)
-  const facade = BLANC_CHAUD.scale(Math.min(1, lueursDuJour(jour).facade / 5)).add(new Color3(0.04, 0.04, 0.04))
-  disques('projecteurs-facade', PROJECTEURS_FACADE.map(([x, , z]) => [x, solDuParc(x, z) + 0.006, z]), 0.08, false, facade, scene)
+  const pf = disques('projecteurs-facade', PROJECTEURS_FACADE.map(([x, , z]) => [x, solDuParc(x, z) + 0.006, z]), 0.08, false, BLANC_CHAUD, scene)
+  const verre = pf.material as PBRMaterial
+  auCielMatiere(verre, (c) => (verre.albedoColor = BLANC_CHAUD.scale(Math.min(1, lueursDuJour(c.jour).facade / 5)).add(new Color3(0.04, 0.04, 0.04))))
 
   if (!accrochage) return
   // La lumière de l'éveil, posée AVANT le chargement : elle entre dans les matières dès leur première compilation.

@@ -22,7 +22,7 @@ import type { Artwork } from '../domain/types.ts'
 import type { Box } from '../plan/mesh.ts'
 import { borneRegardee, chapeau, cheminReadme, choisirVitrines, enColonnes, PANNEAU, readmeEnBlocs, TOILE, VITRINES, type Vitrine } from '../plan/vitrines.ts'
 import { cubes, matiere } from './boites.ts'
-import { catalogue, VIVANTES } from './etat.ts'
+import { catalogue, vivant, VIVANTES } from './etat.ts'
 import { glbOuRien } from './glb.ts'
 import { instancier, matrices, type Pose } from './lots.ts'
 import { brancherLueurs } from './lueurs.ts'
@@ -149,7 +149,7 @@ function chargerImage(url: string, scene: Scene): Promise<Texture | null> {
  */
 const enGamma = (s: number) => s ** (1 / 2.2)
 
-export async function monterVitrines(scene: Scene, jour: number, base: string, visiteur: () => { x: number; y: number; z: number; yaw: number }): Promise<Mesh[]> {
+export async function monterVitrines(scene: Scene, base: string, visiteur: () => { x: number; y: number; z: number; yaw: number }): Promise<Mesh[]> {
   const { pieces, ecrans } = posesDesVitrines()
   const [glb, cat] = await Promise.all([
     glbOuRien(scene, 'assets/architecture/vitrines.glb'),
@@ -247,8 +247,8 @@ export async function monterVitrines(scene: Scene, jour: number, base: string, v
   })
 
   // La borne regardée : l'éclat de l'écran suit la nuit, l'invite palpite tant qu'on ne consulte pas.
-  const nuit = 1 - jour
   scene.onBeforeRenderObservable.add(() => {
+    const nuit = 1 - vivant.getState().ciel.jour
     const rang = borneRegardee(visiteur())
     const borne = (rang !== null && oeuvres[rang]?.key) || null
     const t = performance.now() / 1000

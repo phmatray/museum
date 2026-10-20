@@ -26,7 +26,7 @@ import type { Scene } from '@babylonjs/core/scene'
 import { versionsRecentes } from '../domain/departs.ts'
 import { ENTRE_COUPS, coupDeCloche, coupsDeLHeure } from '../scene/horloge.ts'
 import { matiere } from './boites.ts'
-import { catalogue, etat } from './etat.ts'
+import { catalogue, etat, recherche } from './etat.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
 
 /** Mêmes cotes que ClocheLayer.tsx : le pied, l'échelle, puis tout dans le repère du pied. */
@@ -149,7 +149,7 @@ export async function monterCloche(scene: Scene, base: string): Promise<Mesh[]> 
   const temps = () => (performance.now() - debut) / 1000
   // Pas d'écran d'accueil : la visite commence au chargement, l'annonce dès le catalogue arrivé.
   void catalogue(base).then((c) => {
-    if (c) s.annoncer(versionsRecentes(c.artworks, new Date(), location.search).map((a) => ({ key: a.key, tag: a.release!.tag })), temps())
+    if (c) s.annoncer(versionsRecentes(c.artworks, new Date(), recherche()).map((a) => ({ key: a.key, tag: a.release!.tag })), temps())
   })
   scene.onBeforeRenderObservable.add(() => {
     const { marteau, cloche, annonce } = s.avancer(temps(), new Date())

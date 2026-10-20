@@ -24,7 +24,8 @@ mkdirSync(dossier, { recursive: true })
 
 /** Un point de vue : yaw 0 regarde le nord (−z), π/2 l'ouest ; `y` est le plancher cherché. Sans `x`, l'arrivée de l'adresse. */
 interface Vue {
-  nom: string; heure: string; x?: number; z?: number; y?: number; yaw?: number; pitch?: number; p?: string
+  /** `q` : le reste de l'adresse (`meteo=pluie&saison=hiver`) ; sans lui, `meteo=clair`. */
+  nom: string; heure: string; q?: string; x?: number; z?: number; y?: number; yaw?: number; pitch?: number; p?: string
   /** Bavette posée en (x, z), tournée vers `yaw`, l'action `anim` figée à 0,4 s (`__BAVETTE__`). */
   bavette?: { x: number; z: number; yaw: number; anim: string }
 }
@@ -48,6 +49,12 @@ const VUES: Vue[] = [
   { nom: 'jardin-facade', heure: '15:00', x: 44, z: 78, y: 0, yaw: 0.45, pitch: 0.12 },
   { nom: 'ruisseau', heure: '15:00', x: 72, z: 20, y: 0, yaw: -0.56, pitch: -0.25 },
   { nom: 'grands-arbres', heure: '15:00', x: 20, z: 66, y: 0, yaw: 1.6, pitch: 0.22 },
+  // Vague 4 : le ciel, la météo et le rendu.
+  { nom: 'jardin-pluie', heure: '15:00', q: 'meteo=pluie', x: 50, z: 65, y: 0, yaw: -0.6, pitch: -0.05 },
+  { nom: 'jardin-neige', heure: '15:00', q: 'saison=hiver&meteo=neige', x: 50, z: 65, y: 0, yaw: -0.6, pitch: -0.05 },
+  { nom: 'jardin-brouillard', heure: '15:00', q: 'meteo=brouillard', x: 50, z: 65, y: 0, yaw: -0.6, pitch: -0.05 },
+  { nom: 'jardin-nuit', heure: '23:00', x: 50, z: 65, y: 0, yaw: -0.6, pitch: 0.1 },
+  { nom: 'vers-facade', heure: '15:00', x: 30, z: 80, y: 0, yaw: 0, pitch: 0.1 },
   { nom: 'bavette', heure: '15:00', x: 30, z: 63, y: 0, yaw: 0, pitch: -0.35, bavette: { x: 30, z: 60.5, yaw: 1.2, anim: 'Marche' } },
 ]
 const choisies = option('vues')?.split(',')
@@ -64,7 +71,7 @@ try {
       await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 })
       page.on('pageerror', (e) => console.error(`  ! ${vue.nom}/${moteur} : ${e instanceof Error ? e.message : e}`))
       page.on('console', (m) => { if (m.type() === 'error') console.error(`  ! ${vue.nom}/${moteur} : ${m.text()}`) })
-      const url = `${base}?qualite=haute&meteo=clair&heure=${vue.heure}${vue.p ? `&p=${vue.p}` : ''}${moteur === 'babylon' ? '&moteur=babylon' : ''}`
+      const url = `${base}?qualite=haute&${vue.q ?? 'meteo=clair'}&heure=${vue.heure}${vue.p ? `&p=${vue.p}` : ''}${moteur === 'babylon' ? '&moteur=babylon' : ''}`
       await page.goto(url, { waitUntil: 'load' })
       await page.waitForFunction('window.__PLAN__ || window.__BABYLON__', { timeout: 120_000 })
       await page.evaluate('window.__PLAN__?.reprendre()')

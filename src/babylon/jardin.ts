@@ -14,9 +14,11 @@
  * Caustiques ; leur temps est lu dans `lier`. Les décalages de texture (dérive
  * des vaguelettes de l'étang, filets de la cascade) ne passent pas par `lier` :
  * 'jardin:eau' et 'jardin:cascade' vont dans VIVANTES.
- * ponytail : ni `intemperer` (météo, gel du ruisseau, ronds de pluie) ni
- * `retoucherCartes` du bois ; le jour (lueur, couleur du ciel dans l'eau) est
- * figé au montage, comme le reste de la tranche.
+ * Le temps (intemperies.ts) : sol, granit et bois mouillés et enneigés, ronds
+ * de pluie sur l'étang et le ruisseau, gel du ruisseau
+ * (`METEO.enneige`). Le jour suit l'heure : ciel dans l'eau par `lier`, foyer
+ * de la lanterne par `auCiel`.
+ * ponytail : sans `retoucherCartes` du bois.
  */
 import { VertexBuffer } from '@babylonjs/core/Buffers/buffer'
 import { Material } from '@babylonjs/core/Materials/material'
@@ -31,9 +33,10 @@ import type { Scene } from '@babylonjs/core/scene'
 import { BOMBE_LEVRE, distanceRuisseau, INDICE_LEVRE, JARDIN, nappeDeLaCascade, rubanDuRuisseau, TRACE_RUISSEAU } from '../plan/jardin.ts'
 import { remous, type Remous } from '../plan/ruisseau.ts'
 import { matiere } from './boites.ts'
-import { VIVANTES } from './etat.ts'
+import { auCielMatiere, vivant, VIVANTES } from './etat.ts'
 import { fusionnerParMatiere, glbPartage } from './glb.ts'
 import { dialecte, greffer } from './greffe.ts'
+import { intemperer, METEO, rider } from './intemperies.ts'
 import { brancherLueurs, lin, smoothstep } from './lueurs.ts'
 import { matierePBR } from './matieres.ts'
 import { PARC, retourner } from './parc.ts'
@@ -105,6 +108,8 @@ export function geometrie(position: Float32Array, uv: Float32Array, index: numbe
 }
 
 const f = (v: number) => v.toFixed(4)
+/** Le ciel dans l'eau, de la nuit au jour (jardinMatieres.ts). */
+const [CIEL_NUIT, CIEL_JOUR] = [lin('#0b1224'), lin('#5d746c')]
 const temps = () => performance.now() / 1000
 
 /** Le pied de la cascade dans l'étang (x, z), la direction de la chute (x, z), et sa demi-largeur. */
@@ -132,7 +137,7 @@ ${fn('jBruit', [['p', 'vec2']], 'float', `
 const fresnel = (k: number) => `pow(1.0 - clamp(dot(normalW, viewDirectionW), 0.0, 1.0), ${k.toFixed(1)})`
 
 /** L'étang : écume au pied de la cascade, soleil adouci, ciel au rasant, presque opaque. */
-export function codeDeLEtang(wgsl: boolean, ciel: Color3): { fragment: Record<string, string> } {
+export function codeDeLEtang(wgsl: boolean): { fragment: Record<string, string> } {
   const { V, tr, u, fin } = dialecte(wgsl)
   const T = u('etangT')
   return {
@@ -150,7 +155,7 @@ surfaceAlbedo = mix(surfaceAlbedo, vec3(0.82, 0.87, 0.86), eEcume);`),
       CUSTOM_FRAGMENT_BEFORE_FINALCOLORCOMPOSITION: '#ifdef SPECULARTERM\nfinalSpecularScaled *= 0.55;\n#endif\n',
       CUSTOM_FRAGMENT_BEFORE_FOG: tr(`
 ${V('eFr', 'float', fresnel(5))}
-finalColor = vec4(mix(finalColor.rgb, vec3(${f(ciel.r)}, ${f(ciel.g)}, ${f(ciel.b)}), eFr * 0.6), max(mix(0.9, 1.0, eFr), eEcume));`),
+finalColor = vec4(mix(finalColor.rgb, ${u('etangCiel')}, eFr * 0.6), max(mix(0.9, 1.0, eFr), eEcume));`),
     },
   }
 }
@@ -188,9 +193,9 @@ alpha = max(alpha * mix(0.42, 0.95, cClair), cBulle * 0.95) * cFlanc;`),
  * reflets presque éteints, ciel au rasant. Tout est calculé avant la normale
  * (`CUSTOM_FRAGMENT_MAIN_BEGIN`), que `rsBosse` rend à la place de la carte.
  */
-export function codeDuRuisseau(wgsl: boolean, obstacles: Remous[], ciel: Color3): { vertex: Record<string, string>; fragment: Record<string, string> } {
+export function codeDuRuisseau(wgsl: boolean, obstacles: Remous[]): { vertex: Record<string, string>; fragment: Record<string, string> } {
   const { V, G, T: Ty, tr, u, fin, vin, vout, varying, attribut, rugosite } = dialecte(wgsl)
-  const T = u('ruisT')
+  const [T, G2] = [u('ruisT'), u('ruisGel')]
   const N = obstacles.length
   const v4 = (o: number[]) => `${wgsl ? 'vec4f' : 'vec4'}(${o.map(f).join(', ')})`
   const table = wgsl
@@ -213,6 +218,7 @@ ${table}
 ${G('rRadier', 'float')}
 ${G('rEcume', 'float')}
 ${G('rProfond', 'float')}
+${G('rGel', 'float')}
 ${G('rsN', 'vec4')}
 ${wgsl ? `fn rsBosse(${args.map(([n, t]) => `${n}: ${t}`).join(', ')}) -> ${Ty('vec4')} { return rsN; }` : `vec4 rsBosse(${args.map(([n, t]) => `${t} ${n}`).join(', ')}) { return rsN; }`}`,
       CUSTOM_FRAGMENT_MAIN_BEGIN: tr(`
@@ -241,13 +247,17 @@ rEcume = max(rEcume, rF * smoothstep(0.05, 0.5, rChoc));
 rEcume = max(rEcume, rCol * 0.8 * smoothstep(0.5, 0.8, jBruit(vec2(${F}.x * 14.0 - ${T} * 3.0, ${F}.y * 14.0)) + 0.15 * rCol));
 rRadier = max(rRadier, rChoc);
 rProfond = (1.0 - smoothstep(0.25, 1.0, rBord)) * (1.0 - 0.55 * rRadier);
+// Le gel : la glace prend par les bords, sur le courant.
+${V('rQ', 'vec2', `vec2(${F}.x * 2.4 - ${T} * 1.6, ${F}.y * 6.5)`)}
+${V('rN', 'float', `jBruit(rQ) * 0.5 + jBruit(rQ * vec2(2.1, 2.6) + vec2(7.1, 3.7) - vec2(${T} * 1.1, 0.0)) * 0.32 + jBruit(rQ * 5.3 + 3.3) * 0.18`)}
+rGel = ${G2} * smoothstep(0.8, 1.05, rBord + 0.15 * rN);
 ${V('rN1', 'vec3', `${tex(`vec2(${F}.x * 0.55 - ${T} * 0.32, ${F}.y * 0.8)`)}.xyz * 2.0 - 1.0`)}
 ${V('rN2', 'vec3', `${tex(`vec2(${F}.x * 1.35 - ${T} * 0.6 + 0.37, ${F}.y * 1.6 + 0.21)`)}.xyz * 2.0 - 1.0`)}
-rsN = vec4(normalize(vec3((rN1.xy + rN2.xy) * (0.5 + 0.8 * rRadier), 1.0)) * 0.5 + 0.5, 1.0);
+rsN = vec4(normalize(vec3((rN1.xy + rN2.xy) * (0.5 + 0.8 * rRadier) * (1.0 - rGel), 1.0)) * 0.5 + 0.5, 1.0);
 `),
       '!TEXRD\\(bumpSampler,': 'rsBosse(bumpSampler,',
-      CUSTOM_FRAGMENT_UPDATE_ALPHA: tr('surfaceAlbedo = mix(mix(vec3(0.07, 0.085, 0.06), vec3(0.015, 0.04, 0.03), rProfond), vec3(0.86, 0.9, 0.9), rEcume);'),
-      [rugosite]: '$0\nroughness = mix(mix(roughness, 0.26, rRadier), 0.75, rEcume);\nmicroSurface = 1.0 - roughness;',
+      CUSTOM_FRAGMENT_UPDATE_ALPHA: tr('surfaceAlbedo = mix(mix(vec3(0.07, 0.085, 0.06), vec3(0.015, 0.04, 0.03), rProfond), vec3(0.86, 0.9, 0.9), rEcume);\nsurfaceAlbedo = mix(surfaceAlbedo, vec3(0.8, 0.86, 0.92), rGel);'),
+      [rugosite]: '$0\nroughness = mix(mix(roughness, 0.26, rRadier), 0.75, max(rEcume, rGel * 0.4));\nmicroSurface = 1.0 - roughness;',
       CUSTOM_FRAGMENT_BEFORE_FINALCOLORCOMPOSITION: `${V('rFr', 'float', fresnel(4))}
 #ifdef SPECULARTERM
 finalSpecularScaled *= 0.03 * (1.0 - 0.8 * rEcume);
@@ -258,7 +268,8 @@ finalRadianceScaled *= mix(0.05, 0.45, rFr) * (1.0 - 0.8 * rEcume);
 `,
       CUSTOM_FRAGMENT_BEFORE_FOG: tr(`
 ${V('rFresnel', 'float', fresnel(5))}
-finalColor = vec4(mix(finalColor.rgb, vec3(${f(ciel.r)}, ${f(ciel.g)}, ${f(ciel.b)}), rFresnel * 0.35 * (1.0 - rEcume)), max(mix(mix(0.38, 0.85, rProfond), 1.0, rFresnel), rEcume * 0.9));`),
+// L'hiver, l'eau froide se fait sombre et opaque : la neige de la berge ne tapisse pas le lit.
+finalColor = vec4(mix(finalColor.rgb, ${u('ruisCiel')}, rFresnel * 0.35 * (1.0 - rEcume)), max(mix(mix(0.38, 0.85, rProfond), 1.0, rFresnel), max(max(rEcume * 0.9, rGel), 0.92 * smoothstep(0.05, 0.35, ${G2}))));`),
     },
   }
 }
@@ -282,9 +293,15 @@ if (cFond > 0.0) {
   }
 }
 
-/** Une eau transparente : mélange alpha, sans le surplus d'opacité que Babylon donne aux reflets. */
+/**
+ * Une eau transparente : mélange alpha, sans le surplus d'opacité que Babylon donne aux reflets.
+ * Seuil 0 : le prepass n'écrit la profondeur et la normale d'un fragment mélangé qu'au-delà du seuil ;
+ * l'eau y entre donc toujours, et l'AO (postTraitement.ts) se calcule sur sa surface plane, pas sur
+ * le lit et les berges qu'elle recouvre (le « transparencyAware » de N8AO).
+ */
 function eau(m: PBRMaterial): PBRMaterial {
   m.transparencyMode = Material.MATERIAL_ALPHABLEND
+  m.alphaCutOff = 0
   m.useRadianceOverAlpha = m.useSpecularOverAlpha = false
   return m
 }
@@ -294,8 +311,10 @@ const role = (matiere: string): Role =>
   (['Sol', 'Eau', 'Cascade', 'Granit', 'Bois'] as const).find((r) => matiere.startsWith(`Jardin_${r}`))?.toLowerCase() as Role ?? 'garde'
 
 /** Monte le décor du jardin ; rend les porteurs d'ombre (sol, granit, bois, foyer de la lanterne). */
-export async function monterJardin(scene: Scene, jour: number): Promise<Mesh[]> {
-  const ciel = Color3.Lerp(lin('#0b1224'), lin('#5d746c'), jour)
+export async function monterJardin(scene: Scene): Promise<Mesh[]> {
+  // Le ciel dans l'eau, selon l'heure (relu à chaque liaison).
+  const ciel = new Color3()
+  const cielDe = () => Color3.LerpToRef(CIEL_NUIT, CIEL_JOUR, vivant.getState().ciel.jour, ciel)
   const vaguelettes = RawTexture.CreateRGBATexture(carteDeVaguelettes(128), 128, 128, scene, true, false, Texture.TRILINEAR_SAMPLINGMODE)
   vaguelettes.wrapU = vaguelettes.wrapV = Texture.WRAP_ADDRESSMODE
   vaguelettes.level = 0.14
@@ -309,13 +328,25 @@ export async function monterJardin(scene: Scene, jour: number): Promise<Mesh[]> 
   const bois = matierePBR('jardin:bois', 'parquet', scene, { teinte: '#6b4a34' })
   // Les lueurs : l'ambiance « dehors » et les lampadaires, la nuit.
   brancherLueurs([sol, granit, bois])
+  intemperer(sol, { pelouse: true })
+  for (const m of [granit, bois]) intemperer(m)
 
   // Presque noire, verte en profondeur : c'est le reflet qui fait l'eau, pas sa couleur.
   const etang = eau(matiere('jardin:eau', scene, '#16291d', 0.1))
   etang.metallic = 0.1
   etang.environmentIntensity = 0.45
   etang.bumpTexture = vaguelettes
-  greffer(etang, { nom: 'Etang', uniforms: [{ name: 'etangT', size: 1, type: 'float' }], lier: (ubo) => ubo.updateFloat('etangT', temps()), code: (w) => codeDeLEtang(w, ciel) })
+  greffer(etang, {
+    nom: 'Etang',
+    uniforms: [{ name: 'etangT', size: 1, type: 'float' }, { name: 'etangCiel', size: 3, type: 'vec3' }],
+    lier: (ubo) => {
+      ubo.updateFloat('etangT', temps())
+      cielDe()
+      ubo.updateFloat3('etangCiel', ciel.r, ciel.g, ciel.b)
+    },
+    code: codeDeLEtang,
+  })
+  rider(etang)
 
   const filets = RawTexture.CreateRGBATexture(carteDeFilets(64), 64, 64, scene, false, false, Texture.NEAREST_SAMPLINGMODE)
   filets.wrapU = filets.wrapV = Texture.WRAP_ADDRESSMODE
@@ -337,10 +368,16 @@ export async function monterJardin(scene: Scene, jour: number): Promise<Mesh[]> 
   greffer(ruisseau, {
     nom: 'Ruisseau',
     attributs: ['aEau'],
-    uniforms: [{ name: 'ruisT', size: 1, type: 'float' }],
-    lier: (ubo) => ubo.updateFloat('ruisT', temps()),
-    code: (w) => codeDuRuisseau(w, obstacles, ciel),
+    uniforms: [{ name: 'ruisT', size: 1, type: 'float' }, { name: 'ruisGel', size: 1, type: 'float' }, { name: 'ruisCiel', size: 3, type: 'vec3' }],
+    lier: (ubo) => {
+      ubo.updateFloat('ruisT', temps())
+      ubo.updateFloat('ruisGel', METEO.enneige)
+      cielDe()
+      ubo.updateFloat3('ruisCiel', ciel.r, ciel.g, ciel.b)
+    },
+    code: (w) => codeDuRuisseau(w, obstacles),
   })
+  rider(ruisseau)
 
   VIVANTES.add('jardin:eau').add('jardin:cascade')
   scene.onBeforeRenderObservable.add(() => {
@@ -366,7 +403,9 @@ export async function monterJardin(scene: Scene, jour: number): Promise<Mesh[]> 
   const par: Partial<Record<Role, PBRMaterial>> = { sol, eau: etang, granit, bois }
   const lueur = c.materials.find((m) => m.name === 'Jardin_Lueur')
   // Le foyer ne brûle qu'au crépuscule et la nuit (éclat 1 du GLB, sans le facteur du belvédère).
-  if (lueur instanceof PBRMaterial) lueur.emissiveIntensity = 1 - smoothstep(jour, 0.15, 0.6)
+  if (lueur instanceof PBRMaterial) {
+    auCielMatiere(lueur, (c) => (lueur.emissiveIntensity = 1 - smoothstep(c.jour, 0.15, 0.6)))
+  }
   const decor: Mesh[] = []
   // Une copie : `dispose` retire le maillage de `c.meshes` (le suivant serait sauté).
   for (const m of [...c.meshes]) {

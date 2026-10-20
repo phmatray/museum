@@ -10,8 +10,9 @@
  *
  * Aucune bête ne touche à la carte d'ombre (ni porteuse, ni receveuse, comme three).
  * Matrices : `Euler(ex, ey, ez, 'YXZ')` de three = `RotationYawPitchRoll(ey, ex, ez)`.
- * Ciel, saison et météo sont lus une fois (main.ts, `ambiance()`) : le jour et
- * la nuit des lucioles sont cuits dans le code.
+ * Ciel, saison et météo cible sont relus à chaque image dans l'état vivant
+ * (etat.ts) ; le jour des carpes et la nuit des lucioles passent par l'UBO.
+ * Seuls les perchoirs (branches nues ou houppier) restent ceux du chargement.
  * Les oiseaux se posent sur les vrais érables (`erablesCales()` de vegetation.ts) :
  * au bord du houppier, ou au bout des rameaux l'hiver (`bordsDuHouppier`, `rameaux`).
  * Une bête masquée (visibilite.ts : `layerMask`) continue de vivre, mais ses
@@ -23,6 +24,8 @@ import type { Camera } from '@babylonjs/core/Cameras/camera'
 import { Constants } from '@babylonjs/core/Engines/constants'
 import type { Material } from '@babylonjs/core/Materials/material'
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
+import { Frustum } from '@babylonjs/core/Maths/math.frustum'
+import { Plane } from '@babylonjs/core/Maths/math.plane'
 import { Matrix, Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { VertexBuffer } from '@babylonjs/core/Buffers/buffer'
 import { Mesh } from '@babylonjs/core/Meshes/mesh'
@@ -32,7 +35,6 @@ import type { Scene } from '@babylonjs/core/scene'
 
 import { FAMILLE, avancerFamille, familleInitiale, type EtatHerisson, type Herisson } from '../domain/herisson.ts'
 import type { Saison } from '../domain/saisons.ts'
-import type { Ciel } from '../domain/soleil.ts'
 import { SOURCES_LAMPADAIRES } from '../plan/eclairage.ts'
 import { CONTOUR_ETANG, JARDIN, TRACE_RUISSEAU } from '../plan/jardin.ts'
 import { SURFACE, avancerKoi, distanceEtang, koiInitiaux, type Koi } from '../plan/koi.ts'
@@ -40,10 +42,11 @@ import { avancerOiseaux, oiseauxInitiaux, perchoirs, type Oiseau, type Perchoir,
 import { generateur } from '../plan/park.ts'
 import { hauteurDuParc, solDuParc } from '../plan/relief.ts'
 import { matiere } from './boites.ts'
+import { vivant } from './etat.ts'
 import { glbOuRien } from './glb.ts'
 import { dialecte, greffer } from './greffe.ts'
 import { brancherLueurs, lin, lueursDuJour, smoothstep } from './lueurs.ts'
-import { FOULE, PARC, ambiance, retourner } from './parc.ts'
+import { FOULE, PARC, retourner } from './parc.ts'
 import { erablesCales, type Geo as GeoCalee } from './vegetation.ts'
 
 export interface Geo { positions: Float32Array; normals: Float32Array; indices: Uint32Array }
@@ -114,9 +117,9 @@ export function corpsDeCarpe(): Geo & { nageoire: Float32Array } {
   return { positions: Float32Array.from(p), normals: Float32Array.from(nn), indices: retourne(nb), nageoire: new Float32Array(nb).fill(1, corps) }
 }
 
-/** La nage (vertex) et la robe (fragment) : `aKoi` = (variété, graine, phase, profondeur). */
-function codeCarpe(wgsl: boolean, jour: number) {
-  const { V, G, attribut, varying, vin, vout, fin, fn, tr } = dialecte(wgsl)
+/** La nage (vertex) et la robe (fragment) : `aKoi` = (variété, graine, phase, profondeur) ; `carpeJour` le jour (0..1). */
+function codeCarpe(wgsl: boolean) {
+  const { V, G, attribut, varying, vin, vout, fin, fn, tr, u } = dialecte(wgsl)
   const varyings = [varying('vLocal', 'vec3'), varying('vKoi', 'vec4'), varying('vNageoire', 'float')].join('\n')
   return {
     vertex: {
@@ -154,7 +157,7 @@ robe = mix(robe, vec3(0.05, 0.12, 0.08), 0.12 + smoothstep(0.03, 0.65, k.w) * 0.
 surfaceAlbedo = robe;
 carpeRobe = robe;
 }`),
-      CUSTOM_FRAGMENT_BEFORE_FINALCOLORCOMPOSITION: `finalEmissive += carpeRobe * ${(0.18 * jour).toFixed(4)};`,
+      CUSTOM_FRAGMENT_BEFORE_FINALCOLORCOMPOSITION: `finalEmissive += carpeRobe * 0.18 * ${u('carpeJour')};`,
     },
   }
 }
@@ -413,9 +416,9 @@ export function nuageDeLucioles(): { centres: Float32Array; graines: Float32Arra
 /**
  * Les points de three en quads tournés vers l'œil (WebGPU n'a pas de gl_PointSize),
  * à la même taille à l'écran : clamp(H × 0,16 / d × (0,5 + éclat), 2, 30) pixels.
- * `lucioles` = (temps, hauteur de rendu en pixels, 2 tan(fov/2), —).
+ * `lucioles` = (temps, hauteur de rendu en pixels, 2 tan(fov/2), nuit des lucioles 0..1).
  */
-function codeLucioles(wgsl: boolean, nuit: number) {
+function codeLucioles(wgsl: boolean) {
   const { V, attribut, varying, vin, vout, fin, u, tr } = dialecte(wgsl)
   const varyings = `${varying('vEclat', 'float')}\n${varying('vPoint', 'vec2')}`
   const [vue, oeil] = wgsl ? ['scene.view', 'scene.vEyePosition.xyz'] : ['view', 'vEyePosition.xyz']
@@ -429,7 +432,7 @@ ${V('e', 'vec4', u('lucioles'))}
 ${V('t', 'float', 'e.x')}
 ${V('p', 'vec3', `vec3(sin(t * 0.31 + g.x) * 0.9 + sin(t * 0.83 + g.y) * 0.35, sin(t * 0.47 + g.z) * 0.35 + sin(t * 1.1 + g.w) * 0.12, sin(t * 0.37 + g.y) * 0.9 + sin(t * 0.71 + g.z) * 0.35)`)}
 ${V('f', 'float', 'fract(t / (2.0 + gr.w * 3.0) + gr.x)')}
-${V('eclat', 'float', `${nuit.toFixed(4)} * (smoothstep(0.0, 0.12, f) * (1.0 - smoothstep(0.25, 0.6, f)) + 0.1)`)}
+${V('eclat', 'float', `e.w * (smoothstep(0.0, 0.12, f) * (1.0 - smoothstep(0.25, 0.6, f)) + 0.1)`)}
 ${vout('vEclat')} = eclat;
 ${vout('vPoint')} = positionUpdated.xy * 2.0;
 ${V('d', 'float', `max(distance(${vin('world3')}.xyz + p, ${oeil}), 0.1)`)}
@@ -575,14 +578,17 @@ function quad(couche: boolean): Geo {
 
 const VARIETE = { kohaku: 0, ogon: 1, showa: 2 } as const
 
+/** La nuit des lucioles : au crépuscule, les nuits chaudes et sèches seulement (FauneLayer). */
+export const nuitDesLucioles = ({ ciel, saison, meteo }: { ciel: { jour: number }; saison: Saison; meteo: { pluie: number; neige: number } }): number =>
+  (1 - smoothstep(ciel.jour, 0.05, 0.3)) * saisonDesLucioles(saison) * (1 - meteo.pluie) * (1 - meteo.neige)
+
 /**
- * Monte la faune et l'anime à chaque image. `ciel` : celui de main.ts (le jour
- * règle oiseaux, lucioles, éclat des yeux) ; `camera` : le visiteur (les yeux).
+ * Monte la faune et l'anime à chaque image. Le jour (état vivant) règle
+ * oiseaux, lucioles, éclat des yeux ; `camera` : le visiteur (les yeux).
  * Rend quand le hérisson est posé (ou absent).
  */
-export async function monterFaune(scene: Scene, ciel: Ciel, camera: Camera): Promise<void> {
-  const { saison, meteo } = ambiance()
-  const jour = ciel.jour
+export async function monterFaune(scene: Scene, camera: Camera): Promise<void> {
+  const etat = () => vivant.getState()
   const dev = { gel: false, envol: false, placer: new Map<number, Partial<Herisson>>() }
   const vivants: ((dt: number) => void)[] = []
   let temps = 0
@@ -599,7 +605,13 @@ export async function monterFaune(scene: Scene, ciel: Ciel, camera: Camera): Pro
   mCarpe.backFaceCulling = false
   mCarpe.twoSidedLighting = true
   brancherLueurs([mCarpe])
-  greffer(mCarpe, { nom: 'Carpe', attributs: ['aKoi', 'aNageoire'], code: (w) => codeCarpe(w, jour) })
+  greffer(mCarpe, {
+    nom: 'Carpe',
+    attributs: ['aKoi', 'aNageoire'],
+    uniforms: [{ name: 'carpeJour', size: 1, type: 'float' }],
+    lier: (ubo) => ubo.updateFloat('carpeJour', etat().ciel.jour),
+    code: codeCarpe,
+  })
   const [corps, matsC] = maillage('faune:carpes', scene, carpe, mCarpe, { aNageoire: [carpe.nageoire, 1] }, n)
   const koi = new Float32Array(4 * n)
   corps.thinInstanceSetBuffer('aKoi', koi, 4, false)
@@ -635,9 +647,9 @@ export async function monterFaune(scene: Scene, ciel: Ciel, camera: Camera): Pro
   // Les oiseaux : la nuit, ils dorment au creux des arbres. Le jour, ils attendent les érables (vegetation.ts).
   let PERCHOIRS: Perchoir[] = []
   let volee: Oiseau[] = []
-  if (jour > 0.15) void erablesCales().then((erables) => {
+  void erablesCales().then((erables) => {
     // Houppier plein : au bord des feuilles. Branches nues (l'hiver) : sur le bois.
-    const nu = saison.chute > 0.5
+    const nu = etat().saison.chute > 0.5
     PERCHOIRS = perchoirs(PARC, Object.fromEntries([...erables].map(([e, g]) => [e, nu ? rameaux(g.ecorce) : bordsDuHouppier(g.feuilles)])))
     volee = oiseauxInitiaux(PERCHOIRS, 16)
     const no = volee.length
@@ -651,8 +663,11 @@ export async function monterFaune(scene: Scene, ciel: Ciel, camera: Camera): Pro
     const vol = new Float32Array(4 * no)
     lot.thinInstanceSetBuffer('aVol', vol, 4, false)
     const ph = new Float32Array(no).map((_, i) => i * 2.3)
-    const intemperie = Math.max(meteo.pluie, meteo.neige)
     vivants.push((dt) => {
+      const { meteo, ciel } = etat()
+      // La nuit, ils dorment au creux des arbres.
+      lot.isVisible = ciel.jour > 0.15
+      const intemperie = Math.max(meteo.pluie, meteo.neige)
       if (dev.envol) {
         dev.envol = false
         volee = volee.map((b) => avancerOiseaux([b], PERCHOIRS, 0, { x: b.x, z: b.z }, Math.random)[0])
@@ -674,23 +689,27 @@ export async function monterFaune(scene: Scene, ciel: Ciel, camera: Camera): Pro
     })
   })
 
-  // Les lucioles : au crépuscule, les nuits chaudes et sèches seulement.
-  const nuit = (1 - smoothstep(jour, 0.05, 0.3)) * saisonDesLucioles(saison) * (1 - meteo.pluie) * (1 - meteo.neige)
-  if (nuit > 0.001) {
+  // Les lucioles : montées toujours, dessinées seulement quand leur nuit est là.
+  {
     const { centres, graines } = nuageDeLucioles()
+    let nuit = 0
     const mLuc = voile('faune:lucioles', scene, true)
     const moteur = scene.getEngine()
     greffer(mLuc, {
       nom: 'Lucioles',
       attributs: ['aGraine'],
       uniforms: [{ name: 'lucioles', size: 4, type: 'vec4' }],
-      lier: (ubo) => ubo.updateFloat4('lucioles', temps, moteur.getRenderHeight(), 2 * Math.tan(camera.fov / 2), 0),
-      code: (w) => codeLucioles(w, nuit),
+      lier: (ubo) => ubo.updateFloat4('lucioles', temps, moteur.getRenderHeight(), 2 * Math.tan(camera.fov / 2), nuit),
+      code: codeLucioles,
     })
     const [l, mats] = maillage('faune:lucioles', scene, quad(false), mLuc, {}, NB_LUCIOLES)
     for (let i = 0; i < NB_LUCIOLES; i++) poser(mats, i, centres[3 * i], centres[3 * i + 1], centres[3 * i + 2], 0, 0, 0, 1)
     l.thinInstanceBufferUpdated('matrix')
     l.thinInstanceSetBuffer('aGraine', graines, 4, true)
+    vivants.push(() => {
+      nuit = nuitDesLucioles(etat())
+      l.isVisible = nuit > 0.001
+    })
   }
 
   // Une seule boucle pour toutes les bêtes.
@@ -702,6 +721,7 @@ export async function monterFaune(scene: Scene, ciel: Ciel, camera: Camera): Pro
 
   // Les hérissons, quand le modèle arrive.
   let famille: Herisson[] = []
+  const champ = Array.from({ length: 6 }, () => new Plane(0, 0, 0, 0))
   if (import.meta.env.DEV)
     (window as unknown as { __FAUNE__?: unknown }).__FAUNE__ = {
       figer: (g: boolean) => { dev.gel = g },
@@ -737,22 +757,26 @@ export async function monterFaune(scene: Scene, ciel: Ciel, camera: Camera): Pro
   h.alwaysSelectAsActiveMesh = true
   h.metadata = { zone: 'parc' }
 
-  const hiberne = saison.pelouse.terne > 0.5
+  /** `heureDesHerissons` : le soleil et l'hiver du moment (ils hibernent quand la pelouse s'éteint). */
+  const heure = (): [number, boolean] => [etat().ciel.elevation, etat().saison.pelouse.terne > 0.5]
   // Une graine par session : ils ne sont pas deux fois au même endroit.
-  famille = familleInitiale(ciel.elevation, hiberne, Math.floor(Math.random() * 2 ** 31))
+  famille = familleInitiale(...heure(), Math.floor(Math.random() * 2 ** 31))
   const horloges = FAMILLE.map((_, i) => ({ pas: i * 1.3, flair: i * 2.7 }))
-  const lampes = lueursDuJour(jour).facade
   vivants.push((dt) => {
+    const jour = etat().ciel.jour
+    const lampes = lueursDuJour(jour).facade
     if (dev.placer.size) {
       famille = famille.map((x, i) => ({ ...x, ...dev.placer.get(i) }))
       dev.placer.clear()
     }
     const cam = camera.position
     const visiteur = cam.y - hauteurDuParc(cam.x, cam.z) < 3 ? { x: cam.x, z: cam.z } : null
-    if (!dev.gel) famille = avancerFamille(famille, dt, visiteur, ciel.elevation, hiberne)
+    if (!dev.gel) famille = avancerFamille(famille, dt, visiteur, ...heure())
     const cache = masque(h)
-    // Les hérissons dessinés, tassés en tête des buffers : ni ceux du nid ni ceux à plus de
-    // PORTEE_HERISSON (un hérisson de 25 cm y fait quelques pixels, et 14 000 triangles).
+    Frustum.GetPlanesToRef(camera.getTransformationMatrix(), champ)
+    // Les hérissons dessinés, tassés en tête des buffers : ni ceux du nid, ni ceux à plus de
+    // PORTEE_HERISSON (un hérisson de 25 cm y fait quelques pixels, et 14 000 triangles), ni ceux
+    // hors du champ (le lot n'a pas de boîte qui vaille : Babylon les dessinerait tous).
     let n = 0
     famille.forEach((b, i) => {
       const { echelle, demiLongueur } = FAMILLE[b.qui]
@@ -764,6 +788,8 @@ export async function monterFaune(scene: Scene, ciel: Ciel, camera: Camera): Pro
       hc.pas += dt * b.vitesse * ((2 * Math.PI) / (0.028 * echelle))
       hc.flair += dt
       if (cache || Math.hypot(b.x - cam.x, b.z - cam.z) > PORTEE_HERISSON) return
+      const y = solDuParc(b.x, b.z)
+      if (champ.some((p) => p.normal.x * b.x + p.normal.y * y + p.normal.z * b.z + p.d < -0.5)) return
       teinte[n] = FAMILLE[i].teinte
       const marche = Math.min(1, b.vitesse / 0.08)
       const deroule = 1 - smoothstep(b.boule, 0, 1)

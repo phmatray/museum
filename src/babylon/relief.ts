@@ -9,7 +9,8 @@
  * Les couleurs de sommet sont déjà linéaires (au-delà de 1 pour la brume, exprès).
  * Le gazon ne porte pas d'ombre, il la reçoit ; sa visibilité suit les parcelles
  * d'herbe en vue (sa sphère englobante l'entoure toujours, elle ne dit rien).
- * ponytail : saison et météo du gazon (jaune, terne, mouillé, enneigé) à 0, le vent de `ambiance()` figé.
+ * Saison du gazon (jaune, terne : état vivant) et météo lissée (vent, mouillé,
+ * enneigé : METEO) passent par l'UBO (`gazonSaison`), sans recompiler.
  */
 import { Constants } from '@babylonjs/core/Engines/constants'
 import type { Camera } from '@babylonjs/core/Cameras/camera'
@@ -31,9 +32,11 @@ import { surUneAllee, type Allee, type Parc } from '../plan/park.ts'
 import { ARRONDI_PARVIS, COTE_DALLAGE, distanceParvis, hauteurDuParc, masqueDuRelief } from '../plan/relief.ts'
 import type { Rect } from '../plan/types.ts'
 import { gabaritCube, geometrieDeBoites, matiere, type Gabarit } from './boites.ts'
+import { vivant } from './etat.ts'
 import { dialecte, greffer } from './greffe.ts'
+import { METEO } from './intemperies.ts'
 import { brancherLueurs, smoothstep } from './lueurs.ts'
-import { ambiance, dallage, FOULE, mulberry32, PARC, pelouse } from './parc.ts'
+import { dallage, FOULE, mulberry32, PARC, pelouse } from './parc.ts'
 
 /** Le bord du terrain descend d'autant. */
 const EPAISSEUR_SOL = 0.4
@@ -320,8 +323,11 @@ export function brins({ nombre, cote, niveaux: NIVEAUX }: Lot, graine: number): 
 
 const f = (v: number) => v.toFixed(4)
 
-/** Le plugin Gazon d'un lot : constantes cuites, caméra, temps et foule par image. */
-function codeDuGazon(lot: Lot, cadre: CarteDuSol['cadre'], force: number, wgsl: boolean) {
+/**
+ * Le plugin Gazon d'un lot : constantes cuites, caméra, temps et foule par image ;
+ * `gazonSaison` = (jaune, terne, mouillé, enneigé), `gazonCam.w` = vent (m/s).
+ */
+export function codeDuGazon(lot: Lot, cadre: CarteDuSol['cadre'], wgsl: boolean) {
   const d = dialecte(wgsl)
   const { V, T, u, vin, vout, fin, tr } = d
   const v2 = (a: number, b: number) => `${T('vec2')}(${f(a)}, ${f(b)})`
@@ -344,7 +350,7 @@ ${V('sol', 'vec4', echantillon)}
 ${V('dedans', 'float', 'step(0.0, st.x) * step(st.x, 1.0) * step(0.0, st.y) * step(st.y, 1.0)')}
 ${V('garde', 'float', 'smoothstep(brin.z * 0.7 + 0.15, brin.z * 0.7 + 0.3, sol.g) * dedans')}
 ${V('fondu', 'float', `1.0 - smoothstep(${f(lot.rayon * 0.6)}, ${f(lot.rayon)}, distance(p, ${u('gazonCam')}.xy))`)}
-${V('h', 'float', `mix(${f(lot.hauteur[0])}, ${f(lot.hauteur[1])}, brin.w * brin.w) * garde * fondu`)}
+${V('h', 'float', `mix(${f(lot.hauteur[0])}, ${f(lot.hauteur[1])}, brin.w * brin.w) * garde * fondu * (1.0 - 0.85 * ${u('gazonSaison')}.w)`)}
 ${foule}
 ${V('t', 'float', 'positionUpdated.y')}
 ${V('a', 'float', 'brin.z * 43.0')}
@@ -352,7 +358,7 @@ ${V('travers', 'vec2', 'vec2(cos(a), sin(a))')}
 ${V('face', 'vec2', 'vec2(-travers.y, travers.x)')}
 ${V('temps', 'float', `${u('gazonCam')}.z`)}
 ${V('vent', 'float', 'sin(temps * 1.3 + p.x * 0.31 + p.y * 0.17) * 0.6 + sin(temps * 2.9 + p.x * 1.1 - p.y * 0.7) * 0.25')}
-${V('penche', 'vec2', `face * (fract(brin.w * 17.0) - 0.5) * 0.9 + vec2(0.8, 0.45) * vent * 0.45 * ${f(Math.min(3, Math.max(0.5, 0.6 + 0.2 * force)))}`)}
+${V('penche', 'vec2', `face * (fract(brin.w * 17.0) - 0.5) * 0.9 + vec2(0.8, 0.45) * vent * 0.45 * clamp(0.6 + 0.2 * ${u('gazonCam')}.w, 0.5, 3.0)`)}
 ${V('courbe', 'float', 't * t')}
 ${V('herbe', 'vec3', 'vec3(p.x, sol.r - 0.03 + t * h * (1.0 - 0.25 * courbe * dot(penche, penche)), p.y)')}
 ${V('dxz', 'vec2', `travers * positionUpdated.x * ${f(lot.largeur)} * min(1.0, h * 6.0) + penche * courbe * h`)}
@@ -368,13 +374,18 @@ ${vout('vTeinte')} = fract(brin.z * 7.0 + brin.w * 3.0);
 ${V('pointe', 'vec3', `mix(${v3(0.12, 0.26, 0.05)}, ${v3(0.23, 0.33, 0.07)}, ${fin('vTeinte')})`)}
 pointe = mix(pointe, ${v3(0.08, 0.2, 0.06)}, step(0.8, ${fin('vTeinte')}));
 surfaceAlbedo = mix(${v3(0.045, 0.09, 0.022)}, pointe, smoothstep(0.0, 0.9, ${fin('vT')}));
+${V('lum', 'float', `dot(surfaceAlbedo, ${v3(0.3, 0.59, 0.11)})`)}
+${V('gs', 'vec4', u('gazonSaison'))}
+surfaceAlbedo = mix(surfaceAlbedo, surfaceAlbedo * ${v3(1.45, 1.15, 0.45)}, gs.x * 0.6 * ${fin('vT')});
+surfaceAlbedo = mix(surfaceAlbedo, ${T('vec3')}(lum) * ${v3(1.2, 1.05, 0.6)}, gs.y * 0.65) * (1.0 - 0.15 * gs.y) * (1.0 - 0.3 * gs.z);
+surfaceAlbedo = mix(surfaceAlbedo, ${v3(0.85, 0.88, 0.93)}, gs.w * (0.45 + 0.5 * smoothstep(0.2, 1.0, ${fin('vT')})));
 }`,
     },
   }
 }
 
 /** Les deux lots de brins, visibles seulement quand une parcelle d'herbe proche est en vue (une fois la scène prête). */
-function monterGazon(scene: Scene, camera: Camera, vent: number): void {
+function monterGazon(scene: Scene, camera: Camera): void {
   const carte = carteDuSol(PARC)
   const sol = new RawTexture(carte.donnees, carte.largeur, carte.hauteur, Constants.TEXTUREFORMAT_RGBA, scene, false, false,
     Texture.BILINEAR_SAMPLINGMODE, Constants.TEXTURETYPE_HALF_FLOAT)
@@ -402,17 +413,19 @@ function monterGazon(scene: Scene, camera: Camera, vent: number): void {
       nom: `Gazon-${i}`,
       attributs: ['aBrin'],
       samplers: ['gazonSol'],
-      uniforms: [{ name: 'gazonCam', size: 4, type: 'vec4' }, { name: 'gazonCentre', size: 4, type: 'vec4' }, { name: 'gazonFoule', size: 16, type: 'mat4' }],
+      uniforms: [{ name: 'gazonCam', size: 4, type: 'vec4' }, { name: 'gazonCentre', size: 4, type: 'vec4' }, { name: 'gazonSaison', size: 4, type: 'vec4' }, { name: 'gazonFoule', size: 16, type: 'mat4' }],
       lier: (ubo) => {
         const c = camera.globalPosition
-        ubo.updateFloat4('gazonCam', c.x, c.z, performance.now() / 1000, 0)
+        const p = vivant.getState().saison.pelouse
+        ubo.updateFloat4('gazonCam', c.x, c.z, performance.now() / 1000, METEO.vent)
+        ubo.updateFloat4('gazonSaison', p.jaune, p.terne, METEO.mouille, METEO.enneige)
         ubo.updateFloat4('gazonCentre', avant.x * lot.avance, avant.z * lot.avance, 0, 0)
         FOULE.forEach(([x, z, r], k) => foule.setRowFromFloats(k, x, z, r, 0))
         // `updateMatrix`, pas `updateUniform` : sous WebGPU la matière n'a pas d'UBO propre (setter de l'effet).
         ubo.updateMatrix('gazonFoule', foule)
         ubo.setTexture('gazonSol', sol)
       },
-      code: (wgsl) => codeDuGazon(lot, carte.cadre, vent, wgsl),
+      code: (wgsl) => codeDuGazon(lot, carte.cadre, wgsl),
     })
     brancherLueurs([mat])
     m.material = mat
@@ -448,6 +461,6 @@ export async function monterRelief(scene: Scene, camera: Camera): Promise<Mesh[]
   geometrieParvis(PARC).applyToMesh(parvis)
   parvis.material = dallage(scene)
   for (const m of [sol, parvis]) m.receiveShadows = true
-  monterGazon(scene, camera, ambiance().meteo.vent)
+  monterGazon(scene, camera)
   return [sol]
 }

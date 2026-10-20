@@ -24,7 +24,7 @@ import type { EtapeJournal, Journal } from '../domain/journal.ts'
 import type { Box } from '../plan/mesh.ts'
 import { accrocherChantier, CENTRE_CHANTIER, type CadreChantier } from '../plan/chantier.ts'
 import { boitesFusionnees, matiere } from './boites.ts'
-import { VIVANTES } from './etat.ts'
+import { auCiel, auCielMatiere, VIVANTES } from './etat.ts'
 import { fusionnerParMatiere, glbOuRien } from './glb.ts'
 import { brancherLueurs } from './lueurs.ts'
 import { police } from './polices.ts'
@@ -202,7 +202,7 @@ async function peindre(scene: Scene, base: string, journal: Journal, cadres: Cad
 }
 
 /** Les cadres du journal ; rend les moulures (porteuses d'ombre). */
-function monterCadres(scene: Scene, base: string, journal: Journal, jour: number, camera: Camera): Mesh[] {
+function monterCadres(scene: Scene, base: string, journal: Journal, camera: Camera): Mesh[] {
   const cadres = accrocherChantier(journal.etapes.length)
   const [p, g] = [cadres.filter((c) => !c.grand), cadres.filter((c) => c.grand)]
   const formats = { petits: atlasDe(p.length, false), grands: atlasDe(g.length, true) }
@@ -217,8 +217,8 @@ function monterCadres(scene: Scene, base: string, journal: Journal, jour: number
     attente.update()
     m.albedoTexture = m.emissiveTexture = attente
     m.emissiveColor = Color3.White()
-    m.emissiveIntensity = 0.32 * (1 - jour)
     VIVANTES.add(nom)
+    auCiel((c) => (m.emissiveIntensity = 0.32 * (1 - c.jour)))
     return m
   }
   const mats = { petites: image('chantier:petites'), grandes: image('chantier:grandes') }
@@ -247,7 +247,7 @@ function monterCadres(scene: Scene, base: string, journal: Journal, jour: number
 }
 
 /** Rend les porteurs d'ombre (le modèle sauf ses vitres, les moulures). */
-export async function monterChantier(scene: Scene, base: string, jour: number, camera: Camera): Promise<Mesh[]> {
+export async function monterChantier(scene: Scene, base: string, camera: Camera): Promise<Mesh[]> {
   const [c, journal] = await Promise.all([
     glbOuRien(scene, 'assets/architecture/chantier.glb'),
     fetch(`${base}data/chantier.json`)
@@ -263,7 +263,9 @@ export async function monterChantier(scene: Scene, base: string, jour: number, c
       m.useRadianceOverAlpha = m.useSpecularOverAlpha = false
     } else brancherLueurs([m])
     // La baladeuse brûle plus fort la nuit.
-    if (m.name === 'Chantier_Ampoule') m.emissiveIntensity = 4 + 8 * (1 - jour)
+    if (m.name === 'Chantier_Ampoule') {
+      auCielMatiere(m, (c) => (m.emissiveIntensity = 4 + 8 * (1 - c.jour)))
+    }
   }
   const porteurs: Mesh[] = []
   for (const m of fusionnerParMatiere(c?.meshes ?? [])) {
@@ -271,6 +273,6 @@ export async function monterChantier(scene: Scene, base: string, jour: number, c
     m.isPickable = false
     if (!m.material?.needAlphaBlending()) porteurs.push(m)
   }
-  if (journal && journal.etapes.length > 0) porteurs.push(...monterCadres(scene, base, journal, jour, camera))
+  if (journal && journal.etapes.length > 0) porteurs.push(...monterCadres(scene, base, journal, camera))
   return porteurs
 }

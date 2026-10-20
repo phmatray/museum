@@ -133,7 +133,8 @@ export function atlasDeTextes(
   const data = new Uint8Array(L * H * 4)
   for (let y = 0; y < H; y++) data.set(px.subarray((H - 1 - y) * L * 4, (H - y) * L * 4), y * L * 4)
   deborder(data, L, H)
-  const dt = RawTexture.CreateRGBATexture(data, L, H, scene, true, false, Texture.TRILINEAR_SAMPLINGMODE)
+  // Stockée en sRGB (le `colorSpace` des CanvasTexture de three) : filtrée en linéaire, l'encre ne se mêle pas au vide en gamma.
+  const dt = RawTexture.CreateRGBATexture(data, L, H, scene, true, false, Texture.TRILINEAR_SAMPLINGMODE, 0, 0, true)
   // Babylon garde la copie pour une perte de contexte : jusqu'à 55 Mo de tas par atlas, lâchés ici.
   // ponytail : après une perte de contexte, les textes restent vides ; repeindre si cela arrive en vrai.
   dt.getInternalTexture()!._bufferView = null
@@ -185,6 +186,40 @@ export function matiereDeTexte(nom: string, scene: Scene, dt: Texture, rugosite?
   mat.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHABLEND
   mat.backFaceCulling = false
   return mat
+}
+
+type Moteur = { isWebGPU: boolean; getCaps(): { supportSRGBBuffers?: boolean }; _getRGBABufferInternalSizedFormat(type: number, format?: number, srgb?: boolean): number }
+type Interne = { _useSRGBBuffer: boolean; _hardwareTexture: { release(): void } | null }
+
+/**
+ * Un canevas stocké en sRGB, à appeler avant son premier `update` : le GPU le
+ * relit en linéaire AVANT de filtrer, comme une CanvasTexture sRGB de three.
+ * Filtré en gamma (le défaut de Babylon), un trait blanc fin sur fond noir
+ * moyenné par les mipmaps sort gris (tableau des départs).
+ */
+export function enSrgb(dt: DynamicTexture): DynamicTexture {
+  const e = dt.getScene()!.getEngine() as unknown as Moteur
+  const t = dt.getInternalTexture() as unknown as Interne | null
+  if (!t || !e.getCaps().supportSRGBBuffers) return dt
+  t._useSRGBBuffer = true
+  if (e.isWebGPU) {
+    // La texture GPU (créée avec le canevas) est refaite au premier envoi, au format sRGB.
+    t._hardwareTexture?.release()
+    t._hardwareTexture = null
+    return dt
+  }
+  // WebGL2 : `updateDynamicTexture` ne transmet pas le drapeau au format interne.
+  const envoyer = dt.update.bind(dt)
+  dt.update = (...a: Parameters<DynamicTexture['update']>) => {
+    const format = e._getRGBABufferInternalSizedFormat
+    e._getRGBABufferInternalSizedFormat = (type, f) => format.call(e, type, f, true)
+    try {
+      envoyer(...a)
+    } finally {
+      e._getRGBABufferInternalSizedFormat = format
+    }
+  }
+  return dt
 }
 
 /** Un DynamicTexture dessiné en mètres (`ppm` pixels par mètre), mipmappé, anisotropie 8, haut du canevas en haut. */

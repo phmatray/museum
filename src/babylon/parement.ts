@@ -36,7 +36,7 @@ import { plinthes } from '../plan/parement.ts'
 import { plafonds } from '../plan/plafonds.ts'
 import type { Plan } from '../plan/types.ts'
 import { passagesDuHall } from '../plan/usure.ts'
-import { gabaritCube, geometrieCuite, type Cuite, type Gabarit } from './boites.ts'
+import { gabaritCube, geometrieCuite, refleterCuit, type Cuite, type Gabarit } from './boites.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
 import { matierePBR, REGLAGES } from './matieres.ts'
 import { creerGranit, creerPierre } from './pierre.ts'
@@ -398,6 +398,7 @@ export function monterParement(scene: Scene, plan: Plan, atlas: Promise<RawTextu
     return m
   })
   // L'échec de l'atlas est déjà signalé par monterBoites.
+  Object.values(mats).forEach(refleterCuit)
   void atlas.then((t) => Object.values(mats).forEach((m) => (m.lightmapTexture = t))).catch(() => {})
   brancherLueurs(Object.values(mats))
   return maillages

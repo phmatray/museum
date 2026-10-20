@@ -24,6 +24,7 @@ import { garniture, MOBILIER } from '../plan/mobilier.ts'
 import { MUSEE } from '../plan/musee.ts'
 import { BLOC_SORTIE, sorties } from '../plan/signaletique.ts'
 import { matiere } from './boites.ts'
+import { recherche } from './etat.ts'
 import { matrices } from './lots.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
 import { canevasEnMetres, maillageDeQuads } from './textes.ts'
@@ -156,7 +157,7 @@ export function monterAccessoires(scene: Scene): Mesh[] {
   }
 
   // ── Les horaires : l'émail, devant le panneau GLB, 1 appel.
-  const quand = heureDemandee(location.search, new Date()) ?? new Date()
+  const quand = heureDemandee(recherche(), new Date()) ?? new Date()
   const lignes = lignesDesHoraires(quand, config.location.latitude, config.location.longitude)
   const email = matiere('horaires', scene, '#ffffff', 0.35)
   email.metallic = 0.05

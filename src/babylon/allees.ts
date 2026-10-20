@@ -26,6 +26,7 @@ import { BORDURE, GALETS, amenagerAllees, type Amenagement, type Pose, type Surf
 import { COTE_DALLAGE, hauteurDuParc } from '../plan/relief.ts'
 import { matiere } from './boites.ts'
 import { cacherAuLoin, matrices } from './lots.ts'
+import { intemperer } from './intemperies.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
 import { matierePBR, REGLAGES } from './matieres.ts'
 import { dallage, PARC, retourner } from './parc.ts'
@@ -258,6 +259,9 @@ export function monterAllees(scene: Scene): Mesh[] {
   herbe.backFaceCulling = false
   herbe.specularIntensity = 0
   brancherLueurs([gravier, cailloux, pierre, dalle, bois, corde, herbe])
+  // Mouillé sous la pluie, blanc sous la neige ; le gravier prend aussi ses flaques (intemperies.ts).
+  for (const m of [cailloux, pierre, dalle, bois, herbe]) intemperer(m)
+  intemperer(gravier, { flaques: true })
 
   // Les normales calculées avant la découpe : pas d'arête marquée au bord des carreaux.
   const carreaux = (nom: string, g: Geo, mat: Material) => decouper(lisse(g), CARREAU).map((x, i) => maille(`${nom}-${i}`, x, scene, mat))

@@ -8,8 +8,8 @@
  *
  * Les lanternes s'allument au crépuscule : de l'autre bout de l'étang, la nuit,
  * c'est elles qu'on voit. Pas de vraie lumière : seule la surface brille.
- * ponytail : ni météo (intemperer), ni zone PARC du tri par salle, ni ambiance
- * « dehors la nuit » : viendront avec la météo, la visibilité et le jardin.
+ * Mouillés sous l'averse, blancs sous la neige (`intemperer`), comme le pont
+ * du jardin ; l'éclat des lanternes suit l'heure (`auCiel`).
  */
 import type { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator'
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
@@ -22,7 +22,9 @@ import type { Scene } from '@babylonjs/core/scene'
 
 import { PAS_DE_LA_RIVE } from '../plan/belvedere.ts'
 import { hauteurDuParc } from '../plan/relief.ts'
+import { auCielMatiere } from './etat.ts'
 import { chargerGlb } from './glb.ts'
+import { intemperer } from './intemperies.ts'
 import { smoothstep } from './lueurs.ts'
 import { matierePBR } from './matieres.ts'
 
@@ -61,10 +63,11 @@ function dalle(scene: Scene): Mesh {
   return m
 }
 
-export async function monterBelvedere(scene: Scene, jour: number, generateur: ShadowGenerator | null): Promise<void> {
+export async function monterBelvedere(scene: Scene, generateur: ShadowGenerator | null): Promise<void> {
   const pas = dalle(scene)
   // La roche du jardin (Rock044), teintée, motif métrique de 1,6 m sur les UV du cylindre, comme three.
   pas.material = matierePBR('pas', 'roche', scene, { teinte: '#b9bbb6' })
+  intemperer(pas.material)
   pas.thinInstanceSetBuffer('matrix', matricesDesPas(), 16)
   pas.receiveShadows = true
   generateur?.addShadowCaster(pas)
@@ -73,8 +76,9 @@ export async function monterBelvedere(scene: Scene, jour: number, generateur: Sh
   const lueur = c.materials.find((m) => m.name === 'Belvedere_Lueur')
   if (lueur instanceof PBRMaterial) {
     lueur.emissiveColor = new Color3(1, 0.62, 0.3)
-    lueur.emissiveIntensity = eclatDesLanternes(jour)
+    auCielMatiere(lueur, (c) => (lueur.emissiveIntensity = eclatDesLanternes(c.jour)))
   }
+  for (const m of c.materials) if (m !== lueur) intemperer(m)
   for (const m of c.meshes.filter((m) => m.getTotalVertices() > 0)) {
     m.receiveShadows = true
     generateur?.addShadowCaster(m)

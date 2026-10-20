@@ -12,9 +12,8 @@
  * Ni lightmap ni intempéries : hémisphérique, soleil, ombres et lueurs de la nef.
  * ponytail : le `volets` du cliquetis audio attend le portage de l'audio.
  */
-import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
+import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture'
-import { Color3 } from '@babylonjs/core/Maths/math.color'
 import { Matrix } from '@babylonjs/core/Maths/math.vector'
 import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder'
 import { CreateCylinder } from '@babylonjs/core/Meshes/Builders/cylinderBuilder'
@@ -30,9 +29,9 @@ import { laVisite } from '../io/visite.ts'
 import type { Box } from '../plan/mesh.ts'
 import type { Accrochage } from '../plan/hang.ts'
 import { cubes, matiere } from './boites.ts'
-import { catalogue, etat, mouvementReduit } from './etat.ts'
+import { catalogue, etat, mouvementReduit, recherche } from './etat.ts'
 import { brancherLueurs } from './lueurs.ts'
-import { canevasEnMetres, maillageDeQuads } from './textes.ts'
+import { canevasEnMetres, enSrgb, maillageDeQuads } from './textes.ts'
 
 // ── Le tableau ──
 
@@ -113,13 +112,13 @@ function monterTableau(scene: Scene, accrochage: Accrochage | null, base: string
   acier.receiveShadows = true
   acier.isPickable = false
 
-  const dt = new DynamicTexture('departs', { width: CW, height: CH }, scene, true)
+  const dt = enSrgb(new DynamicTexture('departs', { width: CW, height: CH }, scene, true))
   dt.anisotropicFilteringLevel = 8
   const ctx = dt.getContext() as CanvasRenderingContext2D
-  const ecran = new StandardMaterial('departs:ecran', scene)
-  ecran.disableLighting = true
-  ecran.diffuseColor = Color3.Black()
-  ecran.emissiveTexture = dt
+  // Non éclairé (le `meshBasicMaterial` de three) ; PBR, qui lit le canevas sRGB en linéaire (la Standard le relinéariserait).
+  const ecran = new PBRMaterial('departs:ecran', scene)
+  ecran.unlit = true
+  ecran.albedoTexture = dt
   maillageDeQuads('departs:ecran', [{ centre: CENTRE, droite: [1, 0, 0], haut: [0, 1, 0], l: LARGEUR, h: hauteur, uv: [0, 0, 1, 1] }], scene, ecran)
 
   const salles = new Map(accrochage?.rooms.flatMap((r) => r.placements.map((p) => [p.key, r.name] as const)) ?? [])
@@ -133,7 +132,7 @@ function monterTableau(scene: Scene, accrochage: Accrochage | null, base: string
     const page = pageA(Date.now(), etat.annonce?.at ?? null)
     if (page !== e.page) {
       // Une nouvelle page : on part de ce qui est affiché, on vise les lignes suivantes.
-      const nouvelles = page === -1 ? versionsRecentes(oeuvres.values(), new Date(), location.search).slice(0, LIGNES).map((a) => ligneAnnonce(a, LARGEUR_LIGNE)) : []
+      const nouvelles = page === -1 ? versionsRecentes(oeuvres.values(), new Date(), recherche()).slice(0, LIGNES).map((a) => ligneAnnonce(a, LARGEUR_LIGNE)) : []
       const lignes = lignesDeDeparts(oeuvres.values(), salles, new Date(), LIGNES * PAGES).slice(Math.max(0, page) * LIGNES, (Math.max(0, page) + 1) * LIGNES).map(ligneEnPalettes)
       Object.assign(e, { avant: e.apres, apres: [...nouvelles, ...lignes, ...vide].slice(0, LIGNES), annonces: nouvelles.length, debut: maintenant, page, fini: false })
     }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { saisonA } from '../../domain/saisons'
-import { bordsDuHouppier, constantesDuHerisson, corpsDeCarpe, corpsDOiseau, flaqueDesLampadaires, nuageDeLucioles, rameaux, saisonDesLucioles } from '../faune'
+import { bordsDuHouppier, constantesDuHerisson, corpsDeCarpe, corpsDOiseau, flaqueDesLampadaires, nuageDeLucioles, nuitDesLucioles, rameaux, saisonDesLucioles } from '../faune'
 import { SOURCES_LAMPADAIRES } from '../../plan/eclairage'
 
 const unitaires = (n: Float32Array) => Array.from({ length: n.length / 3 }, (_, i) => Math.hypot(n[3 * i], n[3 * i + 1], n[3 * i + 2])).every((l) => Math.abs(l - 1) < 1e-5)
@@ -44,6 +44,10 @@ describe('la faune', () => {
     expect(nuageDeLucioles().centres).toEqual(centres)
     expect(saisonDesLucioles(saisonA(new Date(2026, 6, 10)))).toBeGreaterThan(0.5)
     expect(saisonDesLucioles(saisonA(new Date(2026, 0, 10)))).toBe(0)
+    const ete = saisonA(new Date(2026, 6, 10))
+    expect(nuitDesLucioles({ ciel: { jour: 0 }, saison: ete, meteo: { pluie: 0, neige: 0 } })).toBe(saisonDesLucioles(ete))
+    expect(nuitDesLucioles({ ciel: { jour: 1 }, saison: ete, meteo: { pluie: 0, neige: 0 } })).toBe(0)
+    expect(nuitDesLucioles({ ciel: { jour: 0 }, saison: ete, meteo: { pluie: 1, neige: 0 } })).toBe(0)
   })
 
   it('les constantes du hérisson et la flaque des lampadaires', () => {

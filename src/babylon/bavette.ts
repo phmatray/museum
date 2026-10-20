@@ -13,15 +13,15 @@
  * déplacement cuit et son temps imposé par la promenade : posé au point d'appel
  * pendant le saut, sur l'assise ensuite, l'écart de hauteur rattrapé en vol.
  *
- * Il ne porte pas dans la carte d'ombre (redessinée seulement quand la boîte
- * glisse, soleil.ts) : une tache de contact floue le suit (OmbresLayer).
+ * Il ne porte pas dans la carte d'ombre : même immobile il respire, et la
+ * veille des porteurs (soleil.ts) la redessinerait à chaque image tant qu'il
+ * est à moins de 25 m (2,9 M triangles à l'arrivée, où il dort). Une tache de
+ * contact floue le suit (OmbresLayer).
+ * ponytail : l'ombre portée de three manque au jardin ; une carte à lui si elle se remarque.
  * `BAVETTE` publie de quoi brancher la carte, la minimap et le ronron.
  */
 import type { FreeCamera } from '@babylonjs/core/Cameras/freeCamera'
 import type { Animation } from '@babylonjs/core/Animations/animation'
-import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
-import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture'
-import { Color3 } from '@babylonjs/core/Maths/math.color'
 import { Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { CreateGround } from '@babylonjs/core/Meshes/Builders/groundBuilder'
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode'
@@ -36,6 +36,7 @@ import {
 } from '../plan/promenade.ts'
 import { surfaceAt } from '../plan/rules.ts'
 import type { Walker } from '../plan/walk.ts'
+import { matiereDeTache } from './contact.ts'
 import { glbOuRien } from './glb.ts'
 import { brancherLueurs } from './lueurs.ts'
 import { PARC } from './parc.ts'
@@ -130,21 +131,6 @@ export function pente(w: Walker): number {
 
 // ── La couche ────────────────────────────────────────────────────────────────
 
-/** La tache de OmbresLayer : un rectangle 80/128 flouté de 12 px, sur fond noir opaque (lue au vert). */
-function tache(scene: Scene): DynamicTexture {
-  const dt = new DynamicTexture('bavette:tache', { width: 128, height: 128 }, scene, true)
-  const g = dt.getContext() as CanvasRenderingContext2D
-  g.fillStyle = '#000'
-  g.fillRect(0, 0, 128, 128)
-  g.filter = 'blur(12px)'
-  g.fillStyle = '#fff'
-  g.fillRect(24, 24, 80, 80)
-  dt.gammaSpace = false
-  dt.getAlphaFromRGB = true
-  dt.update()
-  return dt
-}
-
 /** La matrice monde de `n`, ses parents recalculés d'abord (le mixeur vient de bouger les os). */
 const monde = (n: Node) => {
   if (n.parent) monde(n.parent)
@@ -188,13 +174,7 @@ export async function monterBavette(scene: Scene, camera: FreeCamera & { walker(
   const [cou, tete] = [os('Cou'), os('Tete')]
 
   const ombre = CreateGround('bavette:ombre', { width: 1, height: 1 }, scene)
-  const noir = new StandardMaterial('bavette:ombre', scene)
-  noir.diffuseColor = noir.specularColor = Color3.Black()
-  noir.disableLighting = true
-  noir.opacityTexture = tache(scene)
-  noir.alpha = 0.75
-  noir.disableDepthWrite = true
-  noir.zOffset = -2
+  const noir = matiereDeTache('bavette:ombre', scene)
   noir.backFaceCulling = false
   ombre.material = noir
   ombre.isPickable = false

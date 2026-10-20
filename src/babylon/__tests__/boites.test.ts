@@ -111,6 +111,13 @@ describe('tableDeLumiere', () => {
     expect(t[10]).toBeLessThan(128)
   })
 
+  it('atténue le reflet dans les coins sombres, jamais au-delà de 1', () => {
+    const { reflet } = tableDeLumiere(1, [[1, 1, 1]])
+    expect(reflet[255]).toBe(255)
+    expect(reflet[10]).toBeLessThan(128)
+    expect(tableDeLumiere(0, [[1, 1, 1]]).reflet.every((v) => v === 255)).toBe(true)
+  })
+
   it('garde la teinte de chaque orientation, canal par canal', () => {
     // Un dessus au ciel brun de la nuit, un côté gris : le facteur 1 rend la teinte elle-même.
     const { table, niveau } = tableDeLumiere(0, [[0.5, 0.5, 0.5], [0.25, 0.17, 0.1]])

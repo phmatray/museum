@@ -8,9 +8,7 @@
  * est mouillé sous le fil de l'eau (greffe `GaletMouille`, teinte, cote de
  * l'eau, mousse et basalte par instance dans `aGalet`) ; la souche prend sa
  * mousse et trempe le pied (`SoucheMoussue`).
- *
- * ponytail : sans `intemperer` (pluie, neige), comme belvedere.ts et facade.ts ;
- * à greffer quand la météo existera côté Babylon.
+ * Galets, souches et branche se mouillent et s'enneigent (`intemperer`).
  */
 import { Matrix, Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
@@ -20,6 +18,7 @@ import { JARDIN } from '../plan/jardin.ts'
 import { GALETS_DU_RUISSEAU, SOUCHES } from '../plan/ruisseau.ts'
 import { chargerGlb } from './glb.ts'
 import { dialecte, greffer } from './greffe.ts'
+import { intemperer } from './intemperies.ts'
 import { cacherAuLoin, instancier, matrices } from './lots.ts'
 
 const LUM = 'vec3(0.3, 0.59, 0.11)'
@@ -104,6 +103,7 @@ export async function monterRuisseau(scene: Scene): Promise<Mesh[]> {
   const souche = c.materials.find((m) => m.name === 'Ruisseau_Souche')
   if (galet) greffer(galet, { nom: 'GaletMouille', attributs: ['aGalet'], code: codeDuGalet })
   if (souche) greffer(souche, { nom: 'SoucheMoussue', code: codeDeLaSouche })
+  for (const m of c.materials) if (/^Ruisseau_(Galet|Souche|Branche)$/.test(m.name)) intemperer(m)
   const buffers = matrices([
     ...GALETS_DU_RUISSEAU.map((s) => ({ piece: `src_galet_${s.modele + 1}`, x: s.x, y: s.y, z: s.z, lacet: s.lacet, echelle: s.echelle })),
     ...SOUCHES.map((s) => ({ piece: 'src_souche', ...s })),

@@ -29,6 +29,7 @@ import '@babylonjs/loaders/glTF/2.0/glTFLoader'
 import { registerBuiltInGLTFExtensions } from '@babylonjs/loaders/glTF/2.0/Extensions/dynamic'
 
 import LUMIERE from '../plan/lumiere.json' with { type: 'json' }
+import { refleterCuit } from './boites.ts'
 
 let configure = false
 /** Une fois, avant le premier GLB ou la première carte KTX2. */
@@ -146,6 +147,9 @@ export function eclairerModele(maillages: AbstractMesh[], modele: string, atlas:
     const uv = m.getVerticesData(VertexBuffer.UV2Kind) ?? m.getVerticesData(VertexBuffer.UVKind)
     if (!r || !uv) continue
     m.setVerticesData(VertexBuffer.UV2Kind, uvDeModele(uv, r))
-    if (atlas && m.material instanceof PBRMaterial) m.material.lightmapTexture = atlas
+    if (atlas && m.material instanceof PBRMaterial) {
+      refleterCuit(m.material)
+      m.material.lightmapTexture = atlas
+    }
   }
 }

@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 import { hauteurDuParc } from '../../plan/relief'
 import { gabaritCube } from '../boites'
 import { PARC } from '../parc'
-import { brins, carteDuSol, GAZONS, geometrieParvis, geometriePelouse, parcellesDeGazon, uneEnVue } from '../relief'
+import { brins, carteDuSol, codeDuGazon, GAZONS, geometrieParvis, geometriePelouse, parcellesDeGazon, uneEnVue } from '../relief'
 
 /** La normale géométrique (sens de Babylon : (b − a) × (c − a) inversé, comme ComputeNormals) du triangle t. */
 function normale(p: ArrayLike<number>, i: ArrayLike<number>, t: number): [number, number, number] {
@@ -106,5 +106,16 @@ describe('le relief', () => {
     expect(GAZONS[0].nombre / GAZONS[0].cote ** 2).toBeCloseTo(110000 / 400, 0)
     expect(brins(GAZONS[0], 7).aBrin.slice(0, 8)).toEqual(a.aBrin.slice(0, 8))
     expect(brins(GAZONS[0], 8).aBrin[0]).not.toBe(a.aBrin[0])
+  })
+
+  it('teinte le gazon de la saison et du temps (gazon.ts), dans les deux langues', () => {
+    for (const wgsl of [false, true]) {
+      const c = codeDuGazon(GAZONS[0], [0, 0, 1, 1], wgsl)
+      const u = wgsl ? 'uniforms.' : ''
+      expect(c.fragment.CUSTOM_FRAGMENT_UPDATE_ALPHA).toContain('* (1.0 - 0.15 * gs.y) * (1.0 - 0.3 * gs.z)')
+      expect(c.vertex.CUSTOM_VERTEX_UPDATE_POSITION).toContain(`(1.0 - 0.85 * ${u}gazonSaison.w)`)
+      expect(c.vertex.CUSTOM_VERTEX_UPDATE_POSITION).toContain(`clamp(0.6 + 0.2 * ${u}gazonCam.w, 0.5, 3.0)`)
+      expect(/\bvec[234]\(/.test(c.fragment.CUSTOM_FRAGMENT_UPDATE_ALPHA)).toBe(!wgsl)
+    }
   })
 })

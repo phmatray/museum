@@ -21,6 +21,7 @@ import { MUSEE } from '../plan/musee.ts'
 import { portes, type NomPiece, type Piece } from '../plan/portes.ts'
 import { boitesFusionnees, matiere } from './boites.ts'
 import { chargerGlb } from './glb.ts'
+import { auCielMatiere } from './etat.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
 import { creerPierre } from './pierre.ts'
 import { police } from './polices.ts'
@@ -104,7 +105,7 @@ async function chambranles(scene: Scene): Promise<Mesh> {
 }
 
 /** Les 8 enseignes : une bande de l'atlas chacune, 8 quads fusionnés, bronze. */
-async function enseignes(scene: Scene, accrochage: Accrochage, jour: number): Promise<Mesh> {
+async function enseignes(scene: Scene, accrochage: Accrochage): Promise<Mesh> {
   await police('PT Sans')
   const es = PORTES.enseignes
   const L = Math.max(...es.map((e) => e.longueur))
@@ -150,18 +151,19 @@ async function enseignes(scene: Scene, accrochage: Accrochage, jour: number): Pr
   bronze.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHABLEND
   bronze.backFaceCulling = false
   // La nuit, le bronze s'éclaire d'une lueur chaude, comme l'enseigne de la façade.
-  bronze.emissiveColor = lin('#ffc878').scale(0.55 * (1 - jour))
+  const chaud = lin('#ffc878')
+  auCielMatiere(bronze, (c) => (bronze.emissiveColor = chaud.scale(0.55 * (1 - c.jour))))
   m.material = bronze
   m.isPickable = false
   return m
 }
 
 /** Monte l'habillage des portes ; rend les porteurs d'ombre (embrasures, chambranles s'ils arrivent). */
-export async function monterPortes(scene: Scene, accrochage: Accrochage | null, jour: number): Promise<Mesh[]> {
+export async function monterPortes(scene: Scene, accrochage: Accrochage | null): Promise<Mesh[]> {
   const embrasures = boitesFusionnees('embrasures', PORTES.embrasures, scene, creerPierre(scene, 'embrasures'))
   const [cadres, noms] = await Promise.all([
     chambranles(scene).catch((e: unknown) => void console.error('chambranles indisponibles', e)),
-    accrochage ? enseignes(scene, accrochage, jour).catch((e: unknown) => void console.error('enseignes indisponibles', e)) : undefined,
+    accrochage ? enseignes(scene, accrochage).catch((e: unknown) => void console.error('enseignes indisponibles', e)) : undefined,
   ])
   const porteurs = cadres ? [embrasures, cadres] : [embrasures]
   for (const m of porteurs) m.receiveShadows = true

@@ -18,18 +18,21 @@
  *
  * La greffe `Vegetal-*` (intemperies.ts) : chute, rougeur et vent des érables
  * et du ginkgo (`aCarte`), nuance par sujet, azalées hors floraison, herbes
- * dans le vent qui blondissent, mousse des rochers. La saison est cuite dans le
- * code (constante pendant la visite), le vent à 2 m/s ; seul le temps passe par
- * l'UBO (`lier`), donc rien dans VIVANTES. Une variante = un nom = un define :
- * le cache d'effets de Babylon ne distingue deux codes que par leurs defines.
- * Les pétales n'ont pas de shader : hors floraison ils ne sont pas posés.
+ * dans le vent qui blondissent, mousse des rochers, pétales repliés hors
+ * floraison (`saisonnerPetales`). Saison (`vegSaison` : feuillage, chute,
+ * floraison, tendre), vent (`METEO.vent`) et temps passent par l'UBO (`lier`,
+ * relu même matière figée) : la saison vivante (etat.ts) suit sans recompiler,
+ * rien dans VIVANTES. Une variante = un nom = un define : le cache d'effets de
+ * Babylon ne distingue deux codes que par leurs defines. Par-dessus, `intemperer`
+ * (pluie, neige ; priorité 300, après les Vegetal-*) sur tout sauf les pétales.
+ * Hors floraison, les pétales sont cachés (`isVisible`, abonnement à l'état vivant).
  *
- * ponytail : pas d'`intemperer` (pluie, neige) : neutre par temps clair, à
- * porter avec la vague météo. La carte d'ombre ne voit ni le vent ni la chute
- * (son propre shader) ni les bascules de LOD (redessinée à la demande).
+ * ponytail : la carte d'ombre ne voit ni le vent ni la chute (son propre
+ * shader) ni les bascules de LOD (redessinée à la demande).
  */
 import type { AssetContainer } from '@babylonjs/core/assetContainer'
 import { Constants } from '@babylonjs/core/Engines/constants'
+import { Material } from '@babylonjs/core/Materials/material'
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { BoundingInfo } from '@babylonjs/core/Culling/boundingInfo'
@@ -40,15 +43,16 @@ import '@babylonjs/core/Meshes/thinInstanceMesh'
 import type { TransformNode } from '@babylonjs/core/Meshes/transformNode'
 import type { Scene } from '@babylonjs/core/scene'
 
-import type { Saison } from '../domain/saisons.ts'
 import type { EspeceParc, PlantPlacement } from '../plan/park.ts'
 import type { Rect } from '../plan/types.ts'
+import { vivant } from './etat.ts'
 import { glbOuRien, glbPartage } from './glb.ts'
 import { dialecte, greffer } from './greffe.ts'
+import { intemperer, METEO } from './intemperies.ts'
 import { auLoin, cacherAuLoin, matrices } from './lots.ts'
 import { MUR } from './enceinte.ts'
-import { brancherLueurs, smoothstep } from './lueurs.ts'
-import { ambiance, PARC } from './parc.ts'
+import { brancherLueurs } from './lueurs.ts'
+import { PARC } from './parc.ts'
 
 const VEGETATION = 'assets/jardin/vegetation.glb'
 const GRANDS = 'assets/jardin/grands-arbres.glb'
@@ -103,7 +107,7 @@ export function groupes(sujets: readonly PlantPlacement[], t: Rect): Map<EspeceP
   return new Map([...par].map(([e, m]) => [e, [...m.values()]]))
 }
 
-/** `echelle` de ParkLayer ; `k` multiplie tout (pétales hors saison). Buis et azalées s'étirent d'un aléa tiré de leur place. */
+/** `echelle` de ParkLayer ; `k` multiplie tout. Buis et azalées s'étirent d'un aléa tiré de leur place. */
 export function echelleDe(s: PlantPlacement, k = 1): [number, number, number] {
   const e = s.scale * k
   if (s.espece !== 'buis' && s.espece !== 'azalee') return [e, e, e]
@@ -139,9 +143,11 @@ export function cartesDeFeuillage(p: ArrayLike<number>, index: ArrayLike<number>
 }
 
 /** Ce que greffe une essence sur une de ses matières (la logique de `charger` dans parkAssets.ts). */
-export interface Variante { carte?: 'rouge' | 'vert' | 'ginkgo'; nuance?: number; azalee?: boolean; herbe?: boolean; mousse?: boolean }
+export interface Variante { carte?: 'rouge' | 'vert' | 'ginkgo'; nuance?: number; azalee?: boolean; herbe?: boolean; mousse?: boolean; petales?: boolean }
 
 export function varianteDe(espece: EspeceParc, matiere: string): Variante | null {
+  // Les pétales : la saison seule (three : ni nuance ni intempéries).
+  if (espece === 'petales') return { petales: true }
   if (espece.startsWith('rocher')) return { mousse: true }
   if (matiere.startsWith('Jardin_Herbe')) return { herbe: true }
   if (!matiere.startsWith('Jardin_Feuillage') || matiere.includes('Fond')) return null
@@ -153,14 +159,19 @@ export function varianteDe(espece: EspeceParc, matiere: string): Variante | null
 
 /** Le nom de la greffe : une variante, un define. */
 export const nomDe = (v: Variante): string =>
-  `Vegetal-${[v.carte, v.azalee && 'azalee', v.herbe && 'herbe', v.mousse && 'mousse', v.nuance !== undefined && `n${Math.round(v.nuance * 100)}`].filter(Boolean).join('-')}`
+  `Vegetal-${[v.carte, v.azalee && 'azalee', v.herbe && 'herbe', v.mousse && 'mousse', v.petales && 'petales', v.nuance !== undefined && `n${Math.round(v.nuance * 100)}`].filter(Boolean).join('-')}`
 
-/** Le code GLSL ou WGSL d'une variante (intemperies.ts), saison cuite en littéraux, vent 2 m/s. */
-export function codeVegetal(v: Variante, s: Saison, wgsl: boolean) {
+/**
+ * Le code GLSL ou WGSL d'une variante (intemperies.ts). Uniforms : `vegTemps`
+ * (s), `vegVent` (m/s), `vegSaison` = (feuillage, chute, floraison, tendre).
+ */
+export function codeVegetal(v: Variante, wgsl: boolean) {
   const { V, vin, vout, fin, u, fn, tr, attribut, varying } = dialecte(wgsl)
   const f = (x: number) => x.toFixed(4)
   const T = u('vegTemps')
-  const VENT = '2.0'
+  const VENT = u('vegVent')
+  const S = u('vegSaison')
+  const s = { feuillage: `${S}.x`, chute: `${S}.y`, floraison: `${S}.z`, tendre: `${S}.w` }
   const vary = v.carte !== undefined || v.nuance !== undefined
   const veg = fin('vVeg')
   const c = 'surfaceAlbedo'
@@ -173,7 +184,7 @@ export function codeVegetal(v: Variante, s: Saison, wgsl: boolean) {
       ? `{
 ${V('iArbre', 'float', 'vegHash(floor(vegI * 3.0))')}
 ${V('iC', 'vec4', vin('aCarte'))}
-${V('iTombe', 'float', `smoothstep(iC.w * 0.85, iC.w * 0.85 + 0.15, ${f(s.chute)} * 1.08 + (iArbre - 0.5) * 0.12)`)}
+${V('iTombe', 'float', `smoothstep(iC.w * 0.85, iC.w * 0.85 + 0.15, ${s.chute} * 1.08 + (iArbre - 0.5) * 0.12)`)}
 ${P} = mix(${P}, iC.xyz, iTombe);
 ${V('iAmp', 'float', `(0.01 + 0.012 * ${VENT}) * clamp(${P}.y / 4.5, 0.0, 1.0)`)}
 ${P}.x += sin(${T} * 1.7 + iC.x * 2.3 + iArbre * 20.0) * iAmp;
@@ -191,8 +202,10 @@ ${P}.z += cos(iPhase * 0.8 + ${P}.z * 3.0) * iAmp * 0.7;
 }`
       : '',
     v.nuance !== undefined ? `${vout('vVeg')}.w = vegHash(floor(vegI * 2.0) + 0.37);` : '',
+    // Repliés sur le pied de l'instance, en espace objet.
+    v.petales ? `${P} *= smoothstep(0.0, 0.4, ${s.floraison});` : '',
   ]
-  const tendre = (k: string) => `${c} = mix(${c}, ${c} * vec3(${k}) + vec3(0.03, 0.05, 0.0), ${f(s.tendre)} * (1.0 - iTourne));`
+  const tendre = (k: string) => `${c} = mix(${c}, ${c} * vec3(${k}) + vec3(0.03, 0.05, 0.0), ${s.tendre} * (1.0 - iTourne));`
   const automne = {
     rouge: `${c} = mix(${c}, mix(vec3(0.55, 0.03, 0.02), vec3(0.8, 0.12, 0.02), iTon) * (0.8 + 1.4 * iL), iTourne);`,
     vert: `${V('iAuto', 'vec3', wgsl
@@ -200,9 +213,9 @@ ${P}.z += cos(iPhase * 0.8 + ${P}.z * 3.0) * iAmp * 0.7;
       : 'iTon < 0.45 ? vec3(0.75, 0.2, 0.015) : (iTon < 0.8 ? vec3(0.55, 0.045, 0.015) : vec3(0.78, 0.46, 0.02))')}
 ${c} = mix(${c}, iAuto * (0.6 + 0.7 * iL), iTourne);
 ${tendre('1.2, 1.3, 0.7')}
-${V('iFleur', 'float', `step(0.66, ${veg}.y) * step(${veg}.x, 0.22) * ${f(s.floraison)}`)}
+${V('iFleur', 'float', `step(0.66, ${veg}.y) * step(${veg}.x, 0.22) * ${s.floraison}`)}
 ${c} = mix(${c}, vec3(0.93, 0.74, 0.8) * (0.5 + 0.9 * iL), iFleur * 0.75);`,
-    ginkgo: `iTourne = smoothstep(0.35 + ${veg}.y * 0.1, 0.55 + ${veg}.y * 0.1, ${f(s.feuillage)} * 1.05 + (${veg}.x - 0.5) * 0.08);
+    ginkgo: `iTourne = smoothstep(0.35 + ${veg}.y * 0.1, 0.55 + ${veg}.y * 0.1, ${s.feuillage} * 1.05 + (${veg}.x - 0.5) * 0.08);
 ${c} = mix(${c}, mix(vec3(0.95, 0.72, 0.08), vec3(0.98, 0.82, 0.2), iTon) * (0.55 + 0.8 * iL), iTourne);
 ${tendre('1.15, 1.25, 0.75')}`,
   }
@@ -210,21 +223,21 @@ ${tendre('1.15, 1.25, 0.75')}`,
     v.carte
       ? `{
 ${V('iL', 'float', `dot(${c}, vec3(0.3, 0.59, 0.11))`)}
-${wgsl ? 'var' : 'float'} iTourne${wgsl ? ': f32' : ''} = smoothstep(${veg}.x * 0.7, ${veg}.x * 0.7 + 0.25, ${f(s.feuillage)} * 1.05 + (${veg}.y - 0.5) * 0.3);
+${wgsl ? 'var' : 'float'} iTourne${wgsl ? ': f32' : ''} = smoothstep(${veg}.x * 0.7, ${veg}.x * 0.7 + 0.25, ${s.feuillage} * 1.05 + (${veg}.y - 0.5) * 0.3);
 ${V('iTon', 'float', `fract(${veg}.x * 5.1 + ${veg}.y)`)}
 ${automne[v.carte]}
 ${c} = mix(${c}, vec3(0.3, 0.16, 0.06) * (0.5 + iL), smoothstep(0.05, 0.6, ${veg}.z));
 }`
       : '',
     v.azalee
-      ? `${c} = mix(${c}, vec3(0.14, 0.27, 0.07) * (0.8 + 0.5 * fract(${c}.b * 31.0)), smoothstep(0.06, 0.22, ${c}.r - ${c}.g) * ${f(1 - s.floraison)});`
+      ? `${c} = mix(${c}, vec3(0.14, 0.27, 0.07) * (0.8 + 0.5 * fract(${c}.b * 31.0)), smoothstep(0.06, 0.22, ${c}.r - ${c}.g) * (1.0 - ${s.floraison}));`
       : '',
     v.herbe
       ? `{
 ${V('iL', 'float', `dot(${c}, vec3(0.3, 0.59, 0.11))`)}
-${V('iSec', 'float', f(Math.min(1, Math.max(s.feuillage * 0.75, s.chute))))}
+${V('iSec', 'float', `clamp(max(${s.feuillage} * 0.75, ${s.chute}), 0.0, 1.0)`)}
 ${c} = mix(${c}, vec3(0.62, 0.5, 0.3) * (0.55 + 1.6 * iL), iSec * 0.85);
-${c} = mix(${c}, ${c} * vec3(1.15, 1.2, 0.8), ${f(s.tendre)} * (1.0 - iSec));
+${c} = mix(${c}, ${c} * vec3(1.15, 1.2, 0.8), ${s.tendre} * (1.0 - iSec));
 }`
       : '',
     v.mousse
@@ -306,16 +319,20 @@ function preparer(espece: EspeceParc, noeud: TransformNode, loin: TransformNode 
     const carte = v?.carte
       ? ([cartesDeFeuillage(proche.positions!, proche.indices!), l && cartesDeFeuillage(l.positions!, l.indices!)] as [Float32Array, Float32Array?])
       : undefined
-    if (v) {
-      const s = ambiance().saison
+    if (v)
       greffer(m, {
         nom: nomDe(v),
         attributs: v.carte ? ['aCarte'] : [],
-        uniforms: v.carte || v.herbe ? [{ name: 'vegTemps', size: 1, type: 'float' }] : [],
-        lier: v.carte || v.herbe ? (ubo) => ubo.updateFloat('vegTemps', performance.now() / 1000) : undefined,
-        code: (wgsl) => codeVegetal(v, s, wgsl),
+        uniforms: [{ name: 'vegTemps', size: 1, type: 'float' }, { name: 'vegVent', size: 1, type: 'float' }, { name: 'vegSaison', size: 4, type: 'vec4' }],
+        lier: (ubo) => {
+          const s = vivant.getState().saison
+          ubo.updateFloat('vegTemps', performance.now() / 1000)
+          ubo.updateFloat('vegVent', METEO.vent)
+          ubo.updateFloat4('vegSaison', s.feuillage, s.chute, s.floraison, s.tendre)
+        },
+        code: (wgsl) => codeVegetal(v, wgsl),
       })
-    }
+    if (espece !== 'petales') intemperer(m)
     return { espece, matiere: m, proche, loin: l, carte }
   })
 }
@@ -329,6 +346,9 @@ function maillage(nom: string, scene: Scene, vd: VertexData, carte: Float32Array
   vd.applyToMesh(m)
   if (carte) m.setVerticesData('aCarte', carte, false, 4)
   m.material = matiere
+  // L'enroulement de glTF (anti-horaire) : le défaut main droite d'un maillage neuf (horaire) retournerait la
+  // normale des faces vues dans l'éclairage double face (troncs et buis noirs dès qu'on rend dans une cible).
+  m.sideOrientation = Material.CounterClockWiseSideOrientation
   m.hasVertexAlpha = false
   m.isPickable = false
   m.receiveShadows = true
@@ -364,19 +384,19 @@ export async function monterVegetation(scene: Scene): Promise<Mesh[]> {
   for (const n of [...(jardin?.meshes ?? []), ...(jardin?.transformNodes ?? [])]) if (n.name.startsWith('src_')) sources.push(n)
   for (const n of sources) if (!n.isDisposed()) n.dispose(false, false)
 
-  // Les pétales tombés n'existent qu'en saison (`saisonnerPetales`, cuit sur les matrices).
-  const pousse = smoothstep(ambiance().saison.floraison, 0, 0.4)
-  const sujets = [...PARC.plantations, ...PARC.berges, ...MUR.lierre].filter((s) => s.espece !== 'petales' || pousse > 0)
+  const sujets = [...PARC.plantations, ...PARC.berges, ...MUR.lierre]
+  const petales: Mesh[] = []
   const porteurs: Mesh[] = []
   const suivis: { sujets: PlantPlacement[]; loin: boolean[]; mats: Float32Array; proche: Mesh; lointain: Mesh; bp: Float32Array; bl: Float32Array }[] = []
   for (const [espece, parties] of groupes(sujets, PARC.terrain)) {
     for (const lot of lots.get(espece) ?? []) {
       parties.forEach((ss, k) => {
-        const mats = matrices(ss.map((s) => ({ piece: '', x: s.x, y: s.y ?? 0, z: s.z, lacet: s.rotation, echelle: echelleDe(s, espece === 'petales' ? pousse : 1) }))).get('')!
+        const mats = matrices(ss.map((s) => ({ piece: '', x: s.x, y: s.y ?? 0, z: s.z, lacet: s.rotation, echelle: echelleDe(s) }))).get('')!
         const nom = `vegetation:${lot.matiere.name}:${k}`
         const bp = mats.slice()
         const proche = maillage(nom, scene, lot.proche, lot.carte?.[0], lot.matiere, bp)
         porteurs.push(proche)
+        if (espece === 'petales') petales.push(proche)
         if (!lot.loin) {
           // Un petit sujet : caché au loin plutôt que remplacé.
           const portee = PORTEE[espece]
@@ -400,6 +420,10 @@ export async function monterVegetation(scene: Scene): Promise<Mesh[]> {
     }
   }
   brancherLueurs(new Set(porteurs.map((m) => m.material!)))
+  // Hors floraison, les pétales repliés (shader) ne sont pas dessinés ; `isVisible`, l'activation est à cacherAuLoin.
+  const fleuri = (s = vivant.getState().saison) => petales.forEach((m) => (m.isVisible = s.floraison > 0))
+  fleuri()
+  vivant.subscribe((s, avant) => s.saison !== avant.saison && fleuri(s.saison))
 
   // Chaque sujet à sa distance ; un lot ne se recompacte que si l'un d'eux change de géométrie.
   scene.onBeforeRenderObservable.add(() => {

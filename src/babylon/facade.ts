@@ -6,8 +6,9 @@
  * d'honneur (fond, filets et textes peints sur UN canevas, hampes en thin
  * instances) et les quatre drapeaux (mâts en thin instances, toiles fusionnées
  * à couleur par sommet). Une douzaine d'appels de dessin.
- * ponytail : ni usure (`userFacade`) ni intempéries (`intemperer`) : des shaders,
- * à greffer en plugins quand la météo et l'usure seront portées.
+ * Le temps qu'il fait (`intemperer`) : la brique fonce sous la pluie, la neige
+ * tient sur les corniches et les appuis. L'enseigne s'allume la nuit (`auCiel`).
+ * ponytail : sans usure (`userFacade`), à greffer en plugin quand elle sera portée.
  */
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture'
@@ -25,6 +26,8 @@ import type { Box } from '../plan/mesh.ts'
 import type { Plan } from '../plan/types.ts'
 import { choisirVitrines } from '../plan/vitrines.ts'
 import { boitesFusionnees, cubes, matiere } from './boites.ts'
+import { auCielMatiere } from './etat.ts'
+import { intemperer } from './intemperies.ts'
 import { brancherLueurs } from './lueurs.ts'
 import { matierePBR } from './matieres.ts'
 import { creerBrique, creerCannelure, creerGranit, creerPierre } from './pierre.ts'
@@ -145,7 +148,7 @@ function peindreBannieres(scene: Scene, B: ReturnType<typeof facade>['bannieres'
 }
 
 /** Le nom du musée : un canevas blanc teinté par une matière NON éclairée (le MeshBasic de troika). */
-function monterEnseigne(scene: Scene, e: { x: number; y: number; z: number }, jour: number): Mesh {
+function monterEnseigne(scene: Scene, e: { x: number; y: number; z: number }): Mesh {
   const t: Trait = { corps: 0.72, ls: 0.14, couleur: '#ffffff' }
   const texte = config.name.toUpperCase()
   const mesure = new OffscreenCanvas(1, 1).getContext('2d')!
@@ -167,7 +170,7 @@ function monterEnseigne(scene: Scene, e: { x: number; y: number; z: number }, jo
   mat.useAlphaFromAlbedoTexture = true
   mat.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHABLEND
   // La nuit, les lettres s'allument, comme une enseigne rétroéclairée.
-  mat.albedoColor = Color3.FromHexString(1 - jour > 0.5 ? '#ffd98a' : '#3a2c1c').toLinearSpace()
+  auCielMatiere(mat, (c) => (mat.albedoColor = Color3.FromHexString(1 - c.jour > 0.5 ? '#ffd98a' : '#3a2c1c').toLinearSpace()))
   m.material = mat
   m.isPickable = false
   return m
@@ -215,7 +218,7 @@ async function monterBannieres(scene: Scene, B: ReturnType<typeof facade>['banni
  * bannières après le catalogue et les polices. Rend les porteurs d'ombre (tout
  * l'opaque ; ni le verre clair, ni l'enseigne). Tout reçoit les ombres.
  */
-export async function monterFacade(scene: Scene, plan: Plan, jour: number, base: string): Promise<Mesh[]> {
+export async function monterFacade(scene: Scene, plan: Plan, base: string): Promise<Mesh[]> {
   const F = facade(plan)
   const vitre = matiere('facade-vitres', scene, '#1f2b31', 0.12)
   vitre.metallic = 0.6
@@ -248,9 +251,10 @@ export async function monterFacade(scene: Scene, plan: Plan, jour: number, base:
   porteurs.push(mats, drapeaux)
   for (const m of [...porteurs, portes]) m.receiveShadows = true
   brancherLueurs([...calques.map(([, , m]) => m), acier, etoffe])
+  for (const [nom, , m] of calques) if (nom !== 'facade-vitres') intemperer(m)
 
   // Mesurée et peinte en PT Sans : après la police.
-  void police('PT Sans').then(() => monterEnseigne(scene, F.enseigne, jour)).catch((e: unknown) => console.warn('enseigne indisponible', e))
+  void police('PT Sans').then(() => monterEnseigne(scene, F.enseigne)).catch((e: unknown) => console.warn('enseigne indisponible', e))
   const bannieres = await monterBannieres(scene, F.bannieres, base).catch((e: unknown) => {
     console.warn('bannières indisponibles', e)
     return []

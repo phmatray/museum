@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 
-import { saisonDuJour } from '../../domain/saisons'
 import { enceinte } from '../../plan/enceinte'
 import type { PlantPlacement } from '../../plan/park'
 import { PARC } from '../parc'
@@ -59,19 +58,28 @@ describe('végétation', () => {
     expect(nomDe({ azalee: true, nuance: 1 })).not.toBe(nomDe({ nuance: 1 }))
   })
 
-  it('écrit la greffe dans les deux langues, saison cuite', () => {
-    const s = saisonDuJour(300)
+  it('écrit la greffe dans les deux langues, saison en uniform', () => {
     for (const wgsl of [false, true]) {
-      const c = codeVegetal({ carte: 'vert', nuance: 0.45 }, s, wgsl)
+      const c = codeVegetal({ carte: 'vert', nuance: 0.45 }, wgsl)
       expect(c.vertex.CUSTOM_VERTEX_DEFINITIONS).toContain(wgsl ? 'attribute aCarte: vec4f;' : 'attribute vec4 aCarte;')
       expect(c.vertex.CUSTOM_VERTEX_UPDATE_POSITION).toContain(wgsl ? 'vertexInputs.world3.xz' : 'world3.xz')
       expect(c.vertex.CUSTOM_VERTEX_UPDATE_POSITION).toContain(wgsl ? 'uniforms.vegTemps' : 'vegTemps')
-      expect(c.fragment.CUSTOM_FRAGMENT_UPDATE_ALPHA).toContain(s.chute.toFixed(4) === '0.0000' ? 'surfaceAlbedo' : s.feuillage.toFixed(4))
+      expect(c.vertex.CUSTOM_VERTEX_UPDATE_POSITION).toContain(wgsl ? 'uniforms.vegVent' : 'vegVent')
+      expect(c.fragment.CUSTOM_FRAGMENT_UPDATE_ALPHA).toContain(wgsl ? 'uniforms.vegSaison.x' : 'vegSaison.x')
       expect(/\bvec[234]\(/.test(c.fragment.CUSTOM_FRAGMENT_UPDATE_ALPHA)).toBe(!wgsl)
       expect(c.fragment.CUSTOM_FRAGMENT_UPDATE_ALPHA.includes('select(')).toBe(wgsl)
     }
-    const roche = codeVegetal({ mousse: true }, s, true)
+    const roche = codeVegetal({ mousse: true }, true)
     expect(roche.fragment.CUSTOM_FRAGMENT_DEFINITIONS).toBe('')
     expect(roche.fragment.CUSTOM_FRAGMENT_UPDATE_ALPHA).toContain('fragmentInputs.vNormalW.y')
+    expect(codeVegetal({ herbe: true }, false).fragment.CUSTOM_FRAGMENT_UPDATE_ALPHA).toContain('clamp(max(vegSaison.x * 0.75, vegSaison.y), 0.0, 1.0)')
+  })
+
+  it('replie les pétales hors floraison, sans autre greffe', () => {
+    expect(varianteDe('petales', 'Jardin_Feuillage')).toEqual({ petales: true })
+    expect(nomDe({ petales: true })).toBe('Vegetal-petales')
+    const c = codeVegetal({ petales: true }, true)
+    expect(c.vertex.CUSTOM_VERTEX_UPDATE_POSITION).toContain('positionUpdated *= smoothstep(0.0, 0.4, uniforms.vegSaison.z);')
+    expect(c.fragment.CUSTOM_FRAGMENT_UPDATE_ALPHA).toBe('')
   })
 })

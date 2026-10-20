@@ -88,6 +88,8 @@ export function instancier(c: AssetContainer, buffers: ReadonlyMap<string, Float
     m.thinInstanceSetBuffer('matrix', buf, 16)
     m.isPickable = false
     m.receiveShadows = true
+    // Posé une fois pour toutes : le tri de visibilite.ts peut le compacter, au parc aussi.
+    m.metadata = { ...m.metadata, immobile: true }
     gardes.push(m)
   }
   // Le reste (nœuds, instances, pièces sans pose), sans toucher aux matières ni aux géométries gardées.

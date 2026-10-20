@@ -7,8 +7,9 @@
  *
  * Les halos (les `points` de three) et les noms (les `Billboard`) sont des quads
  * tournés vers la caméra quand la vue change, sur le CPU (un maillage chacun,
- * ~130 quads, caméra active de la scène) : pas de shader. `jour` étant figé au chargement, l'opacité de nuit est
- * cuite dans les matières et le canevas.
+ * ~130 quads, caméra active de la scène) : pas de shader. Montée au chargement
+ * (l'atlas des noms et les matières ne se font pas au milieu de la visite, au
+ * crépuscule), éteinte le jour ; l'opacité suit la nuit (`alpha` des matières et des lignes).
  */
 import { Constants } from '@babylonjs/core/Engines/constants'
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
@@ -25,7 +26,7 @@ import type { Scene } from '@babylonjs/core/scene'
 
 import { constellations, type Constellation } from '../plan/constellation.ts'
 import type { Accrochage } from '../plan/hang.ts'
-import { catalogue } from './etat.ts'
+import { auCiel, auCielMatiere, catalogue } from './etat.ts'
 import { lin } from './lueurs.ts'
 import { police } from './polices.ts'
 import { atlasDeTextes, geometrieDeQuads, matiereDeTexte, type UV } from './textes.ts'
@@ -60,7 +61,7 @@ interface Tournant {
  * dans un tampon réutilisé, seulement quand la vue a changé (normales jamais :
  * les deux matières sont non éclairées).
  */
-function quadsTournants(nom: string, scene: Scene, items: readonly Tournant[], mat: PBRMaterial): void {
+function quadsTournants(nom: string, scene: Scene, items: readonly Tournant[], mat: PBRMaterial): Mesh {
   const m = new Mesh(nom, scene)
   const geo = geometrieDeQuads(items.map((q) => ({ ...q, droite: [1, 0, 0] as const, haut: [0, 1, 0] as const })))
   Object.assign(new VertexData(), geo).applyToMesh(m, true)
@@ -73,7 +74,7 @@ function quadsTournants(nom: string, scene: Scene, items: readonly Tournant[], m
   scene.onBeforeRenderObservable.add(() => {
     const v = scene.activeCamera?.getViewMatrix()
     // Les drapeaux de Matrix viennent d'un compteur global : ils changent aussi d'une caméra à l'autre.
-    if (!v || v.updateFlag === vue) return
+    if (!v || v.updateFlag === vue || !m.isEnabled()) return
     vue = v.updateFlag
     const r = v.invertToRef(inverse).m
     items.forEach(({ centre: c, l, h, leve = 0 }, k) => {
@@ -84,6 +85,7 @@ function quadsTournants(nom: string, scene: Scene, items: readonly Tournant[], m
     })
     m.updateVerticesData(VertexBuffer.PositionKind, pos)
   })
+  return m
 }
 
 /** Le rayonnement : un dégradé radial blanc sur alpha, 64 px. */
@@ -105,7 +107,7 @@ function texteHalo(scene: Scene): DynamicTexture {
  * Le nom de chaque salle, en lettres d'or cernées d'un halo sombre flou (contour
  * 10 % du corps, flou 70 %), ancré par le milieu du bas, toujours tourné vers qui le regarde.
  */
-function monterEtiquettes(scene: Scene, ciel: readonly Constellation[], nuit: number): void {
+function monterEtiquettes(scene: Scene, ciel: readonly Constellation[]): PBRMaterial {
   const mesure = new OffscreenCanvas(1, 1).getContext('2d')!
   const px = CORPS * PPM
   const fonte = (g: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D) => {
@@ -127,11 +129,10 @@ function monterEtiquettes(scene: Scene, ciel: readonly Constellation[], nuit: nu
     g.textBaseline = 'middle'
     g.lineJoin = 'round'
     g.lineWidth = 2 * 0.1 * px
-    g.strokeStyle = `rgba(18, 10, 3, ${0.9 * nuit})`
+    g.strokeStyle = 'rgba(18, 10, 3, 0.9)'
     g.filter = `blur(${0.35 * px}px)`
     lignes.forEach((t, j) => g.strokeText(t, x + l / 2, y + marge + (j + 0.5) * pas))
     g.filter = 'none'
-    g.globalAlpha = nuit
     g.fillStyle = '#ffe3a3'
     lignes.forEach((t, j) => g.fillText(t, x + l / 2, y + marge + (j + 0.5) * pas))
   })
@@ -140,7 +141,9 @@ function monterEtiquettes(scene: Scene, ciel: readonly Constellation[], nuit: nu
     const h = mis[i].h / PPM
     return { centre: [c.etiquette.x, c.etiquette.y, c.etiquette.z], l: mis[i].l / PPM, h, uv: uvs[i], leve: h / 2 - marge / PPM }
   })
-  quadsTournants('constellation:noms', scene, items, matiereDeTexte('constellation:noms', scene, dt))
+  const mat = matiereDeTexte('constellation:noms', scene, dt)
+  quadsTournants('constellation:noms', scene, items, mat)
+  return mat
 }
 
 /** Des segments en un LinesMesh : couleur et opacité de LineBasicMaterial (ponytail : le LinesMesh sort la couleur hex telle quelle, sans l'exposition 1,15 ni la courbe que three applique à toute l'image). `useVertexAlpha`, sinon `alpha` est ignoré. */
@@ -148,14 +151,14 @@ function segments(nom: string, scene: Scene, paires: [V3, V3][], couleur: string
   if (paires.length === 0) return
   const l = CreateLineSystem(nom, { lines: paires.map(([a, b]) => [new Vector3(...a), new Vector3(...b)]), useVertexAlpha: true }, scene)
   l.color = Color3.FromHexString(couleur)
-  l.alpha = alpha
   l.isPickable = false
+  // Relu à chaque liaison (LinesMesh) : la matière peut rester gelée.
+  auCiel((c) => (l.alpha = alpha * (1 - c.jour)))
 }
 
-/** Rien le jour, ni sans accrochage. Aucune ombre. */
-export async function monterConstellation(scene: Scene, accrochage: Accrochage | null, base: string, jour: number): Promise<void> {
-  const nuit = 1 - jour
-  if (accrochage === null || nuit < 0.02) return
+/** Rien sans accrochage ; montée au chargement, éteinte le jour (nuit < 0,02). Aucune ombre. */
+export async function monterConstellation(scene: Scene, accrochage: Accrochage | null, base: string): Promise<void> {
+  if (accrochage === null) return
   const [cat] = await Promise.all([catalogue(base), police('PT Sans')])
   const ciel = constellations(accrochage, new Map((cat?.artworks ?? []).map((a) => [a.key, a.stars])))
   const etoiles = ciel.flatMap((c) => c.etoiles)
@@ -177,6 +180,7 @@ export async function monterConstellation(scene: Scene, accrochage: Accrochage |
   blanc.albedoColor = lin(ETOILE)
   ico.material = blanc
   scene.onBeforeRenderObservable.add(() => {
+    if (!ico.isEnabled()) return
     poser(performance.now() / 1000)
     ico.thinInstanceBufferUpdated('matrix')
   })
@@ -187,7 +191,6 @@ export async function monterConstellation(scene: Scene, accrochage: Accrochage |
   halo.albedoTexture = texteHalo(scene)
   halo.albedoColor = lin('#ffd98a')
   halo.useAlphaFromAlbedoTexture = true
-  halo.alpha = nuit
   halo.alphaMode = Constants.ALPHA_ADD
   halo.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHABLEND
   halo.disableDepthWrite = true
@@ -195,8 +198,12 @@ export async function monterConstellation(scene: Scene, accrochage: Accrochage |
   quadsTournants('constellation:halos', scene, etoiles.map((e) => ({ centre: [e.x, e.y, e.z] as V3, l: HALO, h: HALO, uv: [0, 0, 1, 1] as UV })), halo)
 
   const point = (e: { x: number; y: number; z: number }): V3 => [e.x, e.y, e.z]
-  segments('constellation:filets', scene, ciel.flatMap((c) => c.filets.map(([a, b]): [V3, V3] => [point(c.etoiles[a]), point(c.etoiles[b])])), OR, 0.7 * nuit)
-  segments('constellation:fils', scene, etoiles.map((e): [V3, V3] => [point(e), [e.x, e.accroche, e.z]]), '#c9b48a', 0.18 * nuit)
+  segments('constellation:filets', scene, ciel.flatMap((c) => c.filets.map(([a, b]): [V3, V3] => [point(c.etoiles[a]), point(c.etoiles[b])])), OR, 0.7)
+  segments('constellation:fils', scene, etoiles.map((e): [V3, V3] => [point(e), [e.x, e.accroche, e.z]]), '#c9b48a', 0.18)
 
-  monterEtiquettes(scene, ciel, nuit)
+  const noms = monterEtiquettes(scene, ciel)
+  for (const m of [halo, noms]) auCielMatiere(m, (c) => (m.alpha = 1 - c.jour))
+  auCiel((c) => {
+    for (const m of scene.meshes) if (m.name.startsWith('constellation:')) m.setEnabled(1 - c.jour >= 0.02)
+  })
 }

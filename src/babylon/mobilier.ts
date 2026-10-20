@@ -9,7 +9,7 @@
  * la cuisson : les ombres cuites des bancs tombent sous les bancs. Un fichier
  * qui manque n'emporte pas les autres.
  *
- * Le globe des lampadaires s'allume avec eux, une fois au montage (jour figé,
+ * Le globe des lampadaires s'allume avec eux et suit l'heure (`auCielMatiere`,
  * comme eclairage.ts) : matière gelable, rien dans VIVANTES. Le chêne des bancs
  * Batlló prend le fil d'une lame du parquet (plugin `ChenBatllo`).
  */
@@ -25,6 +25,7 @@ import type { Scene } from '@babylonjs/core/scene'
 
 import { glbOuRien } from './glb.ts'
 import { instancier, matrices, posesDuMobilier } from './lots.ts'
+import { auCielMatiere } from './etat.ts'
 import { lueursDuJour } from './lueurs.ts'
 import { chargerCartes } from './matieres.ts'
 
@@ -109,7 +110,7 @@ class ChenBatllo extends MaterialPluginBase {
 }
 
 /** Monte le mobilier ; rend les porteurs d'ombre (tout sauf le verre de l'abri). */
-export async function monterMobilier(scene: Scene, jour: number): Promise<Mesh[]> {
+export async function monterMobilier(scene: Scene): Promise<Mesh[]> {
   const buffers = matrices(posesDuMobilier().filter((p) => p.piece !== 'Kentia' && p.piece !== 'Lyrata'))
   // Sans les cartes du parquet, le banc Batlló garde son aplat miel.
   const [mobilier, accessoires, lampadaire, parquet] = await Promise.all([
@@ -126,6 +127,8 @@ export async function monterMobilier(scene: Scene, jour: number): Promise<Mesh[]
     new ChenBatllo(chene, parquet.couleur)
   }
   const globe = lampadaire?.materials.find((m) => m.name === 'Lampadaire_Globe')
-  if (globe instanceof PBRMaterial) globe.emissiveIntensity = forceDuGlobe(jour)
+  if (globe instanceof PBRMaterial) {
+    auCielMatiere(globe, (c) => (globe.emissiveIntensity = forceDuGlobe(c.jour)))
+  }
   return [mobilier, accessoires, lampadaire].flatMap((c) => (c ? instancier(c, buffers) : []))
 }

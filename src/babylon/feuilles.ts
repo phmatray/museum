@@ -3,12 +3,13 @@
  * cartes lobées couchées sur le relief sous chaque érable et chaque ginkgo, aux
  * couleurs de l'arbre, plus serrées sous le houppier. Un maillage, un appel.
  *
- * Saison figée au chargement (`ambiance()`) : la part tombée (`feuillesAuSol`)
- * est triée sur CPU (three la repliait par shader, `step(w, uFeuillesSol)`), et
- * le lobe est découpé par l'alpha d'une petite carte (three : `discard`) ; aucun
- * shader. Hors de l'automne, rien n'est créé. Couchées, elles ne portent pas d'ombre.
+ * La part tombée (`feuillesAuSol` de la saison vivante) est triée sur CPU (three
+ * la repliait par shader, `step(w, uFeuillesSol)`), la géométrie refaite quand la
+ * saison change ; le lobe est découpé par l'alpha d'une petite carte (three :
+ * `discard`). Hors de l'automne, le maillage est éteint. `intemperer` par-dessus
+ * (mouillées, enneigées). Couchées, elles ne portent pas d'ombre.
  * ponytail : pas de masquage hors champ (`uneEnVue` de three) : ~20 k triangles,
- * moins cher qu'un test par image ; pas d'`intemperer` (neige) : vague météo.
+ * moins cher qu'un test par image.
  */
 import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { RawTexture } from '@babylonjs/core/Materials/Textures/rawTexture'
@@ -21,8 +22,10 @@ import { presDeLEau } from '../plan/jardin.ts'
 import type { Parc } from '../plan/park.ts'
 import { hauteurDuParc } from '../plan/relief.ts'
 import { matiere } from './boites.ts'
+import { vivant } from './etat.ts'
+import { intemperer } from './intemperies.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
-import { ambiance, mulberry32, PARC } from './parc.ts'
+import { mulberry32, PARC } from './parc.ts'
 
 const AUTOMNE: Record<string, string[]> = {
   'erable-rouge': ['#8c1a12', '#a3230f', '#6e1410', '#5a2a18'],
@@ -70,10 +73,18 @@ export function feuillesMortes(parc: Parc, part: number): { positions: number[];
 }
 
 export function monterFeuilles(scene: Scene): void {
-  const part = ambiance().saison.feuillesAuSol
-  if (part <= 0) return
   const m = new Mesh('feuilles-mortes', scene)
-  Object.assign(new VertexData(), feuillesMortes(PARC, part)).applyToMesh(m)
+  // Pour visibilite.ts : sa boîte change avec la saison, il est au parc.
+  m.metadata = { zone: 'parc' }
+  let part = -1
+  const tomber = (p: number) => {
+    if (p === part) return
+    part = p
+    if (p > 0) Object.assign(new VertexData(), feuillesMortes(PARC, p)).applyToMesh(m)
+    m.setEnabled(p > 0)
+  }
+  tomber(vivant.getState().saison.feuillesAuSol)
+  vivant.subscribe((s) => tomber(s.saison.feuillesAuSol))
   const n = 64
   const masque = new Uint8Array(4 * n * n).fill(255)
   for (let j = 0; j < n; j++)
@@ -87,6 +98,7 @@ export function monterFeuilles(scene: Scene): void {
   mat.environmentIntensity = 0
   mat.metallicF0Factor = 0
   brancherLueurs([mat])
+  intemperer(mat)
   m.material = mat
   m.isPickable = false
   m.receiveShadows = true

@@ -23,6 +23,7 @@ import { Vector3 } from '@babylonjs/core/Maths/math.vector'
 import type { Scene } from '@babylonjs/core/scene'
 
 import { chargerGlb, eclairerModele, fusionnerParMatiere } from './glb.ts'
+import { auCiel, auCielMatiere } from './etat.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
 import { chargerCartes, matierePBR } from './matieres.ts'
 
@@ -53,15 +54,13 @@ export function reglagesHonneur(jour: number): { lampe: number; emissions: Recor
 
 export async function monterSalleHonneur(
   scene: Scene,
-  jour: number,
   atlas: Promise<RawTexture>,
   generateur: ShadowGenerator | null,
 ): Promise<void> {
-  const r = reglagesHonneur(jour)
   // La lampe tout de suite, avant le GLB : elle entre dans la première compilation de toutes les matières.
   const lampe = new PointLight('lampe-honneur', LAMPE, scene)
   lampe.diffuse = lampe.specular = lin('#ffd6a0')
-  lampe.intensity = r.lampe
+  auCiel((c) => (lampe.intensity = reglagesHonneur(c.jour).lampe))
   lampe.falloffType = Light.FALLOFF_GLTF
   lampe.range = 16
 
@@ -86,10 +85,14 @@ export async function monterSalleHonneur(
   const opaques = new Set<PBRMaterial>()
   for (const m of maillages) {
     m.receiveShadows = true
+    // La voûte dépasse le toit des galeries : sa boîte la dirait vue du parc (visibilite.ts). Elle est de la salle.
+    if (m.name === 'Voute') m.metadata = { ...m.metadata, zone: 'honneur' }
     const mat = m.material
     if (!(mat instanceof PBRMaterial)) continue
-    const e = Object.entries(r.emissions).find(([nom]) => mat.name.startsWith(nom))
-    if (e) mat.emissiveIntensity = e[1]
+    const nom = Object.keys(reglagesHonneur(1).emissions).find((n) => mat.name.startsWith(n))
+    if (nom) {
+      auCielMatiere(mat, (c) => (mat.emissiveIntensity = reglagesHonneur(c.jour).emissions[nom]))
+    }
     if (mat.name === 'Honneur_Ambre') continue
     opaques.add(mat)
     generateur?.addShadowCaster(m)

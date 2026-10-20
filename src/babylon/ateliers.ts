@@ -31,7 +31,7 @@ import { ATELIERS, disposerCoupe, MUR_ATELIER, PLAQUE, RECUL_PLAQUES, SOCLE_ATEL
 import type { Box } from '../plan/mesh.ts'
 import { choisirVitrines } from '../plan/vitrines.ts'
 import { cubes, matiere } from './boites.ts'
-import { catalogue, mouvementReduit, VIVANTES } from './etat.ts'
+import { auCielMatiere, catalogue, mouvementReduit, VIVANTES } from './etat.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
 import { police, type Police } from './polices.ts'
 import { atlasDeTextes, maillageDeQuads, matiereDeTexte, type Quad } from './textes.ts'
@@ -363,7 +363,7 @@ function monterFils(scene: Scene, exposes: readonly Expose[]): void {
 }
 
 /** Rend les porteurs d'ombre : bois, laiton, blocs, cartels, mur (ni le verre ni les fils). */
-export async function monterAteliers(scene: Scene, base: string, jour: number): Promise<Mesh[]> {
+export async function monterAteliers(scene: Scene, base: string): Promise<Mesh[]> {
   const [ateliers, cat] = await Promise.all([
     fetch(`${base}data/ateliers.json`)
       .then((r) => (r.ok ? (r.json() as Promise<{ ateliers: Atelier[] }>) : { ateliers: [] }))
@@ -399,7 +399,7 @@ export async function monterAteliers(scene: Scene, base: string, jour: number): 
     const mat = matiere('ateliers:blocs', scene, '#ffffff', 0.45)
     mat.metallic = 0.1
     mat.emissiveColor = lin('#3a2a14')
-    mat.emissiveIntensity = 0.6 + 1.4 * (1 - jour)
+    auCielMatiere(mat, (c) => (mat.emissiveIntensity = 0.6 + 1.4 * (1 - c.jour)))
     const lot = cubes('ateliers:blocs', blocs.map((x) => x.b), scene, mat)
     const couleurs = new Float32Array(4 * blocs.length)
     blocs.forEach(({ c }, i) => {

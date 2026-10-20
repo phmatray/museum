@@ -5,7 +5,12 @@ import { Scene } from '@babylonjs/core/scene'
 import { describe, expect, it, vi } from 'vitest'
 
 import { cielA } from '../../domain/soleil'
-import { monterSoleil, reglagesDuCiel } from '../soleil'
+import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
+import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder'
+import '@babylonjs/core/Meshes/thinInstanceMesh'
+import { Matrix } from '@babylonjs/core/Maths/math.vector'
+
+import { fondrePorteurs, monterSoleil, reglagesDuCiel } from '../soleil'
 
 const bruxelles = (iso: string) => cielA(new Date(iso), 50.85, 4.35)
 
@@ -48,5 +53,30 @@ describe('monterSoleil', () => {
   it('sans ombres, pas de générateur', () => {
     const scene = new Scene(new NullEngine())
     expect(monterSoleil(scene, bruxelles('2026-10-19T13:00:00Z'), false).generateur).toBeNull()
+  })
+})
+
+describe('fondrePorteurs', () => {
+  it('fond les porteurs immobiles et opaques d’une case, instances comprises, hors de la scène', () => {
+    const scene = new Scene(new NullEngine())
+    new FreeCamera('oeil', new Vector3(24, 1.62, 37), scene)
+    const { generateur } = monterSoleil(scene, bruxelles('2026-10-19T13:00:00Z'), true)
+    const pierre = new PBRMaterial('pierre', scene)
+    const a = CreateBox('a', {}, scene)
+    const b = CreateBox('b', {}, scene)
+    b.thinInstanceSetBuffer('matrix', new Float32Array([...Matrix.Translation(1, 0, 0).m, ...Matrix.Translation(2, 0, 0).m]), 16)
+    const aiguille = CreateBox('Nef_Aiguille_Heures', {}, scene)
+    for (const m of [a, b, aiguille]) {
+      m.position.set(5, 0, 5)
+      m.material = pierre
+      generateur!.addShadowCaster(m)
+    }
+    fondrePorteurs(scene, generateur!, () => 'dedans')
+    const liste = generateur!.getShadowMap()!.renderList!
+    expect(liste.map((m) => m.name).sort()).toEqual(['Nef_Aiguille_Heures', 'ombres:0:0:dedans'])
+    const fonte = liste.find((m) => m.name === 'ombres:0:0:dedans')!
+    expect(fonte.getTotalVertices()).toBe(3 * a.getTotalVertices())
+    expect(fonte.metadata.lieu).toBe('dedans')
+    expect(scene.meshes).not.toContain(fonte)
   })
 })

@@ -21,6 +21,7 @@ import type { Box } from '../plan/mesh.ts'
 import { hauteurDuParc } from '../plan/relief.ts'
 import { boitesFusionnees, gabaritCube, matiere } from './boites.ts'
 import { dialecte, greffer } from './greffe.ts'
+import { intemperer } from './intemperies.ts'
 import { brancherLueurs } from './lueurs.ts'
 import { attributsDUsure } from './parement.ts'
 import { dallage, PARC } from './parc.ts'
@@ -191,6 +192,9 @@ export function monterEnceinte(scene: Scene): Mesh[] {
   brancherLueurs([brique, pierre, fer])
   greffer(brique, { nom: 'VieuxMur', attributs: ['boite', 'taille'], code: vieuxMur })
   greffer(pierre, { nom: 'Chaperon', attributs: ['boite', 'taille'], code: chaperon })
+  // La neige tient par-dessus la mousse et la patine (priorité 300 > 200).
+  intemperer(brique)
+  intemperer(pierre)
   const gabarit = gabaritCube(scene)
   const poser = (nom: string, boites: Box[], mat: Material, usure: boolean): Mesh => {
     const m = boitesFusionnees(nom, boites, scene, mat)

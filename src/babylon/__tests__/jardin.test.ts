@@ -1,4 +1,3 @@
-import { Color3 } from '@babylonjs/core/Maths/math.color'
 import { describe, expect, it } from 'vitest'
 
 import { rubanDuRuisseau } from '../../plan/jardin'
@@ -47,14 +46,13 @@ describe('jardin', () => {
   })
 
   it('écrit les greffes en GLSL et en WGSL', () => {
-    const ciel = new Color3(0.1, 0.2, 0.3)
-    const codes = (w: boolean) => [codeDeLEtang(w, ciel), codeDeLaCascade(w), codeDuRuisseau(w, remous(), ciel), codeDesCaustiques(w)]
+    const codes = (w: boolean) => [codeDeLEtang(w), codeDeLaCascade(w), codeDuRuisseau(w, remous()), codeDesCaustiques(w)]
     for (const c of codes(true)) {
       const s = JSON.stringify(c)
       expect(s).not.toMatch(/\bvec[234]\(/)
       expect(s).not.toMatch(/\bfloat\b/)
     }
     for (const c of codes(false)) expect(JSON.stringify(c)).not.toMatch(/uniforms\.|vec[234]f\(/)
-    expect(codeDuRuisseau(true, remous(), ciel).fragment.CUSTOM_FRAGMENT_DEFINITIONS).toContain(`array<vec4f, ${remous().length}>`)
+    expect(codeDuRuisseau(true, remous()).fragment.CUSTOM_FRAGMENT_DEFINITIONS).toContain(`array<vec4f, ${remous().length}>`)
   })
 })

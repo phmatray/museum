@@ -10,7 +10,8 @@
  * le test d'alpha tenu au loin (les mips moyennent l'alpha), la nuance de
  * chaque feuille, le bronze d'automne d'une sur cinq, l'hiver pourpré, la neige
  * sur les feuilles tournées vers le ciel, la pluie qui fonce et fait luire.
- * Saison et météo sont figées au chargement (`ambiance()`) : cuites en littéraux.
+ * Saison (`lierreSaison`, état vivant) et météo lissée (`lierreMeteo`, METEO :
+ * vent, mouillé, neige) passent par l'UBO (`lier`) : rien ne recompile.
  * ponytail : la carte d'ombre ne tient ni le vent ni l'alpha au loin (three, si) ; à greffer
  * dans un ShadowDepthWrapper si les ombres du lierre fondent au loin.
  */
@@ -20,14 +21,13 @@ import { Mesh } from '@babylonjs/core/Meshes/mesh'
 import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData'
 import type { Scene } from '@babylonjs/core/scene'
 
-import type { Meteo } from '../domain/meteo.ts'
-import type { Saison } from '../domain/saisons.ts'
 import { lierreDuMur, type Feuille } from '../plan/lierre.ts'
 import { matiere } from './boites.ts'
 import { MUR } from './enceinte.ts'
+import { vivant } from './etat.ts'
 import { dialecte, greffer } from './greffe.ts'
+import { METEO } from './intemperies.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
-import { ambiance } from './parc.ts'
 
 const CELLULE = 256
 
@@ -204,14 +204,14 @@ export function geometrieDuLierre(feuilles: readonly Feuille[]) {
 }
 
 const f4 = (x: number) => x.toFixed(4)
-/** L'`uMouille` tenu de MeteoLayer : la pluie, ou la neige qui fond un peu. */
-const mouilleDe = (m: Meteo) => Math.max(m.pluie, m.neige * 0.3)
 
-/** Les greffes de three (lierre.tsx), saison et météo cuites en littéraux. */
-function codeDuLierre(wgsl: boolean, saison: Saison, meteo: Meteo) {
-  const { V, G, fn, tr, attribut, varying, vin, vout, fin, u } = dialecte(wgsl)
-  const mouille = mouilleDe(meteo)
-  const enneige = meteo.neige > 0 ? Math.min(1, 0.4 + meteo.neige) : 0
+/**
+ * Les greffes de three (lierre.tsx). `lierreSaison` = (feuillage, chute),
+ * `lierreMeteo` = (vent, mouillé, neige au sol, temps).
+ */
+export function codeDuLierre(wgsl: boolean) {
+  const { V, G, fn, tr, attribut, varying, vin, vout, fin, u, rugosite } = dialecte(wgsl)
+  const [S, M] = [u('lierreSaison'), u('lierreMeteo')]
   const [F, P, c] = [fin('vFeuille'), fin('vPositionW'), 'surfaceAlbedo']
   return {
     vertex: {
@@ -219,8 +219,8 @@ function codeDuLierre(wgsl: boolean, saison: Saison, meteo: Meteo) {
       // La pointe tremble au vent ; le pétiole reste accroché, les tiges ne bougent pas.
       CUSTOM_VERTEX_UPDATE_POSITION: tr(`{
 ${V('lA', 'float', `${vin('aFeuille')}.z`)}
-${V('lPhase', 'float', `${u('lierreTemps')} * (2.1 + lA) + lA * 40.0`)}
-${V('lAmp', 'float', `${f4(0.012 + 0.018 * meteo.vent)} * step(${vin('aFeuille')}.x, 2.5)`)}
+${V('lPhase', 'float', `${M}.w * (2.1 + lA) + lA * 40.0`)}
+${V('lAmp', 'float', `(0.012 + 0.018 * ${M}.x) * step(${vin('aFeuille')}.x, 2.5)`)}
 ${V('lV', 'vec3', vin('aVent'))}
 positionUpdated += (normalUpdated * sin(lPhase) * step(1e-10, dot(lV, lV)) + lV * cos(lPhase * 1.3)) * lAmp;
 }`),
@@ -241,6 +241,8 @@ ${V('lT', 'vec2', `${fin('vMainUV1')} * ${f4(2 * CELLULE)}`)}
 lLoin = 1.0 + max(0.0, 0.5 * log2(max(dot(dFdx(lT), dFdx(lT)), dot(dFdy(lT), dFdy(lT))))) * 0.3;
 }`),
       '!if \\(alpha<ALPHATESTVALUE\\)': 'alpha *= lLoin;\n$0',
+      // La pluie fait luire : rugosité de 0,62 à 0,25.
+      [rugosite]: `$0\nroughness = mix(roughness, 0.25, ${M}.y);\nmicroSurface = 1.0 - roughness;`,
       CUSTOM_FRAGMENT_UPDATE_ALPHA: tr(`{
 ${V('lF', 'vec3', F)}
 if (lF.x < 2.5) {
@@ -248,15 +250,15 @@ if (lF.x < 2.5) {
   ${c} *= 0.45 + 0.6 * lF.y;
   ${c} *= mix(vec3(1.08, 1.04, 0.86), vec3(0.88, 1.0, 1.06), fract(lF.z * 7.3)) * (0.85 + 0.3 * fract(lF.z * 3.1));
   ${V('lL', 'float', `dot(${c}, vec3(0.3, 0.59, 0.11))`)}
-  ${V('lBronze', 'float', `step(lF.z, 0.2) * ${f4(Math.min(1, Math.max(saison.feuillage, saison.chute * 0.7)))}`)}
+  ${V('lBronze', 'float', `step(lF.z, 0.2) * clamp(max(${S}.x, ${S}.y * 0.7), 0.0, 1.0)`)}
   ${c} = mix(${c}, vec3(lL) * vec3(2.2, 1.0, 0.55), lBronze * 0.75);
-  ${c} = mix(${c}, ${c} * vec3(0.85, 0.75, 0.82), ${f4(saison.chute * 0.45)});
-  ${V('lNeige', 'float', `${f4(enneige)} * smoothstep(0.45, 0.9, normalize(${fin('vNormalW')}).y) * smoothstep(0.35, 0.75, lBruit(${P}.xz * 9.0 + ${P}.y * 7.0))`)}
+  ${c} = mix(${c}, ${c} * vec3(0.85, 0.75, 0.82), ${S}.y * 0.45);
+  ${V('lNeige', 'float', `${M}.z * smoothstep(0.45, 0.9, normalize(${fin('vNormalW')}).y) * smoothstep(0.35, 0.75, lBruit(${P}.xz * 9.0 + ${P}.y * 7.0))`)}
   ${c} = mix(${c}, vec3(0.86, 0.88, 0.93), lNeige * 0.65);
 } else {
   ${c} *= 0.85 + 0.3 * lF.y;
 }
-${c} *= ${f4(1 - 0.3 * mouille)};
+${c} *= 1.0 - 0.3 * ${M}.y;
 }`),
     },
   }
@@ -264,9 +266,7 @@ ${c} *= ${f4(1 - 0.3 * mouille)};
 
 /** La matière unique des quatre côtés. */
 function matiereDuLierre(scene: Scene): PBRMaterial {
-  const { saison, meteo } = ambiance()
-  // La pluie fait luire : rugosité de 0,62 à 0,25.
-  const m = matiere('lierre', scene, '#ffffff', 0.62 + (0.25 - 0.62) * mouilleDe(meteo))
+  const m = matiere('lierre', scene, '#ffffff', 0.62)
   m.backFaceCulling = false
   m.twoSidedLighting = true
   brancherLueurs([m])
@@ -288,9 +288,13 @@ function matiereDuLierre(scene: Scene): PBRMaterial {
   greffer(m, {
     nom: 'Lierre',
     attributs: ['aFeuille', 'aVent'],
-    uniforms: [{ name: 'lierreTemps', size: 1, type: 'float' }],
-    lier: (ubo) => ubo.updateFloat('lierreTemps', performance.now() / 1000),
-    code: (wgsl) => codeDuLierre(wgsl, saison, meteo),
+    uniforms: [{ name: 'lierreSaison', size: 2, type: 'vec2' }, { name: 'lierreMeteo', size: 4, type: 'vec4' }],
+    lier: (ubo) => {
+      const s = vivant.getState().saison
+      ubo.updateFloat2('lierreSaison', s.feuillage, s.chute)
+      ubo.updateFloat4('lierreMeteo', METEO.vent, METEO.mouille, METEO.enneige, performance.now() / 1000)
+    },
+    code: codeDuLierre,
   })
   return m
 }
