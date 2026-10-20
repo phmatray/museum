@@ -160,7 +160,7 @@ export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: 
   addEventListener('keydown', touche)
 
   const fins = [
-    observer(partie, (s) => s.paused, (v) => {
+    observer(partie, (s) => s.paused && !s.seance, (v) => {
       voile.hidden = !v
       if (v && composte) enPause(true)
       if (v) bEntrer.focus()

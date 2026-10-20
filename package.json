@@ -18,7 +18,8 @@
     "plan:svg": "node tools/plan-svg.ts",
     "accrocher": "node tools/accrocher.ts",
     "bake": "node tools/bake-lumiere.ts",
-    "chantier": "node tools/chantier.ts"
+    "chantier": "node tools/chantier.ts",
+    "cinema": "node tools/fetch-cinema.ts"
   },
   "dependencies": {
     "@babylonjs/core": "^9.31.0",

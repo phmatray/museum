@@ -184,6 +184,8 @@ export interface Partie {
   etape: string | null
   /** Une session VR est ouverte (vr.ts) : le casque tient la caméra, l'interface DOM se retire. */
   enVR: boolean
+  /** Une séance de cinéma (seance.ts) : la visite est en pause, mais le billet ne s'affiche pas. */
+  seance: boolean
 }
 export const partie = createStore<Partie>(() => ({
   paused: true,
@@ -196,6 +198,7 @@ export const partie = createStore<Partie>(() => ({
   bavette: false,
   etape: null,
   enVR: false,
+  seance: false,
 }))
 
 /** N'écrit dans `store` que les champs qui changent (rien du tout si aucun) : sûr à chaque image. */
