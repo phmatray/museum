@@ -86,8 +86,12 @@ export interface Siege {
 export const FAUTEUIL = { largeur: 0.55, profondeur: 0.6 }
 const PAR_RANGEE = Math.floor(BLOC_GRADINS.width / FAUTEUIL.largeur)
 
-/** Dix-huit fauteuils par rang, adossés au fond du rang : le passage est devant. */
-export const SIEGES: Siege[] = GRADINS.flatMap((g) => {
+/**
+ * Dix-huit fauteuils par rang, adossés au fond du rang : le passage est devant. Pas sur le
+ * dernier rang (au niveau du promenoir) : c'est la circulation transversale, et le faisceau
+ * du projecteur, sous un plafond de 4,50 m, y passerait à hauteur des têtes.
+ */
+export const SIEGES: Siege[] = GRADINS.slice(0, -1).flatMap((g) => {
   const marge = (BLOC_GRADINS.width - PAR_RANGEE * FAUTEUIL.largeur) / 2
   return Array.from({ length: PAR_RANGEE }, (_, i) => ({
     rang: g.rang,
@@ -98,11 +102,22 @@ export const SIEGES: Siege[] = GRADINS.flatMap((g) => {
   }))
 })
 
+/** Une tête assise : au-dessus de l'assise du rang (le dessus de sa marche). */
+export const TETE_ASSISE = 1.3
+
+/** Les fenêtres de la cabine de projection, dans le mur du fond (sa face z = 19,85), juste sous le plafond. */
+export const CABINE: { x: number; y0: number; y1: number; largeur: number; z: number }[] = [8, 11].map((x) => ({
+  x, y0: PLAFOND - 0.6, y1: PLAFOND - 0.15, largeur: 0.8, z: SALLE.z + SALLE.depth - 0.15,
+}))
+
 /**
- * L'écran, sur le mur nord (face à z = 2,15, la cloison en fait ±0,15), au-dessus
- * de la scène : 8,6 × 3,6 m, à peu près le 2,39:1 du scope. `z` est sa face.
+ * L'écran, sur le mur nord (face à z = 2,20), au-dessus de la scène, au format scope (2,39:1).
+ * Haut placé : sous un plafond de 4,50 m, le bas de l'écran règle la pente du faisceau, qui
+ * doit passer au-dessus des têtes du dernier rang assis (`TETE_ASSISE`, testé). `z` est sa face.
  */
-export const ECRAN = { x: SALLE.x + SALLE.width / 2, z: SALLE.z + 0.15 + 0.05, largeur: 8.6, bas: SOL + SCENE.hauteur + 0.15, hauteur: 3.6 }
+const BAS_ECRAN = -3.5
+const HAUT_ECRAN = PLAFOND - 0.35
+export const ECRAN = { x: SALLE.x + SALLE.width / 2, z: SALLE.z + 0.15 + 0.05, largeur: (HAUT_ECRAN - BAS_ECRAN) * 2.39, bas: BAS_ECRAN, hauteur: HAUT_ECRAN - BAS_ECRAN }
 
 /** Les rideaux dorés : un pan de chaque côté de l'écran et un lambrequin au-dessus, à 0,3 m devant le mur. */
 export const RIDEAUX: { x0: number; x1: number; y0: number; y1: number; z: number }[] = [
@@ -153,8 +168,3 @@ export const SPOTS: Point[] = (() => {
       out.push({ x: SALLE.x + ((i + 0.5) * SALLE.width) / nx, y: PLAFOND, z: SALLE.z + ((j + 0.5) * SALLE.depth) / nz, nx: 0, nz: 0 })
   return out
 })()
-
-/** Les fenêtres de la cabine de projection, dans le mur du fond (sa face z = 19,85), au-dessus du promenoir. */
-export const CABINE: { x: number; y0: number; y1: number; largeur: number; z: number }[] = [8, 11].map((x) => ({
-  x, y0: COTE_PROMENOIR + 1.3, y1: COTE_PROMENOIR + 1.9, largeur: 0.8, z: SALLE.z + SALLE.depth - 0.15,
-}))

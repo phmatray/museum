@@ -39,6 +39,8 @@ import {
   PLAFOND, RIDEAUX, SALLE, SCENE, SIEGES, SOL, SPOTS,
 } from '../plan/cinema.ts'
 import { PROMENOIR, VOLEES_CINEMA } from '../plan/cinema.ts'
+import { MUSEE } from '../plan/musee.ts'
+import { LINTEAU } from '../plan/portes.ts'
 import type { Walker } from '../plan/walk.ts'
 import { partie, VIVANTES } from './etat.ts'
 import { glbOuRien } from './glb.ts'
@@ -164,6 +166,9 @@ function afficheSur(scene: Scene, programme: Seance | null): DynamicTexture {
   const L = 2048
   const H = Math.round((L * ECRAN.hauteur) / ECRAN.largeur)
   const t = new DynamicTexture('cinema:affiche', { width: L, height: H }, scene, true)
+  // Le plan est retourné face à la salle : sans ce miroir, l'affiche se lirait à l'envers (scène main droite).
+  t.uScale = -1
+  t.uOffset = 1
   const g = t.getContext()
   g.fillStyle = '#050505'
   g.fillRect(0, 0, L, H)
@@ -216,7 +221,7 @@ export async function monterCinema(
   ecranMat.specularColor = Color3.Black()
   ecranMat.disableLighting = true
   ecranMat.emissiveTexture = afficheSur(scene, programme)
-  ecranMat.emissiveColor = new Color3(0.85, 0.85, 0.85)
+  ecranMat.emissiveColor = new Color3(0.5, 0.5, 0.5)
   VIVANTES.add(ecranMat.name)
   const veilleuse = new StandardMaterial('cinema:veilleuse', scene)
   veilleuse.disableLighting = true
@@ -230,9 +235,16 @@ export async function monterCinema(
   const [zN, zS] = [SALLE.z + 0.15 + PEAU, SALLE.z + SALLE.depth - 0.15 - PEAU]
   const sol = (z: number) => solLeLong(z) - 0.02
   const lam = (z: number) => solLeLong(z) + LAMBRIS.hauteur
+  // La porte du foyer (dans le mur est) : ni lambris ni tissu dans la baie, du tissu au-dessus du linteau.
+  const porte = MUSEE.levels.flatMap((l) => l.openings).find((o) => o.kind === 'door' && (o.a === 'cinema' || o.b === 'cinema'))
+  const baie = porte ? [porte.z - porte.width / 2, porte.z + porte.width / 2] as const : null
   for (const [x, nx] of [[xO, 1], [xE, -1]] as const) {
-    garder(bandeau(`cinema:lambris${nx}`, scene, x, nx, zN, zS, sol, lam)).material = lambris
-    garder(bandeau(`cinema:tissu${nx}`, scene, x, nx, zN, zS, lam, () => PLAFOND - 0.02)).material = tissu
+    const pans: [number, number][] = nx < 0 && baie ? [[zN, baie[0]], [baie[1], zS]] : [[zN, zS]]
+    pans.forEach(([a, b], i) => {
+      garder(bandeau(`cinema:lambris${nx}:${i}`, scene, x, nx, a, b, sol, lam)).material = lambris
+      garder(bandeau(`cinema:tissu${nx}:${i}`, scene, x, nx, a, b, lam, () => PLAFOND - 0.02)).material = tissu
+    })
+    if (nx < 0 && baie) garder(bandeau('cinema:tissu-linteau', scene, x, nx, baie[0], baie[1], () => SOL + LINTEAU, () => PLAFOND - 0.02)).material = tissu
   }
   // Le fond (au sud, sous la cabine) : rouge au-dessus du promenoir ; le mur nord, noir derrière l'écran.
   const fond = garder(CreatePlane('cinema:fond', { width: SALLE.width - 0.3, height: PLAFOND - COTE_PROMENOIR }, scene))
@@ -303,11 +315,11 @@ export async function monterCinema(
   lumieres.soleil.excludedMeshes.push(...salle)
   lumieres.hemi.excludedMeshes.push(...salle)
   const lampes = APPLIQUES.map((p, i) => {
-    const l = new PointLight(`cinema:applique${i}`, new Vector3(p.x + p.nx * 0.45, p.y + 0.25, p.z), scene)
+    const l = new PointLight(`cinema:applique${i}`, new Vector3(p.x + p.nx * 0.9, p.y + 0.35, p.z), scene)
     l.diffuse = CHAUD
     l.specular = CHAUD.scale(0.5)
-    l.intensity = 9
-    l.range = 9
+    l.intensity = 4
+    l.range = 8
     l.includedOnlyMeshes = salle
     return l
   })
@@ -336,6 +348,15 @@ export async function monterCinema(
   faisceau.material = lumineux
   faisceau.isVisible = false
 
+  // La lueur que la toile renvoie sur les premiers rangs, pendant la séance.
+  const reflet = new PointLight('cinema:reflet', new Vector3(ECRAN.x, ECRAN.bas + ECRAN.hauteur / 2, ECRAN.z + 1.2), scene)
+  reflet.diffuse = new Color3(0.75, 0.82, 1)
+  reflet.specular = Color3.Black()
+  // Allumé par l'intensité, jamais éteint : une lumière qu'on retire recompilerait les matières en pleine séance.
+  reflet.intensity = 0
+  reflet.range = 16
+  reflet.includedOnlyMeshes = salle
+
   // Le faisceau ne se voit que de côté : tout près de la cabine (sur le promenoir), on serait dedans, voilé.
   let projette = false
   scene.onBeforeRenderObservable.add(() => {
@@ -343,16 +364,35 @@ export async function monterCinema(
   })
 
   // ── La séance : le lecteur sur la toile, la salle qui s'éteint ──
-  const seance = monterSeance(scene, camera, toile, racine, coins, programme, {
+  // Le lecteur (16:9) sur le milieu de la toile scope : la vidéo la remplit, sans bandes noires dans le lecteur.
+  const demi = (ECRAN.hauteur * 16) / 9 / 2
+  const video: Coins = [
+    new Vector3(ECRAN.x - demi, ECRAN.bas + ECRAN.hauteur, ECRAN.z),
+    new Vector3(ECRAN.x + demi, ECRAN.bas + ECRAN.hauteur, ECRAN.z),
+    new Vector3(ECRAN.x + demi, ECRAN.bas, ECRAN.z),
+    new Vector3(ECRAN.x - demi, ECRAN.bas, ECRAN.z),
+  ]
+  // La séance se voit assis : au milieu du deuxième rang, les yeux à 1,15 m de l'assise.
+  const rang = SIEGES.filter((s) => s.rang === 1)
+  const place = rang[Math.floor(rang.length / 2)]
+  const oeil = place.y + 1.15
+  const siege = {
+    level: -1, surface: '-1:cinema', x: place.x, z: place.z, y: oeil - 1.62, yaw: 0,
+    pitch: Math.atan2(ECRAN.bas + ECRAN.hauteur / 2 - oeil, place.z - ECRAN.z),
+  }
+  const seance = monterSeance(scene, camera, toile, racine, video, programme, {
     debut() {
-      for (const l of lampes) l.intensity = 0.8
+      for (const l of lampes) l.intensity = 1.4
+      reflet.intensity = 6
       ecranMat.emissiveColor = Color3.Black()
       projette = true
       signaler('cinema')
     },
+    siege,
     fin() {
-      for (const l of lampes) l.intensity = 9
-      ecranMat.emissiveColor = new Color3(0.85, 0.85, 0.85)
+      for (const l of lampes) l.intensity = 4
+      reflet.intensity = 0
+      ecranMat.emissiveColor = new Color3(0.5, 0.5, 0.5)
       projette = false
       faisceau.isVisible = false
     },
@@ -371,6 +411,50 @@ export async function monterCinema(
     seance.lancer()
   })
 
+  // Au foyer, à côté de la porte : la boîte lumineuse « À l'affiche ».
+  if (programme) {
+    const L = 1024
+    const H = 640
+    const vitrine = new DynamicTexture('cinema:vitrine', { width: L, height: H }, scene, true)
+    vitrine.uScale = -1
+    vitrine.uOffset = 1
+    const c = vitrine.getContext()
+    const peindre = (image?: HTMLImageElement) => {
+      c.fillStyle = '#1a0507'
+      c.fillRect(0, 0, L, H)
+      c.fillStyle = '#d9b26a'
+      c.font = '600 46px Marcellus, Georgia, serif'
+      const titre = 'À L’AFFICHE'
+      c.fillText(titre, (L - c.measureText(titre).width) / 2, 70)
+      if (image) c.drawImage(image, 112, 100, 800, 450)
+      c.fillStyle = '#f3e6cf'
+      c.font = '400 30px "Source Sans 3", sans-serif'
+      const ligne = programme.titre.length > 52 ? `${programme.titre.slice(0, 50)}…` : programme.titre
+      c.fillText(ligne, (L - c.measureText(ligne).width) / 2, 600)
+      vitrine.update()
+    }
+    peindre()
+    const image = new Image()
+    image.crossOrigin = 'anonymous'
+    image.onload = () => peindre(image)
+    image.src = affiche(programme.video, 'hqdefault')
+    const lumineux = new StandardMaterial('cinema:vitrine', scene)
+    lumineux.disableLighting = true
+    lumineux.diffuseColor = Color3.Black()
+    lumineux.specularColor = Color3.Black()
+    lumineux.emissiveTexture = vitrine
+    const boite = CreatePlane('cinema:vitrine', { width: 1.6, height: 1.0 }, scene)
+    // Sur le mur ouest du foyer (sa face x = 16,15), regardant l'est, au sud de la porte.
+    boite.position.set(16.21, SOL + 1.65, 9.7)
+    boite.rotation.y = -Math.PI / 2
+    boite.material = lumineux
+    boite.isPickable = false
+    const cadre = CreateBox('cinema:vitrine-cadre', { width: 0.04, height: 1.1, depth: 1.7 }, scene)
+    cadre.position.set(16.17, SOL + 1.65, 9.7)
+    cadre.material = dore
+    cadre.isPickable = false
+  }
+
   // L'enseigne du hall, au-dessus de la descente (sous la volée ouest, face au sud).
   const enseigne = new DynamicTexture('cinema:enseigne', { width: 512, height: 128 }, scene, true)
   const g = enseigne.getContext()
@@ -381,6 +465,8 @@ export async function monterCinema(
   const mot = 'CINÉMA ↓'
   g.fillText(mot, (512 - g.measureText(mot).width) / 2, 88)
   enseigne.update()
+  enseigne.uScale = -1
+  enseigne.uOffset = 1
   const plaque = new StandardMaterial('cinema:enseigne', scene)
   plaque.disableLighting = true
   plaque.emissiveTexture = enseigne

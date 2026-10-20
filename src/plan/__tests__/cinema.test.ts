@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  APPLIQUES, BLOC_GRADINS, CABINE, COTE_PROMENOIR, ECRAN, ENCEINTES, FAUTEUIL, GRADINS, LUMIERES_MARCHES, PLAFOND, PROMENOIR, RIDEAUX,
+  APPLIQUES, BLOC_GRADINS, CABINE, TETE_ASSISE, COTE_PROMENOIR, ECRAN, ENCEINTES, FAUTEUIL, GRADINS, LUMIERES_MARCHES, PLAFOND, PROMENOIR, RIDEAUX,
   SALLE, SCENE, SIEGES, SOL, SPOTS, VOLEES_CINEMA,
 } from '../cinema'
 import { MUSEE } from '../musee'
@@ -34,7 +34,7 @@ describe('le cinéma', () => {
   })
 
   it('aligne dix-huit fauteuils par rang dans le bloc, tournés vers l’écran', () => {
-    expect(SIEGES).toHaveLength(5 * 18)
+    expect(SIEGES).toHaveLength(4 * 18)
     for (const s of SIEGES) {
       const g = GRADINS[s.rang]
       expect(s.y).toBe(g.dessus)
@@ -72,6 +72,15 @@ describe('le cinéma', () => {
     for (const c of CABINE) {
       expect(c.y0).toBeGreaterThan(COTE_PROMENOIR + 1)
       expect(c.y1).toBeLessThan(PLAFOND)
+    }
+  })
+
+  it('le faisceau du projecteur passe au-dessus des têtes assises (15 cm au moins)', () => {
+    const source = { y: (CABINE[0].y0 + CABINE[0].y1) / 2, z: CABINE[0].z }
+    for (const s of SIEGES) {
+      const t = (source.z - s.z) / (source.z - ECRAN.z)
+      const bas = source.y + t * (ECRAN.bas - source.y)
+      expect(bas - (s.y + TETE_ASSISE), `rang ${s.rang}`).toBeGreaterThan(0.15)
     }
   })
 })

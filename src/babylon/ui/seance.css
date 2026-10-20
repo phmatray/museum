@@ -10,3 +10,5 @@
   transition: background-color .15s; }
 .seance-quitter:hover { background: rgba(40,34,28,.92); }
 .seance-quitter:focus-visible { outline: 2px solid var(--hud-or); outline-offset: 2px; }
+/* Pendant la séance, rien d'autre que la toile : le plan s'efface. */
+body:has(.seance:not([hidden])) .minimap { display: none; }

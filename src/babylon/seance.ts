@@ -18,12 +18,16 @@ import type { Scene } from '@babylonjs/core/scene'
 
 import { lecteur, type Seance } from '../domain/cinema.ts'
 import { matrice3d, type Point } from '../domain/projection.ts'
+import type { Arrivee } from '../plan/arrivee.ts'
 import { partie } from './etat.ts'
 import { el } from './ui/dom.ts'
 import './ui/seance.css'
 
 /** La toile : ses coins en monde, haut-gauche, haut-droit, bas-droit, bas-gauche (vus de la salle). */
 export type Coins = readonly [Vector3, Vector3, Vector3, Vector3]
+
+/** La part de la largeur de l'image que la vidéo occupe pendant la séance (le regard se resserre sur la toile). */
+const PART_DE_L_IMAGE = 0.45
 
 /** La taille de travail du lecteur (px) : grande pour un texte net, ramenée par la matrice. */
 const LARGEUR = 1600
@@ -35,12 +39,12 @@ export interface Seances {
 
 export function monterSeance(
   scene: Scene,
-  camera: FreeCamera,
+  camera: FreeCamera & { placer?(a: Arrivee): void; walker?(): Arrivee | Omit<Arrivee, 'pitch'> },
   toile: HTMLCanvasElement,
   racine: HTMLElement,
   coins: Coins,
   programme: Seance | null,
-  effets: { debut(): void; fin(): void } = { debut() {}, fin() {} },
+  effets: { debut(): void; fin(): void; siege?: Arrivee } = { debut() {}, fin() {} },
 ): Seances {
   const rapport = Vector3.Distance(coins[0], coins[3]) / Vector3.Distance(coins[0], coins[1])
   const hauteur = Math.round(LARGEUR * rapport)
@@ -55,6 +59,9 @@ export function monterSeance(
   racine.append(salle)
 
   let reprendre = false
+  /** Où l'on était avant de s'asseoir, et son champ de vision. */
+  let avant: Arrivee | null = null
+  let champ = camera.fov
   const ecran: Point[] = [[0, 0], [0, 0], [0, 0], [0, 0]]
   const p = new Vector3()
 
@@ -86,6 +93,9 @@ export function monterSeance(
     if (observateur) suivre.remove(observateur)
     observateur = null
     effets.fin()
+    camera.fov = champ
+    if (avant && camera.placer) camera.placer(avant)
+    avant = null
     if (geste && reprendre) {
       // Le clic qui referme est un geste : le navigateur rend la souris.
       Promise.resolve(toile.requestPointerLock?.()).catch(() => {})
@@ -98,6 +108,17 @@ export function monterSeance(
     reprendre = !!document.pointerLockElement
     partie.setState({ seance: true, paused: true })
     if (reprendre) document.exitPointerLock()
+    // On s'assied : la place de la séance (cinema.ts), la sienne retrouvée à la fin.
+    if (effets.siege && camera.placer && camera.walker) {
+      avant = { ...camera.walker(), pitch: camera.rotation.x }
+      camera.placer(effets.siege)
+    }
+    // Le regard se resserre : la vidéo prend PART_DE_L_IMAGE de la largeur (champ vertical, comme visiteur.ts).
+    champ = camera.fov
+    const centre = coins[0].add(coins[2]).scale(0.5)
+    const demi = Math.atan2(Vector3.Distance(coins[0], coins[1]) / 2, Vector3.Distance(camera.position, centre))
+    const aspect = scene.getEngine().getAspectRatio(camera)
+    camera.fov = 2 * Math.atan(Math.tan(demi) / PART_DE_L_IMAGE / aspect)
     film.src = lecteur(programme.video)
     salle.hidden = false
     poser()
