@@ -22,7 +22,7 @@
  * les vitrines.
  */
 import config from '../../museum.config.json'
-import { flightEnds } from './rules.ts'
+import { flightEnds, overlapArea } from './rules.ts'
 import { SALLE, SOCLE, VITRINES } from './vitrines.ts'
 import type { Direction, Plan } from './types.ts'
 
@@ -53,10 +53,13 @@ const LACET: Record<Direction, number> = { south: 0, east: Math.PI / 2, north: M
 
 export function sculpturePlacements(plan: Plan, toutes: readonly Sculpture[] = config.sculptures): SculpturePlacement[] {
   const sculptures = toutes.filter((s) => s.project === undefined)
-  const rdc = plan.levels.reduce((a, b) => (b.elevation < a.elevation ? b : a))
-  // Les niches : une volée qui démarre au-dessus du plancher, dont l'emprise est un obstacle.
+  const rdc = plan.levels.find((l) => l.elevation === 0) ?? plan.levels[0]
+  // Les niches : une volée qui démarre au-dessus du plancher, dont l'emprise est un obstacle,
+  // pas au-dessus d'une trémie (l'escalier du sous-sol, sous la volée ouest).
+  const tremies = plan.flights.filter((f) => f.top === rdc.elevation)
   const niches = plan.flights.filter((f) =>
-    f.bottom > rdc.elevation && rdc.obstacles.some((o) => o.x === f.x && o.z === f.z && o.width === f.width && o.depth === f.depth))
+    f.bottom > rdc.elevation && rdc.obstacles.some((o) => o.x === f.x && o.z === f.z && o.width === f.width && o.depth === f.depth) &&
+    !tremies.some((t) => overlapArea(t, f) > 1e-6))
   return sculptures.slice(0, niches.length).map(({ facing, ...s }, i) => {
     const f = niches[i]
     const [tx, tz] = flightEnds(f).top

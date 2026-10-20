@@ -5,7 +5,7 @@ import type { Box } from '../mesh'
 import { CADRE_LANTERNEAU, plafonds, VOUTE } from '../plafonds'
 
 it('couvre chaque salle d’exposition, sous la dalle ou au sommet des murs, jamais le hall ni les balcons', () => {
-  for (const level of MUSEE.levels) {
+  for (const level of MUSEE.levels.filter((l) => l.elevation >= 0)) {
     const { platre, verre, resille } = plafonds(MUSEE, level.id)
     const salles = level.rooms.filter((r) => (r.kind === 'gallery' || r.kind === 'honneur') && r.id !== VOUTE.salle)
     expect(platre).toHaveLength(salles.length)
@@ -35,4 +35,11 @@ it('borde chaque lanterneau d’un cadre mouluré, sans boîte dans une autre ni
     // Il ne mord pas le verre : chaque boîte est hors de son rectangle.
     for (const c of cadre) for (const v of verre) expect(Math.abs(c.x - v.x) >= (c.w + v.w) / 2 - 1e-6 || Math.abs(c.z - v.z) >= (c.d + v.d) / 2 - 1e-6).toBe(true)
   }
+})
+
+it('couvre le cinéma et son foyer d’un plâtre plat sans lanterneau, et laisse ouverte la cage de l’escalier', () => {
+  const { platre, verre, resille } = plafonds(MUSEE, -1)
+  expect(platre.map((p) => [p.x, p.z])).toEqual([[24, 8], [9.5, 11]])
+  expect([...verre, ...resille]).toEqual([])
+  for (const p of platre) expect(p.y + p.h / 2).toBeCloseTo(-MUSEE.slab, 6)
 })

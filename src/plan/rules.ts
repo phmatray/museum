@@ -42,11 +42,14 @@ export const NORMES = {
 const EPS = 1e-6
 export const PASSABLE = new Set<Opening['kind']>(['door', 'entrance', 'open'])
 
+/** Le haut des murs du dernier étage : sous terre, un niveau ne compte pas. */
+export const sommet = (plan: Plan) => Math.max(...plan.levels.map((l) => l.elevation)) + plan.storey - plan.slab
+
 /** (x, z) est-il dans `r`, bords compris à `eps` près ? */
 export const contains = (r: Rect, x: number, z: number, eps = EPS) =>
   x >= r.x - eps && x <= r.x + r.width + eps && z >= r.z - eps && z <= r.z + r.depth + eps
 
-const overlapArea = (a: Rect, b: Rect) =>
+export const overlapArea = (a: Rect, b: Rect) =>
   Math.max(0, Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x)) *
   Math.max(0, Math.min(a.z + a.depth, b.z + b.depth) - Math.max(a.z, b.z))
 
@@ -156,17 +159,22 @@ interface Surface {
   floor: (x: number, z: number) => number
   /** Ce qu'on retire de la surface : obstacles, volées qui en partent. */
   holes: Rect[]
+  /** Les trémies : les volées qui arrivent d'en dessous la percent, on n'y passe pas dessous. */
+  openings: Rect[]
 }
 
 function surfaces(plan: Plan): Surface[] {
   const out: Surface[] = []
   for (const level of plan.levels) {
     const departs = plan.flights.filter((f) => Math.abs(f.bottom - level.elevation) < EPS)
-    for (const r of level.rooms)
-      out.push({ nom: `${r.name} (${level.name})`, rect: r, floor: () => level.elevation, holes: [...level.obstacles, ...departs] })
+    const tremies = plan.flights.filter((f) => Math.abs(f.top - level.elevation) < EPS)
+    for (const r of level.rooms) {
+      const openings = tremies.filter((f) => overlapArea(f, r) > EPS)
+      out.push({ nom: `${r.name} (${level.name})`, rect: r, floor: () => level.elevation, holes: [...level.obstacles, ...departs, ...openings], openings })
+    }
   }
-  for (const l of plan.landings) out.push({ nom: `palier ${l.id}`, rect: l, floor: () => l.elevation, holes: [] })
-  for (const f of plan.flights) out.push({ nom: `volée ${f.id}`, rect: f, floor: (x, z) => flightElevation(f, x, z), holes: [] })
+  for (const l of plan.landings) out.push({ nom: `palier ${l.id}`, rect: l, floor: () => l.elevation, holes: [], openings: [] })
+  for (const f of plan.flights) out.push({ nom: `volée ${f.id}`, rect: f, floor: (x, z) => flightElevation(f, x, z), holes: [], openings: [] })
   return out
 }
 
@@ -185,7 +193,7 @@ function headroom(plan: Plan): string[] {
         if (s.holes.some((h) => contains(h, x, z, 0))) continue
         const sol = s.floor(x, z)
         for (const o of all) {
-          if (o === s || !contains(o.rect, x, z, 0)) continue
+          if (o === s || !contains(o.rect, x, z, 0) || o.openings.some((t) => contains(t, x, z, 0))) continue
           const dessous = o.floor(x, z) - plan.slab
           if (dessous <= sol + EPS) continue
           const libre = dessous - sol

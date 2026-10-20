@@ -19,6 +19,7 @@ import { edges, guardrails, isNordSud, sameLine, subtract, type Edge, type Inter
 import { terrainDuParc } from './park.ts'
 import { hauteurDuParc } from './relief.ts'
 import { PARC, PASSABLE, flightElevation, flightEnds, surfaceAt } from './rules.ts'
+import { EXT } from './svg.ts'
 import type { Flight, Plan, Rect } from './types.ts'
 
 const RAYON = 0.3
@@ -57,7 +58,10 @@ function bout(f: Flight, cote: number): { axis: 'x' | 'z'; at: number; span: Int
 export function wallSegments(plan: Plan, levelId: number, obstacles = true): Segment[] {
   const level = plan.levels.find((l) => l.id === levelId)
   if (!level) return []
-  const toutes = [...level.rooms, { x: 0, z: 0, width: plan.width, depth: plan.depth }, ...(obstacles ? level.obstacles : [])].flatMap(edges)
+  const enBande = (e: number) => e >= level.elevation - EPS && e < level.elevation + plan.storey - EPS
+  // Le périmètre est la façade : sous terre, seules les salles ont des murs.
+  const facade = level.elevation < 0 ? [] : [{ x: 0, z: 0, width: plan.width, depth: plan.depth }]
+  const toutes = [...level.rooms, ...facade, ...(obstacles ? level.obstacles : [])].flatMap(edges)
 
   const droites: Edge[][] = []
   for (const e of toutes) {
@@ -86,6 +90,10 @@ export function wallSegments(plan: Plan, levelId: number, obstacles = true): Seg
     for (const f of plan.flights) {
       const b = bout(f, level.elevation)
       if (b && b.axis === axis && Math.abs(b.at - at) < EPS) trous.push(b.span)
+      // Sans obstacles (la 3D, et qui marche sur une volée), l'arrivée d'une volée
+      // partie de ce plancher s'ouvre aussi : l'escalier du sous-sol sort de sa cage.
+      const h = !obstacles && enBande(f.bottom) ? bout(f, f.top) : null
+      if (h && h.axis === axis && Math.abs(h.at - at) < EPS) trous.push(h.span)
     }
     for (const span of union)
       for (const [s, t] of subtract(span, trous))
@@ -152,7 +160,7 @@ function lire(plan: Plan, surface: string) {
   // Les obstacles ne ferment que le plancher : le palier passe au-dessus du sien.
   // ponytail: les garde-corps d'un niveau arrêtent aussi son plancher — vrai ici, où
   // tout ce qu'ils bordent au-dessus du sol est déclaré en obstacle.
-  return { niveau, volee, cote, murs: mursDe(plan, niveau, !volee && genre !== 'palier') }
+  return { niveau, volee, cote, murs: genre === 'parc' ? mursDuParc(plan) : mursDe(plan, niveau, !volee && genre !== 'palier') }
 }
 
 /**
@@ -169,6 +177,40 @@ function mursDe(plan: Plan, niveau: number, obstacles: boolean): Segment[] {
   let murs = parPlan.get(cle)
   if (!murs) parPlan.set(cle, (murs = [...wallSegments(plan, niveau, obstacles), ...guardrails(plan, niveau)]))
   return murs
+}
+
+/**
+ * Les murs vus du parc : ceux du rez-de-chaussée, la façade reportée sur sa
+ * face extérieure (le plan la centre à −EXT/+INT de son arête, `svg.ts`) —
+ * sinon le marcheur du parc entrait de 15 cm dans la maçonnerie. Aux angles,
+ * la façade se prolonge de EXT ; à chaque baie (l'entrée), deux tableaux
+ * relient la face extérieure à l'arête du plan.
+ */
+function mursDuParc(plan: Plan): Segment[] {
+  const cle = 'parc'
+  const parPlan = MURS.get(plan) ?? new Map<string, Segment[]>()
+  MURS.set(plan, parPlan)
+  const deja = parPlan.get(cle)
+  if (deja) return deja
+  const [W, D] = [plan.width, plan.depth]
+  const bord = (v: number, max: number) => Math.abs(v) < EPS ? -EXT : Math.abs(v - max) < EPS ? max + EXT : v
+  const out: Segment[] = []
+  for (const m of mursDe(plan, niveauDe(plan, 0), true)) {
+    const horizontal = Math.abs(m.z1 - m.z2) < EPS
+    const at = horizontal ? m.z1 : m.x1
+    const max = horizontal ? D : W
+    const facade = Math.abs(at) < EPS || Math.abs(at - max) < EPS
+    if (!facade) { out.push(m); continue }
+    const dehors = Math.abs(at) < EPS ? -EXT : max + EXT
+    const [a, b] = horizontal ? [m.x1, m.x2] : [m.z1, m.z2]
+    const long = horizontal ? W : D
+    out.push(horizontal ? { x1: bord(a, long), z1: dehors, x2: bord(b, long), z2: dehors } : { x1: dehors, z1: bord(a, long), x2: dehors, z2: bord(b, long) })
+    // Les tableaux d'une baie : là où la façade s'interrompt hors des angles.
+    for (const u of [a, b]) if (u > EPS && u < long - EPS)
+      out.push(horizontal ? { x1: u, z1: at, x2: u, z2: dehors } : { x1: at, z1: u, x2: dehors, z2: u })
+  }
+  parPlan.set(cle, out)
+  return out
 }
 
 /**

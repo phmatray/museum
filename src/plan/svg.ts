@@ -13,14 +13,15 @@ import { BELVEDERE, EMPRISE_BELVEDERE, VOLEES } from './belvedere.ts'
 import { CHANTIER, EMPRISE_CHANTIER } from './chantier.ts'
 import { MODULE, cimaisesDe } from './cimaises.ts'
 import { guardrails, isNordSud } from './geometry.ts'
-import { capacity } from './rules.ts'
+import { capacity, flightEnds, overlapArea } from './rules.ts'
 import type { Plan, Rect } from './types.ts'
 
 const C = {
   paper: '#FBFBFA', poche: '#1B1E21', gallery: '#FFFFFF', honneur: '#F3E3BF', hall: '#E4E8EB',
   stair: '#EEF0F2', closed: '#C9CDD1', ink: '#1B1E21', ink2: '#4A5057', ink3: '#7C838A', red: '#CF3326',
+  cinema: '#F2DADA',
 }
-const FILL = { gallery: C.gallery, honneur: C.honneur, hall: C.hall, balcony: C.hall }
+const FILL = { gallery: C.gallery, honneur: C.honneur, hall: C.hall, balcony: C.hall, foyer: C.hall, cinema: C.cinema }
 /** Pixels par mètre du plan dessiné : la minimap y pose le visiteur au même repère. */
 export const S = 14
 const PAD = 70
@@ -33,6 +34,8 @@ const rect = (r: Rect, attrs: string, grow = 0) =>
   `<rect x="${n(r.x - grow)}" y="${n(r.z - grow)}" width="${n(r.width + 2 * grow)}" height="${n(r.depth + 2 * grow)}" ${attrs}/>`
 const text = (x: number, y: number, s: string, attrs: string) => `<text x="${x}" y="${y}" ${attrs}>${s.replace(/&/g, '&amp;')}</text>`
 const cote = (v: number) => v.toFixed(2).replace('.', ',')
+/** Une cote de niveau, signée : +4,80, −4,80. */
+const niveau = (v: number) => `${v < -1e-6 ? '−' : '+'}${cote(Math.abs(v))}`
 
 /** Le cadre `[x, y, largeur, hauteur]` (viewBox) de tout niveau du plan. */
 export const cadre = (plan: Plan): [number, number, number, number] =>
@@ -50,9 +53,9 @@ export function renderLevel(plan: Plan, levelId: number): string {
     for (const r of below.rooms.filter((r) => r.kind === 'hall'))
       o.push(rect(r, `fill="${C.paper}"`))
 
-  // Poché : la façade tout autour, puis les salles (hors balcons) élargies et creusées.
+  // Poché : la façade tout autour (hors sol), puis les salles (hors balcons) élargies et creusées.
   const fw = EXT + INT
-  for (const r of [
+  if (level.elevation >= 0) for (const r of [
     { x: -EXT, z: -EXT, width: plan.width + 2 * EXT, depth: fw },
     { x: -EXT, z: plan.depth - INT, width: plan.width + 2 * EXT, depth: fw },
     { x: -EXT, z: -EXT, width: fw, depth: plan.depth + 2 * EXT },
@@ -72,12 +75,19 @@ export function renderLevel(plan: Plan, levelId: number): string {
   // Paliers et volées : pleins s'ils partent de ce niveau, tiretés s'ils passent au-dessus.
   const inLevel = (e: number) => e >= level.elevation - 1e-6 && e < level.elevation + plan.storey - 1e-6
   for (const l of plan.landings) {
-    if (!inLevel(l.elevation) && !(below && l.elevation > below.elevation)) continue
+    // D'en dessous, seul se voit un palier dans un vide : pas sous une salle de ce niveau.
+    if (!inLevel(l.elevation) && !(below && l.elevation > below.elevation && !level.rooms.some((r) => overlapArea(r, l) > 1e-6))) continue
     const dessus = l.elevation > level.elevation
     o.push(rect(l, `fill="${dessus ? 'none' : C.stair}" stroke="${C.ink2}" stroke-width="1" ${dessus ? 'stroke-dasharray="6 4"' : ''}`))
-    o.push(text(n(l.x + l.width / 2), n(l.z + l.depth / 2) + 4, `palier +${cote(l.elevation)}`, `text-anchor="middle" font-size="11" class="cap"`))
+    o.push(text(n(l.x + l.width / 2), n(l.z + l.depth / 2) + 4, `palier ${niveau(l.elevation)}`, `text-anchor="middle" font-size="11" class="cap"`))
   }
   for (const f of plan.flights) {
+    // Une volée qui arrive d'en dessous (l'escalier du sous-sol) passe sous le plan de coupe : une flèche de descente.
+    if (f.bottom < level.elevation - 1e-6 && Math.abs(f.top - level.elevation) < 1e-6 && below && f.bottom <= below.elevation + 1e-6) {
+      const [tx, tz] = flightEnds(f).top
+      o.push(text(n(tx), n(tz) + (f.direction === 'south' ? 16 : -8), `↓ ${niveau(f.bottom)}`, `text-anchor="middle" font-size="11" class="cap" ${halo(C.hall)}`))
+      continue
+    }
     const visible = inLevel(f.bottom) || (below && f.bottom >= below.elevation && f.top > level.elevation - 1e-6)
     if (!visible) continue
     const dessus = f.bottom > level.elevation + 1e-6 && !inLevel(f.bottom)
@@ -142,7 +152,8 @@ export function renderLevel(plan: Plan, levelId: number): string {
 
   // Étiquettes.
   for (const r of level.rooms) {
-    if (r.kind === 'balcony') continue
+    // Un balcon, ou une cage d'escalier que sa volée remplit : pas d'étiquette.
+    if (r.kind === 'balcony' || plan.flights.some((f) => overlapArea(f, r) >= r.width * r.depth - 1e-6)) continue
     const cx = n(r.x + r.width / 2)
     const fond = FILL[r.kind]
     if (r.kind === 'hall') {
@@ -153,7 +164,7 @@ export function renderLevel(plan: Plan, levelId: number): string {
     const cy = n(r.z + r.depth * 0.62)
     o.push(text(cx, cy - 6, r.name, `text-anchor="middle" font-size="15" class="lbl" ${halo(fond)}`))
     o.push(text(cx, cy + 10, `${r.width} × ${r.depth} m`, `text-anchor="middle" font-size="10.5" class="cap" ${halo(fond)}`))
-    o.push(text(cx, cy + 24, `${capacity(r, level)} œuvres`, `text-anchor="middle" font-size="10.5" class="cap" ${halo(fond)}`))
+    if (r.kind === 'gallery' || r.kind === 'honneur') o.push(text(cx, cy + 24, `${capacity(r, level)} œuvres`, `text-anchor="middle" font-size="10.5" class="cap" ${halo(fond)}`))
   }
 
   // Cotes générales, échelle, nord, cartouche.
@@ -168,7 +179,7 @@ export function renderLevel(plan: Plan, levelId: number): string {
     `<rect x="0" y="0" width="${n(5)}" height="6" fill="${C.ink}" stroke="${C.ink}"/>`, `<rect x="${n(5)}" y="0" width="${n(5)}" height="6" fill="${C.paper}" stroke="${C.ink}"/>`,
     text(0, -5, '0', `font-size="10" class="dim"`), text(n(10), -5, '10 m', `font-size="10" text-anchor="end" class="dim"`), `</g>`)
   o.push(`<g transform="translate(-40,-30)"><path d="M0,-12 L7,9 L0,5 L-7,9 z" fill="${C.ink}"/>${text(0, -16, 'N', `text-anchor="middle" font-size="11" class="dim"`)}</g>`)
-  o.push(text(0, -30, `${level.name.toUpperCase()} · +${cote(level.elevation)}`, `font-size="15" class="lbl"`))
+  o.push(text(0, -30, `${level.name.toUpperCase()} · ${niveau(level.elevation)}`, `font-size="15" class="lbl"`))
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${-PAD} ${-PAD} ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${plan.name}, ${level.name}">`,

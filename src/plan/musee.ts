@@ -23,6 +23,7 @@ import { OBSTACLES_ATELIERS } from './ateliers.ts'
 import { OBSTACLES_GRANDS_ARBRES } from './arbres.ts'
 import { OBSTACLES_BELVEDERE } from './belvedere.ts'
 import { OBSTACLES_CHANTIER } from './chantier.ts'
+import { OBSTACLES_CINEMA, PROMENOIR, SALLE as CINEMA, VOLEES_CINEMA } from './cinema.ts'
 import { obstaclesDesCimaises } from './cimaises.ts'
 import { OBSTACLES_PORTES_ENTREE, OBSTACLES_PORTIQUE } from './facade.ts'
 import { OBSTACLES_JARDIN } from './jardin.ts'
@@ -44,8 +45,12 @@ export const MUSEE: Plan = {
     { id: 'volee-centrale', x: 21, z: 15.5, width: 6, depth: 4.5, direction: 'north', bottom: 0, top: LANDING, risers: 15 },
     { id: 'volee-ouest', x: 16, z: 15.5, width: 3, depth: 4.5, direction: 'south', bottom: LANDING, top: STOREY, risers: 15 },
     { id: 'volee-est', x: 29, z: 15.5, width: 3, depth: 4.5, direction: 'south', bottom: LANDING, top: STOREY, risers: 15 },
+    // L'escalier du sous-sol, dans la cage fermée sous la volée ouest et le palier :
+    // on y entre depuis le hall en z = 20, en descendant vers le nord.
+    { id: 'volee-sous-sol', x: 16, z: 12, width: 3, depth: 8, direction: 'south', bottom: -STOREY, top: 0, risers: 28 },
+    ...VOLEES_CINEMA,
   ],
-  landings: [{ id: 'palier', x: 16, z: 12, width: 16, depth: 3.5, elevation: LANDING }],
+  landings: [{ id: 'palier', x: 16, z: 12, width: 16, depth: 3.5, elevation: LANDING }, PROMENOIR],
   levels: [
     {
       id: 0,
@@ -133,6 +138,23 @@ export const MUSEE: Plan = {
       ],
       // Les bornes et les socles des vitrines, devant le mur nord de la salle d'honneur (vitrines.ts), les bancs (mobilier.ts) et les cimaises (cimaises.ts).
       obstacles: [...OBSTACLES_BORNES, ...OBSTACLES_SOCLES, ...obstaclesDuMobilier(1), ...obstaclesDesCimaises(1)],
+    },
+    // Le sous-sol, ajouté en dernier : les niveaux 0 et 1 gardent leurs index.
+    {
+      id: -1,
+      name: 'Sous-sol',
+      elevation: -STOREY,
+      rooms: [
+        { id: 'ss-foyer', kind: 'foyer', name: 'Foyer du cinéma', x: 16, z: 4, width: 16, depth: 8 },
+        { id: 'ss-escalier', kind: 'foyer', name: 'Escalier du sous-sol', x: 16, z: 12, width: 3, depth: 8 },
+        { id: 'cinema', kind: 'cinema', name: 'Cinéma', ...CINEMA },
+      ],
+      openings: [
+        { kind: 'open', a: 'ss-escalier', b: 'ss-foyer', x: 17.5, z: 12, width: 3 },
+        { kind: 'door', a: 'ss-foyer', b: 'cinema', x: 16, z: 7, width: 2 },
+      ],
+      // La scène, les fauteuils, le dessous du promenoir (cinema.ts), et le banc du foyer (mobilier.ts).
+      obstacles: [...OBSTACLES_CINEMA, ...obstaclesDuMobilier(-1)],
     },
   ],
 }

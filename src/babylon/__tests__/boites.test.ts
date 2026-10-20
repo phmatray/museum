@@ -16,16 +16,20 @@ describe('trierBoites', () => {
 
   it('range marches, palier et paillasses à part, et ne perd aucune boîte', () => {
     expect(lots.marches.filter((b) => b.kind === 'step')).toHaveLength(45)
+    // Le sous-sol : 28 marches de l'escalier, 2 × 15 des gradins, le promenoir ; aucun GLB ne les remplace.
+    expect(lots.sousSol.filter((b) => b.kind === 'step')).toHaveLength(58)
+    expect(lots.sousSol.some((b) => b.kind === 'landing')).toBe(true)
     expect(lots.marches.some((b) => b.kind === 'landing')).toBe(true)
     expect(lots.marches.some((b) => b.kind === 'slab')).toBe(true)
     expect(lots.mains.every((b) => b.kind === 'handrail')).toBe(true)
     // Les 808 surfaces cuites sont au parement (parement.test.ts).
     const n = 808 + lots.mains.length + lots.marches.length + lots.verre.length + lots.lanterneau.flat().length
-    expect(n).toBe(977)
+    // 977 hors sol, plus les mains courantes et le verre des garde-corps du sous-sol.
+    expect(n).toBe(1027)
   })
 
   it('range le dépoli des lanterneaux par niveau, les deux niveaux en ayant', () => {
-    expect(lots.lanterneau).toHaveLength(MUSEE.levels.length)
+    expect(lots.lanterneau).toHaveLength(MUSEE.levels.filter((l) => l.elevation >= 0).length)
     expect(lots.lanterneau.every((v) => v.length > 0)).toBe(true)
   })
 })
@@ -50,7 +54,14 @@ describe('geometrieCuite', () => {
     indices: [0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7],
   }
   const b = { x: 8, y: -0.15, z: 6.5, w: 16, h: 0.3, d: 13, kind: 'slab' as const }
-  const g = geometrieCuite(gabarit, [{ b, cle: '8000,-150,6500,16000,300,13000', couleur: '#ff0000' }, { b, cle: 'absente', couleur: '#ff0000' }], INDEX)
+  // Une boîte inconnue, qu'aucune boîte cuite ne contient, puis la même au sous-sol.
+  const inconnue = { ...b, y: 50 }
+  const enBas = { ...b, y: -4.95 }
+  const g = geometrieCuite(gabarit, [
+    { b, cle: '8000,-150,6500,16000,300,13000', couleur: '#ff0000' },
+    { b: inconnue, cle: 'absente', couleur: '#ff0000' },
+    { b: enBas, cle: 'absente', couleur: '#ff0000' },
+  ], INDEX)
 
   it('pose la face +y dans son rectangle et une face 0 sur le texel (0, 0)', () => {
     const [u0, v0] = [g.uvs2[0], g.uvs2[1]]
@@ -58,8 +69,9 @@ describe('geometrieCuite', () => {
     expect([u0, v0]).toEqual([expect.closeTo(2480 / 4096, 6), expect.closeTo(2 / 2304, 6)])
     expect([u2, v2]).toEqual([expect.closeTo(2704 / 4096, 6), expect.closeTo(184 / 2304, 6)])
     expect([g.uvs2[8], g.uvs2[9]]).toEqual([expect.closeTo(0.5 / 4096, 6), expect.closeTo(0.5 / 2304, 6)])
-    // La seconde boîte n'a pas d'entrée : texel (0, 0) partout.
-    expect(g.uvs2[16]).toBeCloseTo(0.5 / 4096, 6)
+    // La seconde boîte n'a pas d'entrée : texel (0, 0) partout ; la troisième, sous terre, le texel (0, 1).
+    expect([g.uvs2[16], g.uvs2[17]]).toEqual([expect.closeTo(0.5 / 4096, 6), expect.closeTo(0.5 / 2304, 6)])
+    expect([g.uvs2[32], g.uvs2[33]]).toEqual([expect.closeTo(0.5 / 4096, 6), expect.closeTo(1.5 / 2304, 6)])
   })
 
   it('met à l’échelle, teinte et décale les indices', () => {

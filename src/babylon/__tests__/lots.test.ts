@@ -25,7 +25,7 @@ describe('lots d’instances', () => {
 
   it('accroche les extincteurs à 0,45 m et compte les banquettes', () => {
     expect(de('Extincteur').map((p) => p.y).sort()).toEqual([0.45, 0.45, 5.25])
-    expect(de('Banquette')).toHaveLength(13)
+    expect(de('Banquette')).toHaveLength(14)
   })
 
   it('compose position, lacet autour de +Y et échelle comme three', () => {

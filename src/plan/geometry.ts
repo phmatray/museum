@@ -77,17 +77,22 @@ export function guardrails(plan: Plan, levelId: number): GuardrailSegment[] {
     hautes.push({ rect: f, elevation: f.bottom, ends: isNordSud(f) ? [n, s] : [w, e], kind: 'flight' })
   }
 
-  // Les murs : les arêtes des salles qui ne sont pas des balcons, à tout niveau.
-  // ponytail: un mur est supposé continu sur toute la hauteur, vrai pour ce bâtiment.
-  const murs = plan.levels.flatMap((l) => l.rooms.filter((r) => r.kind !== 'balcony').flatMap(edges))
+  // Les murs : les arêtes des salles qui ne sont pas des balcons, à tout niveau
+  // qui monte au moins jusqu'à la surface bordée — les murs du sous-sol s'arrêtent
+  // sous le rez-de-chaussée et ne bordent pas le palier.
+  // ponytail: un mur est supposé continu sur toute la hauteur de son étage, vrai pour ce bâtiment.
+  const murs = (cote: number) => plan.levels
+    .filter((l) => l.elevation + plan.storey >= cote - EPS)
+    .flatMap((l) => l.rooms.filter((r) => r.kind !== 'balcony').flatMap(edges))
 
   const out: GuardrailSegment[] = []
   for (const h of hautes) {
     if (!inLevel(h.elevation)) continue
+    const ici = murs(h.elevation)
     for (const e of edges(h.rect)) {
       if (h.ends.some((x) => sameLine(x, e))) continue
       const cuts: Interval[] = []
-      for (const m of murs) if (sameLine(m, e)) cuts.push(m.span)
+      for (const m of ici) if (sameLine(m, e)) cuts.push(m.span)
       // Surfaces voisines de même cote, et bouts de volées posés sur cette arête.
       for (const o of hautes) {
         if (o === h) continue

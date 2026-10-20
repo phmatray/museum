@@ -103,7 +103,7 @@ ${fn('lueurCone', [['d', T], ['n', T], ['rayon', F], ['axe', F], ['c0', F], ['c1
 `)}
 ${fn('lueurs', [['p', T], ['n', T], ['nefCouleur', T], ['lampes', wgsl ? 'vec2f' : 'vec2']], T, `
   ${V('r', T, `${T}(0.0)`)}
-  ${V('nef', F, 'smoothstep(15.85, 16.15, p.x) * (1.0 - smoothstep(31.85, 32.15, p.x)) * smoothstep(11.85, 12.15, p.z) * (1.0 - smoothstep(39.85, 40.15, p.z))')}
+  ${V('nef', F, 'smoothstep(15.85, 16.15, p.x) * (1.0 - smoothstep(31.85, 32.15, p.x)) * smoothstep(11.85, 12.15, p.z) * (1.0 - smoothstep(39.85, 40.15, p.z)) * smoothstep(-0.6, -0.3, p.y)')}
   r += nefCouleur * nef * (0.75 + 0.25 * n.y);
   ${V('dedans', F, 'dedansDuMusee(p)')}
   if (lampes.x > 0.0 && dedans < 0.99) {

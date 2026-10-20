@@ -19,6 +19,9 @@ describe('lieuDe', () => {
     expect(lieuDe('0:r-o1')).toBe('galerie')
     expect(lieuDe('1:honneur')).toBe('galerie')
     expect(lieuDe(PARC)).toBe('dehors')
+    // Le sous-sol ne donne pas sur la nef : son escalier et les gradins du cinéma sonnent comme une salle.
+    expect(lieuDe('volee:volee-sous-sol')).toBe('galerie')
+    expect(lieuDe('palier:promenoir')).toBe('galerie')
   })
 })
 

@@ -18,6 +18,7 @@
 import { champDesAllees } from './allees.ts'
 import { facade } from './facade.ts'
 import { generateur, type Allee, type Parc } from './park.ts'
+import { sommet } from './rules.ts'
 import { EXT } from './svg.ts'
 import type { Plan } from './types.ts'
 
@@ -99,7 +100,7 @@ function bruit1(graine: string, pas: number): (u: number) => number {
 export function carteDesSalissures(plan: Plan): CarteDesSalissures {
   const F = facade(plan)
   const [W, D] = [plan.width, plan.depth]
-  const haut = plan.levels.length * plan.storey - plan.slab
+  const haut = sommet(plan)
   const { ppm, u0, largeur, hauteur } = SALISSURE
   const [nu, nv] = [Math.round(largeur * ppm), Math.round(hauteur * ppm)]
   const data = new Uint8Array(nu * nv * 4 * 4)

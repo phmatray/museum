@@ -101,11 +101,11 @@ describe('la marche au rez-de-chaussée', () => {
   })
 
   it('fait le tour du bâtiment par le parc sans traverser la façade, et rentre par l’entrée', () => {
-    // Dehors, devant la façade sud à côté de l'entrée : on fonce vers le nord, le mur arrête.
+    // Dehors, devant la façade sud à côté de l'entrée : on fonce vers le nord, sa face extérieure (+0,45) arrête.
     let w = vers(vers(depart(), 24, 43), 10, 43)
     w = marcher(w, 0, 5)
     expect(w.surface).toBe('parc:terrain')
-    expect(w.z).toBeCloseTo(MUSEE.depth + RAYON, 3)
+    expect(w.z).toBeCloseTo(MUSEE.depth + 0.45 + RAYON, 3)
     // Le long de la façade ouest jusqu'au nord et retour, puis on rentre dans le hall.
     w = [[-3, 43], [-3, -3], [-3, 43], [24, 43], [24, 37]].reduce((v: Walker, [x, z]) => vers(v, x, z), w)
     expect(w.surface).toBe('0:hall')
@@ -203,5 +203,53 @@ describe("l'escalier impérial", () => {
     const sud = vers(vers(balcon, 17.5, 38.5), 24, 38.5)
     expect(sud.surface).toBe('1:balcon-s')
     expect(sud.y).toBeCloseTo(4.8, 6)
+  })
+})
+
+describe('le sous-sol', () => {
+  // Le long du mur ouest de la nef, jusqu'au départ de l'escalier du sous-sol (z = 20), puis on descend vers le nord.
+  const AU_CINEMA: [number, number][] = [[18.5, 36], [17.5, 21], [17.5, 13], [17.5, 8], [16.5, 7], [14, 7], [15.25, 10.5]]
+  const AU_PROMENOIR: [number, number][] = [...AU_CINEMA, [15.25, 17], [9.5, 17.5]]
+
+  it('descend du hall au cinéma, monte les gradins jusqu’au promenoir, et revient dans le hall', () => {
+    const vues = new Set<string>()
+    let w = parcours(AU_PROMENOIR, (w) => vues.add(w.surface))
+    // La cage de l'escalier n'est que sa volée : on n'y pose jamais le pied à plat.
+    expect(['volee:volee-sous-sol', '-1:ss-foyer', '-1:cinema', 'volee:gradins-e'].filter((s) => !vues.has(s))).toEqual([])
+    expect(w.surface).toBe('palier:promenoir')
+    expect(w.y).toBeCloseTo(-2.55, 6)
+    expect(Math.hypot(w.x - 9.5, w.z - 17.5)).toBeLessThan(0.05)
+    // Et le chemin inverse, jusqu'à l'entrée.
+    for (const [x, z] of [...AU_PROMENOIR].reverse().slice(1)) w = vers(w, x, z)
+    w = vers(w, 24, 37)
+    expect(w.surface).toBe('0:hall')
+    expect(w.y).toBe(0)
+    expect(Math.hypot(w.x - 24, w.z - 37)).toBeLessThan(0.05)
+  })
+
+  it('ne passe ni par-dessus le parapet de la trémie, ni sous le promenoir', () => {
+    // Dans le hall, droit vers l'ouest au-dessus de la trémie : l'obstacle sous la volée ouest arrête.
+    let w = vers(vers(depart(), 20, 21), 20, 18)
+    w = marcher(w, Math.PI / 2, 5)
+    expect(w.surface).toBe('0:hall')
+    expect(w.x).toBeGreaterThanOrEqual(19 + RAYON - 1e-6)
+    // Au cinéma, droit vers le sud entre les allées : le bloc des fauteuils arrête.
+    w = vers(parcours(AU_CINEMA), 9.5, 9)
+    w = marcher(w, Math.PI, 5)
+    expect(w.surface).toBe('-1:cinema')
+    expect(w.z).toBeCloseTo(11 - RAYON, 3)
+  })
+})
+
+describe('la façade vue du parc', () => {
+  it('arrête le marcheur du parc contre la face extérieure de la façade, pas dans sa maçonnerie', () => {
+    // Au sud, loin de l'entrée et du portique, puis à l'est : droit sur le mur.
+    let w: Walker = { level: 0, surface: 'parc:terrain', x: 40, z: 44, y: 0, yaw: 0 }
+    w = marcher(w, 0, 5)
+    expect(w.surface).toBe('parc:terrain')
+    expect(w.z).toBeGreaterThanOrEqual(40.45 + RAYON - 1e-6)
+    expect(w.z).toBeCloseTo(40.45 + RAYON, 3)
+    w = marcher({ ...w, x: 52, z: 20 }, Math.PI / 2, 5)
+    expect(w.x).toBeCloseTo(48.45 + RAYON, 3)
   })
 })

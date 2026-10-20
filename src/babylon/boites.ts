@@ -37,7 +37,7 @@ import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData'
 import '@babylonjs/core/Meshes/thinInstanceMesh'
 import type { Scene } from '@babylonjs/core/scene'
 
-import { coordonneesDeFace, MARGE, type Face } from '../plan/lumiere.ts'
+import { coordonneesDeFace, MARGE, rectsHerites, type Face } from '../plan/lumiere.ts'
 import LUMIERE from '../plan/lumiere.json' with { type: 'json' }
 import { meshLevel, type Box } from '../plan/mesh.ts'
 import { plafonds } from '../plan/plafonds.ts'
@@ -52,10 +52,12 @@ export interface Cuite { b: Box; cle: string; couleur: string }
 export interface Lots {
   /** Les mains courantes (garde-corps des balcons et des volées, rampantes comprises). */
   mains: Box[]
-  /** Marches, palier et paillasses : retirés quand le GLB de l'escalier arrive. */
+  /** Marches, palier et paillasses de l'escalier impérial : retirés quand le GLB de l'escalier arrive. */
   marches: Box[]
+  /** Celles du sous-sol (son escalier, les gradins et le promenoir du cinéma) : aucun GLB ne les remplace. */
+  sousSol: Box[]
   verre: Box[]
-  /** Le verre dépoli des lanterneaux, un tableau par niveau (ordre de `plan.levels`). */
+  /** Le verre dépoli des lanterneaux, un tableau par niveau hors sol (ordre de `plan.levels`, le dernier sous le toit). */
   lanterneau: Box[][]
 }
 
@@ -66,6 +68,12 @@ const REFERENCE = 0.45
 const CONTRASTE = 0.75
 /** Le facteur plafonne à ECHELLE (l'octet de l'atlas couvre [0, ECHELLE × éclairement max]). */
 const ECHELLE = 2
+/**
+ * Le facteur d'ambiance du sous-sol, que le ciel n'atteint pas : une veilleuse.
+ * Le texel (0, 1) de l'atlas pour les surfaces cuites sans rectangle, l'émissive
+ * des marches du sous-sol (qui ne voient pas l'hémisphérique). Le cinéma pose ses lumières.
+ */
+export const SOUS_TERRE = 0.12
 
 /**
  * Le tri par LISTE SOURCE de PlanBuilding : le kind seul ne suffit pas (une
@@ -73,18 +81,18 @@ const ECHELLE = 2
  * plafond). Les marches attendent le GLB de l'escalier dans leur propre lot.
  */
 export function trierBoites(plan: Plan): Lots {
-  const lots: Lots = { mains: [], marches: [], verre: [], lanterneau: [] }
+  const lots: Lots = { mains: [], marches: [], sousSol: [], verre: [], lanterneau: [] }
   for (const l of plan.levels) {
     const boites = meshLevel(plan, l.id)
     // La baie du palier est le GLB de Batlló (batllo.ts) : sa vitre en boîte part.
     const verre = new Set(sansBaieBatllo(boites.filter((b) => b.kind === 'glass'), l.id))
     for (const b of boites) {
-      if (b.kind === 'step' || b.kind === 'landing' || (b.kind === 'slab' && b.y + b.h / 2 > l.elevation + 1e-6)) lots.marches.push(b)
+      if (b.kind === 'step' || b.kind === 'landing' || (b.kind === 'slab' && b.y + b.h / 2 > l.elevation + 1e-6)) (l.elevation === 0 ? lots.marches : lots.sousSol).push(b)
       else if (b.kind === 'handrail') lots.mains.push(b)
       else if (b.kind === 'railing' || verre.has(b)) lots.verre.push(b)
     }
     // Plinthes et résille sont du parement (parement.ts).
-    lots.lanterneau.push(plafonds(plan, l.id).verre)
+    if (l.elevation >= 0) lots.lanterneau.push(plafonds(plan, l.id).verre)
   }
   return lots
 }
@@ -163,8 +171,10 @@ export function boitesFusionnees(nom: string, boites: readonly Box[], scene: Sce
 /**
  * Le maillage fusionné des surfaces cuites : `geometrieDeBoites`, plus la
  * teinte par sommet et l'uv2 dans l'atlas.
- * Une face sans rectangle (clé absente, face cachée) lit le texel (0, 0) :
- * facteur 1, dans la marge, jamais atteint par le bilinéaire d'un rectangle.
+ * Une boîte sans clé hérite d'abord de la tranche de la boîte cuite qui la
+ * contient (`rectsHerites`). Une face sans rectangle (clé absente, face cachée)
+ * lit le texel (0, 0) : facteur 1, dans la marge, jamais atteint par le
+ * bilinéaire d'un rectangle ; sous terre, le texel (0, 1) : `SOUS_TERRE`.
  */
 export function geometrieCuite(
   gabarit: Gabarit,
@@ -181,7 +191,10 @@ export function geometrieCuite(
   cuites.forEach(({ cle, couleur }, k) => {
     // PBR : teintes par sommet en linéaire, comme `THREE.Color`.
     const c = lin(couleur)
-    const rects = index.boites[cle]
+    const b = cuites[k].b
+    const rects = index.boites[cle] ?? rectsHerites(b, index.boites)
+    // Sous le rez-de-chaussée, le ciel n'entre pas : l'ambiance du texel (0, 1).
+    const vide = b.y + b.h / 2 < -1e-3 ? 1.5 : 0.5
     for (let v = 0; v < nv; v++) {
       const i = k * nv + v
       const p: [number, number, number] = [gabarit.positions[3 * v], gabarit.positions[3 * v + 1], gabarit.positions[3 * v + 2]]
@@ -189,7 +202,7 @@ export function geometrieCuite(
       out.colors.set([c.r, c.g, c.b, 1], 4 * i)
       const f = faceDe(nx, ny, nz)
       const r = rects?.[f]
-      if (!Array.isArray(r)) out.uvs2.set([0.5 / L, 0.5 / H], 2 * i)
+      if (!Array.isArray(r)) out.uvs2.set([0.5 / L, vide / H], 2 * i)
       else {
         const [s, t] = coordonneesDeFace(f, p)
         out.uvs2.set([(r[0] + s * (r[2] - r[0])) / L, (r[1] + t * (r[3] - r[1])) / H], 2 * i)
@@ -303,6 +316,9 @@ export async function chargerAtlas(scene: Scene, force: number, hemi: Hemispheri
   // ponytail : une face dessus ou dessous sans rectangle (cachée en pratique) prend aussi la teinte de côté.
   teinte(0.5).forEach((v, canal) => (data[canal] = Math.round((255 * v) / niveau)))
   data[3] = 255
+  // Le texel (0, 1), même colonne jamais lue par un rectangle : le sous-sol, sans reflet du ciel.
+  teinte(0.5).forEach((v, canal) => (data[4 * L + canal] = Math.round((255 * SOUS_TERRE * v) / niveau)))
+  data[4 * L + 3] = Math.round(255 * SOUS_TERRE)
   const tex = RawTexture.CreateRGBATexture(data, L, H, scene, false, false, Texture.BILINEAR_SAMPLINGMODE)
   tex.gammaSpace = false
   tex.coordinatesIndex = 1
@@ -356,6 +372,8 @@ export interface Boites {
   atlas: Promise<RawTexture>
   /** Les marches en boîtes, à retirer (`dispose`) quand le GLB de l'escalier est posé. */
   marches: Mesh
+  /** Les marches du sous-sol (escalier, gradins, promenoir) : hors de l'hémisphérique, une veilleuse émissive. */
+  sousSol: Mesh
   /** Le dépoli des lanterneaux, un maillage par niveau (ordre de `plan.levels`), matière posée par eclairage.ts. */
   lanterneaux: Mesh[]
 }
@@ -378,6 +396,11 @@ export function monterBoites(scene: Scene, plan: Plan, ambiant: { force: number;
   cubes('verre', lots.verre, scene, verreDeGardeCorps(scene))
 
   const marches = cubes('marches', lots.marches, scene, matiere('marches', scene, '#c4bfba'))
+  // Sous terre, le ciel n'éclaire pas : l'ambiance est une veilleuse fixe, le jour comme la nuit.
+  const pierreSousSol = matiere('marches-sous-sol', scene, '#c4bfba')
+  pierreSousSol.emissiveColor = lin('#c4bfba').multiply(Color3.Lerp(ambiant.hemi.groundColor, ambiant.hemi.diffuse, 0.5)).scale(ambiant.hemi.intensity * SOUS_TERRE)
+  const sousSol = cubes('marches-sous-sol', lots.sousSol, scene, pierreSousSol)
+  ambiant.hemi.excludedMeshes.push(sousSol)
 
   // Le dépoli de base ; eclairage.ts pose ensuite la matière jour/nuit de chaque niveau.
   const depoli = matiere('lanterneau', scene, '#f4f1ea')
@@ -385,6 +408,6 @@ export function monterBoites(scene: Scene, plan: Plan, ambiant: { force: number;
   const lanterneaux = lots.lanterneau.map((v, i) => cubes(`lanterneau-${i}`, v, scene, depoli))
 
   brancherLueurs([mains.material!, marches.material!])
-  mains.receiveShadows = marches.receiveShadows = true
-  return { porteurs: [mains, marches], atlas, marches, lanterneaux }
+  mains.receiveShadows = marches.receiveShadows = sousSol.receiveShadows = true
+  return { porteurs: [mains, marches, sousSol], atlas, marches, sousSol, lanterneaux }
 }

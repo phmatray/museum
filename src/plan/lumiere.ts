@@ -18,6 +18,7 @@
 import { bandesDuSol, corniches, parementDuHall, peintureDesSalles } from './parement.ts'
 import { meshLevel, type Box } from './mesh.ts'
 import { plafonds } from './plafonds.ts'
+import { sommet } from './rules.ts'
 import { EXT } from './svg.ts'
 import type { Plan } from './types.ts'
 
@@ -42,6 +43,30 @@ export interface Surface {
 }
 
 export const cleDeBoite = (b: Box): string => [b.x, b.y, b.z, b.w, b.h, b.d].map((v) => Math.round(v * 1000)).join(',')
+
+/**
+ * Les rectangles d'une boîte que la cuisson n'a pas connue, hérités de la boîte
+ * cuite qui la contient au même y et de même h : une dalle découpée après coup
+ * (la trémie de l'escalier du sous-sol dans le hall) garde la lumière de son
+ * dessus et de son dessous, la tranche qui lui revient. Ses chants, nouveaux,
+ * n'ont pas de rectangle (0). `undefined` si aucune boîte cuite ne la contient.
+ */
+export function rectsHerites(b: Box, boites: Record<string, (number[] | number)[]>): (number[] | number)[] | undefined {
+  const m = 1e-3
+  for (const [cle, rects] of Object.entries(boites)) {
+    const [x, y, z, w, h, d] = cle.split(',').map((v) => Number(v) / 1000)
+    if (Math.abs(y - b.y) > m || Math.abs(h - b.h) > m) continue
+    const [x0, z0] = [x - w / 2, z - d / 2]
+    const [s0, s1, t0, t1] = [(b.x - b.w / 2 - x0) / w, (b.x + b.w / 2 - x0) / w, (b.z - b.d / 2 - z0) / d, (b.z + b.d / 2 - z0) / d]
+    if (s0 < -m || s1 > 1 + m || t0 < -m || t1 > 1 + m) continue
+    // Dessus et dessous courent selon (x, z) (`coordonneesDeFace`).
+    const tranche = (r: number[] | number) => Array.isArray(r)
+      ? [r[0] + s0 * (r[2] - r[0]), r[1] + t0 * (r[3] - r[1]), r[0] + s1 * (r[2] - r[0]), r[1] + t1 * (r[3] - r[1])]
+      : 0
+    return [0, 0, tranche(rects[2]), tranche(rects[3]), 0, 0]
+  }
+  return undefined
+}
 
 /** Les deux dimensions (s, t) d'une face, en mètres. */
 export function dimensionsDeFace(b: Box, f: Face): [number, number] {
@@ -90,7 +115,7 @@ export function surfacesCuites(plan: Plan): Surface[] {
  */
 export function facesVisibles(plan: Plan, surfaces: Surface[], obstacles: Box[] = []): Face[][] {
   const toutes = [...surfaces.map((s) => s.boite), ...obstacles]
-  const haut = plan.levels.length * plan.storey - plan.slab
+  const haut = sommet(plan)
   const dedans = (p: [number, number, number], soi: Box) =>
     toutes.some((b) => b !== soi && Math.abs(p[0] - b.x) < b.w / 2 - EPS && Math.abs(p[1] - b.y) < b.h / 2 - EPS && Math.abs(p[2] - b.z) < b.d / 2 - EPS)
   return surfaces.map(({ boite: b }) =>

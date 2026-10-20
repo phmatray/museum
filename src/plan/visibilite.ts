@@ -19,6 +19,8 @@
  * une salle cachée à tort surgirait au passage d'une porte, une salle dessinée
  * pour rien ne coûte que quelques triangles.
  */
+import { isNordSud } from './geometry.ts'
+import { flightEnds, overlapArea, surfaceAt } from './rules.ts'
 import type { Plan, Rect } from './types.ts'
 
 export const NEF = 'nef'
@@ -56,7 +58,19 @@ const JEU = 0.15
 
 function portails(plan: Plan): Portail[] {
   const salles = plan.levels.flatMap((l) => l.rooms)
-  return plan.levels.flatMap((l) =>
+  // Une volée qui relie deux zones (l'escalier du sous-sol, de sa cage à la nef) :
+  // un portail à son arrivée, entre la salle d'où elle part et le sol où elle arrive.
+  const volees = plan.flights.flatMap((f): Portail[] => {
+    const depart = plan.levels.find((l) => Math.abs(l.elevation - f.bottom) < 1e-6)?.rooms.find((r) => overlapArea(r, f) > 1e-6)
+    const [x, z] = flightEnds(f).top
+    const arrivee = surfaceAt(plan, x, z, f.top)
+    if (!depart || !arrivee || arrivee.startsWith('palier:')) return []
+    const zones: [Zone, Zone] = [zoneDeSalle(plan, depart.id), zoneDeSalle(plan, arrivee.slice(arrivee.indexOf(':') + 1))]
+    if (zones[0] === zones[1]) return []
+    const d = (isNordSud(f) ? f.width : f.depth) / 2 + JEU
+    return [{ zones, seg: isNordSud(f) ? [x - d, z, x + d, z] : [x, z - d, x, z + d] }]
+  })
+  return [...volees, ...plan.levels.flatMap((l) =>
     l.openings.map((o): Portail => {
       // Une ouverture posée sur une arête verticale (x constant) court selon z.
       const vertical = salles.some((r) => (r.x === o.x || r.x + r.width === o.x) && o.z > r.z && o.z < r.z + r.depth)
@@ -67,7 +81,7 @@ function portails(plan: Plan): Portail[] {
         seg: vertical ? [o.x, o.z - d, o.x, o.z + d] : [o.x - d, o.z, o.x + d, o.z],
       }
     }),
-  )
+  )]
 }
 
 const ECHANTILLONS = 24

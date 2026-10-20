@@ -2,6 +2,7 @@ import { NullEngine } from '@babylonjs/core/Engines/nullEngine'
 import { Scene } from '@babylonjs/core/scene'
 import { describe, expect, it } from 'vitest'
 
+import LUMIERE from '../../plan/lumiere.json' with { type: 'json' }
 import { MUSEE } from '../../plan/musee'
 import { COULEURS_SALLES, plinthes } from '../../plan/parement'
 import { plafonds } from '../../plan/plafonds'
@@ -14,9 +15,11 @@ describe('revetements', () => {
     return n + p.hall.length + p.salles.length + plafonds(MUSEE, l.id).resille.length
   }, 0)
 
-  it('range les 808 surfaces cuites, plus plinthes et résille sans clé', () => {
+  it('range les 808 surfaces cuites, plus le sous-sol, plinthes et résille sans clé', () => {
     const toutes = Object.values(r).flat()
-    expect(toutes.filter((c) => c.cle)).toHaveLength(808)
+    // Toutes cuites sauf la dalle du hall, que la trémie du sous-sol découpe (elle hérite de sa lumière, boites.ts).
+    expect(toutes.filter((c) => c.cle in LUMIERE.boites)).toHaveLength(807)
+    expect(toutes.filter((c) => c.cle)).toHaveLength(832)
     expect(toutes.filter((c) => !c.cle)).toHaveLength(sansCle)
     expect(r.granit.some((c) => !c.cle) && r.pierre.some((c) => !c.cle)).toBe(true)
   })
@@ -29,9 +32,10 @@ describe('revetements', () => {
 
   it('parquette les galeries à bâtons rompus, aux deux niveaux, le reste de l’étage à lames droites', () => {
     const g = r['parquet-galeries']
-    expect(new Set(g.map((c) => c.b.y + c.b.h / 2)).size).toBe(MUSEE.levels.length)
+    expect(new Set(g.map((c) => c.b.y + c.b.h / 2)).size).toBe(MUSEE.levels.filter((l) => l.rooms.some((r) => r.kind === 'gallery')).length)
     expect(r.parquet.length).toBeGreaterThan(0)
-    expect(r.parquet.every((c) => c.b.y + c.b.h / 2 > 0)).toBe(true)
+    // L'étage, et les sols du sous-sol (cinéma, foyer).
+    expect(r.parquet.every((c) => c.b.y + c.b.h / 2 > 0 || c.b.y + c.b.h / 2 < -MUSEE.storey + 1e-6)).toBe(true)
     expect(r.terrazzo.every((c) => Math.abs(c.b.y + c.b.h / 2) < 1e-6)).toBe(true)
   })
 })

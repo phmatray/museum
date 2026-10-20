@@ -23,7 +23,7 @@ export interface Rect {
   depth: number
 }
 
-export type RoomKind = 'gallery' | 'honneur' | 'hall' | 'balcony'
+export type RoomKind = 'gallery' | 'honneur' | 'hall' | 'balcony' | 'foyer' | 'cinema'
 
 export interface Room extends Rect {
   id: string

@@ -8,14 +8,16 @@
  * Un niveau porte aussi ce qui PART de son plancher sans atteindre le suivant :
  * au rez-de-chaussée, le palier et les trois volées de l'escalier impérial.
  */
-import { guardrails, isNordSud, subtract, type Interval, type Segment } from './geometry.ts'
-import { contains, flightElevation } from './rules.ts'
+import { edges, guardrails, isNordSud, sameLine, subtract, type Interval, type Segment } from './geometry.ts'
+import { contains, flightElevation, flightEnds, overlapArea } from './rules.ts'
 import { EXT, INT } from './svg.ts'
-import type { Flight, Opening, Plan } from './types.ts'
+import type { Flight, Opening, Plan, Rect } from './types.ts'
 import { wallSegments } from './walk.ts'
 
 /** Hauteur sous linteau : une porte est un trou de 2,40 m, le mur continue au-dessus. */
 const LINTEAU = 2.4
+/** Le parapet plâtré qui borde une trémie côté vide. */
+const PARAPET = 1
 const GARDE_CORPS = 1
 /** Le verre du garde-corps : un feuilleté de 15 mm, posé 4 cm au-dessus du sol. */
 const EP_VERRE = 0.015
@@ -52,6 +54,20 @@ function marches(f: Flight): { de: number; a: number; dessus: number; h: number 
       : [f.x + f.width - v, f.x + f.width - u]
     return { de, a, dessus: f.bottom + (k + 1) * h, h }
   })
+}
+
+/** `r` moins `t` : au plus quatre rectangles, bandes nord et sud pleines, puis l'ouest et l'est de `t`. */
+export function decouper(r: Rect, t: Rect): Rect[] {
+  if (overlapArea(r, t) <= EPS) return [r]
+  const [x0, x1, z0, z1] = [r.x, r.x + r.width, r.z, r.z + r.depth]
+  const [tz0, tz1] = [Math.max(z0, t.z), Math.min(z1, t.z + t.depth)]
+  const out: Rect[] = [
+    { x: x0, z: z0, width: r.width, depth: tz0 - z0 },
+    { x: x0, z: tz1, width: r.width, depth: z1 - tz1 },
+    { x: x0, z: tz0, width: Math.max(x0, t.x) - x0, depth: tz1 - tz0 },
+    { x: Math.min(x1, t.x + t.width), z: tz0, width: x1 - Math.min(x1, t.x + t.width), depth: tz1 - tz0 },
+  ]
+  return out.filter((m) => m.width > EPS && m.depth > EPS)
 }
 
 /** Boîte alignée. (x, y, z) est son CENTRE ; w court selon x, h selon y, d selon z. */
@@ -103,9 +119,22 @@ export function meshLevel(plan: Plan, levelId: number): Box[] {
     return { axis: vertical ? 'z' as const : 'x' as const, at, s: c - o.width / 2, t: c + o.width / 2 }
   }
 
-  // Une dalle par salle : à l'étage, le vide du hall n'en a pas.
-  const out: Box[] = level.rooms.map((r) =>
-    pave(r.x, r.x + r.width, level.elevation - plan.slab, level.elevation, r.z, r.z + r.depth, 'slab'))
+  // Une dalle par salle : à l'étage, le vide du hall n'en a pas. Une volée qui
+  // arrive d'en dessous y perce sa trémie : la dalle se découpe autour.
+  const tremies = plan.flights.filter((f) => Math.abs(f.top - level.elevation) < EPS && level.rooms.some((r) => overlapArea(r, f) > EPS))
+  const out: Box[] = level.rooms.flatMap((r) =>
+    tremies.reduce<Rect[]>((morceaux, t) => morceaux.flatMap((m) => decouper(m, t)), [r]).map((m) =>
+      pave(m.x, m.x + m.width, level.elevation - plan.slab, level.elevation, m.z, m.z + m.depth, 'slab')))
+  // Le long d'un mur, un bout de mur bouche l'épaisseur de dalle retirée ; côté
+  // vide, un parapet plâtré d'un mètre. L'arrivée de la volée reste ouverte.
+  for (const t of tremies) {
+    const { top } = flightEnds(t)
+    for (const e of edges(t)) {
+      if (e.axis === 'x' ? Math.abs(top[1] - e.at) < EPS : Math.abs(top[0] - e.at) < EPS) continue
+      const mur = level.rooms.some((r) => edges(r).some((m) => sameLine(m, e) && m.span[0] <= e.span[0] + EPS && m.span[1] >= e.span[1] - EPS))
+      out.push(boite(e.axis, e.at, e.span[0], e.span[1], level.elevation - plan.slab, level.elevation + (mur ? 0 : PARAPET), 'wall'))
+    }
+  }
 
   const volees = plan.flights.filter((f) => bande(f.bottom))
 
@@ -187,8 +216,9 @@ export function meshLevel(plan: Plan, levelId: number): Box[] {
   }
   // Côté mur, une volée n'a pas de garde-corps : une main courante scellée au
   // mur, à 90 cm au-dessus du nez des marches, sur des consoles tous les 1,20 m.
-  const salles = plan.levels.flatMap((l) => l.rooms.filter((r) => r.kind !== 'balcony'))
   for (const f of volees) {
+    // Pas les salles d'un étage tout entier sous la volée : leurs murs n'y montent pas.
+    const salles = plan.levels.filter((l) => l.elevation + plan.storey >= f.bottom - EPS).flatMap((l) => l.rooms.filter((r) => r.kind !== 'balcony'))
     const nordSud = isNordSud(f)
     const [s, t] = nordSud ? [f.z, f.z + f.depth] : [f.x, f.x + f.width]
     const cotes = nordSud ? [f.x, f.x + f.width] : [f.z, f.z + f.depth]

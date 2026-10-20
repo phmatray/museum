@@ -48,7 +48,7 @@ const bornes = (plan: Plan) => {
 /** Les faisceaux de la verrière (bornés à la nef) puis ceux des lanterneaux du dernier niveau (bornés à leur salle). */
 export function faisceaux(plan: Plan): Faisceau[] {
   const { nef, min, max } = bornes(plan)
-  const etage = plan.levels[plan.levels.length - 1]
+  const etage = plan.levels.reduce((a, b) => (b.elevation > a.elevation ? b : a))
   return [
     ...vitres(nef).map((vitre) => ({ vitre, min, max, doux: 0 })),
     ...plafonds(plan, etage.id).verre.flatMap((b) => {
