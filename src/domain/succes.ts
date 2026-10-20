@@ -16,7 +16,7 @@ export type Fait =
   | { type: 'geste'; id: Geste }
 
 export type Lieu = 'jardin' | 'belvedere' | 'etang' | 'chantier'
-export type Geste = 'composte' | 'borne' | 'journal' | 'etoile' | 'partage' | 'visite' | 'nuit' | 'intemperies' | 'cloche' | 'bavette' | 'vr'
+export type Geste = 'composte' | 'borne' | 'journal' | 'etoile' | 'partage' | 'visite' | 'nuit' | 'intemperies' | 'cloche' | 'bavette' | 'vr' | 'cinema'
 
 export interface Carnet {
   version: 1
@@ -78,6 +78,7 @@ export const SUCCES: readonly Succes[] = [
   { id: 'saisons', famille: 'Temps et monde', titre: 'Quatre saisons', texte: 'Vous avez vu le jardin à chaque saison.', indice: 'Le jardin change avec l’année.', progres: (c) => compte(c.saisons, 4) },
 
   { id: 'bavette', famille: 'Secrets', titre: 'Bavette', texte: 'Vous avez croisé le regard du chat du musée.', indice: 'Quelqu’un d’autre habite ici.', progres: (c) => a(c.gestes, 'bavette') },
+  { id: 'cinema', famille: 'Secrets', titre: 'Séance tenante', texte: 'Vous avez vu le film du cinéma du sous-sol.', indice: 'Sous l’escalier, on projette quelque chose.', progres: (c) => a(c.gestes, 'cinema') },
   { id: 'vr', famille: 'Secrets', titre: 'Ailleurs', texte: 'Vous avez visité le musée en réalité virtuelle.', indice: 'Il existe une autre façon d’entrer.', progres: (c) => a(c.gestes, 'vr') },
 ]
 

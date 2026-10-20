@@ -1,0 +1,394 @@
+/**
+ * Le cinéma du sous-sol (d'après Les Variétés de Waremme) : `plan/cinema.ts`
+ * dit où tout se trouve, on l'habille ici.
+ *
+ * Tissu rouge (PBR à reflet de velours, `sheen`) sur un lambris de bois clair
+ * qui suit le gradin, plafond à caissons sombres piqué de spots, scène à façade
+ * de bois, rideaux dorés plissés, écran blanc qui porte l'affiche de la séance
+ * (`public/data/cinema.json`), fauteuils, appliques et enceintes générés par
+ * Meshy (`tools/generer-cinema.ts`, posés en thin instances et ramenés à leur
+ * taille réelle par leur boîte englobante), veilleuses des marches, fenêtres de
+ * la cabine et son faisceau pendant la séance.
+ *
+ * Sous terre : ni soleil ni ciel sur ces maillages (exclus des deux lumières),
+ * mais six lumières chaudes, une par applique, qui n'éclairent qu'eux. La séance
+ * (`seance.ts`) baisse les appliques, éteint l'affiche, allume le faisceau.
+ */
+import { Constants } from '@babylonjs/core/Engines/constants'
+import type { DirectionalLight } from '@babylonjs/core/Lights/directionalLight'
+import type { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight'
+import { PointLight } from '@babylonjs/core/Lights/pointLight'
+import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
+import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture'
+import { Color3 } from '@babylonjs/core/Maths/math.color'
+import { Matrix, Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
+import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
+import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder'
+import { CreatePlane } from '@babylonjs/core/Meshes/Builders/planeBuilder'
+import { Mesh } from '@babylonjs/core/Meshes/mesh'
+import '@babylonjs/core/Meshes/thinInstanceMesh'
+import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData'
+import type { FreeCamera } from '@babylonjs/core/Cameras/freeCamera'
+import type { AssetContainer } from '@babylonjs/core/assetContainer'
+import type { Scene } from '@babylonjs/core/scene'
+
+import { affiche, type Seance } from '../domain/cinema.ts'
+import {
+  APPLIQUES, CABINE, CAISSON, COTE_PROMENOIR, ECRAN, ENCEINTES, GRADINS, LAMBRIS, LUMIERES_MARCHES,
+  PLAFOND, RIDEAUX, SALLE, SCENE, SIEGES, SOL, SPOTS,
+} from '../plan/cinema.ts'
+import { PROMENOIR, VOLEES_CINEMA } from '../plan/cinema.ts'
+import type { Walker } from '../plan/walk.ts'
+import { partie, VIVANTES } from './etat.ts'
+import { glbOuRien } from './glb.ts'
+import { monterSeance, type Coins } from './seance.ts'
+import { signaler } from './succes.ts'
+import { el } from './ui/dom.ts'
+import './ui/cinema.css'
+
+/** Les surfaces de la salle : on y est « au cinéma » (et l'on peut lancer la séance). */
+export const SURFACES_CINEMA = new Set(['-1:cinema', ...VOLEES_CINEMA.map((f) => `volee:${f.id}`), `palier:${PROMENOIR.id}`])
+
+/** L'épaisseur du revêtement posé sur la face des cloisons (évite le même plan que le mur). */
+const PEAU = 0.02
+const CHAUD = new Color3(1, 0.78, 0.52)
+
+const pbr = (scene: Scene, nom: string, couleur: Color3, rugosite: number, metal = 0) => {
+  const m = new PBRMaterial(nom, scene)
+  m.albedoColor = couleur
+  m.roughness = rugosite
+  m.metallic = metal
+  m.maxSimultaneousLights = 8
+  return m
+}
+
+/** Des matrices de translation, à la suite (thin instances). */
+function translations(points: [number, number, number][]): Float32Array {
+  const out = new Float32Array(points.length * 16)
+  points.forEach(([x, y, z], i) => Matrix.Translation(x, y, z).copyToArray(out, i * 16))
+  return out
+}
+
+/** La hauteur du sol de la salle le long d'un mur latéral (l'allée en escalier, lissée en rampe). */
+function solLeLong(z: number): number {
+  const f = VOLEES_CINEMA[0]
+  if (z <= f.z) return SOL
+  if (z >= f.z + f.depth) return COTE_PROMENOIR
+  return SOL + ((z - f.z) / f.depth) * (COTE_PROMENOIR - SOL)
+}
+
+/** Un bandeau vertical le long d'un mur latéral (x fixe), du sol (suivi) à `haut(z)`, face vers `nx`. */
+function bandeau(nom: string, scene: Scene, x: number, nx: number, z0: number, z1: number, bas: (z: number) => number, haut: (z: number) => number): Mesh {
+  const zs = [z0, VOLEES_CINEMA[0].z, VOLEES_CINEMA[0].z + VOLEES_CINEMA[0].depth, z1].filter((z, i, a) => z >= z0 && z <= z1 && a.indexOf(z) === i).sort((a, b) => a - b)
+  const positions: number[] = []
+  const indices: number[] = []
+  const normals: number[] = []
+  zs.forEach((z, i) => {
+    positions.push(x, bas(z), z, x, haut(z), z)
+    normals.push(nx, 0, 0, nx, 0, 0)
+    if (i > 0) {
+      const a = (i - 1) * 2
+      // Orientées vers la salle (scène main droite : le sens dépend de nx).
+      if (nx > 0) indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2)
+      else indices.push(a, a + 2, a + 1, a + 1, a + 2, a + 3)
+    }
+  })
+  const m = new Mesh(nom, scene)
+  Object.assign(new VertexData(), { positions, indices, normals }).applyToMesh(m)
+  return m
+}
+
+/** Un pan de rideau plissé : une grille dont le z ondule (plis réguliers), face au sud (vers la salle). */
+function rideau(nom: string, scene: Scene, r: (typeof RIDEAUX)[number], plis: number, profondeur: number): Mesh {
+  const nx = Math.max(8, Math.round((r.x1 - r.x0) / 0.12))
+  const ny = 2
+  const positions: number[] = []
+  const indices: number[] = []
+  for (let j = 0; j <= ny; j++)
+    for (let i = 0; i <= nx; i++) {
+      const u = i / nx
+      positions.push(r.x0 + u * (r.x1 - r.x0), r.y0 + (j / ny) * (r.y1 - r.y0), r.z + Math.sin(u * Math.PI * 2 * plis) * profondeur)
+    }
+  for (let j = 0; j < ny; j++)
+    for (let i = 0; i < nx; i++) {
+      const a = j * (nx + 1) + i
+      indices.push(a, a + nx + 1, a + 1, a + 1, a + nx + 1, a + nx + 2)
+    }
+  const normals: number[] = []
+  VertexData.ComputeNormals(positions, indices, normals)
+  const m = new Mesh(nom, scene)
+  Object.assign(new VertexData(), { positions, indices, normals }).applyToMesh(m)
+  return m
+}
+
+/** Pose un modèle Meshy en thin instances : ramené à `taille` (sur l'axe dit), posé au sol (ou centré), tourné de `lacet`. */
+function poser(c: AssetContainer, poses: { x: number; y: number; z: number; lacet: number }[], taille: number, axe: 'x' | 'y', centre: boolean): Mesh[] {
+  c.addAllToScene()
+  const maillages = c.meshes.filter((m): m is Mesh => m instanceof Mesh && m.getTotalVertices() > 0)
+  for (const m of maillages) {
+    m.setParent(null)
+    if (!m.computeWorldMatrix(true).isIdentity()) m.bakeCurrentTransformIntoVertices()
+  }
+  for (const t of c.transformNodes) t.dispose()
+  let min = new Vector3(Infinity, Infinity, Infinity)
+  let max = new Vector3(-Infinity, -Infinity, -Infinity)
+  for (const m of maillages) {
+    m.refreshBoundingInfo()
+    const b = m.getBoundingInfo().boundingBox
+    min = Vector3.Minimize(min, b.minimumWorld)
+    max = Vector3.Maximize(max, b.maximumWorld)
+  }
+  const s = taille / (axe === 'x' ? max.x - min.x : max.y - min.y)
+  const origine = new Vector3((min.x + max.x) / 2, centre ? (min.y + max.y) / 2 : min.y, (min.z + max.z) / 2)
+  const tampon = new Float32Array(poses.length * 16)
+  const mat = new Matrix()
+  poses.forEach((p, i) => {
+    Matrix.TranslationToRef(-origine.x, -origine.y, -origine.z, mat)
+    mat.multiplyToRef(Matrix.Scaling(s, s, s), mat)
+    mat.multiplyToRef(Matrix.RotationY(p.lacet), mat)
+    mat.multiplyToRef(Matrix.Translation(p.x, p.y, p.z), mat)
+    mat.copyToArray(tampon, i * 16)
+  })
+  for (const m of maillages) {
+    m.thinInstanceSetBuffer('matrix', tampon, 16)
+    m.isPickable = false
+    m.metadata = { ...m.metadata, immobile: true }
+    if (m.material && 'maxSimultaneousLights' in m.material) (m.material as PBRMaterial).maxSimultaneousLights = 8
+  }
+  return maillages
+}
+
+/** L'affiche : l'image 16:9 au centre de la toile 2,39:1, des bandes noires de part et d'autre. */
+function afficheSur(scene: Scene, programme: Seance | null): DynamicTexture {
+  const L = 2048
+  const H = Math.round((L * ECRAN.hauteur) / ECRAN.largeur)
+  const t = new DynamicTexture('cinema:affiche', { width: L, height: H }, scene, true)
+  const g = t.getContext()
+  g.fillStyle = '#050505'
+  g.fillRect(0, 0, L, H)
+  t.update()
+  if (!programme) return t
+  const image = new Image()
+  image.crossOrigin = 'anonymous'
+  image.onload = () => {
+    const w = H * (16 / 9)
+    g.drawImage(image, (L - w) / 2, 0, w, H)
+    t.update()
+  }
+  // Toutes les vidéos n'ont pas de vignette « maxres » (YouTube renvoie alors une image grise de 120 px).
+  let essai = 0
+  image.onerror = () => { if (essai++ === 0) image.src = affiche(programme.video, 'hqdefault') }
+  image.src = affiche(programme.video)
+  return t
+}
+
+export async function monterCinema(
+  scene: Scene,
+  camera: FreeCamera & { walker(): Walker },
+  toile: HTMLCanvasElement,
+  racine: HTMLElement,
+  base: string,
+  lumieres: { soleil: DirectionalLight; hemi: HemisphericLight },
+): Promise<void> {
+  const programme = await fetch(`${base}data/cinema.json`).then((r) => (r.ok ? (r.json() as Promise<Seance>) : null)).catch(() => null)
+  const salle: AbstractMesh[] = []
+  const garder = <T extends AbstractMesh>(m: T): T => (salle.push(m), (m.isPickable = false), m)
+
+  // ── Les matières ──
+  const tissu = pbr(scene, 'cinema:tissu', new Color3(0.42, 0.02, 0.03), 0.85)
+  tissu.sheen.isEnabled = true
+  tissu.sheen.color = new Color3(1, 0.35, 0.35)
+  tissu.sheen.intensity = 0.6
+  const lambris = pbr(scene, 'cinema:lambris', new Color3(0.62, 0.45, 0.28), 0.55)
+  // Les bandeaux le long des murs : vus d'un seul côté, mais leur sens dépend du mur ; on ne trie pas.
+  tissu.backFaceCulling = lambris.backFaceCulling = false
+  const noir = pbr(scene, 'cinema:noir', new Color3(0.015, 0.015, 0.018), 0.9)
+  const plafond = pbr(scene, 'cinema:plafond', new Color3(0.05, 0.045, 0.045), 0.8)
+  const bois = pbr(scene, 'cinema:bois', new Color3(0.33, 0.2, 0.11), 0.5)
+  const dore = pbr(scene, 'cinema:rideau', new Color3(0.62, 0.42, 0.12), 0.6)
+  dore.sheen.isEnabled = true
+  dore.sheen.color = new Color3(1, 0.85, 0.5)
+  dore.sheen.intensity = 0.7
+  dore.backFaceCulling = false
+  const ecranMat = new StandardMaterial('cinema:ecran', scene)
+  ecranMat.diffuseColor = Color3.Black()
+  ecranMat.specularColor = Color3.Black()
+  ecranMat.disableLighting = true
+  ecranMat.emissiveTexture = afficheSur(scene, programme)
+  ecranMat.emissiveColor = new Color3(0.85, 0.85, 0.85)
+  VIVANTES.add(ecranMat.name)
+  const veilleuse = new StandardMaterial('cinema:veilleuse', scene)
+  veilleuse.disableLighting = true
+  veilleuse.emissiveColor = new Color3(1, 0.62, 0.3)
+  const vitre = new StandardMaterial('cinema:cabine', scene)
+  vitre.disableLighting = true
+  vitre.emissiveColor = new Color3(0.55, 0.42, 0.25)
+
+  // ── Les murs : tissu rouge au-dessus du lambris, qui suit le gradin ──
+  const [xO, xE] = [SALLE.x + 0.15 + PEAU, SALLE.x + SALLE.width - 0.15 - PEAU]
+  const [zN, zS] = [SALLE.z + 0.15 + PEAU, SALLE.z + SALLE.depth - 0.15 - PEAU]
+  const sol = (z: number) => solLeLong(z) - 0.02
+  const lam = (z: number) => solLeLong(z) + LAMBRIS.hauteur
+  for (const [x, nx] of [[xO, 1], [xE, -1]] as const) {
+    garder(bandeau(`cinema:lambris${nx}`, scene, x, nx, zN, zS, sol, lam)).material = lambris
+    garder(bandeau(`cinema:tissu${nx}`, scene, x, nx, zN, zS, lam, () => PLAFOND - 0.02)).material = tissu
+  }
+  // Le fond (au sud, sous la cabine) : rouge au-dessus du promenoir ; le mur nord, noir derrière l'écran.
+  const fond = garder(CreatePlane('cinema:fond', { width: SALLE.width - 0.3, height: PLAFOND - COTE_PROMENOIR }, scene))
+  fond.position.set(SALLE.x + SALLE.width / 2, (PLAFOND + COTE_PROMENOIR) / 2, zS)
+  fond.material = tissu
+  const nord = garder(CreatePlane('cinema:nord', { width: SALLE.width - 0.3, height: PLAFOND - SOL }, scene))
+  nord.position.set(SALLE.x + SALLE.width / 2, (PLAFOND + SOL) / 2, zN)
+  nord.rotation.y = Math.PI
+  nord.material = noir
+
+  // ── Le plafond à caissons, ses poutres et ses spots ──
+  const fauxPlafond = garder(CreatePlane('cinema:plafond', { width: SALLE.width - 0.3, height: SALLE.depth - 0.3 }, scene))
+  fauxPlafond.position.set(SALLE.x + SALLE.width / 2, PLAFOND - 0.03, SALLE.z + SALLE.depth / 2)
+  fauxPlafond.rotation.x = -Math.PI / 2
+  fauxPlafond.material = plafond
+  const poutre = garder(CreateBox('cinema:poutres', { size: 1 }, scene))
+  poutre.material = plafond
+  const poutres: number[] = []
+  const nX = Math.round(SALLE.width / CAISSON)
+  const nZ = Math.round(SALLE.depth / CAISSON)
+  for (let i = 1; i < nX; i++) poutres.push(...Matrix.Compose(new Vector3(0.18, 0.28, SALLE.depth - 0.3), Quaternion.Identity(), new Vector3(SALLE.x + (i * SALLE.width) / nX, PLAFOND - 0.17, SALLE.z + SALLE.depth / 2)).toArray())
+  for (let j = 1; j < nZ; j++) poutres.push(...Matrix.Compose(new Vector3(SALLE.width - 0.3, 0.28, 0.18), Quaternion.Identity(), new Vector3(SALLE.x + SALLE.width / 2, PLAFOND - 0.17, SALLE.z + (j * SALLE.depth) / nZ)).toArray())
+  poutre.thinInstanceSetBuffer('matrix', new Float32Array(poutres), 16)
+  const spot = garder(CreateBox('cinema:spots', { width: 0.09, height: 0.01, depth: 0.09 }, scene))
+  const halo = new StandardMaterial('cinema:spot', scene)
+  halo.disableLighting = true
+  halo.emissiveColor = new Color3(0.75, 0.6, 0.42)
+  spot.material = halo
+  spot.thinInstanceSetBuffer('matrix', translations(SPOTS.map((s) => [s.x, PLAFOND - 0.05, s.z])), 16)
+
+  // ── La scène et sa façade de bois ──
+  const estrade = garder(CreateBox('cinema:scene', { width: SCENE.width - 0.3, height: SCENE.hauteur, depth: SCENE.depth }, scene))
+  estrade.position.set(SCENE.x + SCENE.width / 2, SOL + SCENE.hauteur / 2, SCENE.z + SCENE.depth / 2)
+  estrade.material = bois
+
+  // ── L'écran, ses rideaux ──
+  const ecran = garder(CreatePlane('cinema:ecran', { width: ECRAN.largeur, height: ECRAN.hauteur }, scene))
+  ecran.position.set(ECRAN.x, ECRAN.bas + ECRAN.hauteur / 2, ECRAN.z)
+  // Le plan regarde −z : retourné, il fait face à la salle (au sud).
+  ecran.rotation.y = Math.PI
+  ecran.material = ecranMat
+  RIDEAUX.forEach((r, i) => { garder(rideau(`cinema:rideau${i}`, scene, r, i === 2 ? 22 : 6, i === 2 ? 0.05 : 0.09)).material = dore })
+
+  // ── Veilleuses des marches, fenêtres de la cabine ──
+  const lumiere = garder(CreateBox('cinema:veilleuses', { width: 0.12, height: 0.035, depth: 0.03 }, scene))
+  lumiere.material = veilleuse
+  lumiere.thinInstanceSetBuffer('matrix', translations(LUMIERES_MARCHES.map((p) => [p.x, p.y, p.z - 0.02])), 16)
+  for (const [i, f] of CABINE.entries()) {
+    const v = garder(CreatePlane(`cinema:fenetre${i}`, { width: f.largeur, height: f.y1 - f.y0 }, scene))
+    v.position.set(f.x, (f.y0 + f.y1) / 2, f.z - PEAU - 0.01)
+    v.material = vitre
+  }
+
+  // ── Les objets Meshy : rangées de fauteuils (trois par modèle), appliques, enceintes ──
+  const [fauteuils, appliques, enceintes] = await Promise.all(['fauteuil', 'applique', 'enceinte'].map((n) => glbOuRien(scene, `assets/cinema/${n}.glb`)))
+  if (fauteuils) {
+    const rangees = GRADINS.flatMap((g) => {
+      const rang = SIEGES.filter((s) => s.rang === g.rang).sort((a, b) => a.x - b.x)
+      return Array.from({ length: Math.floor(rang.length / 3) }, (_, k) => rang[k * 3 + 1]).map((s) => ({ x: s.x, y: s.y, z: s.z, lacet: Math.PI }))
+    })
+    salle.push(...poser(fauteuils, rangees, 3 * 0.55 * 0.98, 'x', false))
+  }
+  const auMur = (p: (typeof APPLIQUES)[number], recul: number) => ({ x: p.x + p.nx * recul, y: p.y, z: p.z, lacet: Math.atan2(p.nx, p.nz) })
+  if (appliques) salle.push(...poser(appliques, APPLIQUES.map((p) => auMur(p, 0.16)), 0.95, 'y', true))
+  if (enceintes) salle.push(...poser(enceintes, ENCEINTES.map((p) => auMur(p, 0.17)), 0.55, 'y', true))
+
+  // ── Lumière : sous terre, ni soleil ni ciel ; six lumières chaudes, une par applique, pour la salle seule ──
+  lumieres.soleil.excludedMeshes.push(...salle)
+  lumieres.hemi.excludedMeshes.push(...salle)
+  const lampes = APPLIQUES.map((p, i) => {
+    const l = new PointLight(`cinema:applique${i}`, new Vector3(p.x + p.nx * 0.45, p.y + 0.25, p.z), scene)
+    l.diffuse = CHAUD
+    l.specular = CHAUD.scale(0.5)
+    l.intensity = 9
+    l.range = 9
+    l.includedOnlyMeshes = salle
+    return l
+  })
+
+  // ── Le faisceau du projecteur : de la cabine à la toile, visible pendant la séance ──
+  const source = new Vector3((CABINE[0].x + CABINE[CABINE.length - 1].x) / 2, (CABINE[0].y0 + CABINE[0].y1) / 2, CABINE[0].z - 0.05)
+  const coins: Coins = [
+    new Vector3(ECRAN.x - ECRAN.largeur / 2, ECRAN.bas + ECRAN.hauteur, ECRAN.z),
+    new Vector3(ECRAN.x + ECRAN.largeur / 2, ECRAN.bas + ECRAN.hauteur, ECRAN.z),
+    new Vector3(ECRAN.x + ECRAN.largeur / 2, ECRAN.bas, ECRAN.z),
+    new Vector3(ECRAN.x - ECRAN.largeur / 2, ECRAN.bas, ECRAN.z),
+  ]
+  const faisceau = garder(new Mesh('cinema:faisceau', scene))
+  const pos = [source, ...coins].flatMap((v) => [v.x, v.y, v.z])
+  // Le dégradé vit dans la couleur des sommets : vif à la cabine, presque rien à la toile.
+  // Ténu : on s'assied parfois DANS le faisceau (le promenoir est sous la cabine), qui ne doit pas voiler la salle.
+  const couleurs = [0.9, 0.95, 1, 0.07, ...Array.from({ length: 4 }, () => [0.7, 0.8, 1, 0.012]).flat()]
+  Object.assign(new VertexData(), { positions: pos, indices: [0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 1], colors: couleurs }).applyToMesh(faisceau)
+  const lumineux = new StandardMaterial('cinema:faisceau', scene)
+  lumineux.disableLighting = true
+  lumineux.emissiveColor = Color3.White()
+  lumineux.backFaceCulling = false
+  lumineux.disableDepthWrite = true
+  lumineux.alphaMode = Constants.ALPHA_ADD
+  faisceau.hasVertexAlpha = true
+  faisceau.material = lumineux
+  faisceau.isVisible = false
+
+  // Le faisceau ne se voit que de côté : tout près de la cabine (sur le promenoir), on serait dedans, voilé.
+  let projette = false
+  scene.onBeforeRenderObservable.add(() => {
+    if (projette) faisceau.isVisible = Vector3.DistanceSquared(camera.position, source) > 3.5 * 3.5
+  })
+
+  // ── La séance : le lecteur sur la toile, la salle qui s'éteint ──
+  const seance = monterSeance(scene, camera, toile, racine, coins, programme, {
+    debut() {
+      for (const l of lampes) l.intensity = 0.8
+      ecranMat.emissiveColor = Color3.Black()
+      projette = true
+      signaler('cinema')
+    },
+    fin() {
+      for (const l of lampes) l.intensity = 9
+      ecranMat.emissiveColor = new Color3(0.85, 0.85, 0.85)
+      projette = false
+      faisceau.isVisible = false
+    },
+  })
+
+  // L'invitation, tant qu'on est dans la salle : Entrée au clavier, un bouton au doigt.
+  const doigt = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
+  const invitation = el('button', { type: 'button', class: 'cinema-invitation', hidden: true },
+    programme ? `${doigt ? 'Touchez ici' : 'Entrée'} : voir « ${programme.titre} »` : 'Pas de séance aujourd’hui')
+  invitation.addEventListener('click', () => seance.lancer())
+  racine.append(invitation)
+  const dansLaSalle = () => SURFACES_CINEMA.has(camera.walker().surface)
+  partie.subscribe((s) => { invitation.hidden = !programme || s.seance || s.paused || !dansLaSalle() })
+  addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' || e.repeat || partie.getState().paused || !dansLaSalle()) return
+    seance.lancer()
+  })
+
+  // L'enseigne du hall, au-dessus de la descente (sous la volée ouest, face au sud).
+  const enseigne = new DynamicTexture('cinema:enseigne', { width: 512, height: 128 }, scene, true)
+  const g = enseigne.getContext()
+  g.fillStyle = '#120405'
+  g.fillRect(0, 0, 512, 128)
+  g.fillStyle = '#ffcf8a'
+  g.font = '600 64px Marcellus, Georgia, serif'
+  const mot = 'CINÉMA ↓'
+  g.fillText(mot, (512 - g.measureText(mot).width) / 2, 88)
+  enseigne.update()
+  const plaque = new StandardMaterial('cinema:enseigne', scene)
+  plaque.disableLighting = true
+  plaque.emissiveTexture = enseigne
+  plaque.diffuseColor = Color3.Black()
+  plaque.specularColor = Color3.Black()
+  const panneau = CreatePlane('cinema:enseigne', { width: 1.8, height: 0.45 }, scene)
+  panneau.position.set(17.5, 2.75, 20.06)
+  panneau.rotation.y = Math.PI
+  panneau.material = plaque
+  panneau.isPickable = false
+}
