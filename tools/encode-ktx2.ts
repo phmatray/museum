@@ -72,14 +72,14 @@ export async function encoderLesMatieres(tout = false): Promise<{ faits: number;
     const { data, info } = await sharp(octets).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
     return { width: info.width, height: info.height, data: new Uint8Array(data.buffer, data.byteOffset, data.byteLength) }
   }
-  let matieres: string[] = []
+  let matieres: string[]
   try {
     matieres = await readdir(DOSSIER)
   } catch {
     return bilan
   }
   for (const m of matieres) {
-    let fichiers: string[] = []
+    let fichiers: string[]
     try {
       fichiers = await readdir(join(DOSSIER, m))
     } catch {
