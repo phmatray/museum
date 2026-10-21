@@ -1,6 +1,6 @@
 /**
  * Ce qui habite le lit du ruisseau, en pur : où posent les galets de rivière,
- * les vieilles souches et la branche morte (`ruisseau.glb`, `RuisseauLayer`),
+ * les vieilles souches et la branche morte (`ruisseau.glb`, `babylon/ruisseau.ts`),
  * et où l'eau, heurtant tout cela, écume (`remous`, lus par le shader du
  * ruisseau dans `jardinMatieres.ts`).
  *

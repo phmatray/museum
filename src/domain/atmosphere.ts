@@ -102,7 +102,7 @@ const ETAL: Record<keyof Moments, Etalonnage> = {
 /**
  * L'air de l'heure, et le temps qu'il fait : sous les nuages ou dans le
  * brouillard, l'air prend la couleur de la brume (`brume`, celle de
- * `MeteoLayer`) et ne s'allume plus face au soleil.
+ * `babylon/meteo.ts`) et ne s'allume plus face au soleil.
  */
 export function airDuCiel(ciel: Pick<Ciel, 'jour' | 'elevation' | 'azimut'>, meteo: { nuages: number; brouillard: number }, brume: Rvb): Air {
   const p = moments(ciel)

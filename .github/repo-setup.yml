@@ -78,7 +78,7 @@ labels:
     description: "Le plan d'architecte et ses dérivés purs : src/plan/, docs/plan/"
   - name: "area: scene"
     color: "c5def5"
-    description: "Rendu 3D et déplacement : src/scene/, src/components/, src/App.tsx"
+    description: "Rendu 3D et déplacement : src/babylon/"
   - name: "area: pipeline"
     color: "c5def5"
     description: "Données du build : tools/, public/data/, src/domain/, src/io/"

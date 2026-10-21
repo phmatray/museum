@@ -1,6 +1,6 @@
 /**
  * Le numéro de cette visite, demandé une seule fois par chargement : le
- * compteur de l'entrée (`CompteurLayer`) et le billet de l'accueil le
+ * compteur de l'entrée (`babylon/departs.ts`) et le billet de l'accueil le
  * partagent, sans compter deux fois ni interroger deux fois le service.
  */
 import { URL_COMPTEUR, compterLaVisite } from '../domain/compteur'

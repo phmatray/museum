@@ -45,6 +45,20 @@ describe('les règles attrapent leur défaut', () => {
     expect(checkPlan(p, COLLECTION).some((v) => v.startsWith('hauteur libre de 2.10 m sur Hall'))).toBe(true)
   })
 
+  it('sans obstacle sous le promenoir du cinéma, on s\'y cogne la tête', () => {
+    const p = variante((p) => {
+      const ss = p.levels.find((l) => l.id === -1)!
+      ss.obstacles = ss.obstacles.filter((o) => !(o.x === 3 && o.z === 15.8))
+    })
+    expect(checkPlan(p, COLLECTION).some((v) => v.startsWith('hauteur libre de 1.95 m sur Cinéma (Sous-sol) sous palier promenoir'))).toBe(true)
+  })
+
+  it('sans trémie, la dalle du hall passerait au ras de l\'escalier du sous-sol', () => {
+    // La même volée qui arriverait à mi-hauteur : la dalle du hall n'est plus percée au-dessus.
+    const p = variante((p) => { p.flights.find((f) => f.id === 'volee-sous-sol')!.top = -0.3 })
+    expect(checkPlan(p, COLLECTION).some((v) => v.includes('sur volée volee-sous-sol sous Hall'))).toBe(true)
+  })
+
   it('une porte de 1,20 m est trop étroite', () => {
     const p = variante((p) => { p.levels[0].openings[1].width = 1.2 })
     expect(checkPlan(p, COLLECTION)).toContain('ouverture hall/r-o2 (Rez-de-chaussée) : 1.2 m de passage, il en faut 1.8')

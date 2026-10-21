@@ -16,6 +16,14 @@
  * Pur : ni three ni React.
  */
 
+/** Les volées et le palier du sous-sol, et la salle qui les enferme : ils ne donnent pas sur la nef. */
+export const SOUS_SOL: Record<string, string> = {
+  'volee:volee-sous-sol': '-1:ss-escalier',
+  'volee:gradins-o': '-1:cinema',
+  'volee:gradins-e': '-1:cinema',
+  'palier:promenoir': '-1:cinema',
+}
+
 /**
  * La sonde dont le visiteur voit le reflet : `ciel` dehors, `nef` sous la
  * verrière (hall, balcons, paliers, volées), sinon sa salle même (`0:r-o2`,
@@ -24,6 +32,8 @@
 export function sondeDeReflet(surface: string | null | undefined): string {
   if (!surface || surface.startsWith('parc:')) return 'ciel'
   const salle = surface.slice(surface.indexOf(':') + 1)
+  const sousSol = SOUS_SOL[surface]
+  if (sousSol) return sousSol
   if (surface.startsWith('palier:') || surface.startsWith('volee:') || salle === 'hall' || salle.startsWith('balcon')) return 'nef'
   return surface
 }

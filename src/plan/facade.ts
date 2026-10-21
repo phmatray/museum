@@ -15,6 +15,7 @@
  * Pur : ni three ni React.
  */
 import { meshLevel, type Box } from './mesh.ts'
+import { sommet } from './rules.ts'
 import { EXT, INT } from './svg.ts'
 import type { Plan, Rect } from './types.ts'
 
@@ -153,7 +154,7 @@ function modenature(plan: Plan, haut: number, out: Facade): void {
     { long: 'z', cote: -f, dehors: -1, refends: refendsZ, sud: false },
     { long: 'z', cote: W + f, dehors: 1, refends: refendsZ, sud: false },
   ] as const
-  const niveaux = plan.levels.map((l) => l.elevation)
+  const niveaux = plan.levels.map((l) => l.elevation).filter((e) => e >= 0)
   for (const face of faces) {
     const L = face.long === 'x' ? W : D
     /** Une boîte posée contre la façade : `a`–`b` le long du mur, `y0`–`y1`, de la face jusqu'à `saillie`. */
@@ -203,11 +204,11 @@ function modenature(plan: Plan, haut: number, out: Facade): void {
 
 export function facade(plan: Plan): Facade {
   const [W, D] = [plan.width, plan.depth]
-  const haut = plan.levels.length * plan.storey - plan.slab
+  const haut = sommet(plan)
   const out: Facade = { brique: [], pierre: [], piliers: [], vitres: [], portes: [], menuiseries: [], enseigne: { x: 0, y: 0, z: 0 }, bannieres: [], mats: [] }
 
   // La brique : une peau sur la face extérieure de chaque mur ou linteau de façade.
-  for (const level of plan.levels)
+  for (const level of plan.levels.filter((l) => l.elevation >= 0))
     for (const b of meshLevel(plan, level.id)) {
       if (b.kind !== 'wall' && b.kind !== 'lintel') continue
       const [x0, x1, z0, z1] = [b.x - b.w / 2, b.x + b.w / 2, b.z - b.d / 2, b.z + b.d / 2]

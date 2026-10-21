@@ -57,7 +57,7 @@ const PAR_ARBRE = 5
 /**
  * Cinq perchoirs dans chaque érable, et des coins de gravier sur l'allée voisine.
  * Avec `branches` (des points du dessus du feuillage de chaque essence, dans
- * son repère — `FauneLayer` les lit sur le modèle), les oiseaux se posent sur
+ * son repère — `babylon/faune.ts` les lit sur le modèle), les oiseaux se posent sur
  * le vrai houppier ; sans, à son bord, vers 2 m de rayon et 3,3 m de haut à
  * l'échelle 1 (`erable()` de build-jardin.py).
  */

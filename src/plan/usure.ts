@@ -8,16 +8,17 @@
  * au milieu des allées, dans l'axe du hall, de l'entrée à l'escalier et aux
  * portes des galeries ; la mousse prend dans les joints où l'on ne marche pas.
  *
- * Ici, les cartes que les matières (`scene/usure.ts`) lisent : la façade
+ * Ici, les cartes que les matières (`babylon/usure.ts`) lisent : la façade
  * dépliée (ses quatre faces, une rangée chacune) et le sol du parc vu du ciel.
  * Le bruit fin — le fil d'une coulure, le grain d'une plaque de mousse — est
  * ajouté par le shader ; l'endroit et la force viennent d'ici.
  *
- * Pur : ni three ni React.
+ * Pur : ni Babylon ni DOM.
  */
 import { champDesAllees } from './allees.ts'
 import { facade } from './facade.ts'
 import { generateur, type Allee, type Parc } from './park.ts'
+import { sommet } from './rules.ts'
 import { EXT } from './svg.ts'
 import type { Plan } from './types.ts'
 
@@ -46,7 +47,7 @@ export interface CarteDesSalissures {
 /**
  * La face du bâtiment qui regarde le point (x, z) — 0 nord, 1 sud, 2 ouest,
  * 3 est — et sa coordonnée le long d'elle ; `null` dedans. Aux angles, la face
- * dont on est le plus loin. Le shader refait le même calcul (`scene/usure.ts`).
+ * dont on est le plus loin. Le shader refait le même calcul (`babylon/usure.ts`).
  */
 export function faceDeFacade(plan: Plan, x: number, z: number): { face: number; u: number } | null {
   const d = [-z, z - plan.depth, -x, x - plan.width]
@@ -99,7 +100,7 @@ function bruit1(graine: string, pas: number): (u: number) => number {
 export function carteDesSalissures(plan: Plan): CarteDesSalissures {
   const F = facade(plan)
   const [W, D] = [plan.width, plan.depth]
-  const haut = plan.levels.length * plan.storey - plan.slab
+  const haut = sommet(plan)
   const { ppm, u0, largeur, hauteur } = SALISSURE
   const [nu, nv] = [Math.round(largeur * ppm), Math.round(hauteur * ppm)]
   const data = new Uint8Array(nu * nv * 4 * 4)

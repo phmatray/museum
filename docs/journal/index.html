@@ -82,13 +82,13 @@
 
   <nav class="sommaire" aria-label="Parcourir le journal">
     <div class="onglets" role="tablist" aria-label="Thèmes">
-      <button type="button" role="tab" data-cat="tout" aria-selected="true">Tout <span class="nb">110</span></button>
+      <button type="button" role="tab" data-cat="tout" aria-selected="true">Tout <span class="nb">111</span></button>
       <button type="button" role="tab" data-cat="hall" aria-selected="false">Hall & architecture <span class="nb">23</span></button>
       <button type="button" role="tab" data-cat="galeries" aria-selected="false">Galeries & œuvres <span class="nb">25</span></button>
       <button type="button" role="tab" data-cat="jardin" aria-selected="false">Jardin & dehors <span class="nb">15</span></button>
       <button type="button" role="tab" data-cat="bavette" aria-selected="false">Bavette & faune <span class="nb">12</span></button>
       <button type="button" role="tab" data-cat="ambiance" aria-selected="false">Lumière, ciel & sons <span class="nb">15</span></button>
-      <button type="button" role="tab" data-cat="site" aria-selected="false">Site & outils <span class="nb">16</span></button>
+      <button type="button" role="tab" data-cat="site" aria-selected="false">Site & outils <span class="nb">17</span></button>
       <button type="button" role="tab" data-cat="idees" aria-selected="false">Pistes &amp; idées <span class="nb">4</span></button>
     </div>
     <details class="index">
@@ -96,6 +96,26 @@
       <ol class="liste"></ol>
     </details>
   </nav>
+
+  <section class="etape" data-cat="site" aria-labelledby="t-108">
+    <div class="entete"><h2 id="t-108">108. Un nouveau moteur : Babylon.js 9</h2><span class="statut">en cours</span></div>
+    <div class="texte">
+      <p>L’étape 105 l’avait montré : un quart de chaque image partait dans l’envoi des matrices, un objet après l’autre, et React refaisait son travail de réconciliation par-dessus. Fusionner davantage dans three demandait de tout réécrire à la main. Babylon.js 9 sait déjà fusionner, poser des milliers d’instances en un appel, figer les matières et parler WebGPU. Le musée y est donc passé, en TypeScript sans framework, à côté de l’ancien moteur, salle par salle, capture contre capture. Le plan, la marche, l’accrochage, le soleil et la météo n’ont pas bougé : c’est de la logique pure, reprise telle quelle.</p>
+      <ul>
+        <li><strong>La tranche :</strong> les boîtes du plan fusionnées et en instances, avec la lumière cuite, la marche, l’accrochage, le vrai soleil et ses ombres redessinées seulement quand il le faut. Et un outil qui mesure les deux moteurs au même endroit.</li>
+        <li><strong>Vague 1, le bâtiment :</strong> la façade, la nef et sa voûte, l’horloge, la pierre, la peinture tendue, le terrazzo, les parquets et leur usure, les garde-corps, les cimaises, les portes, l’escalier et la salle d’honneur avec leur lumière cuite, la baie Batlló, le belvédère, les projecteurs et les sondes de reflets.</li>
+        <li><strong>Vague 2, l’intérieur :</strong> le mobilier, les plantes, les vitrines, les ateliers en coupe, les sculptures, les cartels et leurs QR, la mosaïque, le tableau des départs, la cloche, la constellation et la baraque du chantier. Tous les textes d’un lot partagent maintenant une seule texture.</li>
+        <li><strong>Vague 3, le jardin :</strong> le relief, le gazon, l’enceinte, les allées, la végétation et ses versions lointaines, les grands arbres, l’étang, la cascade et le ruisseau, les feuilles mortes, le lierre, la faune et Bavette. De l’intérieur, le parc n’est plus dessiné du tout tant que la porte n’est pas dans le champ.</li>
+        <li><strong>Vague 4, le ciel, la météo et le rendu :</strong> le soleil et la lune, le dôme du ciel, la pluie, la neige et la brume, puis toute la chaîne d’image : occlusion, halo, rendu des tons, rayons, étalonnage, vignette. Une sonde de reflets par salle, en fondu aux portes, et la qualité qui s’adapte à la machine.</li>
+        <li><strong>Vague 5, l’interface :</strong> l’écran de chargement, le billet, le partage, les cartes d’œuvre et d’étape, la visite guidée, les réglages, la carte et le joystick du téléphone, le son. Du DOM et du CSS, sans bibliothèque.</li>
+        <li><strong>Vague 6, la VR :</strong> au casque comme au Cardboard, les crans de 30°, la vignette de confort et le rendu par œil, comme à l’étape 106.</li>
+        <li><strong>Vague 7, la bascule :</strong> Babylon devient le seul moteur. three, React, React Three Fiber, drei et postprocessing quittent le projet. Avant de partir, la façade reprend son usure (coulures, pied éclaboussé, arêtes épaufrées) et le parc ses pas : gravier foulé au milieu des allées, mousse dans les joints du dallage. Les modèles Blender restent confrontés aux cotes du plan par les tests.</li>
+      </ul>
+      <p>Les effets de shader (la lueur de la nuit, la pluie sur les dalles, le vent dans les feuilles) sont écrits deux fois, en GLSL et en WGSL. Le musée tourne ainsi en WebGPU quand le navigateur sait faire, et en WebGL2 sinon. La VR reste en WebGL2.</p>
+      <p class="note">À l’arrivée, même vue, même heure, mesuré sur ma machine en WebGL2 : 680 appels de dessin deviennent 151, et 5,47 millions de triangles deviennent 1,04 million. Le temps par image passe de 24 ms à entre 5 et 16 ms, selon ce que la machine fait à côté. Il reste des raccourcis notés dans le code : le tri des salles ne voit encore ni la verrière ni les baies hautes, et les maillages fusionnés ne sont pas découpés par salle. La VR en WebGPU attend que les casques le permettent.</p>
+    </div>
+    <figure><img src="img/108-babylon.jpg" width="1000" height="625" alt="Le hall d’arrivée avec l’horloge et le tableau des départs ; la salle d’honneur avec ses panneaux rouges ; la façade en brique avec ses bannières ; l’étang du jardin sous les érables rouges."><figcaption>Le hall, la salle d’honneur, la façade et l’étang, rendus par Babylon.js.</figcaption></figure>
+  </section>
 
   <section class="etape" data-cat="jardin" aria-labelledby="t-107">
     <div class="entete"><h2 id="t-107">107. De grands arbres pour le relief du jardin</h2><span class="statut fait">en ligne · PR #211</span></div>

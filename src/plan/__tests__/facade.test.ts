@@ -2,6 +2,7 @@ import { expect, it } from 'vitest'
 
 import { ENTREE, facade, lignesDeBanniere, OBSTACLES_PORTES_ENTREE, OBSTACLES_PORTIQUE } from '../facade'
 import { MUSEE } from '../musee'
+import { sommet } from '../rules'
 
 it('centre le portique sur l’entrée et laisse sa baie du milieu libre', () => {
   const entree = MUSEE.levels[0].openings.find((o) => o.kind === 'entrance')!
@@ -49,7 +50,7 @@ it('pose un soubassement et une corniche de pierre sur les quatre façades, sans
   const f = facade(MUSEE)
   const [W, D] = [MUSEE.width, MUSEE.depth]
   const socles = f.pierre.filter((b) => Math.abs(b.y - b.h / 2) < 1e-6 && b.h > 0.5)
-  const corniches = f.pierre.filter((b) => Math.abs(b.y + b.h / 2 - (MUSEE.levels.length * MUSEE.storey - MUSEE.slab)) < 1e-6)
+  const corniches = f.pierre.filter((b) => Math.abs(b.y + b.h / 2 - sommet(MUSEE)) < 1e-6)
   for (const lot of [socles, corniches]) {
     expect(lot.some((b) => b.z < 0 && b.w > W)).toBe(true)
     expect(lot.some((b) => b.z > D && b.w > 10)).toBe(true)

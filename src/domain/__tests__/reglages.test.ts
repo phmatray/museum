@@ -4,7 +4,7 @@ import { DEFAUTS, ecrireReglages, heureTexte, lireReglages, mouvementReduitPour,
 import { meteoDemandee } from '../meteo'
 import { saisonA } from '../saisons'
 import { heureDemandee } from '../soleil'
-import { qualiteDemandee } from '../../scene/qualite'
+import { qualiteDemandee } from '../qualite'
 
 describe('reglages', () => {
   it('rend les défauts pour rien, du JSON abîmé ou autre chose qu’un objet', () => {

@@ -1,0 +1,5 @@
+/* La séance (seance.ts) : le lecteur, un HtmlMesh sous le canevas, vu par le trou de la toile. */
+/* Projeté : un rien moins lumineux et saturé qu'un écran d'ordinateur, sans bord. */
+.seance-film { display: block; border: 0; background: #000; filter: brightness(.92) saturate(.94) contrast(.97); }
+/* Pendant la séance, rien d'autre que la toile : le plan s'efface. */
+body:has(.seance-film) .minimap { display: none; }

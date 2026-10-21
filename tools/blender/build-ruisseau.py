@@ -18,7 +18,7 @@ dans le manifeste `tools/fetch-assets.ts`.
 - `src_branche` : modelée ici, 3 m le long de +X depuis l'origine, un bois mort
   pelé, gris pâle, et quelques rameaux.
 
-Tout est à l'origine : `src/scene/RuisseauLayer.tsx` les pose (`src/plan/ruisseau.ts`).
+Tout est à l'origine : `src/babylon/ruisseau.ts` les pose (`src/plan/ruisseau.ts`).
 Déterministe : des tirages semés, aucune horloge.
 """
 

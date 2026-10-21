@@ -51,12 +51,16 @@ describe('meshLevel au rez-de-chaussée', () => {
 
   it('pose des dalles qui couvrent l\'emprise, dessus au plancher', () => {
     const dalles = boxes.filter((b) => b.kind === 'slab' && Math.abs(b.y + b.h / 2 - niveau.elevation) < 1e-6)
-    expect(dalles.reduce((s, b) => s + b.w * b.d, 0)).toBeCloseTo(MUSEE.width * MUSEE.depth)
+    // Moins la trémie de l'escalier du sous-sol, qui arrive dans le hall.
+    const tremies = MUSEE.flights.filter((f) => f.top === niveau.elevation).reduce((s, f) => s + f.width * f.depth, 0)
+    expect(tremies).toBeGreaterThan(0)
+    expect(dalles.reduce((s, b) => s + b.w * b.d, 0)).toBeCloseTo(MUSEE.width * MUSEE.depth - tremies)
     for (const d of dalles) expect(d.h).toBe(MUSEE.slab)
   })
 
   it('monte les murs du plancher au plafond', () => {
-    const murs = boxes.filter((b) => b.kind === 'wall')
+    // Hors de la trémie : son parapet et ses bouts de mur partent du dessous de la dalle.
+    const murs = boxes.filter((b) => b.kind === 'wall' && b.y - b.h / 2 > -1e-6)
     expect(murs.length).toBeGreaterThan(0)
     for (const m of murs) {
       expect(m.y - m.h / 2).toBeCloseTo(niveau.elevation)
@@ -65,8 +69,18 @@ describe('meshLevel au rez-de-chaussée', () => {
   })
 
   it('ne bâtit pas de mur sous le palier : un obstacle arrête la marche, pas le regard', () => {
-    const sous = boxes.filter((b) => b.kind === 'wall' && b.x > 16 + 0.5 && b.x < 32 - 0.5 && b.z > 12 + 0.5 && b.z < 20)
+    const sous = boxes.filter((b) => b.kind === 'wall' && b.y - b.h / 2 > -1e-6 && b.x > 16 + 0.5 && b.x < 32 - 0.5 && b.z > 12 + 0.5 && b.z < 20)
     expect(sous).toEqual([])
+  })
+
+  it("borde la trémie du sous-sol d'un parapet d'un mètre côté vide, et bouche la dalle le long des murs", () => {
+    const tremie = boxes.filter((b) => b.kind === 'wall' && Math.abs(b.y - b.h / 2 + MUSEE.slab) < 1e-6)
+    const parapet = tremie.filter((b) => b.y + b.h / 2 > 0.5)
+    expect(parapet).toHaveLength(1)
+    expect(parapet[0]).toMatchObject({ x: 19, z: 16, d: 8 })
+    expect(parapet[0].y + parapet[0].h / 2).toBeCloseTo(1)
+    // Les bouts de mur sur les droites x = 16 et z = 12, l'épaisseur de la dalle.
+    expect(tremie.filter((b) => b.h === MUSEE.slab).map((b) => [b.x, b.z]).sort()).toEqual([[16, 16], [17.5, 12]])
   })
 
   it('ferme la façade jusqu\'aux angles extérieurs', () => {

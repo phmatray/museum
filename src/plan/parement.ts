@@ -30,6 +30,8 @@ function hallDe(plan: Plan): Rect {
 
 /** Le parement des murs et linteaux qui bordent le hall, sur un niveau. */
 export function parementDuHall(plan: Plan, levelId: number): Box[] {
+  // Un niveau sans hall ni balcon (le sous-sol) ne borde pas la nef, même sous son emprise.
+  if (!plan.levels.find((l) => l.id === levelId)?.rooms.some((r) => r.kind === 'hall' || r.kind === 'balcony')) return []
   const peau = peauInterieure(plan, levelId, hallDe(plan), PEAU)
   // Les murs d'un niveau s'arrêtent sous la dalle du suivant : sur le hall, là
   // où aucun balcon ne vient s'y appuyer (au-dessus des volées latérales, sous

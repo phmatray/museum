@@ -5,7 +5,7 @@ Le lampadaire du parc, généré par Blender en headless.
     blender --background --factory-startup --python tools/blender/build-lampadaire.py -- --apercu /tmp/lampadaire
 
 Produit `public/assets/architecture/lampadaire.glb`, un seul nœud `Lampadaire`,
-instancié par `src/scene/MobilierLayer.tsx` aux places de `src/plan/mobilier.ts`.
+instancié par `src/babylon/mobilier.ts` aux places de `src/plan/mobilier.ts`.
 
 « Ça manque de lumière à l'extérieur. On ajoute des lampadaires ? » (Philippe),
 sur le modèle du Lindby « Daphne » : 2,20 m, fonte d'aluminium noire, un pied

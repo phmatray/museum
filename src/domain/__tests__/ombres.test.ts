@@ -7,6 +7,8 @@ import { FONDU_REFLET, RAFRAICHIR, cadrerOmbre, ecartDeMatrice, melangeDeReflets
 describe('sondeDeReflet', () => {
   it('lit la sonde sur la surface du marcheur', () => {
     expect(sondeDeReflet('parc:terrain')).toBe('ciel')
+    expect(sondeDeReflet('volee:gradins-o')).toBe('-1:cinema')
+    expect(sondeDeReflet('volee:volee-sous-sol')).toBe('-1:ss-escalier')
     expect(sondeDeReflet(null)).toBe('ciel')
     expect(sondeDeReflet('0:hall')).toBe('nef')
     expect(sondeDeReflet('1:balcon-o')).toBe('nef')
