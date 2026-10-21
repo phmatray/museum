@@ -396,7 +396,7 @@ export async function monterCinema(
   for (let j = 0; j < 64; j++)
     for (let i = 0; i < 64; i++) {
       const [u, v] = [(i + 0.5) / 64, (j + 0.5) / 64]
-      img.data.set([235, 242, 255, Math.round(255 * Math.pow(Math.sin(Math.PI * u), 1.5) * (0.1 * (1 - v) + 0.016 * v))], (j * 64 + i) * 4)
+      img.data.set([235, 242, 255, Math.round(255 * Math.pow(Math.sin(Math.PI * u), 1.5) * (0.06 * (1 - v) + 0.01 * v))], (j * 64 + i) * 4)
     }
   gv.putImageData(img, 0, 0)
   voile.update()
