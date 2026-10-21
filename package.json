@@ -42,7 +42,7 @@
     "draco3d": "^1.5.7",
     "eslint": "^9.39.4",
     "globals": "^17.4.0",
-    "jsdom": "^29.0.2",
+    "jsdom": "^30.0.0",
     "ktx2-encoder": "^0.6.0",
     "puppeteer-core": "^25.3.0",
     "sharp": "^0.35.3",
