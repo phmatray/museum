@@ -197,7 +197,6 @@ function afficheSur(scene: Scene, programme: Seance | null): DynamicTexture {
 export async function monterCinema(
   scene: Scene,
   camera: FreeCamera & { walker(): Walker; asseoir(a: Arrivee, oeil: number): void },
-  toile: HTMLCanvasElement,
   racine: HTMLElement,
   base: string,
   lumieres: { soleil: DirectionalLight; hemi: HemisphericLight },
@@ -455,7 +454,7 @@ export async function monterCinema(
   })
 
   // ── La séance : le lecteur sur la toile, la salle qui s'éteint ──
-  const seance = monterSeance(scene, camera, toile, racine, coins, programme, {
+  const seance = monterSeance(scene, coins, programme, {
     debut() {
       cible = 1
       signaler('cinema')
