@@ -101,7 +101,9 @@ accepted and ignored.
   `alwaysSelectAsActiveMesh` keeps it always drawn, `metadata.immobile` lets a park batch be compacted;
   `toutMontrer()`/`retrier()` around off-eye renders (probes). The shadow map chains `getCustomRenderList`.
 - `soleil.ts`: one `DirectionalLight` (sun 3.4 in PBR, moon by night), hemispheric /π, a `ShadowGenerator` redrawn on
-  demand (`BOUGE` lists the moving casters). `ciel.ts`: the sky dome. `reflets.ts`: one probe per room, specular
+  demand (`BOUGE` lists the moving casters). `ciel.ts`: the sky dome; by day it samples the sky-view LUT of `@babylonjs/addons`' `Atmosphere` (tables only:
+  no compositor, no aerial perspective, its PBR plugin unregistered; LUT redrawn only when the sun or exposure
+  moves), with the day photo's clouds on top and the night photo below. `reflets.ts`: one probe per room, specular
   environment only, cross-faded at doorways, captures suspended in VR.
 - `postTraitement.ts`: HDR chain SSAO2 → bloom → tone mapping → god rays → grading → vignette → FXAA (creation order is
   chain order). `qualite.ts`: `setHardwareScalingLevel(1/d)` driven by a PerformanceMonitor-like monitor.
@@ -169,7 +171,7 @@ asset credits are declared in the `tools/fetch-assets.ts` manifest and regenerat
   (`main.ts`, `instr` is a `SceneInstrumentation`), `window.__PRET__` (scene ready, `chargement.ts`),
   `window.__BAVETTE__`, `window.__FAUNE__`, `window.__TOUT_VOIR__` (disable culling).
 - URL parameters force live state for screenshots: `?heure=HH:MM`, `?meteo=clair|pluie|neige|brouillard|orage`,
-  `?saison=printemps|ete|automne|hiver`, `?ombres=0`, `?annonce=1`, `?gpu=0` (force WebGL2, to compare both paths),
+  `?saison=printemps|ete|automne|hiver`, `?ombres=0`, `?annonce=1`, `?gpu=0` (force WebGL2, to compare both paths), `?ciel=photo` (the old photo sky instead of the physical one),
   `?vr=cardboard` (the Cardboard polyfill on a desktop, to drive VR headless), `?qualite=haute|basse` (freezes the
   adaptive pixel ratio of `babylon/qualite.ts`; use `haute` for captures on a loaded machine). `?p=<repo>` (or
   `?projet=owner/repo`, `#repo`) opens the museum in front of that painting (`domain/lien.ts`, `plan/arrivee.ts`); the

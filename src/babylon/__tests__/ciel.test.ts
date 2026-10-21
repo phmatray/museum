@@ -26,10 +26,22 @@ describe('monterCiel', () => {
   })
 
   it('WGSL sans GLSL résiduel', () => {
-    const { sommets, fragments } = codeDuCiel(true)
-    expect(sommets + fragments).not.toMatch(/\bfloat |\bvec[234]\(|\batan\(|texture2D/)
-    expect(fragments).toContain('atan2(')
+    for (const physique of [false, true]) {
+      const { sommets, fragments } = codeDuCiel(true, physique)
+      expect(sommets + fragments).not.toMatch(/\bfloat |\bvec[234]\(|\batan\(|texture2D/)
+      expect(fragments).toContain('atan2(')
+    }
     expect(codeDuCiel(false).fragments).toContain('atan(d.z, d.x)')
+  })
+
+  it('physique : la table du ciel de l’Atmosphere, la photo du jour ne garde que ses nuages', () => {
+    for (const wgsl of [false, true]) {
+      const { fragments } = codeDuCiel(wgsl, true)
+      expect(fragments).toContain('cielLut')
+      expect(fragments).toContain('cielPhysique(d)')
+      expect(fragments).not.toContain('mix(jourTex')
+    }
+    expect(codeDuCiel(false).fragments).not.toContain('cielLut')
   })
 })
 

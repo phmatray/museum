@@ -1,7 +1,10 @@
 /**
- * Le ciel du musée (Ciel.tsx) : une sphère lointaine qui fond la photo de jour
- * (kloofendal, nuageux) dans celle de nuit (rogland, étoilée), dore l'horizon au
- * lever et au coucher, se couvre, se voile d'air et de brume, s'allume à l'éclair.
+ * Le ciel du musée (Ciel.tsx) : une sphère lointaine. Le jour est physique (la table du ciel de
+ * l'Atmosphere de Babylon, `monterAtmosphere`, sous le vrai soleil : bleu à midi, doré puis rose
+ * au lever et au coucher, crépuscule après) ; la photo de jour (kloofendal) n'y prête que ses
+ * nuages, éclairés par ce soleil ; la nuit reste la photo étoilée (rogland). Puis il se couvre,
+ * se voile d'air et de brume, s'allume à l'éclair. `?ciel=photo` (ou un moteur sans WebGL2 ni
+ * WebGPU) rend l'ancien ciel : la photo de jour fondue dans celle de nuit, l'horizon doré au crépuscule.
  *
  * Sortie LINÉAIRE HDR : le rendu des tons et l'étalonnage passent dessus
  * (postTraitement.ts). Chaque photo n'est chargée que quand elle peut servir
@@ -19,9 +22,16 @@ import { Vector3, Vector4 } from '@babylonjs/core/Maths/math.vector'
 import { CreateSphere } from '@babylonjs/core/Meshes/Builders/sphereBuilder'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
 import type { Scene } from '@babylonjs/core/scene'
+import { Atmosphere } from '@babylonjs/addons/atmosphere/atmosphere'
+// L'addon lit le regard de la caméra par un rayon (getForwardRayToRef) : l'effet de bord de Ray d'abord.
+import '@babylonjs/core/Culling/ray'
+import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight'
+import { UnregisterMaterialPlugin } from '@babylonjs/core/Materials/materialPluginManager'
+import type { RenderTargetTexture } from '@babylonjs/core/Materials/Textures/renderTargetTexture'
+import { Color3 } from '@babylonjs/core/Maths/math.color'
 
-import type { Ciel } from '../domain/soleil.ts'
-import { auCiel, vivant, VIVANTES } from './etat.ts'
+import { directionDuSoleil, type Ciel } from '../domain/soleil.ts'
+import { auCiel, recherche, vivant, VIVANTES } from './etat.ts'
 import { dialecte } from './greffe.ts'
 import { AIR, METEO } from './intemperies.ts'
 
@@ -29,28 +39,57 @@ const PHOTOS = { jour: 'assets/ciel/kloofendal_48d_partly_cloudy_puresky.jpg', n
 /** À combien de degrés de l'horizon on va chercher la photo de l'autre ciel (≈ 1 h avant le crépuscule). */
 const VEILLE = 12
 
-/** Le fragment de Ciel.tsx, une fois, dans les deux langues (exporté pour les tests). */
-export function codeDuCiel(wgsl: boolean): { sommets: string; fragments: string } {
+/**
+ * Le fragment de Ciel.tsx, une fois, dans les deux langues (exporté pour les tests). `physique` : le jour
+ * vient de la table du ciel de l'Atmosphere de Babylon (`cielLut`, sa paramétrisation de `sampleSkyViewLut`),
+ * les nuages de la photo du jour, éclairés par le soleil qui a traversé l'air (`teinte`) et par ce ciel ;
+ * la nuit reste la photo étoilée, ajoutée sous le crépuscule physique.
+ */
+export function codeDuCiel(wgsl: boolean, physique = false): { sommets: string; fragments: string } {
   const { V, u, tr, fn } = dialecte(wgsl)
-  const tex = (n: string) => (wgsl ? `textureSampleLevel(${n}, ${n}Sampler, uv, 0.0).rgb` : `texture2D(${n}, uv).rgb`)
+  const tex = (n: string, uv = 'uv') => (wgsl ? `textureSampleLevel(${n}, ${n}Sampler, ${uv}, 0.0).rgb` : `texture2D(${n}, ${uv}).rgb`)
   const uniformes: [string, string][] = [
     ['jour', 'float'], ['crepuscule', 'float'], ['nuages', 'float'], ['brume', 'float'], ['eclair', 'float'],
     ['brumeCouleur', 'vec3'], ['air', 'vec4'], ['airSoleil', 'vec4'], ['airLueur', 'vec3'],
+    ...(physique ? ([['horizon', 'float'], ['teinte', 'vec3']] as [string, string][]) : []),
   ]
   const T = (t: string) => (wgsl ? (t === 'float' ? 'f32' : `${t}f`) : t)
   const decl = uniformes.map(([n, t]) => (wgsl ? `uniform ${n}: ${T(t)};` : `uniform ${t} ${n};`)).join('\n')
-  const textures = wgsl
-    ? 'var jourTexSampler: sampler;\nvar jourTex: texture_2d<f32>;\nvar nuitTexSampler: sampler;\nvar nuitTex: texture_2d<f32>;'
-    : 'uniform sampler2D jourTex;\nuniform sampler2D nuitTex;'
+  const noms = ['jourTex', 'nuitTex', ...(physique ? ['cielLut'] : [])]
+  const textures = noms.map((n) => (wgsl ? `var ${n}Sampler: sampler;\nvar ${n}: texture_2d<f32>;` : `uniform sampler2D ${n};`)).join('\n')
   // atmosphere.ts : la couleur de l'air dans la direction d, qui s'allume face au soleil.
   const airCouleur = fn('airCouleur', [['d', 'vec3']], 'vec3', `
   ${V('face', 'float', `max(dot(d, ${u('airSoleil')}.xyz), 0.0)`)}
   return ${u('air')}.rgb + ${u('airLueur')} * ${u('airSoleil')}.w * (0.25 * face * face + pow(face, 12.0));`)
+  // sampleSkyViewLut (atmosphereFunctions de l'addon), l'œil au sol : le zénith est +y, `horizon` le cosinus
+  // de l'horizon depuis le zénith, l'azimut compté depuis celui du soleil ; table de 128², demi-texel de bord.
+  const cielPhysique = tr(fn('cielPhysique', [['d', 'vec3']], 'vec3', `
+  ${V('h', 'float', u('horizon'))}
+  ${V('azimut', 'float', `dot(normalize(d.xz + vec2(1e-5, 0.0)), normalize(${u('airSoleil')}.xz + vec2(1e-5, 0.0)))`)}
+  ${V('haut', 'float', '0.5 * sqrt(max(0.0, (d.y - h) / (1.0 - h))) + 0.5')}
+  ${V('bas', 'float', '0.5 * sqrt(max(0.0, (d.y + 1.0) / (h + 1.0)))')}
+  ${V('l', 'vec2', 'vec2(0.5 - 0.5 * azimut, mix(haut, bas, step(0.95 * d.y, h))) * (127.0 / 128.0) + 0.5 / 128.0')}
+  return ${tex('cielLut', 'l')};`))
+  const jour = physique
+    ? `
+  ${V('photo', 'vec3', tex('jourTex'))}
+  ${V('pMax', 'float', 'max(photo.r, max(photo.g, photo.b))')}
+  // Le nuage de la photo : ce qui n'est pas bleu (peu saturé), au-dessus de l'horizon.
+  ${V('nuage', 'float', `(1.0 - smoothstep(0.1, 0.35, (pMax - min(photo.r, min(photo.g, photo.b))) / max(pMax, 1e-3))) * smoothstep(0.0, 0.06, d.y) * smoothstep(0.1, 0.6, ${u('jour')})`)}
+  ${V('physique', 'vec3', 'cielPhysique(d)')}
+  // Les étoiles seulement une fois le ciel physique éteint (sinon elles perceraient l'aube).
+  ${V('c', 'vec3', `physique + ${tex('nuitTex')} * (1.0 - smoothstep(0.0, 0.5, ${u('jour')}))`)}
+  // Éclairé par le soleil qui a traversé l'air, et par ce ciel.
+  // Bas sur l'horizon, le soleil rougit mais le nuage, éclairé par-dessous, reste vif : sa teinte, à peine assombrie.
+  ${V('soleilNuage', 'vec3', `mix(vec3(dot(${u('teinte')}, vec3(0.3, 0.59, 0.11))), ${u('teinte')}, 0.7) / max(max(${u('teinte')}.r, max(${u('teinte')}.g, ${u('teinte')}.b)), 0.4)`)}
+  // Jamais plus sombre que le ciel derrière : le bord bleu du masque ne fait pas de liseré noir.
+  c = mix(c, max(dot(photo, vec3(0.3, 0.59, 0.11)) * (soleilNuage + 0.5 * physique), physique), nuage);`
+    : `
+  ${V('c', 'vec3', `mix(${tex('nuitTex')}, ${tex('jourTex')}, ${u('jour')})`)}
+  c *= mix(vec3(1.0), vec3(1.25, 0.72, 0.45), ${u('crepuscule')} * 0.75 * (1.0 - smoothstep(0.0, 0.6, abs(d.y))));`
   const corps = tr(`
   ${V('d', 'vec3', wgsl ? 'normalize(fragmentInputs.vDir)' : 'normalize(vDir)')}
-  ${V('uv', 'vec2', `vec2(${wgsl ? 'atan2' : 'atan'}(d.z, d.x) * 0.15915494 + 0.5, asin(clamp(d.y, -1.0, 1.0)) * 0.31830989 + 0.5)`)}
-  ${V('c', 'vec3', `mix(${tex('nuitTex')}, ${tex('jourTex')}, ${u('jour')})`)}
-  c *= mix(vec3(1.0), vec3(1.25, 0.72, 0.45), ${u('crepuscule')} * 0.75 * (1.0 - smoothstep(0.0, 0.6, abs(d.y))));
+  ${V('uv', 'vec2', `vec2(${wgsl ? 'atan2' : 'atan'}(d.z, d.x) * 0.15915494 + 0.5, asin(clamp(d.y, -1.0, 1.0)) * 0.31830989 + 0.5)`)}${jour}
   ${V('l', 'float', 'dot(c, vec3(0.3, 0.59, 0.11))')}
   ${V('couvert', 'vec3', `${u('brumeCouleur')} * (0.8 + 0.2 * smoothstep(0.3, 1.0, l / max(0.1, ${u('jour')})) + 0.08 * d.y)`)}
   c = mix(c, couvert, ${u('nuages')} * 0.95);
@@ -73,6 +112,7 @@ fn main(input: VertexInputs) -> FragmentInputs {
 ${decl}
 ${textures}
 ${tr(airCouleur)}
+${physique ? cielPhysique : ''}
 @fragment
 fn main(input: FragmentInputs) -> FragmentOutputs {${corps}
   fragmentOutputs.color = vec4f(c, 1.0);
@@ -92,18 +132,21 @@ varying vec3 vDir;
 ${decl}
 ${textures}
 ${airCouleur}
+${physique ? cielPhysique : ''}
 void main(void) {${corps}
   gl_FragColor = vec4(c, 1.0);
 }`,
   }
 }
 
-for (const wgsl of [false, true]) {
-  const { sommets, fragments } = codeDuCiel(wgsl)
-  const store = wgsl ? ShaderStore.ShadersStoreWGSL : ShaderStore.ShadersStore
-  store.cielVertexShader = sommets
-  store.cielFragmentShader = fragments
-}
+for (const wgsl of [false, true])
+  for (const physique of [false, true]) {
+    const { sommets, fragments } = codeDuCiel(wgsl, physique)
+    const store = wgsl ? ShaderStore.ShadersStoreWGSL : ShaderStore.ShadersStore
+    const nom = physique ? 'cielPhysique' : 'ciel'
+    store[`${nom}VertexShader`] = sommets
+    store[`${nom}FragmentShader`] = fragments
+  }
 
 /** La photo qui pèse est-elle là ? (le jour pèse `jour`, la nuit `1 − jour`) */
 export const photoUtile = (jour: number, a: { jour: boolean; nuit: boolean }): boolean => (jour <= 0 || a.jour) && (jour >= 1 || a.nuit)
@@ -116,6 +159,8 @@ export const photoUtile = (jour: number, a: { jour: boolean; nuit: boolean }): b
  * de reflets du dehors, qui sinon attendrait sans fin (et l'écran de chargement avec elle).
  */
 export function monterCiel(scene: Scene): { dome: Mesh; charge(): boolean } {
+  // Le ciel physique par défaut ; `?ciel=photo` rend l'ancien (la photo du jour fondue dans celle de la nuit).
+  const atmo = new URLSearchParams(recherche()).get('ciel') !== 'photo' ? monterAtmosphere(scene) : null
   const dome = CreateSphere('ciel', { diameter: 2, segments: 24 }, scene)
   dome.scaling.setAll(800)
   dome.alwaysSelectAsActiveMesh = true
@@ -123,10 +168,10 @@ export function monterCiel(scene: Scene): { dome: Mesh; charge(): boolean } {
   dome.metadata = { zone: 'ciel' }
   dome.setEnabled(false)
 
-  const m = new ShaderMaterial('ciel', scene, 'ciel', {
+  const m = new ShaderMaterial('ciel', scene, atmo ? 'cielPhysique' : 'ciel', {
     attributes: ['position'],
-    uniforms: ['worldViewProjection', 'jour', 'crepuscule', 'nuages', 'brume', 'eclair', 'brumeCouleur', 'air', 'airSoleil', 'airLueur'],
-    samplers: ['jourTex', 'nuitTex'],
+    uniforms: ['worldViewProjection', 'jour', 'crepuscule', 'nuages', 'brume', 'eclair', 'brumeCouleur', 'air', 'airSoleil', 'airLueur', 'horizon', 'teinte'],
+    samplers: ['jourTex', 'nuitTex', 'cielLut'],
     shaderLanguage: scene.getEngine().isWebGPU ? ShaderLanguage.WGSL : ShaderLanguage.GLSL,
   })
   // Vue de l'intérieur ; ni profondeur ni prepass : derrière tout, et « ciel » pour les rayons.
@@ -190,6 +235,71 @@ export function monterCiel(scene: Scene): { dome: Mesh; charge(): boolean } {
     m.setVector4('air', air.set(a.couleur[0], a.couleur[1], a.couleur[2], a.densite))
     m.setVector4('airSoleil', soleil.set(AIR.soleil[0], AIR.soleil[1], AIR.soleil[2], a.diffusion))
     m.setVector3('airLueur', lueur.set(a.lueur[0], a.lueur[1], a.lueur[2]))
+    if (atmo) {
+      m.setTexture('cielLut', atmo.lut)
+      m.setFloat('horizon', atmo.horizon())
+      m.setColor3('teinte', atmo.teinte())
+    }
   })
-  return { dome, charge: () => dome.isEnabled() || enRoute.size === 0 }
+  // Physique : la sonde du ciel attend aussi la première table.
+  return { dome, charge: () => (dome.isEnabled() || enRoute.size === 0) && (!atmo || atmo.prete()) }
+}
+
+/** L'éclat du ciel physique (le soleil vaut 1 dans l'addon) : son zénith de midi rejoint celui de la photo. */
+const EXPOSITION = 8
+
+/**
+ * L'Atmosphere de Babylon (@babylonjs/addons), réduite à ses tables : ni compositeur plein écran (groupes −1),
+ * ni perspective aérienne, ni irradiance, ni greffe sur les PBR (désinscrite aussitôt : elle prendrait la
+ * couleur de light0 et l'ambiante de toutes les matières). Son astre est une lumière éteinte qui suit le vrai
+ * soleil, même couché (le crépuscule) ; la lune et l'éclairage de la scène restent à soleil.ts.
+ * La table du ciel (128², exposition comprise) n'est redessinée que quand le soleil bouge (`auCiel`, 30 s) ou que
+ * l'exposition change : redessinée à chaque image, elle doublait le temps d'image (5 → 10,8 ms à l'arrivée, WebGL2).
+ */
+function monterAtmosphere(scene: Scene): { lut: RenderTargetTexture; horizon(): number; teinte(): Color3; prete(): boolean } | null {
+  if (!Atmosphere.IsSupported(scene.getEngine())) return null
+  const astre = new DirectionalLight('astre', new Vector3(0, -1, 0), scene)
+  astre.setEnabled(false)
+  const atmo = new Atmosphere('atmosphere', scene, [astre], {
+    exposure: EXPOSITION,
+    isLinearSpaceLight: true,
+    isLinearSpaceComposition: true,
+    isAerialPerspectiveLutEnabled: false,
+    isDiffuseSkyIrradianceLutEnabled: false,
+    skyRenderingGroup: -1,
+    aerialPerspectiveRenderingGroup: -1,
+    globeAtmosphereRenderingGroup: -1,
+  })
+  UnregisterMaterialPlugin((atmo as unknown as { _materialPluginName: string })._materialPluginName)
+  const t = new Color3()
+  const haut = { x: 0, y: 1, z: 0 }
+  // Les images où la table doit encore être dessinée (deux : la première peut tomber avant les tables globales).
+  let aDessiner = 2
+  auCiel((c) => {
+    astre.direction.copyFromFloats(...(directionDuSoleil(c).map((v) => -v) as [number, number, number]))
+    aDessiner = 2
+  })
+  scene.onBeforeRenderObservable.add(() => atmo.setEnabled(aDessiner > 0))
+  atmo.onAfterRenderLutsForCameraObservable.add(() => {
+    if (atmo.isEnabled() && atmo.isReady()) aDessiner--
+  })
+  // Relu à chaque image (la table de transmittance arrive après le montage).
+  const transmis = () => {
+    atmo.getTransmittedColorToRef(astre.direction.negate(), atmo.physicalProperties.planetRadius + 0.002, haut, t)
+    // L'œil s'accommode : soleil bas, le ciel physique (dix fois plus sombre qu'à midi) est relevé,
+    // sinon il serait sombre au-dessus d'un jardin que soleil.ts éclaire encore (jusqu'à ×4).
+    const e = EXPOSITION / Math.max(0.25, t.toLuminance())
+    if (Math.abs(e - atmo.exposure) > 1e-3 * e) {
+      atmo.exposure = e
+      aDessiner = 2
+    }
+    return t
+  }
+  return {
+    lut: atmo.skyViewLutRenderTarget!,
+    horizon: () => atmo.cameraAtmosphereVariables.cosCameraHorizonAngleFromZenith,
+    // Le soleil vu du sol à travers l'air (blanc à midi, orangé au couchant, éteint sous l'horizon).
+    teinte: transmis,
+    prete: () => atmo.isReady(),
+  }
 }

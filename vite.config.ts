@@ -50,7 +50,7 @@ export default defineConfig({
         // `ShaderStore` avant son initialisation : le musée publié plantait au chargement.
         codeSplitting: {
           groups: [
-            { name: 'babylon', test: /node_modules[\\/]@babylonjs[\\/](?!core[\\/]Shaders)/, priority: 20 },
+            { name: 'babylon', test: /node_modules[\\/]@babylonjs[\\/](?!core[\\/]Shaders|addons[\\/]atmosphere[\\/]Shaders)/, priority: 20 },
             { name: 'vendor', test: /node_modules[\\/](zustand|zod|qrcode-generator)[\\/]/, priority: 10 },
           ],
         },
