@@ -32,7 +32,7 @@ import { monterCloche } from './cloche.ts'
 import { monterConstellation } from './constellation.ts'
 import { monterContact } from './contact.ts'
 import { monterDeparts } from './departs.ts'
-import { monterEclairage } from './eclairage.ts'
+import { corrigerVeloursDesGrappes, monterEclairage } from './eclairage.ts'
 import { monterEnceinte } from './enceinte.ts'
 import { monterEscalier } from './escalier.ts'
 import { catalogue, demarrerCycle, partie, recherche, reglages, vivant, VIVANTES } from './etat.ts'
@@ -50,7 +50,7 @@ import { monterMosaique } from './mosaique.ts'
 import { monterNef } from './nef.ts'
 import { monterParement } from './parement.ts'
 import { monterPortes } from './portes.ts'
-import { monterPostTraitement } from './postTraitement.ts'
+import { monterPostTraitement, reserverLeMiroir } from './postTraitement.ts'
 import { monterProps } from './props.ts'
 import { monterQualite } from './qualite.ts'
 import { monterRayons } from './rayons.ts'
@@ -98,6 +98,9 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   monterAccueil(racine, toile, { accrochage: () => accrochageCharge, base, vr: porteVR })
   // La brume et l'éclair (meteo.ts) : greffés sur toute PBRMaterial créée ensuite.
   enregistrerBrume()
+  // Les retouches des shaders de Babylon (le miroir des sols, le velours sous les flaques), avant la première matière.
+  reserverLeMiroir()
+  corrigerVeloursDesGrappes()
   const { engine, scene } = await creerSocle(toile)
   // La qualité adaptative (qualite.ts) : la densité posée tout de suite, le moniteur au point prêt.
   const qualite = monterQualite(engine, scene, () => qualiteDemandee(recherche()))

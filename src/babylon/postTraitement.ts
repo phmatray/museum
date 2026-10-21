@@ -92,18 +92,27 @@ const ECRAN = new Vector3()
 export const MIROIR_DOUX = 0.3
 const k = (x: number) => x.toFixed(2)
 export function reserverLeMiroir(): void {
-  for (const store of [ShaderStore.IncludesShadersStore, ShaderStore.IncludesShadersStoreWGSL]) {
-    store.pbrBlockPrePass = store.pbrBlockPrePass.replace(/#ifdef PREPASS_REFLECTIVITY\n#ifndef UNLIT\n(.*)\n#else/, (_, ecrire: string) => {
+  // Appelée au démarrage (main.ts), jamais à l'import : dans le paquet de production, le morceau de
+  // Babylon n'est pas encore évalué quand ce module l'est, et `ShaderStore` y vaut undefined.
+  for (const store of [ShaderStore.IncludesShadersStore, ShaderStore.IncludesShadersStoreWGSL])
+    remplacer(store, 'pbrBlockPrePass', /#ifdef PREPASS_REFLECTIVITY\n#ifndef UNLIT\n(.*)\n#else/, (_, ecrire: string) => {
       const avec = (x: number) => ecrire.replace('(specularEnvironmentR0,microSurface)', `(specularEnvironmentR0*${k(x)},${k(x)})`)
       return `#ifdef PREPASS_REFLECTIVITY\n#if !defined(UNLIT) && defined(PM_MIROIR)\n#ifdef PM_MIROIR_DOUX\n${avec(MIROIR_DOUX)}\n#else\n${avec(1)}\n#endif\n#else`
     })
-  }
-  const glsl = ShaderStore.ShadersStore
-  glsl.screenSpaceReflection2PixelShader = glsl.screenSpaceReflection2PixelShader.replace('F0,vec3(1.))', 'F0,vec3(reflectivity.a))')
-  const wgsl = ShaderStore.ShadersStoreWGSL
-  wgsl.screenSpaceReflection2PixelShader = wgsl.screenSpaceReflection2PixelShader.replace('F0, vec3f(1.))', 'F0, vec3f(reflectivity.a))')
+  remplacer(ShaderStore.ShadersStore, 'screenSpaceReflection2PixelShader', 'F0,vec3(1.))', () => 'F0,vec3(reflectivity.a))')
+  remplacer(ShaderStore.ShadersStoreWGSL, 'screenSpaceReflection2PixelShader', 'F0, vec3f(1.))', () => 'F0, vec3f(reflectivity.a))')
 }
-reserverLeMiroir()
+
+/**
+ * Retouche un morceau de shader de Babylon dans son magasin. S'il manque, ou que le motif n'y est
+ * plus (une mise à jour de Babylon), on le dit et l'on continue : le musée s'affiche sans la retouche.
+ */
+export function remplacer(store: Record<string, string>, nom: string, motif: string | RegExp, par: (...m: string[]) => string): void {
+  const code = store[nom]
+  const neuf = code?.replace(motif, par)
+  if (code === undefined || neuf === code) console.warn(`retouche de shader impossible : ${nom}`)
+  else store[nom] = neuf!
+}
 
 const SRGB_GLSL = 'vec3 srgb(vec3 c) { return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }'
 const SRGB_WGSL = 'fn srgb(c: vec3f) -> vec3f { return select(1.055 * pow(c, vec3f(1.0 / 2.4)) - 0.055, c * 12.92, c < vec3f(0.0031308)); }'
