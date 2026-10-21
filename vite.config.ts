@@ -34,6 +34,8 @@ export default defineConfig({
   // domaine. La CI passe BASE_PATH ; en local on reste à la racine.
   base: process.env.BASE_PATH ?? '/',
   plugins: [journalEnDev()],
+  // Le worker du navmesh (babylon/navmesh.worker.ts) charge Recast par import() : un module ES.
+  worker: { format: 'es' },
   build: {
     rolldownOptions: {
       output: {

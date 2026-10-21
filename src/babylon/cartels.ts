@@ -6,7 +6,7 @@
  *   QR code (n + i), teinte par couleur d'instance (sombre sur une cimaise) ;
  * - les QR codes : l'atlas de domain/qr.ts, non éclairé (un code éclairé le
  *   soir perdrait son contraste) ;
- * - les textes : un atlas peint en PT Sans, une case de 26 × 16 cm par cartel.
+ * - les textes : en MSDF (msdf.ts), Source Sans 3, un lot par encre (claire, sombre).
  *
  * Repère d'un cartel (lacet r, normale du mur (sin r, cos r)) : droite R = (nz, 0, −nx),
  * haut U, normale N ; le point du placement est à 5 mm du mur.
@@ -25,8 +25,8 @@ import type { Accrochage } from '../plan/hang.ts'
 import { matiere } from './boites.ts'
 import { catalogue } from './etat.ts'
 import { brancherLueurs, lin } from './lueurs.ts'
-import { police } from './polices.ts'
-import { atlasDeTextes, maillageDeQuads, matiereDeTexte, type Quad } from './textes.ts'
+import { largeurEm, policeMsdf, repere, textesMsdf } from './msdf.ts'
+import { maillageDeQuads, type Quad } from './textes.ts'
 import { couper } from './toiles.ts'
 
 /** Épaisseur des plaques (cartelStyle.ts PLAQUE.epaisseur). */
@@ -34,9 +34,10 @@ const EPAISSEUR = 0.01
 /** Plaque claire, ou sombre sur le stratifié d'une cimaise, et leurs encres (cartelStyle.ts). */
 const PLAQUE = { claire: '#f4f1ea', sombre: '#34302b' }
 const ENCRE = { claire: '#2a2620', sombre: '#efe4cc' }
-/** Pixels par mètre de l'atlas des textes (corps de 2,2 cm ≈ 23 px). */
-const PPM = 1024
+/** Le corps (m) et le pas des lignes (em) des textes. */
 const CORPS = 0.022
+/** Un rien de graisse : à 1 cm du corps vu à bout de bras, le fondu linéaire amincit l'encre. */
+const EPAIS = 0.15
 const INTERLIGNE = 1.3
 
 type V3 = [number, number, number]
@@ -77,7 +78,7 @@ export function poserCartels(placements: CartelPlacement[]): { plaques: Float32A
 
 /** Monte les cartels de l'accrochage ; rien sans catalogue (comme three). Rend les plaques, porteuses d'ombre (OmbresLayer). */
 export async function monterCartels(scene: Scene, accrochage: Accrochage, base: string): Promise<Mesh[]> {
-  const [c] = await Promise.all([catalogue(base), police('PT Sans')])
+  const c = await catalogue(base)
   if (c === null) return []
   const placements = cartelPlacements(accrochage)
   const { plaques, quadsQr, quadsTexte } = poserCartels(placements)
@@ -115,17 +116,17 @@ export async function monterCartels(scene: Scene, accrochage: Accrochage, base: 
     return { ...quadsQr[i], uv: [u, v, u + t, v + t] }
   }), scene, matQr)
 
-  const [L, H] = [Math.ceil(CARTEL_TEXTE.largeur * PPM), Math.ceil(CARTEL_HAUTEUR * PPM)]
-  const { dt, uvs } = atlasDeTextes('cartels:textes', scene, avecCode.map(() => ({ l: L, h: H })), (g, k, x, y) => {
-    const p = placements[avecCode[k]]
-    g.font = `${CORPS * PPM}px 'PT Sans'`
-    g.fillStyle = p.surPanneau ? ENCRE.sombre : ENCRE.claire
-    g.textBaseline = 'middle'
-    // Retour à la ligne aux espaces comme troika (maxWidth), le bloc centré sur l'axe du cartel.
-    const lignes = cartelTexte(c.parCle.get(p.key)!).split('\n').flatMap((l) => couper(g, l, L))
-    const pas = CORPS * INTERLIGNE * PPM
-    lignes.forEach((l, j) => g.fillText(l, x, y + H / 2 + (j - (lignes.length - 1) / 2) * pas))
-  })
-  maillageDeQuads('cartels:textes', avecCode.map((i, k) => ({ ...quadsTexte[i], uv: uvs[k] })), scene, matiereDeTexte('cartels:textes', scene, dt))
+  // Les textes en MSDF (msdf.ts), Source Sans 3 : un lot par encre, aligné à gauche dans sa colonne, le bloc centré en hauteur.
+  void policeMsdf(scene, 'source-sans-3').then(({ metriques }) => {
+    const mesure = { measureText: (t: string) => ({ width: largeurEm(metriques, t) * CORPS }) }
+    const lot = (sombre: boolean) => avecCode.filter((i) => placements[i].surPanneau === sombre).map((i) => {
+      const { centre, droite, haut } = quadsTexte[i]
+      const gauche = centre.map((v, a) => v - (droite[a] * CARTEL_TEXTE.largeur) / 2)
+      // Retour à la ligne aux espaces comme troika (maxWidth).
+      const lignes = cartelTexte(c.parCle.get(placements[i].key)!).split('\n').flatMap((l) => couper(mesure, l, CARTEL_TEXTE.largeur))
+      return { texte: lignes.join('\n'), matrice: repere(gauche, droite, haut, CORPS), interligne: INTERLIGNE, aGauche: true }
+    })
+    return Promise.all([false, true].filter((sombre) => lot(sombre).length).map((sombre) => textesMsdf(scene, 'source-sans-3', lin(sombre ? ENCRE.sombre : ENCRE.claire), lot(sombre), EPAIS)))
+  }).catch((e: unknown) => console.warn('textes des cartels indisponibles', e))
   return [boite]
 }

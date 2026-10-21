@@ -121,3 +121,10 @@ engine moves, and a stale "fact" here is as harmful as one remembered wrongly.
 - **`flatMap` does not flatten typed arrays.** `Matrix.asArray()` is a `Float32Array`; returning it from
   a `flatMap` callback nests it, the thin-instance buffer comes out short, and the load dies with
   "offset is out of bounds". Spread it: `[...m.asArray()]`.
+- **Never patch `ShaderStore` at import time, and never split the bundle with Rolldown's
+  `includeDependenciesRecursively: false`.** Together they shipped a museum that crashed at load in
+  production only (`Cannot read properties of undefined (reading 'IncludesShadersStoreWGSL')` from a
+  shader chunk): that option drops the execution-order guarantee, and shader chunks our code imports
+  directly read `ShaderStore` before its chunk initialised. Patch shaders at startup (`main.ts`),
+  through `remplacer` (warns instead of throwing), and load the production bundle before publishing
+  (`world-review/scripts/production.mjs`).

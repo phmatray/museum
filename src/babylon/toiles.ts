@@ -16,7 +16,6 @@ import '@babylonjs/core/Meshes/thinInstanceMesh'
 import { Mesh } from '@babylonjs/core/Meshes/mesh'
 import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder'
 import { VertexData } from '@babylonjs/core/Meshes/mesh.vertexData'
-import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
 import type { BaseTexture } from '@babylonjs/core/Materials/Textures/baseTexture'
 import { DynamicTexture } from '@babylonjs/core/Materials/Textures/dynamicTexture'
@@ -34,9 +33,8 @@ import { SALLE_VITRINES } from '../plan/vitrines.ts'
 import { matiere } from './boites.ts'
 import { catalogue } from './etat.ts'
 import { sousLesProjecteurs } from './eclairage.ts'
-import { brancherLueurs } from './lueurs.ts'
-import { police } from './polices.ts'
-import { atlasDeTextes, maillageDeQuads, matiereDeTexte } from './textes.ts'
+import { brancherLueurs, lin } from './lueurs.ts'
+import { largeurEm, policeMsdf, repere, textesMsdf } from './msdf.ts'
 
 /** Bordure et profondeur du cadre, comme `builders/artwork.ts`. */
 const BORDURE = 0.06
@@ -189,7 +187,7 @@ export function posesProches(poses: readonly Pick<Pose, 'id' | 'centre'>[], oeil
   return gardees.sort()
 }
 
-/** Rend les porteurs d'ombre : les cadres et les noms de salle. */
+/** Rend les porteurs d'ombre : les cadres (les noms de salle, en MSDF, n'en portent pas). */
 export async function monterToiles(scene: Scene, accrochage: Accrochage, base: string): Promise<Mesh[]> {
   const poses = poserToiles(accrochage)
   // Le serveur de dev répond index.html à une URL absente : le JSON échoue et l'on prend le repli.
@@ -247,7 +245,8 @@ export async function monterToiles(scene: Scene, accrochage: Accrochage, base: s
   }
 
   suivreLesProches(scene, poses, base)
-  return [cadres, await nomsDesSalles(scene, accrochage)]
+  void nomsDesSalles(scene, accrochage).catch((e: unknown) => console.warn('noms de salle indisponibles', e))
+  return [cadres]
 }
 
 /**
@@ -293,15 +292,14 @@ function suivreLesProches(scene: Scene, poses: Pose[], base: string): void {
   })
 }
 
-/** PlanToiles : le nom de chaque salle sur son mur nord, face au sud, PT Sans 0,32 m crème, peint (éclairé). */
-async function nomsDesSalles(scene: Scene, accrochage: Accrochage): Promise<Mesh> {
-  const PPM = 200
-  const EM = 0.32 * PPM
-  const INTERLIGNE = 1.2 * EM
-  await police('PT Sans')
-  const fonte = `${EM}px 'PT Sans'`
-  const mesure = document.createElement('canvas').getContext('2d')!
-  mesure.font = fonte
+/**
+ * PlanToiles : le nom de chaque salle sur son mur nord, face au sud, Marcellus 0,32 m crème, en
+ * MSDF (msdf.ts : net de près comme de loin, un appel pour toutes les salles ; non éclairé).
+ */
+async function nomsDesSalles(scene: Scene, accrochage: Accrochage): Promise<void> {
+  const CORPS = 0.32
+  const { metriques } = await policeMsdf(scene, 'marcellus')
+  const mesure = { measureText: (t: string) => ({ width: largeurEm(metriques, t) * CORPS }) }
   const noms = accrochage.rooms.flatMap((salle) => {
     const niveau = MUSEE.levels.find((l) => l.id === salle.level)
     const room = niveau?.rooms.find((r) => r.id === salle.id)
@@ -309,27 +307,12 @@ async function nomsDesSalles(scene: Scene, accrochage: Accrochage): Promise<Mesh
     if (!niveau || !room || room.id === SALLE_VITRINES) return []
     // Plus haut derrière une cimaise qui court devant le mur nord.
     const masque = cimaisesDe(salle.level, room.id).some((c) => c.axe === 'x' && c.z < room.z + room.depth / 2)
-    const lignes = couper(mesure, salle.name, (room.width - 2) * PPM)
-    const l = Math.ceil(Math.max(...lignes.map((t) => mesure.measureText(t).width))) + 8
-    const h = Math.ceil(lignes.length * INTERLIGNE)
-    const centre = [room.x + room.width / 2, niveau.elevation + (masque ? 3.95 : 3.1), room.z + INT + 0.01] as const
-    return [{ lignes, l, h, centre }]
+    const centre = [room.x + room.width / 2, niveau.elevation + (masque ? 3.95 : 3.1), room.z + INT + 0.01]
+    // Face au sud (+z), lu depuis la salle : la gauche du texte à l'ouest.
+    return [{ texte: couper(mesure, salle.name, room.width - 2).join('\n'), matrice: repere(centre, [1, 0, 0], [0, 1, 0], CORPS), interligne: 1.2 }]
   })
-  const { dt, uvs } = atlasDeTextes('noms-de-salle', scene, noms, (g, i, x, y) => {
-    g.font = fonte
-    g.fillStyle = '#efe4cc'
-    g.textAlign = 'center'
-    g.textBaseline = 'middle'
-    noms[i].lignes.forEach((t, k) => g.fillText(t, x + noms[i].l / 2, y + (k + 0.5) * INTERLIGNE))
-  })
-  const mat = matiereDeTexte('noms-de-salle', scene, dt, 0.85)
-  mat.transparencyMode = PBRMaterial.PBRMATERIAL_ALPHATEST
-  brancherLueurs([mat])
-  // Face au sud (+z), lu depuis la salle : la gauche du texte à l'ouest.
-  const quads = noms.map((n, i) => ({ centre: n.centre, droite: [1, 0, 0] as const, haut: [0, 1, 0] as const, l: n.l / PPM, h: n.h / PPM, uv: uvs[i] }))
-  const m = maillageDeQuads('noms-de-salle', quads, scene, mat)
-  m.receiveShadows = true
-  return m
+  // La crème du nom, assez sourde pour ne pas luire sur le mur (il était peint, éclairé).
+  await textesMsdf(scene, 'marcellus', lin('#efe4cc').scale(0.55), noms)
 }
 
 /** L'atlas de repli : chaque tuile peinte à sa place, un aplat du langage et le nom du dépôt. */
@@ -364,7 +347,7 @@ async function repli(scene: Scene, base: string, peintes: { p: Pose; layer: numb
  * le serre). Au-delà de `max` lignes, la dernière gardée finit par « … » (sans
  * ponctuation pendante), raccourcie au mot jusqu'à tenir dans `largeur`.
  */
-export function couper(g: Pick<CanvasRenderingContext2D, 'measureText'>, texte: string, largeur: number, max = Infinity): string[] {
+export function couper(g: { measureText(t: string): { width: number } }, texte: string, largeur: number, max = Infinity): string[] {
   const lignes: string[] = []
   for (const mot of texte.split(/\s+/)) {
     const essai = lignes.length ? `${lignes[lignes.length - 1]} ${mot}` : mot

@@ -101,6 +101,15 @@ Re-run `revue.mjs` with the same views into a new folder and compare before/afte
 found, what was fixed (with the before/after for the visible ones), what was dropped as a false alarm, and
 what remains — honestly, including what could not be verified (WebGPU, a real phone).
 
+## Before publishing: the production bundle
+
+The dev server does not bundle; `npm run build` passing does not prove the bundle *runs*. On
+2026-10-21 the published museum crashed at load (`ShaderStore` undefined) while every test and the
+build were green. Before any publish, build, serve and load it:
+`npm run build && npx vite preview --port 5190 &` then
+`node .claude/skills/world-review/scripts/production.mjs http://localhost:5190/` — it must report a
+canvas, the ticket and 0 errors. After the deploy, run it once more against the live URL.
+
 ## Limits worth stating
 
 Still captures do not show animation quality (NPC limbs, walk cycles) — use `rafale` or a dedicated lab

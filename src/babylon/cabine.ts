@@ -24,7 +24,8 @@ import type { Scene } from '@babylonjs/core/scene'
 
 import { TAMPONS_CABINE } from '../domain/succes.ts'
 import { CABINE, MEUBLES_CABINE, PLAFOND, PORTE_CABINE, SALLE_CABINE, SOL_CABINE } from '../plan/cinema.ts'
-import { centre, lumineuse, pbr, plan, SERIF } from './foyer.ts'
+import { lumineuse, pbr, plan } from './foyer.ts'
+import { corpsQuiTient, droiteDe, eclatant, GRAS, policeMsdf, repere, textesMsdf } from './msdf.ts'
 
 /** La face des cloisons (0,15) plus le revêtement. */
 const FACE = 0.17
@@ -172,11 +173,14 @@ export function monterCabine(scene: Scene, lumieres: { soleil: DirectionalLight;
     g.strokeStyle = '#c9a25a'
     g.lineWidth = 10
     g.strokeRect(14, 14, L - 28, H - 28)
-    g.fillStyle = '#f1dcaa'
-    centre(g, 'CABINE', H * 0.42, L, SERIF, 150)
-    g.fillStyle = '#c9a25a'
-    centre(g, `Réservé · ${TAMPONS_CABINE} tampons`, H * 0.78, L, SERIF, 64)
   }, 0.5)
+  // Le lettrage en MSDF (msdf.ts), 5 mm devant la plaque, face au nord (−z) : « CABINE », puis la condition.
+  const surPlaque = (y: number, corps: number) => repere([PORTE_CABINE.x, sol + 1.7 - y, SALLE_CABINE.z - 0.04], droiteDe(0, -1), [0, 1, 0], corps)
+  const reserve = `Réservé · ${TAMPONS_CABINE} tampons`
+  void policeMsdf(scene, 'marcellus').then(({ metriques }) => Promise.all([
+    textesMsdf(scene, 'marcellus', eclatant('#f1dcaa', 0.5), [{ texte: 'CABINE', matrice: surPlaque(0.095, 0.088) }], GRAS),
+    textesMsdf(scene, 'marcellus', eclatant('#c9a25a', 0.5), [{ texte: reserve, matrice: surPlaque(0.221, corpsQuiTient(metriques, reserve, 0.0375, 0.516)) }], GRAS),
+  ])).catch((e: unknown) => console.warn('plaque de la cabine indisponible', e))
 
   // Ni soleil ni ciel ; ni aucune lumière du musée (une lumière traverse les dalles).
   lumieres.soleil.excludedMeshes.push(...cabine)
