@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "babylonjs-node-material": {
+      "command": "npx",
+      "args": ["-y", "@babylonjs/mcp-servers@9.31.1", "nme"]
+    },
+    "babylonjs-node-geometry": {
+      "command": "npx",
+      "args": ["-y", "@babylonjs/mcp-servers@9.31.1", "nge"]
+    },
+    "babylonjs-node-particle": {
+      "command": "npx",
+      "args": ["-y", "@babylonjs/mcp-servers@9.31.1", "npe"]
+    },
+    "babylonjs-node-render-graph": {
+      "command": "npx",
+      "args": ["-y", "@babylonjs/mcp-servers@9.31.1", "nrge"]
+    }
+  }
+}

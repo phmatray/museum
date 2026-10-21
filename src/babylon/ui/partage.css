@@ -1,0 +1,11 @@
+/* Le message d'un partage de tableau (partage.ts), en haut au centre. */
+[data-partage] {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 1500; max-width: calc(100vw - 32px);
+  padding: 8px 16px; border-radius: 8px; background: var(--hud-fond); border: 1px solid var(--hud-filet);
+  color: var(--hud-texte); font: 14px/1.4 var(--sans); box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); text-align: center; animation: message-partage 200ms ease-out;
+}
+[data-partage][hidden] { display: none; }
+[data-partage] strong { color: var(--hud-or); font-weight: 600; }
+[data-partage] div { font-size: 12px; color: #c9c2b4; overflow-wrap: anywhere; user-select: all; }
+@keyframes message-partage { from { opacity: 0; transform: translate(-50%, -6px); } }
+@media (prefers-reduced-motion: reduce) { [data-partage] { animation: none !important; } }

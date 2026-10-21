@@ -9,7 +9,7 @@
  * parc. Tout est tiré du mur : la travée borne la plaque, l'arase l'arrête ou
  * la fait basculer, le sol la plante.
  *
- * Le rendu (`scene/lierre.tsx`) pose une carte par feuille, dans son repère :
+ * Le rendu (`babylon/lierre.ts`) pose une carte par feuille, dans son repère :
  * `normale` ce qu'elle regarde, `haut` vers son pétiole.
  *
  * Pur : ni three ni React.

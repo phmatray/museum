@@ -110,7 +110,7 @@ const PARC = 'parc:terrain'
 const dans = (piece: PieceMobilier, surface: string, x: number, z: number, lacet: number): Meuble => {
   const [niveau] = surface.split(':')
   const n = niveau === 'parc' ? RDC : Number(niveau)
-  return { piece, surface, niveau: n, x, z, lacet, y: surface === PARC ? solDuParc(x, z) : n === 1 ? ETAGE : RDC }
+  return { piece, surface, niveau: n, x, z, lacet, y: surface === PARC ? solDuParc(x, z) : n * ETAGE }
 }
 /** Le pied à 45 cm du sol, la poignée vers 1 m : à portée de main, sous les yeux sans les attirer. */
 const auMur = (surface: string, x: number, z: number, lacet: number): Meuble => ({ ...dans('Extincteur', surface, x, z, lacet), accroche: 0.45 })
@@ -182,6 +182,8 @@ export const MOBILIER: Meuble[] = [
   // La salle d'honneur : au sud de l'axe des portes (z = 6), face aux vitrines du mur nord.
   dans('BancBatllo', '1:honneur', 21, 8.3, NORD),
   dans('BancBatllo', '1:honneur', 27, 8.3, NORD),
+  // Le foyer du cinéma : une banquette contre le mur nord, face au sud, hors de la ligne de l'escalier à la porte.
+  dans('Banquette', '-1:ss-foyer', 26, 5.2, SUD),
   // Le jardin : le granit sur la rive nord de l'étang, entre les fougères, face à l'eau…
   dans('BancPierre', PARC, 42.5, 53.9, SUD),
   // … le cèdre sur la rive ouest, sous l'érable et près de la lanterne, face à l'étang,

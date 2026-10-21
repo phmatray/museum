@@ -5,7 +5,7 @@ Le mobilier du musée, généré par Blender en headless.
     blender --background --factory-startup --python tools/blender/build-mobilier.py -- --apercu /tmp/mobilier
 
 Produit `public/assets/architecture/mobilier.glb`, une pièce par nœud,
-instanciées par `src/scene/MobilierLayer.tsx` aux places de `src/plan/mobilier.ts` :
+instanciées par `src/babylon/mobilier.ts` aux places de `src/plan/mobilier.ts` :
 
 - `Banquette` : la banquette des galeries, 2,20 × 0,70 × 0,45 m — coussin de
   velours vert capitonné (boutons en quinconce, plis en losanges) sur un bâti

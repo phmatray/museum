@@ -7,7 +7,7 @@
  * Des boids en petit : chaque carpe a un cap et une vitesse, et braque vers la
  * somme de quelques envies (errer, fuir la berge, s'écarter des voisines,
  * rejoindre le visiteur), sans jamais tourner plus vite qu'un poisson.
- * Pur : l'état entre, l'état sort ; `FauneLayer` ne fait que le montrer.
+ * Pur : l'état entre, l'état sort ; `babylon/faune.ts` ne fait que le montrer.
  */
 import { CONTOUR_ETANG, JARDIN, distanceEtang as distanceExacte } from './jardin.ts'
 import { generateur } from './park.ts'

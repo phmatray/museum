@@ -14,7 +14,7 @@ texture 2K) n'est pas dans le dépôt : le prompt est dans le manifeste
 - 14 000 triangles, dont le visage intact (les yeux et le museau fondaient à
   la décimation) ; texture 1024 en WebP, Draco.
 - Ses gestes (trot, museau qui flaire, boule) sont dans le vertex shader de
-  `src/scene/FauneLayer.tsx` : aucune cible de morphose à télécharger.
+  `src/babylon/faune.ts` : aucune cible de morphose à télécharger.
 """
 
 import math

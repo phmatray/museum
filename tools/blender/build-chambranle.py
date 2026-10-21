@@ -4,7 +4,7 @@ Les chambranles de pierre des portes, générés par Blender en headless.
     blender --background --factory-startup --python tools/blender/build-chambranle.py
 
 Produit `public/assets/architecture/chambranle.glb`, trois pièces instanciées
-sur chaque face de porte (`src/scene/PortesLayer.tsx`, placement dans
+sur chaque face de porte (`src/babylon/portes.ts`, placement dans
 `src/plan/portes.ts`) :
 
 - `Chambranle` : l'architrave en U — deux montants et une traverse, onglets à
@@ -52,7 +52,7 @@ def repartir():
 
 
 def matiere():
-    # #d6c9b0, la pierre du hall (src/scene/pierre.ts), en linéaire.
+    # #d6c9b0, la pierre du hall (src/babylon/pierre.ts), en linéaire.
     m = bpy.data.materials.new("Chambranle_Pierre")
     m.use_nodes = True
     b = next(n for n in m.node_tree.nodes if n.type == "BSDF_PRINCIPLED")

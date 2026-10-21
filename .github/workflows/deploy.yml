@@ -109,6 +109,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run ateliers
 
+      # La séance du cinéma du sous-sol : la dernière vidéo de la chaîne (hors Shorts),
+      # par son flux RSS public. Jamais un blocage : en échec, la séance versionnée reste.
+      - name: Relever la séance du cinéma
+        continue-on-error: true
+        run: npm run cinema
+
       # Ce que le public VOIT d'un projet : la page de son site, photographiée par
       # le Chrome du runner, ou la première vraie image de son README. AVANT les
       # médias, qui en font les toiles. Sous `public/media/`, donc dans le cache

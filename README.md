@@ -100,6 +100,8 @@ For demos and screenshots, the address can force what is normally live:
 | `?qualite=` | `haute`, `basse` | Freezes the image quality instead of adapting it to the machine |
 | `?p=` | a repository name, e.g. `?p=FormCraft` | Opens the museum in front of that painting (also `?projet=owner/repo` or `#repo`) |
 | `?annonce=1` | `1` | Fakes a release on the last pushed repository, to hear the bell and see the board announce it |
+| `?gpu=0` | `0` | Forces WebGL2 instead of WebGPU, to compare the two paths |
+| `?vr=cardboard` | `cardboard` | Loads the Cardboard polyfill on a desktop, to try the VR view without a headset |
 
 They combine: [`?heure=19:50&meteo=neige&saison=hiver`](https://phmatray.github.io/museum/?heure=19:50&meteo=neige&saison=hiver).
 
@@ -112,8 +114,8 @@ They combine: [`?heure=19:50&meteo=neige&saison=hiver`](https://phmatray.github.
   | [![Ground floor plan](docs/plan/niveau-0.svg)](docs/plan/niveau-0.svg) | [![Upper floor plan](docs/plan/niveau-1.svg)](docs/plan/niveau-1.svg) |
 
 - **Deterministic Blender scripts.** The nave, the staircase, the Casa Batlló bay, the showcases, the furniture, the garden and Bavette's rig are modelled by Python scripts in [`tools/blender/`](tools/blender/), run headless. The same script always gives the same GLB, and the GLBs are committed because CI has no Blender. So is the baked sky light (`npm run bake`, Cycles, then compressed to WebP).
-- **Pure logic, thin rendering.** Anything that can be computed without three.js (the sun, the weather, the seasons, the hanging, Bavette's walk and naps, the hedgehog, the tour, the ticket) lives in `src/plan/` and `src/domain/`, with Vitest tests. The scene in `src/scene/` only draws it.
-- **Performance without cutting features.** Plan boxes are instanced; the sun's shadow map is only redrawn when something moves; grass and trees out of view are skipped and distant maples use a lighter model; labels are batched; model textures are KTX2; about 110 shader programs, compiled off the main thread during the loading screen; the pixel ratio only drops when the machine can't keep up. Night lighting, rain and puddles are computed per pixel in the materials, with no extra lights.
+- **Pure logic, thin rendering.** Anything that can be computed without the engine (the sun, the weather, the seasons, the hanging, Bavette's walk and naps, the hedgehog, the tour, the ticket) lives in `src/plan/` and `src/domain/`, with Vitest tests. The Babylon.js layers in `src/babylon/`, one file per layer, only draw it.
+- **Performance without cutting features.** WebGPU where the browser has it, WebGL2 otherwise. Plan boxes are merged meshes and thin instances; the sun's shadow map is only redrawn when something moves; rooms out of sight are culled, and so are distant grass and trees, with distant maples on a lighter model; labels share one text atlas per batch; model textures are KTX2; the pixel ratio only drops when the machine can't keep up. That is about 150 draw calls and 1 M triangles at the entrance (680 and 5.5 M before the rewrite from three.js to Babylon.js). Night lighting, rain and puddles are computed per pixel in the materials, with no extra lights: shader add-ons written once in GLSL and once in WGSL.
 - **Data fetch.** [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs on every push to `main`, every night at 03:17 UTC and on demand:
 
 ```mermaid
@@ -129,7 +131,7 @@ flowchart LR
 5. **Hang**: `npm run accrocher` assigns themes to rooms and paintings to walls (`public/data/accrochage.json`).
 6. **Build** with `BASE_PATH=/museum/`, then **deploy** to GitHub Pages.
 
-The story of how it came together, more than 90 steps with before/after screenshots, is in the **development journal** (in French): **[phmatray.github.io/museum/journal](https://phmatray.github.io/museum/journal/)**, with tabs by theme and an index. Its source is [`docs/journal/`](docs/journal/index.html), deployed with the museum.
+The story of how it came together, more than 100 steps with before/after screenshots, is in the **development journal** (in French): **[phmatray.github.io/museum/journal](https://phmatray.github.io/museum/journal/)**, with tabs by theme and an index. Its source is [`docs/journal/`](docs/journal/index.html), deployed with the museum.
 
 ## Run it locally
 
@@ -148,7 +150,7 @@ The catalogue and the hanging are committed, so those three steps are enough to 
 GITHUB_TOKEN=$(gh auth token) npm run fetch   # refresh the catalogue from GitHub
 npm run captures       # screenshot each project's site or README image (before `media`)
 npm run accrocher      # re-hang the collection
-npm test               # Vitest suite (does not typecheck: run `npx tsc -b` too)
+npm test               # Vitest suite (does not typecheck: run `npx tsc -b` too); on Node 26: NODE_OPTIONS=--no-webstorage npm test
 npm run lint           # ESLint
 npm run build          # typecheck + production build into dist/
 npm run plan:svg       # redraw docs/plan/*.svg after editing src/plan/musee.ts
@@ -168,11 +170,11 @@ Then run `fetch`, `media` and `accrocher` again. The building stays the same.
 
 ## Tech Stack
 
-- **React 19**, **React Three Fiber** 9, `@react-three/drei`, `@react-three/postprocessing`
-- **three.js** 0.183 (KTX2 textures, Draco meshes)
-- **zustand** (state) and **zod** (schemas for the catalogue, the hanging and the config)
+- **Babylon.js 9** (`@babylonjs/core`, `@babylonjs/loaders`): WebGPU or WebGL2, PBR, KTX2 and Draco models, WebXR
+- plain **TypeScript** and the native DOM for the interface, no framework
+- **zustand** (vanilla store) and **zod** (schemas for the catalogue, the hanging and the config)
 - **Vite** 8 and **TypeScript** 6, **Vitest** 4
-- **troika-three-text** (labels, batched), **qrcode-generator**, **@fontsource** (Marcellus, Source Sans 3)
+- **qrcode-generator**, **@fontsource** (Marcellus, Source Sans 3), **webxr-polyfill** (Cardboard)
 - **sharp** and **gltf-transform** (media and model pipeline), **Blender** 5 headless (models and light baking)
 
 <!-- portfolio-techstack:end -->

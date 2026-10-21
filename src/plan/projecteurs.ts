@@ -4,7 +4,7 @@
  * Le rail court le long de chaque mur accroché, à 1,60 m de lui — sur le cadre
  * de plâtre du plafond, pas sur le verre du lanterneau (`plafonds.ts`, cadre de
  * 2 m). Une face de cimaise (`cimaises.ts`) a le sien, à 1,60 m d'elle aussi :
- * celui-là passe sous le lanterneau, pendu à sa résille. C'est de là que part la lumière de la toile regardée (`EveilLayer`) :
+ * celui-là passe sous le lanterneau, pendu à sa résille. C'est de là que part la lumière de la toile regardée (`babylon/eclairage.ts`) :
  * elle a enfin une source qu'on voit.
  *
  * Pur : ni three ni React.

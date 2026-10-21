@@ -2,7 +2,7 @@
 Les UV de lumière d'un modèle du bâtiment : une seconde couche, « Lumiere »,
 dépliée sur l'ensemble de ses objets à la fois dans le carré [0, 1]², à densité
 constante et sans recouvrement. `tools/blender/bake-lumiere.py` la range dans
-l'atlas de lumière et y cuit l'éclairement ; `src/scene/lumiere.ts` la relit.
+l'atlas de lumière et y cuit l'éclairement ; `src/babylon/boites.ts` la relit.
 
 C'est toujours la DERNIÈRE couche UV du maillage : l'export glTF en fait
 TEXCOORD_1 derrière les UV de matière, TEXCOORD_0 quand il n'y en a pas.

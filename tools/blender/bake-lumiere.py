@@ -39,11 +39,11 @@ SCENE = Path(sys.argv[sys.argv.index("--") + 1])
 D = json.loads(SCENE.read_text())
 W, H = D["atlas"]["largeur"], D["atlas"]["hauteur"]
 
-# L'éclairement encodé : 1 en PNG vaut PLAFOND. Même constante dans `src/scene/lumiere.ts`.
+# L'éclairement encodé : 1 en PNG vaut PLAFOND. Même constante dans `src/babylon/boites.ts`.
 PLAFOND = 2.0
 CIEL = (0.80, 0.86, 1.0)      # un ciel couvert, un peu bleu
 LANTERNEAU = 0.9              # le verre dépoli transmet ~90 % du ciel qu'il voit
-LAMPE = (24.0, 9.95, 6.0)     # SalleHonneurLayer.tsx, repère de three
+LAMPE = (24.0, 9.95, 6.0)     # salleHonneur.ts, repère glTF (+Y)
 
 # ── Une scène vide ────────────────────────────────────────────────────────
 bpy.ops.wm.read_factory_settings(use_empty=True)

@@ -6,7 +6,7 @@ modèle mieux à la main.
     blender --background --factory-startup --python tools/blender/build-accessoires.py -- <dossier des GLB Meshy>
 
 Produit `public/assets/architecture/accessoires.glb`, une pièce par nœud,
-instanciées par `src/scene/MobilierLayer.tsx` aux places de `src/plan/mobilier.ts`.
+instanciées par `src/babylon/accessoires.ts` aux places de `src/plan/mobilier.ts`.
 Les GLB bruts de Meshy (≈ 6 Mo chacun, textures 2K) ne sont pas dans le dépôt :
 les prompts sont dans le manifeste `tools/fetch-assets.ts`. Le fichier produit,
 lui, est commité — la CI n'a ni Blender ni clé Meshy.

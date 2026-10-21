@@ -5,7 +5,7 @@ La végétation du parc et du jardin japonais, générée par Blender en headles
     node tools/compresser-glb.ts public/assets/jardin/vegetation.glb
 
 Produit `public/assets/jardin/vegetation.glb`, des sujets à instancier, tous à
-l'origine, pied à z = 0 (`src/scene/parkAssets.ts` les lit par leur nom) :
+l'origine, pied à z = 0 (`src/babylon/vegetation.ts` les lit par leur nom) :
 
 - `src_erable_rouge`, `src_erable_vert` : l'érable du Japon (Acer palmatum),
   4,5 m, plus large que haut. Un vrai squelette — un fût court et évasé au

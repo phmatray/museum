@@ -40,7 +40,7 @@ PLANTES = ROOT / "public" / "assets" / "plants"
 SORTIE = PLANTES / "plants-lod.glb"
 SORTIE_PARC = PLANTES / "park-lod.glb"
 
-# Les fichiers attendus par `src/scene/propAssets.ts`, dans son ordre.
+# Les fichiers qu'attendait l'ancien `src/scene/propAssets.ts` (app three), dans son ordre.
 FICHIERS = [
     "anthurium_botany_01.gltf",
     "calathea_orbifolia_01.gltf",

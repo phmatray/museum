@@ -12,7 +12,7 @@
  * d'une corde ; aux courbes, des touffes d'herbe du Japon et de l'herbe aux
  * turquoises (ophiopogon), le couvre-sol sombre des jardins de Kyoto.
  *
- * Tout est pur et déterministe : `ParkLayer` ne fait que draper sur le relief.
+ * Tout est pur et déterministe : `babylon/allees.ts` ne fait que draper sur le relief.
  */
 import { TABLIER, distanceEtang, distanceRuisseau, JARDIN } from './jardin.ts'
 import { MOBILIER, emprise } from './mobilier.ts'

@@ -5,7 +5,7 @@ La baraque du CHANTIER DU MUSÉE, sur la pelouse sud-ouest, générée par Blend
     blender --background --factory-startup --python tools/blender/build-chantier.py -- --apercu /tmp/chantier
 
 Produit `public/assets/architecture/chantier.glb`, posé tel quel par
-`src/scene/ChantierLayer.tsx` : modélisé dans le repère du plan (Blender x = x,
+`src/babylon/chantier.ts` : modélisé dans le repère du plan (Blender x = x,
 y = −z, z = hauteur), d'après `src/plan/chantier.json` — la même emprise, la
 même porte, la même table que celles que la marche arrête (`src/plan/chantier.ts`).
 

@@ -23,7 +23,7 @@ export interface Rect {
   depth: number
 }
 
-export type RoomKind = 'gallery' | 'honneur' | 'hall' | 'balcony'
+export type RoomKind = 'gallery' | 'honneur' | 'hall' | 'balcony' | 'foyer' | 'cinema'
 
 export interface Room extends Rect {
   id: string
@@ -37,7 +37,11 @@ export interface Room extends Rect {
  * (deux balcons) ; `bay` est une baie sur le vide, qui se regarde et ne se
  * franchit pas.
  */
-export type OpeningKind = 'door' | 'entrance' | 'open' | 'bay'
+/**
+ * `service` : une porte réservée (0,90 m), `lucarne` : une fenêtre haute dans un mur intérieur (la
+ * lucarne de projection), qu'on ne franchit pas.
+ */
+export type OpeningKind = 'door' | 'entrance' | 'open' | 'bay' | 'service' | 'lucarne'
 
 export interface Opening {
   kind: OpeningKind
@@ -48,6 +52,10 @@ export interface Opening {
   x: number
   z: number
   width: number
+  /** La cote du seuil (lucarne : de l'appui), si ce n'est pas le plancher du niveau (une porte de palier). */
+  cote?: number
+  /** La hauteur libre, si ce n'est pas celle d'une porte (`LINTEAU`). */
+  hauteur?: number
 }
 
 export interface Level {
@@ -73,11 +81,15 @@ export interface Flight extends Rect {
   bottom: number
   top: number
   risers: number
+  /** Les côtés sans garde-corps : une allée de gradins s'ouvre sur ses rangs. */
+  ouverts?: Direction[]
 }
 
 export interface Landing extends Rect {
   id: string
   elevation: number
+  /** Les côtés sans garde-corps : une marche de gradin (0,45 m) n'en demande pas. */
+  ouverts?: Direction[]
 }
 
 export interface Plan {

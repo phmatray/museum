@@ -5,7 +5,7 @@
  * Aucune n'est une vraie lumière de three : trente-deux lampadaires et vingt-cinq
  * spots en temps réel, c'étaient autant de boucles par fragment dans TOUS les
  * matériaux, et des ombres qu'on ne peut pas se payer. Ce sont des points que
- * `scene/lueurs.ts` écrit en constantes dans le shader : chaque fragment de
+ * `babylon/lueurs.ts` écrit en constantes dans le shader : chaque fragment de
  * dehors, la nuit, additionne la flaque des lampadaires proches à son ambiance ;
  * chaque fragment sous les balcons, celle des spots. Pas d'ombre portée — la
  * flaque d'un lampadaire de 2,20 m n'en a guère besoin.

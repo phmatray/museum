@@ -246,7 +246,7 @@ export const PAS_DE_LA_RIVE: PasJaponais[] = (() => {
 
 /**
  * Les pierres du belvédère, en boîtes (la pierre du parvis et du chaperon du
- * mur d'enceinte, `ParkLayer`) :
+ * mur d'enceinte, `babylon/enceinte.ts`) :
  *
  * - les murs de soutènement, fondés sous le sol le plus bas de leur pied, et
  *   leur PAREMENT en bossage : des assises de hauteur inégale, des blocs de

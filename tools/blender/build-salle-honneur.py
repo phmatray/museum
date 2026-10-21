@@ -5,7 +5,7 @@ par Blender en headless.
     blender --background --factory-startup --python tools/blender/build-salle-honneur.py
 
 Produit `public/assets/architecture/salle-honneur.glb`, posé tel quel par
-`src/scene/SalleHonneurLayer.tsx`, autour de la baie Batlló (`build-batllo.py`)
+`src/babylon/salleHonneur.ts`, autour de la baie Batlló (`build-batllo.py`)
 dont il reprend le chêne, la pierre des colonnes et les cives :
 
 - `Voute` : le plafond de plâtre du grand salon — une gorge d'un quart de

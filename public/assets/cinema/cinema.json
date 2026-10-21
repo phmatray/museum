@@ -1,0 +1,17 @@
+{
+  "applique": {
+    "apercu": "01a15ac3-7d47-732c-a1ee-48e7899e87b3",
+    "texture": "01a15ac4-0c87-76d3-9b36-46c7d3a7874d",
+    "fichier": "applique.glb"
+  },
+  "enceinte": {
+    "apercu": "01a15ac3-7d46-75af-8374-1efdad6f8c75",
+    "texture": "01a15ac4-7064-7236-b86f-4b2bdb2b8122",
+    "fichier": "enceinte.glb"
+  },
+  "fauteuil": {
+    "apercu": "01a15b23-185f-75a5-8db4-e4bca0f0dd1d",
+    "texture": "01a15b23-c792-7617-a6b6-5f075065a794",
+    "fichier": "fauteuil.glb"
+  }
+}

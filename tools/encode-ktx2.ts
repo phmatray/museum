@@ -15,7 +15,7 @@
  * la CI (ubuntu-latest) le fait tourner comme un poste de dev. `sharp` décode.
  * Chaque `.jpg` reçoit son `.ktx2` à côté ; le site essaie le `.ktx2` et
  * retombe sur le `.jpg` si le navigateur ou le fichier manque
- * (`io/textures.ts`). Un encodage raté n'arrête rien : on le dit, et le JPG
+ * (`src/babylon/matieres.ts`). Un encodage raté n'arrête rien : on le dit, et le JPG
  * reste servi.
  *
  * - la COULEUR en ETC1S, sRGB : petite à télécharger, largement suffisante
