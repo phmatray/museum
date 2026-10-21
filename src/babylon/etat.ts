@@ -184,6 +184,8 @@ export interface Partie {
   etape: string | null
   /** Une session VR est ouverte (vr.ts) : le casque tient la caméra, l'interface DOM se retire. */
   enVR: boolean
+  /** Le mode photo (photo.ts) tient la caméra : le visiteur l'attend où il l'a laissée. */
+  photo: boolean
   /** Une séance de cinéma (seance.ts) : la vidéo sur la toile, la visite continue. */
   seance: boolean
   /** Assis dans un fauteuil du cinéma (visiteur.ts `asseoir`) : on regarde, on ne marche pas ; avancer relève. */
@@ -200,6 +202,7 @@ export const partie = createStore<Partie>(() => ({
   bavette: false,
   etape: null,
   enVR: false,
+  photo: false,
   seance: false,
   assis: false,
 }))

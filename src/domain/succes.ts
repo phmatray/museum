@@ -16,7 +16,7 @@ export type Fait =
   | { type: 'geste'; id: Geste }
 
 export type Lieu = 'jardin' | 'belvedere' | 'etang' | 'chantier'
-export type Geste = 'composte' | 'borne' | 'journal' | 'etoile' | 'partage' | 'visite' | 'nuit' | 'intemperies' | 'cloche' | 'bavette' | 'vr' | 'cinema' | 'cabine'
+export type Geste = 'composte' | 'borne' | 'journal' | 'etoile' | 'partage' | 'visite' | 'nuit' | 'intemperies' | 'cloche' | 'bavette' | 'vr' | 'cinema' | 'cabine' | 'appareil'
 
 export interface Carnet {
   version: 1
@@ -33,6 +33,9 @@ export interface Carnet {
 /** Les tampons qu'il faut pour que la cabine de projection s'ouvre. */
 export const TAMPONS_CABINE = 10
 export const cabineOuverte = (c: Carnet): boolean => Object.keys(c.tampons).length >= TAMPONS_CABINE
+
+/** L'appareil du projectionniste, pris dans la cabine : le mode photo (babylon/photo.ts) est ouvert. */
+export const photoOuverte = (c: Carnet): boolean => c.gestes.includes('appareil')
 
 export const CARNET_VIDE: Carnet = { version: 1, salles: [], lieux: [], oeuvres: [], jours: [], saisons: [], gestes: [], tampons: {} }
 
@@ -84,6 +87,7 @@ export const SUCCES: readonly Succes[] = [
   { id: 'bavette', famille: 'Secrets', titre: 'Bavette', texte: 'Vous avez croisé le regard du chat du musée.', indice: 'Quelqu’un d’autre habite ici.', progres: (c) => a(c.gestes, 'bavette') },
   { id: 'cinema', famille: 'Secrets', titre: 'Séance tenante', texte: 'Vous avez vu le film du cinéma du sous-sol.', indice: 'Sous l’escalier, on projette quelque chose.', progres: (c) => a(c.gestes, 'cinema') },
   { id: 'cabine', famille: 'Secrets', titre: 'Projectionniste', texte: 'Vous êtes entré dans la cabine de projection.', indice: `Au fond du cinéma, une porte s’ouvre à ${TAMPONS_CABINE} tampons.`, progres: (c) => a(c.gestes, 'cabine') },
+  { id: 'photographe', famille: 'Secrets', titre: 'Photographe', texte: 'Vous avez pris l’appareil du projectionniste : le mode photo est à vous (touche P).', indice: 'Le projectionniste a oublié quelque chose dans sa cabine.', progres: (c) => a(c.gestes, 'appareil') },
   { id: 'vr', famille: 'Secrets', titre: 'Ailleurs', texte: 'Vous avez visité le musée en réalité virtuelle.', indice: 'Il existe une autre façon d’entrer.', progres: (c) => a(c.gestes, 'vr') },
 ]
 

@@ -83,4 +83,5 @@
 /* Le groupe de BoutonSon.tsx : la roue puis le bouton du son, en haut à droite (top posé par le module). */
 .reglages-groupe { position: fixed; right: 1rem; z-index: 1001; display: flex; align-items: center; gap: 8px; }
 .reglages-groupe[hidden] { display: none; }
+.reglages-bouton[hidden] { display: none; }
 @media (pointer: coarse) { .reglages kbd, .reglages [data-souris] { display: none; } }
