@@ -54,6 +54,7 @@ import { carnet, signaler } from './succes.ts'
 import { BARRIERES } from './visiteur.ts'
 import { monterCabine, morceaux } from './cabine.ts'
 import { monterFoyer } from './foyer.ts'
+import { corpsQuiTient, droiteDe, eclatant, GRAS, policeMsdf, repere, textesMsdf } from './msdf.ts'
 import { monterSpectateurs } from './spectateurs.ts'
 import { el } from './ui/dom.ts'
 import './ui/cinema.css'
@@ -533,15 +534,8 @@ export async function monterCinema(
     const peindre = (image?: HTMLImageElement) => {
       c.fillStyle = '#1a0507'
       c.fillRect(0, 0, L, H)
-      c.fillStyle = '#d9b26a'
-      c.font = '600 46px Marcellus, Georgia, serif'
-      const titre = 'À L’AFFICHE'
-      c.fillText(titre, (L - c.measureText(titre).width) / 2, 70)
+      // Le lettrage est en MSDF (plus bas) : la boîte ne peint que son fond et l'image.
       if (image) c.drawImage(image, 112, 100, 800, 450)
-      c.fillStyle = '#f3e6cf'
-      c.font = '400 30px "Source Sans 3", sans-serif'
-      const ligne = programme.titre.length > 52 ? `${programme.titre.slice(0, 50)}…` : programme.titre
-      c.fillText(ligne, (L - c.measureText(ligne).width) / 2, 600)
       vitrine.update()
     }
     peindre()
@@ -564,6 +558,14 @@ export async function monterCinema(
     cadre.position.set(16.17, SOL + 1.65, 9.7)
     cadre.material = dore
     cadre.isPickable = false
+    // Face à l'est (+x), 5 mm devant la boîte : « À L’AFFICHE » en haut, le titre de la séance en bas.
+    const ligne = programme.titre.length > 52 ? `${programme.titre.slice(0, 50)}…` : programme.titre
+    const repereVitrine = (y: number, corps: number) => repere([16.215, SOL + 2.15 - y, 9.7], droiteDe(1, 0), [0, 1, 0], corps)
+    void Promise.all([
+      textesMsdf(scene, 'marcellus', eclatant('#d9b26a'), [{ texte: 'À L’AFFICHE', matrice: repereVitrine(0.085, 0.072) }], GRAS),
+      policeMsdf(scene, 'source-sans-3').then(({ metriques }) =>
+        textesMsdf(scene, 'source-sans-3', eclatant('#f3e6cf'), [{ texte: ligne, matrice: repereVitrine(0.925, corpsQuiTient(metriques, ligne, 0.047, 1.45)) }])),
+    ]).catch((e: unknown) => console.warn('lettrage de la vitrine indisponible', e))
   }
 
   monterFoyer(scene, programme, { ...lumieres, dore })
@@ -586,21 +588,11 @@ export async function monterCinema(
     dedans = ici
   })
 
-  // L'enseigne du hall, au-dessus de la descente (sous la volée ouest, face au sud).
-  const enseigne = new DynamicTexture('cinema:enseigne', { width: 512, height: 128 }, scene, true)
-  const g = enseigne.getContext()
-  g.fillStyle = '#120405'
-  g.fillRect(0, 0, 512, 128)
-  g.fillStyle = '#ffcf8a'
-  g.font = '600 64px Marcellus, Georgia, serif'
-  const mot = 'CINÉMA ↓'
-  g.fillText(mot, (512 - g.measureText(mot).width) / 2, 88)
-  enseigne.update()
-  enseigne.uScale = -1
-  enseigne.uOffset = 1
+  // L'enseigne du hall, au-dessus de la descente (sous la volée ouest, face au sud) : la plaque sombre,
+  // le lettrage en MSDF 5 mm devant, centré.
   const plaque = new StandardMaterial('cinema:enseigne', scene)
   plaque.disableLighting = true
-  plaque.emissiveTexture = enseigne
+  plaque.emissiveColor = Color3.FromHexString('#120405').toLinearSpace()
   plaque.diffuseColor = Color3.Black()
   plaque.specularColor = Color3.Black()
   const panneau = CreatePlane('cinema:enseigne', { width: 1.8, height: 0.45 }, scene)
@@ -608,4 +600,6 @@ export async function monterCinema(
   panneau.rotation.y = Math.PI
   panneau.material = plaque
   panneau.isPickable = false
+  void textesMsdf(scene, 'marcellus', eclatant('#ffcf8a'), [{ texte: 'CINÉMA ↓', matrice: repere([17.5, 2.75, 20.065], droiteDe(0, 1), [0, 1, 0], 0.225) }], GRAS)
+    .catch((e: unknown) => console.warn('enseigne du cinéma indisponible', e))
 }

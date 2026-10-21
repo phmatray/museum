@@ -34,6 +34,8 @@ export default defineConfig({
   // domaine. La CI passe BASE_PATH ; en local on reste à la racine.
   base: process.env.BASE_PATH ?? '/',
   plugins: [journalEnDev()],
+  // Le worker du navmesh (babylon/navmesh.worker.ts) charge Recast par import() : un module ES.
+  worker: { format: 'es' },
   build: {
     rolldownOptions: {
       output: {
@@ -48,7 +50,7 @@ export default defineConfig({
         // `ShaderStore` avant son initialisation : le musée publié plantait au chargement.
         codeSplitting: {
           groups: [
-            { name: 'babylon', test: /node_modules[\\/]@babylonjs[\\/](?!core[\\/]Shaders)/, priority: 20 },
+            { name: 'babylon', test: /node_modules[\\/]@babylonjs[\\/](?!core[\\/]Shaders|addons[\\/]atmosphere[\\/]Shaders)/, priority: 20 },
             { name: 'vendor', test: /node_modules[\\/](zustand|zod|qrcode-generator)[\\/]/, priority: 10 },
           ],
         },

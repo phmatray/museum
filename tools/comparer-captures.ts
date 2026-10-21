@@ -2,7 +2,7 @@
  * Les captures du musée à des points de vue fixes (position, regard, heure), une image
  * par vue, pour juger à l'œil qu'un changement ne déplace rien.
  *
- *   node tools/comparer-captures.ts [http://localhost:5173/] [--dossier=<dossier>] [--vues=arrivee,escalier] [--avant=<dossier>]
+ *   node tools/comparer-captures.ts [http://localhost:5173/] [--dossier=<dossier>] [--vues=arrivee,escalier] [--avant=<dossier>] [--q=a=b&c=d]
  *
  * Contre `npm run dev`, lancé à côté (le hook `__BABYLON__` n'existe qu'en DEV). Le visiteur
  * est posé par le plan lui-même (`surfaceAt` puis un `step` immobile pour la cote), importé dans la page.
@@ -35,6 +35,8 @@ interface Vue {
    * `reglages` par la roue, `partage` par la touche P devant une toile ; `vr` (vague 6) : le bouton Cardboard du billet
    * (avec `q: 'vr=cardboard'`), après la pose du visiteur, puisque le gréement prend sa place à l'entrée. */
   ui?: 'chargement' | 'accueil' | 'visite' | 'reglages' | 'partage' | 'vr'
+  /** Une touche pressée une fois posé (`Enter` : la séance du cinéma), puis 8 s. */
+  touche?: 'Enter'
   /** Téléphone : 390×844, tactile. */
   mobile?: boolean
 }
@@ -67,6 +69,14 @@ const VUES: Vue[] = [
   { nom: 'jardin-brouillard', heure: '15:00', q: 'meteo=brouillard', x: 50, z: 65, y: 0, yaw: -0.6, pitch: -0.05 },
   { nom: 'jardin-nuit', heure: '23:00', x: 50, z: 65, y: 0, yaw: -0.6, pitch: 0.1 },
   { nom: 'vers-facade', heure: '15:00', x: 30, z: 80, y: 0, yaw: 0, pitch: 0.1 },
+  // Le ciel lui-même : vers l'est au lever, l'ouest au couchant, le zénith à midi, la nuit, le couvert.
+  { nom: 'ciel-aube', heure: '08:30', x: 50, z: 65, y: 0, yaw: -1.57, pitch: 0.2 },
+  { nom: 'ciel-midi', heure: '13:00', x: 50, z: 65, y: 0, yaw: 3.14, pitch: 0.5 },
+  { nom: 'ciel-couchant', heure: '19:30', x: 50, z: 65, y: 0, yaw: 1.57, pitch: 0.2 },
+  { nom: 'ciel-nuit', heure: '22:00', x: 50, z: 65, y: 0, yaw: 1.57, pitch: 0.3 },
+  // Le sous-sol : la séance (l'iframe de HtmlMesh, vue par le trou alpha du post-traitement), ni ciel ni brume.
+  { nom: 'cinema-seance', heure: '15:00', x: 9.5, z: 11, y: -4.8, yaw: 0, pitch: 0.1, touche: 'Enter' },
+  { nom: 'ciel-couvert', heure: '15:00', q: 'meteo=orage', x: 50, z: 65, y: 0, yaw: 1.57, pitch: 0.2 },
   { nom: 'bavette', heure: '15:00', x: 30, z: 63, y: 0, yaw: 0, pitch: -0.35, bavette: { x: 30, z: 60.5, yaw: 1.2, anim: 'Marche' } },
   // Vague 5 : l'interface.
   { nom: 'ui-chargement', heure: '15:00', ui: 'chargement' },
@@ -85,12 +95,16 @@ const VUES: Vue[] = [
   { nom: 'vr-oeuvre', heure: '15:00', q: 'meteo=clair&vr=cardboard', ui: 'vr', p: 'AspireStrapi' },
 ]
 const choisies = option('vues')?.split(',')
+/** `--q=ciel=photo` : ajouté à l'adresse de chaque vue. */
+const enPlus = args.find((a) => a.startsWith('--q='))?.slice(4)
 const avant = option('avant')
 const ecarts: Record<string, number | string>[] = []
 
 const navigateur = await puppeteer.launch({
   executablePath: process.env.CHROME_PATH ?? '/usr/bin/chromium',
   headless: true,
+  // Une machine chargée (plusieurs navigateurs à la fois) : une capture peut prendre des minutes.
+  protocolTimeout: 600_000,
   args: ['--enable-gpu', '--ignore-gpu-blocklist', '--use-angle=gl', '--enable-unsafe-webgpu'],
 })
 try {
@@ -100,7 +114,7 @@ try {
     if (vue.mobile) await page.emulateMediaFeatures([{ name: 'pointer', value: 'coarse' }]).catch(() => {})
     page.on('pageerror', (e) => console.error(`  ! ${vue.nom} : ${e instanceof Error ? e.message : e}`))
     page.on('console', (m) => { if (m.type() === 'error') console.error(`  ! ${vue.nom} : ${m.text()}`) })
-    const url = `${base}?qualite=haute&${vue.q ?? 'meteo=clair'}&heure=${vue.heure}${vue.p ? `&p=${vue.p}` : ''}&moteur=babylon`
+    const url = `${base}?qualite=haute&${vue.q ?? 'meteo=clair'}&heure=${vue.heure}${vue.p ? `&p=${vue.p}` : ''}&moteur=babylon${enPlus ? `&${enPlus}` : ''}`
     await page.goto(url, { waitUntil: 'load' })
     const chemin = join(dossier, `${vue.nom}.png`) as `${string}.png`
     if (vue.ui === 'chargement') {
@@ -111,10 +125,10 @@ try {
       await comparer(vue.nom, chemin)
       continue
     }
-    await page.waitForFunction('window.__BABYLON__', { timeout: 120_000 })
+    await page.waitForFunction('window.__BABYLON__', { timeout: 600_000 })
     const enPause = vue.ui === 'accueil' || vue.ui === 'visite' || vue.ui === 'vr'
     if (!enPause) await page.evaluate('window.__BABYLON__.reprendre()')
-    await page.waitForFunction('window.__PRET__ === true', { timeout: 120_000 })
+    await page.waitForFunction('window.__PRET__ === true', { timeout: 600_000 })
     if (vue.x !== undefined) {
       const erreur = await page.evaluate(async (v, racine) => {
         /* eslint-disable @typescript-eslint/no-explicit-any -- modules et hooks de la page, non typés ici */
@@ -146,6 +160,10 @@ try {
         w.__BAVETTE__?.jouer(b.anim, 0.4)
       }, vue.bavette)
       await new Promise((r) => setTimeout(r, 1500))
+    }
+    if (vue.touche) {
+      await page.keyboard.press(vue.touche)
+      await new Promise((r) => setTimeout(r, 8000))
     }
     if (vue.ui === 'visite') {
       await page.click('.billet-guide')

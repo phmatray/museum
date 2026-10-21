@@ -35,7 +35,7 @@ import { MUSEE } from '../plan/musee.ts'
 import type { Accrochage } from '../plan/hang.ts'
 import { avancerPnj, monde, pnjInitiaux, type Activite, type Pnj } from '../plan/pnj.ts'
 import { lieuxCalmes } from '../plan/promenade.ts'
-import type { Walker } from '../plan/walk.ts'
+import { cuireEnArrierePlan, fouleDesPnj, navmesh } from './navigation.ts'
 import { matiereDeTache } from './contact.ts'
 import { VIVANTES } from './etat.ts'
 import { glbOuRien } from './glb.ts'
@@ -99,9 +99,18 @@ export function decalage(debut: number, fin: number, t: number, cadence = CADENC
 }
 
 /** Monte les PNJ ; `visiteur` : où est le joueur (ils s'en écartent). Rend une promesse résolue une fois posés. */
-export async function monterPnj(scene: Scene, accrochage: Accrochage | null, visiteur: () => Walker): Promise<void> {
+export async function monterPnj(scene: Scene, accrochage: Accrochage | null, visiteur: () => { x: number; y: number; z: number }): Promise<void> {
   const m = monde(MUSEE, accrochage, lieuxCalmes(MUSEE, PARC))
   const pnj = pnjInitiaux(m, COMBIEN, MODELES, Math.floor(Math.random() * 2 ** 32))
+  // Le navmesh, tiré du plan, cuit dans un worker pendant que les modèles se chargent.
+  let msNavmesh = 0
+  const plugin = (async () => {
+    const t = performance.now()
+    const p = await navmesh(await cuireEnArrierePlan(PARC, (accrochage?.rooms ?? []).map(({ id, name }) => ({ id, name }))))
+    msNavmesh = performance.now() - t
+    return p
+  })()
+  plugin.catch(() => {}) // sans modèle à montrer, personne ne l'attend : pas de rejet orphelin
   const conteneurs = await Promise.all(Array.from({ length: MODELES }, (_, n) => glbOuRien(scene, `assets/pnj/pnj-${n}.glb`)))
 
   /** Par modèle : le lot, son gestionnaire (sa texture, son temps), ses PNJ, ses tampons, ses plages d'actions. */
@@ -180,28 +189,17 @@ export async function monterPnj(scene: Scene, accrochage: Accrochage | null, vis
   }
   poser(true)
 
+  // La foule de ceux qu'on montre (un modèle manquant ne laisse pas d'agent invisible en travers des portes).
   const tous = lots.flatMap((l) => l.qui)
-  // Les autres de chaque PNJ : le visiteur et tous les PNJ (lui compris : `gene` ignore la distance nulle).
-  const autres = [{ x: 0, z: 0, level: 0 }, ...tous.map(() => ({ x: 0, z: 0, level: 0 }))]
+  const foule = fouleDesPnj(scene, await plugin, MUSEE, tous)
   scene.onBeforeRenderObservable.add(() => {
     const dt = Math.min(0.1, scene.getEngine().getDeltaTime() / 1000)
     for (const l of lots) l.vat.time += dt
-    const v = visiteur()
-    const lui = autres[0]
-    lui.x = v.x
-    lui.z = v.z
-    lui.level = v.level
-    for (const p of tous) {
-      for (let i = 0; i < tous.length; i++) {
-        const a = autres[i + 1]
-        a.x = tous[i].w.x
-        a.z = tous[i].w.z
-        a.level = tous[i].w.level
-      }
-      avancerPnj(m, p, dt, autres)
-    }
+    // La foule a déjà avancé (avant les animations, `RecastJSCrowd`) : on lit, on décide, on pose.
+    foule.relever(visiteur())
+    for (const p of tous) avancerPnj(m, p, dt, foule.pilote)
     poser(false)
   })
 
-  if (import.meta.env.DEV) (window as unknown as { __PNJ__?: unknown }).__PNJ__ = { pnj: tous, monde: m }
+  if (import.meta.env.DEV) (window as unknown as { __PNJ__?: unknown }).__PNJ__ = { pnj: tous, monde: m, foule, plugin: await plugin, msNavmesh }
 }

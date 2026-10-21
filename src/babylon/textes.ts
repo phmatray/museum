@@ -1,8 +1,9 @@
 /**
  * Les textes peints (l'équivalent des `<Text>` troika et de lotDeTextes.ts) :
  * UN atlas (texture brute) rangé en étagères, UN maillage de quads orientés,
- * donc un appel de dessin pour tout un lot (cartels, légendes, noms de salle,
- * textes des vitrines…).
+ * donc un appel de dessin pour tout un lot (légendes, textes des vitrines,
+ * des ateliers…). Les cartels, les noms de salle et les enseignes du cinéma
+ * sont en MSDF (msdf.ts), nets à toute distance.
  *
  * Usage :
  *   await police('PT Sans')

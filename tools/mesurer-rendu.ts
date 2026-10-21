@@ -3,7 +3,7 @@
  * fixes, pour suivre le temps par image, les appels et les triangles. Budget à
  * l'arrivée : ≤ 300 appels et ≤ 1,5 M triangles.
  *
- *   node tools/mesurer-rendu.ts [http://localhost:5173/] [--ombres=0] [--gpu=0] [--p=<dépôt>] [--lieu=x,z,yaw] [--vr=1] [--captures=<dossier>]
+ *   node tools/mesurer-rendu.ts [http://localhost:5173/] [--ombres=0] [--gpu=0] [--p=<dépôt>] [--lieu=x,z,yaw] [--vr=1] [--ciel=photo] [--captures=<dossier>]
  *
  * `--vr=1` : dans le Cardboard du polyfill (`?vr=cardboard`, bouton du billet), les deux yeux comptés ensemble.
  *
@@ -28,7 +28,7 @@ const base = args.find((a) => !a.startsWith('--')) ?? 'http://localhost:5173/'
 const captures = option('captures') ?? tmpdir()
 mkdirSync(captures, { recursive: true })
 // `--p=<dépôt>` : devant cette toile plutôt qu'à l'arrivée (pour juger les tableaux sur la capture).
-const suffixe = (option('ombres') === '0' ? '&ombres=0' : '') + (option('gpu') === '0' ? '&gpu=0' : '') + (option('p') ? `&p=${option('p')}` : '') + (option('vr') === '1' ? '&vr=cardboard' : '')
+const suffixe = (option('ombres') === '0' ? '&ombres=0' : '') + (option('gpu') === '0' ? '&gpu=0' : '') + (option('p') ? `&p=${option('p')}` : '') + (option('vr') === '1' ? '&vr=cardboard' : '') + (option('ciel') ? `&ciel=${option('ciel')}` : '')
 const commun = `?qualite=haute&heure=15:00&meteo=clair${suffixe}`
 const IMAGES = 300
 const lieu = option('lieu')?.split(',').map(Number)

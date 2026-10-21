@@ -28,6 +28,7 @@ import { affiche, type Seance } from '../domain/cinema.ts'
 import { AFFICHES, COMPTOIR, FOYER, LAMBRIS, PLAFOND, SOL } from '../plan/cinema.ts'
 import { MUSEE } from '../plan/musee.ts'
 import { LINTEAU } from '../plan/portes.ts'
+import { droiteDe, eclatant, GRAS, repere, textesMsdf } from './msdf.ts'
 
 const CHAUD = new Color3(1, 0.8, 0.58)
 
@@ -244,8 +245,6 @@ export function monterFoyer(
     g.strokeStyle = '#d9b26a'
     g.lineWidth = 6
     g.strokeRect(10, 10, L - 20, H - 20)
-    g.fillStyle = '#ffcf8a'
-    centre(g, 'CONFISERIE', H * 0.68, L, SERIF, 120)
   }, 0.55)
 
   // ── Les affiches, au mur nord : la séance, la précédente, le programme ──
@@ -290,16 +289,21 @@ export function monterFoyer(
   garder(plan('foyer:salle1', scene, 1.6, 0.4, x0 + 0.01, ySalle, porte.z, '+x')).material = lumineuse('foyer:salle1', scene, 1.6, 0.4, (g, L, H) => {
     g.fillStyle = '#140405'
     g.fillRect(0, 0, L, H)
-    g.fillStyle = '#ffcf8a'
-    centre(g, 'SALLE 1', H * 0.72, L, SERIF, 150)
   }, 0.55)
   const sortie = plan('foyer:sortie', scene, 0.6, 0.2, FOYER.x - FACE - 0.01, ySalle - 0.1, porte.z, '-x')
   sortie.material = lumineuse('foyer:sortie', scene, 0.6, 0.2, (g, L, H) => {
     g.fillStyle = '#0c7a3a'
     g.fillRect(0, 0, L, H)
-    g.fillStyle = '#eafff0'
-    centre(g, 'SORTIE', H * 0.74, L, (t) => `700 ${t}px "Source Sans 3", sans-serif`, 200)
   }, 1.2)
+  // Les lettrages des trois enseignes en MSDF, 5 mm devant leur plaque (qui ne peint que fond et filet).
+  const devant = (x: number, y: number, z: number, nx: number, corps: number) => repere([x + 0.005 * nx, y, z], droiteDe(nx, 0), [0, 1, 0], corps)
+  void textesMsdf(scene, 'marcellus', eclatant('#ffcf8a', 0.55), [
+    { texte: 'CONFISERIE', matrice: devant(x1 - 0.01, SOL + 2.75, zc, -1, 0.3) },
+    { texte: 'SALLE 1', matrice: devant(x0 + 0.01, ySalle, porte.z, 1, 0.23) },
+  ], GRAS).catch((e: unknown) => console.warn('enseignes du foyer indisponibles', e))
+  void textesMsdf(scene, 'source-sans-3', eclatant('#eafff0', 1.2), [
+    { texte: 'SORTIE', matrice: devant(FOYER.x - FACE - 0.01, ySalle - 0.1, porte.z, -1, 0.115) },
+  ], 0.3).catch((e: unknown) => console.warn('enseigne de sortie indisponible', e))
 
   // ── Les spots du plafond, et deux plafonniers chauds pour le foyer seul ──
   const spot = garder(CreateBox('foyer:spots', { width: 0.12, height: 0.01, depth: 0.12 }, scene))

@@ -26,6 +26,7 @@ npm run media                # catalogue -> painting textures in public/media (g
 npm run accrocher            # hang the collection -> public/data/accrochage.json (committed)
 npm run chantier             # docs/journal/index.html -> public/data/chantier.json (committed; also run by build) for the garden's site hut
 npm run plan:svg             # redraw docs/plan/niveau-*.svg from the plan
+node tools/generer-msdf.ts   # MSDF font atlases (Marcellus, Source Sans 3) -> public/msdf/*.png|json (committed; msdfgen in wasm)
 node tools/fetch-assets.ts   # CC0 PBR materials/HDRI/sky (gitignored) + regenerates public/assets/CREDITS.md
 npm run bake                 # bake the lightmap atlas in headless Blender (~10 min) -> public/assets/lumiere/atlas.webp
 blender --background --python tools/blender/build-<x>.py   # rebuild one committed GLB
@@ -89,13 +90,20 @@ accepted and ignored.
   `pietiner`: weathered façade and trodden paths, priority 250 so the weather goes on top). Wear inside is in
   `parement.ts`, the wall's moss in `enceinte.ts`.
 - Batches: `lots.ts` (`Pose`/`matrices`/`instancier`: one thin instance per pose, one batch per glTF primitive;
-  `cacherAuLoin`); `textes.ts`: one text atlas and one mesh per batch of labels.
+  `cacherAuLoin`); `textes.ts`: one text atlas and one mesh per batch of labels. `msdf.ts`: sharp text through the
+  `@babylonjs/addons` MSDF TextRenderer (room names, cartels, cinema/foyer/booth signs): one draw call per batch
+  (font + colour), drawn in `onAfterDrawPhaseObservable` into the HDR target (depth-tested, unlit, never culled —
+  the always-drawn walls hide it, so each batch costs one call everywhere), atlases from `tools/generer-msdf.ts`,
+  no mipmaps, and our own fragment (GLSL + WGSL, screen-pixel range ≥ 1, set through the private `_setShaders`:
+  re-check it on each addon upgrade). A sign keeps its plaque as a mesh and puts only its lettering in MSDF.
 - `visibilite.ts`: the zones of `plan/visibilite.ts`, hidden by `layerMask`; immobile thin-instance batches are
   **compacted in place**. `metadata.zone` pins a mesh to a zone (`'ciel'` is never hidden),
   `alwaysSelectAsActiveMesh` keeps it always drawn, `metadata.immobile` lets a park batch be compacted;
   `toutMontrer()`/`retrier()` around off-eye renders (probes). The shadow map chains `getCustomRenderList`.
 - `soleil.ts`: one `DirectionalLight` (sun 3.4 in PBR, moon by night), hemispheric /π, a `ShadowGenerator` redrawn on
-  demand (`BOUGE` lists the moving casters). `ciel.ts`: the sky dome. `reflets.ts`: one probe per room, specular
+  demand (`BOUGE` lists the moving casters). `ciel.ts`: the sky dome; by day it samples the sky-view LUT of `@babylonjs/addons`' `Atmosphere` (tables only:
+  no compositor, no aerial perspective, its PBR plugin unregistered; LUT redrawn only when the sun or exposure
+  moves), with the day photo's clouds on top and the night photo below. `reflets.ts`: one probe per room, specular
   environment only, cross-faded at doorways, captures suspended in VR.
 - `postTraitement.ts`: HDR chain SSAO2 → bloom → tone mapping → god rays → grading → vignette → FXAA (creation order is
   chain order). `qualite.ts`: `setHardwareScalingLevel(1/d)` driven by a PerformanceMonitor-like monitor.
@@ -103,6 +111,13 @@ accepted and ignored.
   `recherche()`). `chargement.ts` + `ui/ecranChargement.ts`: the loading screen.
 - `ui/`: native DOM + CSS (accueil, carteEtape, dom `el`/`svg`/`observer`/`themeName`, ecranChargement, minimap,
   mobile, oeuvre, partage, reglages, visite). Text goes in `textContent`, never catalogue data in `innerHTML` (`dom.ts`).
+- NPCs: `plan/pnj.ts` decides where they go (a `Pilote` moves them); `plan/navigation.ts` derives their floor from
+  the plan (rooms, landings, flights, park, holed by walls, obstacles, corner plants, park subjects, ropes; service
+  doors stay shut) as a triangle soup; `navmesh.ts` bakes it with Recast (`@recast-navigation/*`) in
+  `navmesh.worker.ts`; `navigation.ts` loads it into Babylon's `RecastNavigationJSPluginV2` (`@babylonjs/addons`)
+  and runs the crowd (one agent per NPC, plus the visitor, teleported each frame). Adding something NPCs must walk
+  around = making it a plan obstacle (or an `entraves` entry); `src/babylon/__tests__/navigation.test.ts` simulates
+  five minutes of crowd and fails on any NPC inside a wall, obstacle, trunk or rope.
 - Visitor's stamp book: pure rules in `domain/succes.ts` (`SUCCES`, `noter`, `tamponner`), wiring in `succes.ts`
   (game state → facts, nothing noted before the ticket is punched, `signaler(geste)` for star/share/tour end,
   localStorage `museum:carnet`), `ui/carnet.ts` (the `<dialog>`, key C, the stamp toast). A new stamp = one `SUCCES`
@@ -156,7 +171,7 @@ asset credits are declared in the `tools/fetch-assets.ts` manifest and regenerat
   (`main.ts`, `instr` is a `SceneInstrumentation`), `window.__PRET__` (scene ready, `chargement.ts`),
   `window.__BAVETTE__`, `window.__FAUNE__`, `window.__TOUT_VOIR__` (disable culling).
 - URL parameters force live state for screenshots: `?heure=HH:MM`, `?meteo=clair|pluie|neige|brouillard|orage`,
-  `?saison=printemps|ete|automne|hiver`, `?ombres=0`, `?annonce=1`, `?gpu=0` (force WebGL2, to compare both paths),
+  `?saison=printemps|ete|automne|hiver`, `?ombres=0`, `?annonce=1`, `?gpu=0` (force WebGL2, to compare both paths), `?ciel=photo` (the old photo sky instead of the physical one),
   `?vr=cardboard` (the Cardboard polyfill on a desktop, to drive VR headless), `?qualite=haute|basse` (freezes the
   adaptive pixel ratio of `babylon/qualite.ts`; use `haute` for captures on a loaded machine). `?p=<repo>` (or
   `?projet=owner/repo`, `#repo`) opens the museum in front of that painting (`domain/lien.ts`, `plan/arrivee.ts`); the
