@@ -48,7 +48,7 @@ jobs:
       # garde d'un build à l'autre ; build-media ne retélécharge que ce qui a
       # changé dans le catalogue.
       - name: Restaurer le cache des médias
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: public/media
           key: media-${{ runner.os }}-${{ hashFiles('public/data/catalogue.json') }}
@@ -59,7 +59,7 @@ jobs:
       # de l'outil lui-même : elle sur-invalide (un commentaire suffit) mais ne
       # sous-invalide jamais, ce qui est le bon sens de l'erreur pour un cache.
       - name: Restaurer le cache des assets CC0
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             public/assets/materials
@@ -79,7 +79,7 @@ jobs:
       # est en panne, on republie avec les données de la veille plutôt que de
       # casser le site.
       - name: Restaurer le dernier catalogue connu
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: public/data/catalogue.json
           key: catalogue-${{ github.run_id }}
