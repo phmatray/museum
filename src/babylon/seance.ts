@@ -91,7 +91,7 @@ export function monterSeance(
     toile.rotation.y = Math.PI
     const film = el('iframe', {
       class: 'seance-film', src: lecteur(programme.video), title: titre,
-      allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen', allowfullscreen: true, referrerpolicy: 'strict-origin-when-cross-origin',
+      allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen', referrerpolicy: 'strict-origin-when-cross-origin',
     })
     toile.setContent(film, largeur, hauteur)
     effets.debut()
