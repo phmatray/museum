@@ -20,6 +20,8 @@ import type { Flight, Level, Opening, Plan, Rect, Room } from './types.ts'
 /** Seuils, en mètres. */
 export const NORMES = {
   porte: 1.8,
+  /** Une porte de service (la cabine de projection), réservée au personnel. */
+  porteDeService: 0.9,
   entree: 2.4,
   passageOuvert: 2.4,
   /** Distance minimale entre une ouverture et l'angle de la salle. */
@@ -40,7 +42,7 @@ export const NORMES = {
 } as const
 
 const EPS = 1e-6
-export const PASSABLE = new Set<Opening['kind']>(['door', 'entrance', 'open'])
+export const PASSABLE = new Set<Opening['kind']>(['door', 'entrance', 'open', 'service'])
 
 /** Le haut des murs du dernier étage : sous terre, un niveau ne compte pas. */
 export const sommet = (plan: Plan) => Math.max(...plan.levels.map((l) => l.elevation)) + plan.storey - plan.slab
@@ -233,7 +235,7 @@ export function checkPlan(plan: Plan, collection: number): string[] {
       const marge = o.kind === 'open' ? 0 : NORMES.retourDeMur
       if (c - o.width / 2 < from + marge - EPS || c + o.width / 2 > to - marge + EPS)
         out.push(`${nom} : dépasse le mur commun (${from}–${to}) ou colle à l'angle`)
-      const min = o.kind === 'door' ? NORMES.porte : o.kind === 'entrance' ? NORMES.entree : o.kind === 'open' ? NORMES.passageOuvert : 0
+      const min = o.kind === 'door' ? NORMES.porte : o.kind === 'entrance' ? NORMES.entree : o.kind === 'open' ? NORMES.passageOuvert : o.kind === 'service' ? NORMES.porteDeService : 0
       if (o.width < min) out.push(`${nom} : ${o.width} m de passage, il en faut ${min}`)
     }
 

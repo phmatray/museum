@@ -5,10 +5,12 @@
  *   MESHY_API_KEY=… node tools/generer-pnj.ts            # les PNJ manquants
  *   MESHY_API_KEY=… node tools/generer-pnj.ts --seul=3   # seulement le n° 3
  *   node tools/generer-pnj.ts --prompts                  # voir les tenues, sans rien générer
+ *   MESHY_API_KEY=… node tools/generer-pnj.ts --actions  # refaire les seules actions (même squelette)
  *
  * Pour chaque visiteur : modèle (text-to-3d preview, topologie « smart » allégée, A-pose),
- * texture (refine), squelette (rigging, taille du visiteur), puis UN fichier avec trois
- * actions de la bibliothèque (marche décontractée, attente bras ballants (Idle 4 : l'Idle 0 est une garde de combat), regard qui flâne).
+ * texture (refine), squelette (rigging, taille du visiteur), puis UN fichier avec quatre
+ * actions de la bibliothèque (marche décontractée, attente bras ballants (Idle 4 : l'Idle 0 est une garde de combat), regard qui flâne,
+ * et assis dans un fauteuil, pour les spectateurs du cinéma).
  * Sortie : `public/assets/pnj/pnj-<n>.glb` (à passer ensuite par `node tools/compresser-glb.ts`)
  * et `public/assets/pnj/pnj.json` (tenue, taille, tâches Meshy : on reprend là où l'on s'est arrêté).
  *
@@ -24,6 +26,9 @@ const ETAT = resolve(DOSSIER, 'pnj.json')
 export const NOMBRE = 8
 /** Les actions de la bibliothèque Meshy : marche, attente, regard qui flâne (devant une toile). */
 export const ACTIONS = { marche: 30, attente: 244, regard: 338 } as const
+/** Assis dans un fauteuil (« Chair Sit Idle ») : la version femme ou homme, selon la silhouette. */
+export const ASSISE = { femme: 32, homme: 33 } as const
+export const assise = (qui: string): number => (/woman|girl/.test(qui) ? ASSISE.femme : ASSISE.homme)
 
 /** Un générateur pseudo-aléatoire reproductible (mulberry32). */
 export function hasard(graine: number): () => number {
@@ -121,7 +126,7 @@ async function generer(t: Tenue, etat: Etat, sauver: () => void): Promise<void> 
   await tache('/v2/text-to-3d', { mode: 'preview', prompt: t.prompt, model_type: 'smart-topology', target_polycount: 9000, pose_mode: 't-pose', target_formats: ['glb'] }, k.apercu, noter('apercu'), `${nom} modèle`)
   await tache('/v2/text-to-3d', { mode: 'refine', preview_task_id: k.apercu, texture_resolution: '2k', target_formats: ['glb'] }, k.texture, noter('texture'), `${nom} texture`)
   await tache('/v1/rigging', { input_task_id: k.texture, height_meters: t.taille }, k.squelette, noter('squelette'), `${nom} squelette`)
-  const a = await tache('/v1/animations', { rig_task_id: k.squelette, action_ids: [ACTIONS.marche, ACTIONS.attente, ACTIONS.regard] }, k.animation, noter('animation'), `${nom} animations`)
+  const a = await tache('/v1/animations', { rig_task_id: k.squelette, action_ids: [ACTIONS.marche, ACTIONS.attente, ACTIONS.regard, assise(t.qui)] }, k.animation, noter('animation'), `${nom} animations`)
   const url = a.result?.animation_glb_url as string | undefined
   if (!url) throw new Error(`${nom} : pas de GLB animé (${JSON.stringify(a.result)})`)
   const glb = Buffer.from(await (await fetch(url)).arrayBuffer())
@@ -143,6 +148,8 @@ if (import.meta.main) {
   const etat: Etat = existsSync(ETAT) ? JSON.parse(readFileSync(ETAT, 'utf8')) : {}
   const sauver = () => writeFileSync(ETAT, `${JSON.stringify(etat, null, 2)}\n`)
   const seul = args.find((a) => a.startsWith('--seul='))?.split('=')[1]
+  // Refaire les actions : on oublie la tâche d'animation et le fichier, le squelette reste.
+  if (args.includes('--actions')) for (const e of Object.values(etat)) if (seul === undefined || String(e.n) === seul) { delete e.taches.animation; delete e.taches.fichier }
   const aFaire = liste.filter((t) => (seul === undefined || String(t.n) === seul) && !(etat[t.n]?.taches.fichier && existsSync(resolve(DOSSIER, etat[t.n].taches.fichier!))))
   const resultats = await Promise.allSettled(aFaire.map((t) => generer(t, etat, sauver)))
   resultats.forEach((r, i) => r.status === 'rejected' && console.error(`pnj-${aFaire[i].n} : ${r.reason}`))

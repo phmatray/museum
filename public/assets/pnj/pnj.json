@@ -8,7 +8,7 @@
       "apercu": "01a15aea-b037-7691-afba-95e1a39d4ffc",
       "texture": "01a15aeb-5f29-77b3-9eca-8222db4d5763",
       "squelette": "01a15aeb-c47c-7661-b7e7-ab4404cb1cae",
-      "animation": "01a15b04-1d22-745e-b96b-22af0cbbce75",
+      "animation": "01a15b99-a438-76c8-bce5-9135e511d525",
       "fichier": "pnj-0.glb"
     }
   },
@@ -21,7 +21,7 @@
       "apercu": "01a15aee-b879-7219-87d7-9d15c0e8df0f",
       "texture": "01a15aef-4832-752c-9ba4-ec6a9c80a5b3",
       "squelette": "01a15aef-cd5f-731d-8e04-f231b0ead7ef",
-      "animation": "01a15b04-1d36-71e5-a71f-de6863baed20",
+      "animation": "01a15b99-a455-7398-93ad-d85d8e9b4740",
       "fichier": "pnj-1.glb"
     }
   },
@@ -34,7 +34,7 @@
       "apercu": "01a15aee-b922-75df-821e-3558c6cd9d25",
       "texture": "01a15aef-684a-777b-8756-b8943ebd3b9e",
       "squelette": "01a15aef-eea0-7497-a14a-5e829e0cf436",
-      "animation": "01a15b04-1d44-7467-964d-1821d38d71fd",
+      "animation": "01a15b99-a45b-730c-89a5-8bf9ad8fc49b",
       "fichier": "pnj-2.glb"
     }
   },
@@ -47,7 +47,7 @@
       "apercu": "01a15aee-b91f-7060-b994-002a4397371b",
       "texture": "01a15aef-8af6-751a-a5dc-8f77c1c8546e",
       "squelette": "01a15aef-ee99-75de-aa41-cdbc45fc1bef",
-      "animation": "01a15b04-1d44-7114-bd71-c5743dbc2d55",
+      "animation": "01a15b99-a451-7479-92d8-a567d0eade0e",
       "fichier": "pnj-3.glb"
     }
   },
@@ -60,7 +60,7 @@
       "apercu": "01a15aee-b921-751f-8ab1-b12fa1c344a9",
       "texture": "01a15aef-47b5-72cc-add6-02cf8e5a98c9",
       "squelette": "01a15aef-cdf3-738c-8538-5f38603b7708",
-      "animation": "01a15b04-1d4c-72b6-a90c-becc7b37296b",
+      "animation": "01a15b99-a446-703b-828b-5b439639fb09",
       "fichier": "pnj-4.glb"
     }
   },
@@ -73,7 +73,7 @@
       "apercu": "01a15aee-b91d-715f-947d-d62a3ab11690",
       "texture": "01a15aef-edf0-74d0-af96-9d212ff6c44d",
       "squelette": "01a15af0-6f2e-761c-94ee-cc5a2f094b26",
-      "animation": "01a15b04-1d41-77d3-9d81-68a5390da1fd",
+      "animation": "01a15b99-a45c-754a-a2c1-36091d904c57",
       "fichier": "pnj-5.glb"
     }
   },
@@ -86,7 +86,7 @@
       "apercu": "01a15aee-b920-77a9-8862-061307cb3cdb",
       "texture": "01a15aef-68f3-7390-ae99-64c49417370e",
       "squelette": "01a15aef-eea4-73b9-9450-45d6f476eaec",
-      "animation": "01a15b04-1ddb-75f0-8759-3e009b504971",
+      "animation": "01a15b99-a4f4-723b-89c8-fd0510b69096",
       "fichier": "pnj-6.glb"
     }
   },
@@ -99,7 +99,7 @@
       "apercu": "01a15aee-b921-7521-a7ec-9e6a9d280365",
       "texture": "01a15aef-68ff-77e6-85d4-6dc25dff3023",
       "squelette": "01a15aef-eea7-76c9-b6b1-4df6335644c7",
-      "animation": "01a15b04-1dde-7002-8775-b1413dcaf55f",
+      "animation": "01a15b99-a4f4-723a-9dc5-752a88b0d012",
       "fichier": "pnj-7.glb"
     }
   }

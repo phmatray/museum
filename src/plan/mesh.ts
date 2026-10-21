@@ -182,6 +182,11 @@ export function meshLevel(plan: Plan, levelId: number): Box[] {
   // balcon), une baie est vitrée : on les retire des murs, droite par droite.
   // Un garde-corps plus haut (le palier) laisse le mur de dessous entier.
   const baies = level.openings.filter((o) => o.kind === 'bay').map(poser).filter((b) => b !== null)
+  // Une lucarne perce le mur à sa hauteur : le mur est retiré sur sa largeur, puis rebâti dessous et dessus.
+  const lucarnes = level.openings.filter((o) => o.kind === 'lucarne').flatMap((o) => {
+    const p = poser(o)
+    return p ? [{ ...p, y0: o.cote ?? level.elevation, y1: (o.cote ?? level.elevation) + (o.hauteur ?? 1) }] : []
+  })
   for (const m of wallSegments(plan, levelId, false)) {
     const axis = m.z1 === m.z2 ? 'x' : 'z'
     const [at, span]: [number, Interval] = axis === 'x' ? [m.z1, [m.x1, m.x2]] : [m.x1, [m.z1, m.z2]]
@@ -190,15 +195,24 @@ export function meshLevel(plan: Plan, levelId: number): Box[] {
         .filter((g) => (axis === 'x' ? g.z1 === g.z2 && Math.abs(g.z1 - at) < EPS : g.x1 === g.x2 && Math.abs(g.x1 - at) < EPS))
         .map((g): Interval => (axis === 'x' ? [g.x1, g.x2] : [g.z1, g.z2])),
       ...baies.filter((b) => b.axis === axis && Math.abs(b.at - at) < EPS).map((b): Interval => [b.s, b.t]),
+      ...lucarnes.filter((b) => b.axis === axis && Math.abs(b.at - at) < EPS).map((b): Interval => [b.s, b.t]),
     ]
     for (const [s, t] of subtract(span, cuts)) out.push(boite(axis, at, s, t, level.elevation, haut, 'wall'))
   }
   for (const b of baies) out.push(boite(b.axis, b.at, b.s, b.t, level.elevation, haut, 'glass'))
+  for (const l of lucarnes) out.push(
+    boite(l.axis, l.at, l.s, l.t, level.elevation, l.y0, 'wall'),
+    boite(l.axis, l.at, l.s, l.t, l.y1, haut, 'wall'),
+  )
 
   for (const o of level.openings) {
-    if (o.kind !== 'door' && o.kind !== 'entrance') continue
+    if (o.kind !== 'door' && o.kind !== 'entrance' && o.kind !== 'service') continue
     const p = poser(o)
-    if (p) out.push(boite(p.axis, p.at, p.s, p.t, level.elevation + LINTEAU, haut, 'lintel'))
+    if (!p) continue
+    // Une porte de palier : son seuil est au-dessus du plancher, le mur reste plein dessous.
+    const seuil = o.cote ?? level.elevation
+    if (seuil > level.elevation + EPS) out.push(boite(p.axis, p.at, p.s, p.t, level.elevation, seuil, 'wall'))
+    out.push(boite(p.axis, p.at, p.s, p.t, seuil + (o.hauteur ?? LINTEAU), haut, 'lintel'))
   }
 
   for (const l of plan.landings.filter((l) => bande(l.elevation)))

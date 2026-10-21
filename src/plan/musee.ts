@@ -23,7 +23,7 @@ import { OBSTACLES_ATELIERS } from './ateliers.ts'
 import { OBSTACLES_GRANDS_ARBRES } from './arbres.ts'
 import { OBSTACLES_BELVEDERE } from './belvedere.ts'
 import { OBSTACLES_CHANTIER } from './chantier.ts'
-import { OBSTACLES_CINEMA, PROMENOIR, SALLE as CINEMA, TRAVERSE, VOLEES_CINEMA } from './cinema.ts'
+import { LUCARNES, OBSTACLES_CINEMA, PORTE_CABINE, PROMENOIR, SALLE as CINEMA, SALLE_CABINE, SOL_CABINE, TRAVERSE, VOLEES_CINEMA } from './cinema.ts'
 import { obstaclesDesCimaises } from './cimaises.ts'
 import { OBSTACLES_PORTES_ENTREE, OBSTACLES_PORTIQUE } from './facade.ts'
 import { OBSTACLES_JARDIN } from './jardin.ts'
@@ -50,7 +50,7 @@ export const MUSEE: Plan = {
     { id: 'volee-sous-sol', x: 16, z: 12, width: 3, depth: 8, direction: 'south', bottom: -STOREY, top: 0, risers: 28 },
     ...VOLEES_CINEMA,
   ],
-  landings: [{ id: 'palier', x: 16, z: 12, width: 16, depth: 3.5, elevation: LANDING }, PROMENOIR, TRAVERSE],
+  landings: [{ id: 'palier', x: 16, z: 12, width: 16, depth: 3.5, elevation: LANDING }, PROMENOIR, TRAVERSE, SOL_CABINE],
   levels: [
     {
       id: 0,
@@ -148,12 +148,15 @@ export const MUSEE: Plan = {
         { id: 'ss-foyer', kind: 'foyer', name: 'Foyer du cinéma', x: 16, z: 4, width: 16, depth: 8 },
         { id: 'ss-escalier', kind: 'foyer', name: 'Escalier du sous-sol', x: 16, z: 12, width: 3, depth: 8 },
         { id: 'cinema', kind: 'cinema', name: 'Cinéma', ...CINEMA },
+        { id: 'ss-cabine', kind: 'foyer', name: 'Cabine de projection', ...SALLE_CABINE },
       ],
       openings: [
         { kind: 'open', a: 'ss-escalier', b: 'ss-foyer', x: 17.5, z: 12, width: 3 },
         { kind: 'door', a: 'ss-foyer', b: 'cinema', x: 16, z: 7, width: 2 },
+        PORTE_CABINE,
+        ...LUCARNES,
       ],
-      // La scène, les fauteuils, le dessous du promenoir (cinema.ts), et le banc du foyer (mobilier.ts).
+      // La scène, les fauteuils, le dessous du promenoir et de la cabine, le comptoir (cinema.ts), et le banc du foyer (mobilier.ts).
       obstacles: [...OBSTACLES_CINEMA, ...obstaclesDuMobilier(-1)],
     },
   ],

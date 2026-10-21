@@ -20,7 +20,7 @@
  * Pur : ni three ni React. `musee.ts` importe les volées, le palier et les
  * obstacles ; le rendu lit le reste.
  */
-import type { Flight, Landing, Rect } from './types.ts'
+import type { Flight, Landing, Opening, Rect } from './types.ts'
 
 /** Le plancher du sous-sol, et le dessous de la dalle du rez-de-chaussée. */
 export const SOL = -4.8
@@ -73,12 +73,38 @@ export const COMPTOIR: Rect = { x: 29.6, z: 6, width: FOYER.x + FOYER.width - 0.
 /** Le centre des affiches au mur nord (sa face z = 4,15), de 1,0 × 1,45 m. */
 export const AFFICHES = [19.5, 22.5, 29.5].map((x) => ({ x, y: SOL + 1.65, z: FOYER.z + 0.15, largeur: 1.0, hauteur: 1.45 }))
 
+/**
+ * La cabine de projection, derrière le mur du fond, de plain-pied avec le promenoir (le plancher
+ * de la pièce, au sous-sol, ne se foule pas : la cabine est sur un palier). On y entre par une porte
+ * de service au bout du promenoir ; elle ne s'ouvre qu'au visiteur qui a dix tampons (`succes.ts`).
+ */
+export const SALLE_CABINE: Rect = { x: 5.5, z: SALLE.z + SALLE.depth, width: 7, depth: 3.5 }
+
+export const SOL_CABINE: Landing = { id: 'cabine', ...SALLE_CABINE, elevation: COTE_PROMENOIR }
+
+/** La porte de la cabine, dans le mur du fond, et sa hauteur (2,05 m : la dalle est à 2,25 m). */
+export const PORTE_CABINE: Opening = { kind: 'service', a: 'cinema', b: 'ss-cabine', x: 7, z: SALLE.z + SALLE.depth, width: 1, cote: COTE_PROMENOIR, hauteur: 2.05 }
+
+/**
+ * Les meubles de la cabine (leur emprise au sol, sur le palier) : le projecteur dans l'axe de la
+ * lucarne de projection, la tour à plateaux dans l'angle sud-est, la table de rembobinage au mur
+ * sud, l'étagère des bobines au mur ouest. Le palier ne connaît pas d'obstacles : le visiteur les
+ * contourne par `BARRIERES` (visiteur.ts).
+ */
+export const MEUBLES_CABINE: Rect[] = [
+  { x: SALLE.x + SALLE.width / 2 - 0.35, z: SALLE_CABINE.z + 0.15, width: 0.7, depth: 1.5 },
+  { x: SALLE_CABINE.x + SALLE_CABINE.width - 0.15 - 1.35, z: SALLE_CABINE.z + SALLE_CABINE.depth - 0.15 - 1.35, width: 1.35, depth: 1.35 },
+  { x: SALLE_CABINE.x + 0.15 + 0.5, z: SALLE_CABINE.z + SALLE_CABINE.depth - 0.15 - 0.75, width: 1.8, depth: 0.75 },
+  { x: SALLE_CABINE.x + 0.15, z: SALLE_CABINE.z + SALLE_CABINE.depth / 2 - 0.6, width: 0.4, depth: 1.8 },
+]
+
 /** Ce que la marche contourne au sous-sol : la scène, les rangs de fauteuils, le dessous de la traverse et du promenoir, le comptoir. */
 export const OBSTACLES_CINEMA: Rect[] = [
   { x: SCENE.x, z: SCENE.z, width: SCENE.width, depth: SCENE.depth },
   BLOC_GRADINS,
   { x: PROMENOIR.x, z: PROMENOIR.z, width: PROMENOIR.width, depth: PROMENOIR.depth },
   COMPTOIR,
+  SALLE_CABINE,
 ]
 
 /** Un rang : la bande `z0–z1` de son plancher, à la cote `dessus`. */
@@ -121,6 +147,25 @@ export const SIEGES: Siege[] = GRADINS.slice(0, -1).flatMap((g) => {
   }))
 })
 
+/**
+ * Les spectateurs (PNJ assis) : neuf fauteuils tirés une fois pour toutes (Park-Miller), ni au bord
+ * d'une allée (on y entre), ni deux côte à côte. Le visiteur ne peut s'asseoir que dans les autres.
+ */
+export const SPECTATEURS: Siege[] = (() => {
+  let graine = 2026
+  const hasard = () => (graine = (graine * 16807) % 2147483647) / 2147483647
+  const pris = new Set<number>()
+  const parRang = SIEGES.filter((s) => s.rang === 0).length
+  for (let essai = 0; pris.size < 9 && essai < 1000; essai++) {
+    const i = Math.floor(hasard() * SIEGES.length)
+    const col = i % parRang
+    if (col === 0 || col === parRang - 1 || pris.has(i) || pris.has(i - 1) || pris.has(i + 1)) continue
+    pris.add(i)
+  }
+  return [...pris].sort((a, b) => a - b).map((i) => SIEGES[i])
+})()
+export const SIEGES_LIBRES: Siege[] = SIEGES.filter((s) => !SPECTATEURS.includes(s))
+
 /** Une tête assise : au-dessus de l'assise du rang (le dessus de sa marche). */
 export const TETE_ASSISE = 1.3
 
@@ -133,6 +178,9 @@ export const CABINE: { x: number; y0: number; y1: number; largeur: number; z: nu
   { x: SALLE.x + SALLE.width / 2, largeur: 1.1, projection: true },
   { x: SALLE.x + SALLE.width / 2 + 1.7, largeur: 0.7, projection: false },
 ].map((f) => ({ ...f, y0: PLAFOND - 0.6, y1: PLAFOND - 0.15, z: SALLE.z + SALLE.depth - 0.15 }))
+
+/** Les lucarnes de la cabine, percées dans le mur du fond. */
+export const LUCARNES: Opening[] = CABINE.map((f) => ({ kind: 'lucarne', a: 'cinema', b: 'ss-cabine', x: f.x, z: SALLE.z + SALLE.depth, width: f.largeur, cote: f.y0, hauteur: f.y1 - f.y0 }))
 
 /**
  * L'écran, sur le mur nord (face à z = 2,20), au-dessus de la scène, au format scope (2,39:1).
@@ -203,6 +251,23 @@ export const SPOTS: Point[] = (() => {
       out.push({ x: SALLE.x + ((i + 0.5) * SALLE.width) / nx, y: PLAFOND, z: SALLE.z + ((j + 0.5) * SALLE.depth) / nz, nx: 0, nz: 0 })
   return out
 })()
+
+/**
+ * Combien l'œil est DANS le faisceau du projecteur (de l'objectif à la toile), de 0 (dehors) à 1
+ * (dedans) : la distance de l'œil aux faces du faisceau, en mètres à sa hauteur, fondue sur ±30 cm.
+ * On ne voit pas un faisceau de l'intérieur : il s'efface quand on y entre, peu à peu.
+ */
+export function dansLeFaisceau(o: { x: number; y: number; z: number }): number {
+  const lucarne = CABINE.find((f) => f.projection)!
+  const s = { x: lucarne.x, y: (lucarne.y0 + lucarne.y1) / 2, z: lucarne.z - 0.05 }
+  if (o.z >= s.z || o.z <= ECRAN.z) return 0
+  // Le point de la toile dans l'alignement objectif → œil, et l'agrandissement de l'œil à la toile.
+  const k = (s.z - ECRAN.z) / (s.z - o.z)
+  const qx = s.x + (o.x - s.x) * k
+  const qy = s.y + (o.y - s.y) * k
+  const marge = Math.min(qx - (ECRAN.x - ECRAN.largeur / 2), ECRAN.x + ECRAN.largeur / 2 - qx, qy - ECRAN.bas, ECRAN.bas + ECRAN.hauteur - qy) / k
+  return Math.min(1, Math.max(0, (marge + 0.3) / 0.6))
+}
 
 /** La portée (m) à laquelle on peut viser un fauteuil pour s'y asseoir : la largeur d'un rang, depuis l'allée. */
 export const PORTEE_ASSISE = 11

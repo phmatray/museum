@@ -6,8 +6,8 @@
 import { describe, expect, it } from 'vitest'
 
 import {
-  AFFICHES, APPLIQUES, BLOC_GRADINS, COMPTOIR, FOYER, CABINE, TETE_ASSISE, solLeLongDesMurs, siegeVise, COTE_PROMENOIR, ECRAN, ENCEINTES, FAUTEUIL, GRADINS, LUMIERES_MARCHES, PLAFOND, PROMENOIR, RIDEAUX,
-  SALLE, SCENE, SIEGES, SOL, SPOTS, TRAVERSE, VOLEES_CINEMA,
+  AFFICHES, APPLIQUES, dansLeFaisceau, MEUBLES_CABINE, PORTE_CABINE, SALLE_CABINE, BLOC_GRADINS, COMPTOIR, FOYER, CABINE, TETE_ASSISE, solLeLongDesMurs, siegeVise, COTE_PROMENOIR, ECRAN, ENCEINTES, FAUTEUIL, GRADINS, LUMIERES_MARCHES, PLAFOND, PROMENOIR, RIDEAUX,
+  SALLE, SCENE, SIEGES, SIEGES_LIBRES, SOL, SPECTATEURS, SPOTS, TRAVERSE, VOLEES_CINEMA,
 } from '../cinema'
 import { guardrails } from '../geometry'
 import { MUSEE } from '../musee'
@@ -32,6 +32,47 @@ describe('le cinéma', () => {
     expect(COMPTOIR.x).toBeGreaterThan(porte.x + 6)
     expect(COMPTOIR.x + COMPTOIR.width).toBeLessThanOrEqual(FOYER.x + FOYER.width - 0.15 + 1e-9)
     for (const a of AFFICHES) expect(a.x - a.largeur / 2).toBeGreaterThan(FOYER.x + 0.15)
+  })
+
+  it('assied neuf spectateurs, jamais au bord d’une allée ni côte à côte, et laisse les autres fauteuils libres', () => {
+    expect(SPECTATEURS).toHaveLength(9)
+    expect(SIEGES_LIBRES).toHaveLength(SIEGES.length - 9)
+    const parRang = SIEGES.filter((s) => s.rang === 0).length
+    const idx = SPECTATEURS.map((s) => SIEGES.indexOf(s))
+    for (const i of idx) {
+      expect([0, parRang - 1]).not.toContain(i % parRang)
+      expect(idx).not.toContain(i + 1)
+    }
+  })
+
+  it('dansLeFaisceau : dehors 0, sur l’axe objectif → toile 1, et un fondu au bord', () => {
+    const l = CABINE.find((f) => f.projection)!
+    const s = { x: l.x, y: (l.y0 + l.y1) / 2, z: l.z - 0.05 }
+    const c = { x: ECRAN.x, y: ECRAN.bas + ECRAN.hauteur / 2, z: ECRAN.z }
+    const sur = (t: number) => ({ x: s.x + (c.x - s.x) * t, y: s.y + (c.y - s.y) * t, z: s.z + (c.z - s.z) * t })
+    expect(dansLeFaisceau(sur(0.5))).toBe(1)
+    // Assis au rang 1, la tête bien sous le faisceau.
+    expect(dansLeFaisceau({ x: 9.5, y: GRADINS[0].dessus + TETE_ASSISE, z: GRADINS[0].z1 - 0.3 })).toBe(0)
+    // Un pas de côté à travers le bord : la valeur monte sans sauter.
+    const y = sur(0.8).y
+    const z = sur(0.8).z
+    let avant = 0
+    for (let x = 0; x <= 9.5; x += 0.05) {
+      const v = dansLeFaisceau({ x, y, z })
+      expect(v - avant).toBeLessThan(0.2)
+      avant = v
+    }
+  })
+
+  it('meuble la cabine contre ses murs, en laissant libre le chemin de la porte aux lucarnes', () => {
+    for (const m of MEUBLES_CABINE) {
+      expect(m.x).toBeGreaterThanOrEqual(SALLE_CABINE.x + 0.15 - 1e-9)
+      expect(m.x + m.width).toBeLessThanOrEqual(SALLE_CABINE.x + SALLE_CABINE.width - 0.15 + 1e-9)
+      expect(m.z + m.depth).toBeLessThanOrEqual(SALLE_CABINE.z + SALLE_CABINE.depth - 0.15 + 1e-9)
+      // Ni devant la porte (1 m dedans), ni devant la lucarne du projectionniste.
+      expect(contains(m, PORTE_CABINE.x, SALLE_CABINE.z + 0.6)).toBe(false)
+      expect(contains(m, CABINE[1].x, SALLE_CABINE.z + 0.5)).toBe(false)
+    }
   })
 
   it('ouvre les allées sur les rangs : pas de garde-corps entre une allée et ses fauteuils', () => {

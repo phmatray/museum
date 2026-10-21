@@ -54,6 +54,9 @@ const borne = (v: number, a = 1) => Math.max(-a, Math.min(a, v))
 const CHAMP_HORIZONTAL_MIN = 60
 
 /** Le champ vertical (radians) pour un réglage en degrés et un rapport largeur/hauteur. */
+/** Les lieux où l'on n'entre pas encore : chaque couche peut en déclarer (un pas qui y mène est refusé). */
+export const BARRIERES: ((w: Walker) => boolean)[] = []
+
 export function champVertical(degres: number, aspect: number): number {
   const reglage = (degres * Math.PI) / 180
   const minimum = 2 * Math.atan(Math.tan((CHAMP_HORIZONTAL_MIN * Math.PI) / 360) / aspect)
@@ -254,7 +257,9 @@ export function monterVisiteur(
         break
       }
       // Toujours le même objet MUSEE : `walk.ts` y accroche son cache de murs.
-      w = step(MUSEE, w, entree, PAS_FIXE)
+      const suivant = step(MUSEE, w, entree, PAS_FIXE)
+      // Une porte fermée (la cabine du cinéma, avant ses dix tampons) : on reste où l'on est.
+      if (!BARRIERES.some((b) => b(suivant))) w = suivant
       saut = sauter(saut, !visite && !xr && touche('Space') > 0, PAS_FIXE)
     }
     if (visite) {

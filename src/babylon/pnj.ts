@@ -54,18 +54,18 @@ const DIAMETRE_TACHE = 0.9
 interface Cuisson { texture: RawTexture; plages: Record<Activite, [number, number]> }
 
 /** Cuit les actions du modèle dans une texture de matrices d'os (format du shader `bakedVertexAnimation`). */
-export function cuire(scene: Scene, maillage: Mesh, groupes: AnimationGroup[]): Cuisson | null {
+export function cuire<A extends string = Activite>(scene: Scene, maillage: Mesh, groupes: AnimationGroup[], actions: Record<A, RegExp> = ACTIONS as Record<A, RegExp>): (Omit<Cuisson, 'plages'> & { plages: Record<A, [number, number]> }) | null {
   const squelette = maillage.skeleton
   if (!squelette) return null
   const parFrame = (squelette.bones.length + 1) * 16
-  const choisis = (Object.keys(ACTIONS) as Activite[]).map((a) => [a, groupes.find((g) => ACTIONS[a].test(g.name))] as const)
+  const choisis = (Object.keys(actions) as A[]).map((a) => [a, groupes.find((g) => actions[a].test(g.name))] as const)
   if (choisis.some(([, g]) => !g)) return null
   const images = choisis.map(([, g]) => {
     const fps = g!.targetedAnimations[0]?.animation.framePerSecond ?? 60
     return Math.max(2, Math.round(((g!.to - g!.from) / fps) * CADENCE))
   })
   const donnees = new Float32Array(parFrame * images.reduce((a, b) => a + b, 0))
-  const plages = {} as Record<Activite, [number, number]>
+  const plages = {} as Record<A, [number, number]>
   for (const g of groupes) g.stop()
   let ligne = 0
   choisis.forEach(([activite, g], i) => {

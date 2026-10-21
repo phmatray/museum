@@ -19,7 +19,8 @@ describe('revetements', () => {
     const toutes = Object.values(r).flat()
     // Toutes cuites sauf la dalle du hall, que la trémie du sous-sol découpe (elle hérite de sa lumière, boites.ts).
     expect(toutes.filter((c) => c.cle in LUMIERE.boites)).toHaveLength(807)
-    expect(toutes.filter((c) => c.cle)).toHaveLength(832)
+    // Plus le sous-sol (foyer, escalier, cinéma, cabine de projection), sans lumière cuite.
+    expect(toutes.filter((c) => c.cle)).toHaveLength(846)
     expect(toutes.filter((c) => !c.cle)).toHaveLength(sansCle)
     expect(r.granit.some((c) => !c.cle) && r.pierre.some((c) => !c.cle)).toBe(true)
   })

@@ -31,7 +31,7 @@ import { LINTEAU } from '../plan/portes.ts'
 
 const CHAUD = new Color3(1, 0.8, 0.58)
 
-const pbr = (scene: Scene, nom: string, couleur: Color3, rugosite: number, metal = 0) => {
+export const pbr = (scene: Scene, nom: string, couleur: Color3, rugosite: number, metal = 0) => {
   const m = new PBRMaterial(nom, scene)
   m.albedoColor = couleur
   m.roughness = rugosite
@@ -44,7 +44,7 @@ const FAUX_PLAFOND = 0.5
 const FACE = 0.15 + 0.02
 
 /** Un plan tourné vers `face` (+x, −x, +z, −z), centré en (x, y, z). */
-function plan(nom: string, scene: Scene, l: number, h: number, x: number, y: number, z: number, face: '+x' | '-x' | '+z' | '-z'): Mesh {
+export function plan(nom: string, scene: Scene, l: number, h: number, x: number, y: number, z: number, face: '+x' | '-x' | '+z' | '-z'): Mesh {
   const m = CreatePlane(nom, { width: l, height: h }, scene)
   m.position.set(x, y, z)
   m.rotation.y = { '+x': -Math.PI / 2, '-x': Math.PI / 2, '+z': Math.PI, '-z': 0 }[face]
@@ -53,7 +53,7 @@ function plan(nom: string, scene: Scene, l: number, h: number, x: number, y: num
 }
 
 /** Une plaque lumineuse dessinée (texte, affiche) : non éclairée, lisible (le plan retourné est remis à l'endroit). */
-function lumineuse(nom: string, scene: Scene, l: number, h: number, dessin: (g: CanvasRenderingContext2D, L: number, H: number, t: DynamicTexture) => void, eclat = 1): StandardMaterial {
+export function lumineuse(nom: string, scene: Scene, l: number, h: number, dessin: (g: CanvasRenderingContext2D, L: number, H: number, t: DynamicTexture) => void, eclat = 1): StandardMaterial {
   const L = 1024
   const H = Math.round((L * h) / l)
   const t = new DynamicTexture(nom, { width: L, height: H }, scene, true)
@@ -71,7 +71,7 @@ function lumineuse(nom: string, scene: Scene, l: number, h: number, dessin: (g: 
 }
 
 /** Un texte centré sur une ligne, réduit pour tenir dans `largeur`. */
-function centre(g: CanvasRenderingContext2D, texte: string, y: number, L: number, police: (taille: number) => string, taille: number, largeur = L * 0.86) {
+export function centre(g: CanvasRenderingContext2D, texte: string, y: number, L: number, police: (taille: number) => string, taille: number, largeur = L * 0.86) {
   let t = taille
   do g.font = police(t--)
   while (g.measureText(texte).width > largeur && t > 10)
@@ -89,7 +89,7 @@ function lignes(titre: string, n: number, max = 3): string[] {
   return out.length > max ? [...out.slice(0, max - 1), `${out.slice(max - 1).join(' ').slice(0, n - 1)}…`] : out
 }
 
-const SERIF = (t: number) => `600 ${t}px Marcellus, Georgia, serif`
+export const SERIF = (t: number) => `600 ${t}px Marcellus, Georgia, serif`
 const SANS = (t: number) => `400 ${t}px "Source Sans 3", sans-serif`
 
 /** Une affiche de film, portrait : bandeau, vignette de la vidéo, titre. */

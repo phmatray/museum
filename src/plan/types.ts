@@ -37,7 +37,11 @@ export interface Room extends Rect {
  * (deux balcons) ; `bay` est une baie sur le vide, qui se regarde et ne se
  * franchit pas.
  */
-export type OpeningKind = 'door' | 'entrance' | 'open' | 'bay'
+/**
+ * `service` : une porte réservée (0,90 m), `lucarne` : une fenêtre haute dans un mur intérieur (la
+ * lucarne de projection), qu'on ne franchit pas.
+ */
+export type OpeningKind = 'door' | 'entrance' | 'open' | 'bay' | 'service' | 'lucarne'
 
 export interface Opening {
   kind: OpeningKind
@@ -48,6 +52,10 @@ export interface Opening {
   x: number
   z: number
   width: number
+  /** La cote du seuil (lucarne : de l'appui), si ce n'est pas le plancher du niveau (une porte de palier). */
+  cote?: number
+  /** La hauteur libre, si ce n'est pas celle d'une porte (`LINTEAU`). */
+  hauteur?: number
 }
 
 export interface Level {

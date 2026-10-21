@@ -37,9 +37,9 @@ it('borde chaque lanterneau d’un cadre mouluré, sans boîte dans une autre ni
   }
 })
 
-it('couvre le cinéma et son foyer d’un plâtre plat sans lanterneau, et laisse ouverte la cage de l’escalier', () => {
+it('couvre le cinéma, son foyer et sa cabine d’un plâtre plat sans lanterneau, et laisse ouverte la cage de l’escalier', () => {
   const { platre, verre, resille } = plafonds(MUSEE, -1)
-  expect(platre.map((p) => [p.x, p.z])).toEqual([[24, 8], [9.5, 11]])
+  expect(platre.map((p) => [p.x, p.z])).toEqual([[24, 8], [9.5, 11], [9, 21.75]])
   expect([...verre, ...resille]).toEqual([])
   for (const p of platre) expect(p.y + p.h / 2).toBeCloseTo(-MUSEE.slab, 6)
 })

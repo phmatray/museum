@@ -39,9 +39,10 @@ import type { Scene } from '@babylonjs/core/scene'
 import { affiche, type Seance } from '../domain/cinema.ts'
 import {
   APPLIQUES, CABINE, CAISSON, COTE_PROMENOIR, ECRAN, ENCEINTES, LAMBRIS, LUMIERES_MARCHES,
-  PLAFOND, RIDEAUX, SALLE, SCENE, SIEGES, SOL, SPOTS, siegeVise, solLeLongDesMurs,
+  PLAFOND, RIDEAUX, SALLE, SCENE, SIEGES, SOL, SPOTS, dansLeFaisceau, siegeVise, solLeLongDesMurs,
 } from '../plan/cinema.ts'
-import { BLOC_GRADINS, GRADINS, PROMENOIR, TRAVERSE, VOLEES_CINEMA, type Siege } from '../plan/cinema.ts'
+import { BLOC_GRADINS, GRADINS, MEUBLES_CABINE, PORTE_CABINE, PROMENOIR, SIEGES_LIBRES, SOL_CABINE, SPECTATEURS, TRAVERSE, VOLEES_CINEMA, type Siege } from '../plan/cinema.ts'
+import { cabineOuverte, TAMPONS_CABINE } from '../domain/succes.ts'
 import { MUSEE } from '../plan/musee.ts'
 import { LINTEAU } from '../plan/portes.ts'
 import type { Arrivee } from '../plan/arrivee.ts'
@@ -49,13 +50,16 @@ import type { Walker } from '../plan/walk.ts'
 import { partie, VIVANTES } from './etat.ts'
 import { glbOuRien } from './glb.ts'
 import { monterSeance, type Coins } from './seance.ts'
-import { signaler } from './succes.ts'
+import { carnet, signaler } from './succes.ts'
+import { BARRIERES } from './visiteur.ts'
+import { monterCabine, morceaux } from './cabine.ts'
 import { monterFoyer } from './foyer.ts'
+import { monterSpectateurs } from './spectateurs.ts'
 import { el } from './ui/dom.ts'
 import './ui/cinema.css'
 
 /** Les surfaces de la salle : on y est « au cinéma » (et l'on peut lancer la séance). */
-export const SURFACES_CINEMA = new Set(['-1:cinema', ...VOLEES_CINEMA.map((f) => `volee:${f.id}`), `palier:${PROMENOIR.id}`, `palier:${TRAVERSE.id}`])
+export const SURFACES_CINEMA = new Set(['-1:cinema', ...VOLEES_CINEMA.map((f) => `volee:${f.id}`), `palier:${PROMENOIR.id}`, `palier:${TRAVERSE.id}`, `palier:${SOL_CABINE.id}`])
 
 /** L'épaisseur du revêtement posé sur la face des cloisons (évite le même plan que le mur). */
 const PEAU = 0.02
@@ -65,46 +69,6 @@ const HAUTEUR_FAUTEUIL = 1.0
 /** Le temps (s) que met la salle à s'éteindre ou à se rallumer. */
 const GRADATEUR = 4
 
-/**
- * Le vitrage d'une fenêtre de la cabine, vu de la salle : l'intérieur éclairé, et dans la lucarne
- * de projection, le projecteur de face (son objectif), sinon deux bobines et le pupitre.
- */
-function vitreDeCabine(scene: Scene, projection: boolean): DynamicTexture {
-  const [L, H] = [512, 256]
-  const t = new DynamicTexture(`cinema:cabine${projection ? '-projection' : ''}`, { width: L, height: H }, scene, true)
-  const g = t.getContext()
-  const fond = g.createLinearGradient(0, 0, 0, H)
-  fond.addColorStop(0, '#5a4128')
-  fond.addColorStop(1, '#1c120a')
-  g.fillStyle = fond
-  g.fillRect(0, 0, L, H)
-  if (projection) {
-    g.fillStyle = '#2a2a2e'
-    g.fillRect(150, 60, 212, 180)
-    g.fillStyle = '#3d3d42'
-    g.fillRect(150, 60, 212, 14)
-    g.beginPath()
-    g.arc(L / 2, 150, 52, 0, Math.PI * 2)
-    g.fillStyle = '#76716a'
-    g.fill()
-    g.beginPath()
-    g.arc(L / 2, 150, 40, 0, Math.PI * 2)
-    g.fillStyle = '#08080a'
-    g.fill()
-  } else {
-    g.strokeStyle = '#1a1a1c'
-    g.lineWidth = 10
-    for (const [x, y, r] of [[170, 95, 62], [340, 95, 62]] as const) {
-      g.beginPath()
-      g.arc(x, y, r, 0, Math.PI * 2)
-      g.stroke()
-    }
-    g.fillStyle = '#141416'
-    g.fillRect(90, 180, 332, 76)
-  }
-  t.update()
-  return t
-}
 
 const pbr = (scene: Scene, nom: string, couleur: Color3, rugosite: number, metal = 0) => {
   const m = new PBRMaterial(nom, scene)
@@ -288,9 +252,16 @@ export async function monterCinema(
     if (nx < 0 && baie) garder(bandeau('cinema:tissu-linteau', scene, x, nx, baie[0], baie[1], () => SOL + LINTEAU, () => PLAFOND - 0.02)).material = tissu
   }
   // Le fond (au sud, sous la cabine) : rouge au-dessus du promenoir ; le mur nord, noir derrière l'écran.
-  const fond = garder(CreatePlane('cinema:fond', { width: SALLE.width - 0.3, height: PLAFOND - COTE_PROMENOIR }, scene))
-  fond.position.set(SALLE.x + SALLE.width / 2, (PLAFOND + COTE_PROMENOIR) / 2, zS)
-  fond.material = tissu
+  // Percé de la porte de la cabine et de ses lucarnes.
+  const trous = [
+    { a: PORTE_CABINE.x - PORTE_CABINE.width / 2, b: PORTE_CABINE.x + PORTE_CABINE.width / 2, y0: COTE_PROMENOIR, y1: COTE_PROMENOIR + (PORTE_CABINE.hauteur ?? 2) },
+    ...CABINE.map((f) => ({ a: f.x - f.largeur / 2, b: f.x + f.largeur / 2, y0: f.y0, y1: f.y1 })),
+  ]
+  for (const [i, m] of morceaux({ a: SALLE.x + 0.15, b: SALLE.x + SALLE.width - 0.15, y0: COTE_PROMENOIR, y1: PLAFOND }, trous).entries()) {
+    const fond = garder(CreatePlane(`cinema:fond${i}`, { width: m.b - m.a, height: m.y1 - m.y0 }, scene))
+    fond.position.set((m.a + m.b) / 2, (m.y0 + m.y1) / 2, zS)
+    fond.material = tissu
+  }
   const nord = garder(CreatePlane('cinema:nord', { width: SALLE.width - 0.3, height: PLAFOND - SOL }, scene))
   nord.position.set(SALLE.x + SALLE.width / 2, (PLAFOND + SOL) / 2, zN)
   nord.rotation.y = Math.PI
@@ -351,17 +322,6 @@ export async function monterCinema(
     const [g, h] = [f.depth / f.risers, (f.top - f.bottom) / f.risers]
     return [...Matrix.Compose(new Vector3(f.width - 0.2, 1, 1), Quaternion.Identity(), new Vector3(f.x + f.width / 2, f.bottom + (k + 1) * h + 0.004, f.z + k * g + 0.02)).asArray()]
   }).flat())), 16)
-  const vitres = CABINE.map((f, i) => {
-    const m = new StandardMaterial(`cinema:cabine${i}`, scene)
-    m.disableLighting = true
-    m.diffuseColor = Color3.Black()
-    m.emissiveTexture = vitreDeCabine(scene, f.projection)
-    m.emissiveColor = Color3.White()
-    const v = garder(CreatePlane(`cinema:fenetre${i}`, { width: f.largeur, height: f.y1 - f.y0 }, scene))
-    v.position.set(f.x, (f.y0 + f.y1) / 2, f.z - PEAU - 0.01)
-    v.material = m
-    return m
-  })
   // L'objectif allumé : un disque additif devant la lucarne, qui ne paraît que pendant la séance.
   const lucarne = CABINE.find((f) => f.projection)!
   const eclat = new DynamicTexture('cinema:objectif', { width: 128, height: 128 }, scene, true)
@@ -393,6 +353,8 @@ export async function monterCinema(
   const auMur = (p: (typeof APPLIQUES)[number], recul: number) => ({ x: p.x + p.nx * recul, y: p.y, z: p.z, lacet: Math.atan2(p.nx, p.nz) })
   if (appliques) salle.push(...poser(appliques, APPLIQUES.map((p) => auMur(p, 0.16)), 0.95, 'y', true))
   if (enceintes) salle.push(...poser(enceintes, ENCEINTES.map((p) => auMur(p, 0.17)), 0.55, 'y', true))
+  // Les spectateurs, dans les fauteuils qui leur sont réservés.
+  salle.push(...await monterSpectateurs(scene, SPECTATEURS).catch((e: unknown) => (console.warn('spectateurs', e), [])))
 
   // ── Lumière : sous terre, ni soleil ni ciel ; six lumières chaudes, une par applique, pour la salle seule ──
   lumieres.soleil.excludedMeshes.push(...salle)
@@ -421,18 +383,32 @@ export async function monterCinema(
     new Vector3(ECRAN.x - ECRAN.largeur / 2, ECRAN.bas, ECRAN.z),
   ]
   const faisceau = garder(new Mesh('cinema:faisceau', scene))
-  const pos = [source, ...coins].flatMap((v) => [v.x, v.y, v.z])
-  // Le dégradé vit dans la couleur des sommets : vif à la cabine, presque rien à la toile.
-  // Ténu : on s'assied parfois DANS le faisceau (le promenoir est sous la cabine), qui ne doit pas voiler la salle.
-  const couleurs = [0.9, 0.95, 1, 0.07, ...Array.from({ length: 4 }, () => [0.7, 0.8, 1, 0.012]).flat()]
-  Object.assign(new VertexData(), { positions: pos, indices: [0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 1], colors: couleurs }).applyToMesh(faisceau)
+  // Quatre faces de l'objectif aux bords de la toile, chacune avec ses sommets : u à travers la face, v le long.
+  // Le dégradé est dans la texture d'opacité : vif à l'objectif, presque rien à la toile, flou sur les bords.
+  const bords = [[coins[0], coins[1]], [coins[1], coins[2]], [coins[2], coins[3]], [coins[3], coins[0]]]
+  Object.assign(new VertexData(), {
+    positions: bords.flatMap(([a, b]) => [source, a, b].flatMap((v) => [v.x, v.y, v.z])),
+    uvs: bords.flatMap(() => [0.5, 0, 0, 1, 1, 1]),
+    indices: bords.flatMap((_, i) => [3 * i, 3 * i + 1, 3 * i + 2]),
+  }).applyToMesh(faisceau)
+  const voile = new DynamicTexture('cinema:faisceau', { width: 64, height: 64 }, scene, false)
+  const gv = voile.getContext() as CanvasRenderingContext2D
+  const img = gv.createImageData(64, 64)
+  for (let j = 0; j < 64; j++)
+    for (let i = 0; i < 64; i++) {
+      const [u, v] = [(i + 0.5) / 64, (j + 0.5) / 64]
+      img.data.set([235, 242, 255, Math.round(255 * Math.pow(Math.sin(Math.PI * u), 1.5) * (0.1 * (1 - v) + 0.016 * v))], (j * 64 + i) * 4)
+    }
+  gv.putImageData(img, 0, 0)
+  voile.update()
+  voile.hasAlpha = true
   const lumineux = new StandardMaterial('cinema:faisceau', scene)
   lumineux.disableLighting = true
-  lumineux.emissiveColor = Color3.White()
+  lumineux.emissiveColor = new Color3(0.92, 0.95, 1)
+  lumineux.opacityTexture = voile
   lumineux.backFaceCulling = false
   lumineux.disableDepthWrite = true
   lumineux.alphaMode = Constants.ALPHA_ADD
-  faisceau.hasVertexAlpha = true
   faisceau.material = lumineux
   faisceau.isVisible = false
 
@@ -447,7 +423,7 @@ export async function monterCinema(
 
   // ── Le gradateur : `sombre` va de 0 (salle allumée) à 1 (séance) en GRADATEUR secondes ──
   const SPOT = halo.emissiveColor.clone()
-  for (const m of [halo, veilleuse, filet, lumiereObjectif, ...vitres]) VIVANTES.add(m.name)
+  for (const m of [halo, veilleuse, filet, lumiereObjectif]) VIVANTES.add(m.name)
   // L'ambiance de la sonde de la salle (spéculaire) éclaire le velours quelles que soient les lampes : elle baisse avec elles.
   const ambiances = [...new Set(salle.map((m) => m.material).filter((m): m is PBRMaterial => m instanceof PBRMaterial))]
     .map((m) => (VIVANTES.add(m.name), [m, m.environmentIntensity] as const))
@@ -462,11 +438,9 @@ export async function monterCinema(
     ecranMat.emissiveColor.set(0.5 * jour, 0.5 * jour, 0.5 * jour)
     VEILLEUSE.scaleToRef(0.5 + 0.9 * n, veilleuse.emissiveColor)
     VEILLEUSE.scaleToRef(0.15 + 0.75 * n, filet.emissiveColor)
-    for (const v of vitres) v.emissiveColor.set(0.35 + 0.55 * jour, 0.35 + 0.55 * jour, 0.35 + 0.55 * jour)
     reflet.intensity = 2 * n
     for (const [m, e] of ambiances) m.environmentIntensity = e * (0.12 + 0.88 * jour)
     objectif.visibility = n
-    faisceau.visibility = n
   }
   regler()
   scene.onBeforeRenderObservable.add(() => {
@@ -475,8 +449,9 @@ export async function monterCinema(
       sombre = cible > sombre ? Math.min(cible, sombre + pas) : Math.max(cible, sombre - pas)
       regler()
     }
-    // Le faisceau ne se voit que de côté : tout près de la cabine (sur le promenoir), on serait dedans, voilé.
-    faisceau.isVisible = sombre > 0 && Vector3.DistanceSquared(camera.position, source) > 3.5 * 3.5
+    // On ne voit pas un faisceau de l'intérieur : il s'efface peu à peu quand on y entre (`dansLeFaisceau`).
+    faisceau.isVisible = sombre > 0
+    faisceau.visibility = doux(sombre) * (1 - 0.9 * dansLeFaisceau(camera.position))
   })
 
   // ── La séance : le lecteur sur la toile, la salle qui s'éteint ──
@@ -494,7 +469,8 @@ export async function monterCinema(
   const doigt = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
   const bSeance = el('button', { type: 'button' })
   const bSiege = el('button', { type: 'button', hidden: true })
-  const invitation = el('div', { class: 'cinema-invitation', hidden: true }, bSeance, bSiege)
+  const bCabine = el('button', { type: 'button', hidden: true, disabled: true })
+  const invitation = el('div', { class: 'cinema-invitation', hidden: true }, bSeance, bSiege, bCabine)
   racine.append(invitation)
   const dansLaSalle = () => SURFACES_CINEMA.has(camera.walker().surface)
   const regard = new Vector3()
@@ -506,7 +482,7 @@ export async function monterCinema(
     if (!surTraverse && !VOLEES_CINEMA.some((f) => w.surface === `volee:${f.id}`)) return null
     const rang = surTraverse ? GRADINS.length - 2 : GRADINS.findIndex((g) => w.z >= g.z0 && w.z < g.z1)
     let meilleur: Siege | null = null
-    for (const s of SIEGES) if (s.rang === rang && (!meilleur || Math.abs(s.x - w.x) < Math.abs(meilleur.x - w.x))) meilleur = s
+    for (const s of SIEGES_LIBRES) if (s.rang === rang && (!meilleur || Math.abs(s.x - w.x) < Math.abs(meilleur.x - w.x))) meilleur = s
     return meilleur
   }
   const asseoir = (s: Siege) => {
@@ -525,10 +501,15 @@ export async function monterCinema(
     bSeance.hidden = !programme
     if (programme) bSeance.textContent = st.seance ? `${touche('Entrée')}arrêter la séance` : `${touche('Entrée')}voir « ${programme.titre} »`
     camera.getDirectionToRef(Vector3.Forward(true), regard)
-    vise = st.assis ? null : siegeVise(camera.position, regard) ?? voisin()
+    vise = st.assis ? null : siegeVise(camera.position, regard, SIEGES_LIBRES) ?? voisin()
     bSiege.hidden = !st.assis && !vise
     bSiege.textContent = st.assis ? (doigt ? 'Avancez pour vous lever' : 'Z ou flèches : se lever') : `${touche('E')}s’asseoir (rang ${(vise?.rang ?? 0) + 1})`
     bSiege.disabled = st.assis
+    // Devant la porte de la cabine, fermée : combien de tampons il manque.
+    const w = camera.walker()
+    const n = Object.keys(carnet.getState().carnet.tampons).length
+    bCabine.hidden = ouverte() || w.surface !== `palier:${PROMENOIR.id}` || Math.hypot(w.x - PORTE_CABINE.x, w.z - PORTE_CABINE.z) > 2.2
+    bCabine.textContent = `Cabine de projection : ${n} / ${TAMPONS_CABINE} tampons`
   }
   let compte = 0
   scene.onAfterRenderObservable.add(() => { if (++compte % 6 === 0) mettreAJour() })
@@ -587,6 +568,24 @@ export async function monterCinema(
   }
 
   monterFoyer(scene, programme, { ...lumieres, dore })
+
+  // La cabine de projection : fermée tant que le carnet n'a pas ses dix tampons.
+  const cabine = monterCabine(scene, { ...lumieres, dore })
+  const ouverte = () => cabineOuverte(carnet.getState().carnet)
+  cabine.ouvrir(ouverte())
+  carnet.subscribe(() => cabine.ouvrir(ouverte()))
+  const dansLaCabine = `palier:${SOL_CABINE.id}`
+  // La porte de la cabine, vue de la salle : éclairée par ses lumières.
+  salle.push(...cabine.porte)
+  // Fermée avant ses tampons ; ouverte, on y contourne les meubles (à 30 cm près : le rayon du visiteur).
+  const R = 0.3
+  BARRIERES.push((w) => w.surface === dansLaCabine && (!ouverte() || MEUBLES_CABINE.some((m) => w.x > m.x - R && w.x < m.x + m.width + R && w.z > m.z - R && w.z < m.z + m.depth + R)))
+  let dedans = false
+  scene.onAfterRenderObservable.add(() => {
+    const ici = camera.walker().surface === dansLaCabine
+    if (ici && !dedans) signaler('cabine')
+    dedans = ici
+  })
 
   // L'enseigne du hall, au-dessus de la descente (sous la volée ouest, face au sud).
   const enseigne = new DynamicTexture('cinema:enseigne', { width: 512, height: 128 }, scene, true)

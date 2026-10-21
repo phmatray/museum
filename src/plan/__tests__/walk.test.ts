@@ -227,6 +227,18 @@ describe('le sous-sol', () => {
     expect(Math.hypot(w.x - 24, w.z - 37)).toBeLessThan(0.05)
   })
 
+  it('entre dans la cabine de projection par sa porte, au bout du promenoir, et pas à travers le mur', () => {
+    let w = parcours(AU_PROMENOIR)
+    w = vers(w, 7, 19.2)
+    w = vers(w, 7, 21.5)
+    expect(w.surface).toBe('palier:cabine')
+    expect(w.y).toBeCloseTo(-2.55, 6)
+    // À côté de la porte, le mur arrête.
+    w = vers(vers(parcours(AU_PROMENOIR), 10, 19.2), 10, 21.5)
+    expect(w.surface).toBe('palier:promenoir')
+    expect(w.z).toBeLessThan(20 - 0.15)
+  })
+
   it('traverse la salle par le dernier rang, d’une allée à l’autre', () => {
     // En haut de l'allée est, puis vers l'ouest le long du dernier rang (la traverse), jusqu'à l'allée ouest.
     let w = vers(parcours(AU_CINEMA), 15.25, 15.3)

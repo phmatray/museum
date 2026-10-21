@@ -12,7 +12,7 @@ describe('sondes', () => {
   const s = sondes(MUSEE)
 
   it('une par salle, la nef à 3 m, la salle d’honneur à 2 m de son plancher, pas de balcon', () => {
-    expect(s.size).toBe(18)
+    expect(s.size).toBe(19)
     expect(s.get('nef')![1]).toBe(3)
     expect(s.get('1:honneur')![1]).toBeCloseTo(6.8)
     expect(s.get('0:r-o1')![1]).toBe(2)
@@ -44,7 +44,7 @@ describe('monterReflets sous NullEngine', () => {
     expect(env.invertZ).toBe(true)
     expect(env.gammaSpace).toBe(false)
     expect(scene.environmentIntensity).toBe(1)
-    expect(scene.reflectionProbes.length).toBe(19)
+    expect(scene.reflectionProbes.length).toBe(20)
     // Aucune sonde rendue d'office : la file les place une par image.
     expect(scene.customRenderTargets.length).toBe(0)
   })
