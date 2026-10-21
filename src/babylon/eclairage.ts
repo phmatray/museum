@@ -52,6 +52,7 @@ import { solDuParc } from '../plan/relief.ts'
 import { avecVitrines } from '../plan/vitrines.ts'
 import { cubes, matiere } from './boites.ts'
 import { auCielMatiere, partie, publier } from './etat.ts'
+import { remplacer } from './postTraitement.ts'
 import { chargerGlb } from './glb.ts'
 import { ruisseler } from './intemperies.ts'
 import { brancherLueurs, lin, lueursDuJour } from './lueurs.ts'
@@ -115,10 +116,10 @@ export function spotsDesFlaques(tous: readonly Projecteur[], scene: Scene): Spot
  * ne compile plus, et disparaît (le tissu et les rideaux du cinéma). GLSL et WGSL.
  */
 export function corrigerVeloursDesGrappes(): void {
+  // Au démarrage (main.ts), pas à l'import : voir `reserverLeMiroir`.
   for (const store of [ShaderStore.IncludesShadersStore, ShaderStore.IncludesShadersStoreWGSL])
-    store.pbrClusteredLightingFunctions = store.pbrClusteredLightingFunctions.replace('computeSheenLighting(preInfo,normalW,', 'computeSheenLighting(preInfo,N,')
+    remplacer(store, 'pbrClusteredLightingFunctions', 'computeSheenLighting(preInfo,normalW,', () => 'computeSheenLighting(preInfo,N,')
 }
-corrigerVeloursDesGrappes()
 
 /**
  * Les flaques en grappes, ou null si le moteur ne sait pas (WebGL2 sans tampon

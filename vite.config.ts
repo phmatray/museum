@@ -43,8 +43,10 @@ export default defineConfig({
         // groupe : Babylon les charge par import() paresseux, un fichier chacun.
         // webxr-polyfill aussi : io/xr.ts ne le charge (import()) que pour une
         // Cardboard sans WebXR natif ; dans `vendor`, chaque visiteur le préchargerait.
+        // Sans `includeDependenciesRecursively: false` : ce réglage lève la garantie d'ordre
+        // d'exécution, et un shader importé tel quel (le miroir, le velours) lisait alors
+        // `ShaderStore` avant son initialisation : le musée publié plantait au chargement.
         codeSplitting: {
-          includeDependenciesRecursively: false,
           groups: [
             { name: 'babylon', test: /node_modules[\\/]@babylonjs[\\/](?!core[\\/]Shaders)/, priority: 20 },
             { name: 'vendor', test: /node_modules[\\/](zustand|zod|qrcode-generator)[\\/]/, priority: 10 },
