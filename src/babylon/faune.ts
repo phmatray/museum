@@ -282,7 +282,7 @@ export function corpsDOiseau(): Geo & { couleur: Float32Array; couleur2: Float32
       c2.push(t.r, t.g, t.b)
       a.push(cote)
     }
-    p.push(...pos)
+    for (const v of pos) p.push(v)
   }
   return {
     positions: Float32Array.from(p), normals: Float32Array.from(normalesPlates(p)), indices: retourne(p.length / 3),
