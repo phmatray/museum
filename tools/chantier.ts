@@ -1,6 +1,6 @@
 /**
  * Le journal de chantier (`docs/journal/index.html`) → `public/data/chantier.json`,
- * que la salle du chantier du jardin accroche (`src/scene/ChantierLayer.tsx`).
+ * que la salle du chantier du jardin accroche (`src/babylon/chantier.ts`).
  *
  *     node tools/chantier.ts
  *

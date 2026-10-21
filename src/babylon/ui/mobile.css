@@ -1,0 +1,10 @@
+/* Les contrôles tactiles (mobile.ts) : un joystick flottant qui naît sous le pouce. */
+.tactile { position: fixed; inset: 0; z-index: 100; touch-action: none; -webkit-user-select: none; user-select: none; }
+.tactile[hidden] { display: none; }
+/* Posé par transform au point du pouce (pas de layout pendant la marche). */
+.joystick { position: absolute; left: -60px; top: -60px; width: 120px; height: 120px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(18,16,14,.18) 0%, rgba(18,16,14,.32) 70%); border: 1.5px solid rgba(255,214,150,.4);
+  box-shadow: 0 4px 18px rgba(0,0,0,.25); will-change: transform; }
+.joystick[hidden] { display: none; }
+.joystick-bouton { position: absolute; left: 36px; top: 36px; width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(243,239,230,.82); box-shadow: 0 2px 8px rgba(0,0,0,.35); will-change: transform; }

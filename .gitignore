@@ -111,3 +111,8 @@ public/assets/jardin/*
 !public/assets/faune/
 public/assets/faune/*
 !public/assets/faune/herisson.glb
+# Les visiteurs (PNJ) générés par Meshy (`tools/generer-pnj.ts`, clé requise) : la CI ne peut
+# pas les régénérer, ils sont commités (KTX2, `tools/compresser-glb.ts`).
+!public/assets/pnj/
+# Les objets du cinéma générés par Meshy (`tools/generer-cinema.ts`, clé requise) : commités.
+!public/assets/cinema/

@@ -11,6 +11,7 @@ import type { Parc } from '../plan/park.ts'
 import { surUneAllee } from '../plan/park.ts'
 import { PARC } from '../plan/rules.ts'
 import { distanceParvis } from '../plan/relief.ts'
+import { SOUS_SOL } from './ombres.ts'
 
 // ── Les lieux et les sols ─────────────────────────────────────────────────
 
@@ -27,6 +28,7 @@ export type Matiere = 'pierre' | 'parquet' | 'bois' | 'gravier' | 'herbe'
  */
 export function lieuDe(surface: string): Lieu {
   if (surface === PARC) return 'dehors'
+  if (SOUS_SOL[surface]) return 'galerie'
   if (surface === '0:hall' || surface.startsWith('1:balcon') || surface.startsWith('palier:') || surface.startsWith('volee:')) return 'nef'
   return 'galerie'
 }

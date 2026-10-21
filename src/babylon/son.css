@@ -1,0 +1,30 @@
+/* Le bouton du son (BoutonSon.tsx) ; le groupe fixe en haut à droite appartient aux réglages. */
+.bouton-son {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  color: #c9c2b4;
+  font: 600 13px var(--sans);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+}
+.bouton-son[aria-pressed='true'] {
+  background: rgba(18, 16, 14, 0.86);
+  border-color: rgba(255, 214, 150, 0.55);
+  color: #f3efe6;
+}
+.bouton-son kbd {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 0 5px;
+  font: 600 11px var(--sans);
+  opacity: 0.8;
+}
+.bouton-son:focus-visible { outline: 2px solid var(--hud-or); outline-offset: 2px; }
+.bouton-son:hover { color: var(--hud-texte); }
+@media (pointer: coarse) { .bouton-son kbd { display: none; } }

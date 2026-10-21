@@ -23,7 +23,9 @@ describe('zones', () => {
   })
 
   it('un mur mitoyen est des deux salles, un mur de façade aussi du parc', () => {
-    expect(zonesDuVolume(MUSEE, { x: 15.85, y: 0, z: 14 }, { x: 16.15, y: 4.4, z: 26 }).sort()).toEqual([NEF, 'r-o2'].sort())
+    expect(zonesDuVolume(MUSEE, { x: 15.85, y: 0.5, z: 14 }, { x: 16.15, y: 4.4, z: 26 }).sort()).toEqual([NEF, 'r-o2'].sort())
+    // Posé au plancher, il touche aussi le plafond du sous-sol : le cinéma et la cage de l'escalier.
+    expect(zonesDuVolume(MUSEE, { x: 15.85, y: 0, z: 14 }, { x: 16.15, y: 4.4, z: 26 }).sort()).toEqual([NEF, 'r-o2', 'cinema', 'ss-escalier'].sort())
     expect(zonesDuVolume(MUSEE, { x: -0.15, y: 0, z: 0 }, { x: 0.15, y: 4.5, z: 13 })).toContain(PARC)
     // Une toile du mur de façade reste dans sa salle.
     expect(point(0.2, 1.5, 6)).toEqual(['r-o1'])

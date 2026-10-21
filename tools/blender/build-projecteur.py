@@ -4,7 +4,7 @@ Le projecteur sur rail des salles, généré par Blender en headless.
     blender --background --python tools/blender/build-projecteur.py
 
 Produit `public/assets/architecture/projecteur.glb`, trois nœuds instanciés
-par toile (`src/scene/ProjecteursLayer.tsx`) :
+par toile (`src/babylon/eclairage.ts`) :
 
 - `Monture` : l'adaptateur de rail, la tige et l'étrier. Origine au plafond ;
   elle ne fait que tourner vers le mur.

@@ -5,7 +5,7 @@
  * Sans lui, le parc s'arrêtait net : au bout de l'axe de l'entrée, l'allée
  * filait jusqu'à un horizon gris posé sur rien (audit du jardin). Un parc de
  * ville est clos ; ses allées finissent à une grille, et derrière le mur la
- * campagne continue (`ParkLayer`, le sol du dehors).
+ * campagne continue (`babylon/relief.ts`, le sol du dehors).
  *
  * Le mur suit le relief (`relief.ts`) par redans : chaque travée, entre deux
  * piles, a sa propre arase, posée au plus haut de son pied — rien ne flotte.

@@ -68,7 +68,10 @@ describe('MOBILIER', () => {
     for (const m of MOBILIER) {
       const e = emprise(m)
       for (const d of degagements(m.niveau)) expect(touche(e, d), `${nom(m)} devant une porte`).toBe(false)
-      for (const f of [...MUSEE.flights, ...MUSEE.landings]) expect(touche(e, gonfler(f, 1)), `${nom(m)} au pied de ${f.id}`).toBe(false)
+      // Les volées et paliers de son étage : ceux du cinéma sont sous les galeries ouest.
+      const etage = (c: number) => c >= niveau(m).elevation - 1e-6 && c <= niveau(m).elevation + MUSEE.storey + 1e-6
+      const ici = [...MUSEE.flights.filter((f) => etage(f.bottom) || etage(f.top)), ...MUSEE.landings.filter((l) => etage(l.elevation))]
+      for (const f of ici) expect(touche(e, gonfler(f, 1)), `${nom(m)} au pied de ${f.id}`).toBe(false)
       // Le cordon, lui, est là pour les vitrines : il passe entre la toile et sa borne.
       if (m.niveau === 1 && m.piece !== 'Cordon') for (const b of OBSTACLES_BORNES) expect(touche(e, gonfler(b, 1.5)), `${nom(m)} contre une borne`).toBe(false)
     }

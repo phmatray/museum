@@ -34,8 +34,8 @@
  *     node tools/compresser-glb.ts                              # tous ceux de la liste
  *     node tools/compresser-glb.ts public/assets/jardin/jardin.glb
  *
- * Côté site, `brancherKTX2` (`src/io/textures.ts`) donne le transcodeur à
- * chaque `GLTFLoader` qui lit ces fichiers.
+ * Côté site, le KhronosTextureContainer2 de Babylon (réglé par `src/babylon/glb.ts`)
+ * transcode ces textures au chargement des GLB.
  */
 import { resolve } from 'node:path'
 
@@ -61,6 +61,10 @@ export const MODELES = [
   'sculptures/arborescence.glb',
   'sculptures/chandelles.glb',
   'sculptures/formulaire.glb',
+  ...Array.from({ length: 8 }, (_, n) => `pnj/pnj-${n}.glb`),
+  'cinema/fauteuil.glb',
+  'cinema/applique.glb',
+  'cinema/enceinte.glb',
 ]
 
 const ASSETS = resolve(import.meta.dirname, '..', 'public', 'assets')

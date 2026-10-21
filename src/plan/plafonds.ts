@@ -9,6 +9,7 @@
  * Pur : ni three ni React.
  */
 import type { Box } from './mesh.ts'
+import { overlapArea } from './rules.ts'
 import type { Plan } from './types.ts'
 
 const EP_PLAFOND = 0.02
@@ -46,9 +47,14 @@ export function plafonds(plan: Plan, levelId: number): Plafonds {
   // Sous la dalle de l'étage au-dessus, ou au sommet des murs pour le dernier.
   const sous = level.elevation + plan.storey - plan.slab
   for (const r of level.rooms) {
-    if ((r.kind !== 'gallery' && r.kind !== 'honneur') || r.id === VOUTE.salle) continue
+    // Une salle que traverse une volée montante (la cage de l'escalier du sous-sol) reste ouverte.
+    if (plan.flights.some((f) => f.top > sous && overlapArea(f, r) > 1e-6)) continue
+    const plat = r.kind === 'cinema' || r.kind === 'foyer'
+    if ((r.kind !== 'gallery' && r.kind !== 'honneur' && !plat) || r.id === VOUTE.salle) continue
     const [cx, cz] = [r.x + r.width / 2, r.z + r.depth / 2]
     out.platre.push({ x: cx, y: sous - EP_PLAFOND / 2, z: cz, w: r.width, h: EP_PLAFOND, d: r.depth, kind: 'slab' })
+    // Le cinéma et son foyer : un plâtre plat, sans lanterneau — il n'y a pas de ciel au-dessus.
+    if (plat) continue
     const [w, d] = [r.width - 2 * CADRE, r.depth - 2 * CADRE]
     if (w <= 0 || d <= 0) continue
     const y = sous - EP_PLAFOND - EP_VERRE / 2

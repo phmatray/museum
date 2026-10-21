@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest'
 
 import { facade } from '../facade'
-import { cleDeBoite, coordonneesDeFace, emballer, facesVisibles, MARGE, surfacesCuites } from '../lumiere'
+import { cleDeBoite, coordonneesDeFace, emballer, facesVisibles, MARGE, rectsHerites, surfacesCuites } from '../lumiere'
+import { meshLevel } from '../mesh'
 import LUMIERE_JSON from '../lumiere.json' with { type: 'json' }
 import { MUSEE } from '../musee'
 
@@ -51,4 +52,20 @@ it('partage la convention (s, t) des faces avec la cuisson : chaque face couvre 
 it('l’atlas commité connaît presque toutes les boîtes d’aujourd’hui (sinon : npm run bake)', () => {
   const connues = surfaces.filter((s) => cleDeBoite(s.boite) in LUMIERE_JSON.boites).length
   expect(connues / surfaces.length).toBeGreaterThan(0.8)
+})
+
+it('rend à la dalle du hall, découpée par la trémie du sous-sol, la tranche de sa lumière cuite', () => {
+  const boites = LUMIERE_JSON.boites as Record<string, (number[] | number)[]>
+  // La dalle entière du hall, telle que cuite : x 16–32, z 12–40.
+  const entiere = boites[cleDeBoite({ x: 24, y: -0.15, z: 26, w: 16, h: 0.3, d: 28, kind: 'slab' })] as number[][]
+  expect(Array.isArray(entiere[2])).toBe(true)
+  const sud = meshLevel(MUSEE, 0).find((b) => b.kind === 'slab' && b.x === 24 && b.z === 30)!
+  expect(boites[cleDeBoite(sud)]).toBeUndefined()
+  const r = rectsHerites(sud, boites)!
+  // z 20–40 : les cinq septièmes sud du rectangle du dessus, toute sa largeur.
+  const [a, b, c, d] = entiere[2]
+  expect(r[2]).toEqual([a, expect.closeTo(b + (d - b) * (8 / 28), 6), c, d])
+  expect([r[0], r[1], r[4], r[5]]).toEqual([0, 0, 0, 0])
+  // Une boîte qu'aucune boîte cuite ne contient n'hérite de rien.
+  expect(rectsHerites({ x: 9.5, y: -4.95, z: 11, w: 13, h: 0.3, d: 18, kind: 'slab' }, boites)).toBeUndefined()
 })

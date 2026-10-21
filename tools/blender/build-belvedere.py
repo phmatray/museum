@@ -5,7 +5,7 @@ Le pavillon du belvédère, la palissade du roji et sa porte, générés par Ble
     blender --background --factory-startup --python tools/blender/build-belvedere.py -- --apercu /tmp/belvedere
 
 Produit `public/assets/architecture/belvedere.glb`, posé tel quel par
-`src/scene/BelvedereLayer.tsx` : tout est modelé dans le repère du plan, d'après
+`src/babylon/belvedere.ts` : tout est modelé dans le repère du plan, d'après
 `src/plan/belvedere.json` (x Blender = x du plan, y = −z, z = hauteur). La
 terrasse de pierre, elle, est faite de boîtes (`pierresDuBelvedere`, `ParkLayer`).
 

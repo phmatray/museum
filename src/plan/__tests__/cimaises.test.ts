@@ -8,7 +8,6 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-import { FRAME_BORDER } from '../../builders/artwork.ts'
 import { SALLE_ATELIERS } from '../ateliers.ts'
 import { CARTEL_LARGEUR, cartelPlacements } from '../cartels.ts'
 import { CIMAISES, MARGE_ANGLE, MODULE, boitesDesCimaises, cimaiseSous, emprise, faces, placesDesCimaises, type Cimaise } from '../cimaises.ts'
@@ -21,6 +20,9 @@ import { INT } from '../svg.ts'
 import { passages } from '../tour.ts'
 import type { Rect } from '../types.ts'
 import { step, type Walker } from '../walk.ts'
+
+/** La bordure du cadre, comme BORDURE de babylon/toiles.ts (la tirer amènerait Babylon dans un test de plan). */
+const FRAME_BORDER = 0.06
 
 const accrochage: Accrochage = JSON.parse(readFileSync(resolve(__dirname, '../../../public/data/accrochage.json'), 'utf8'))
 

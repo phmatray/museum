@@ -474,9 +474,8 @@ export const museumConfigSchema = z
     // charger deux fois le même fichier pour n'en afficher qu'un, sans le dire.
     const vus = new Set<string>()
     // Deux pièces sur le même FICHIER partagent le même `Object3D` chargé —
-    // `scene/sculptureAssets.ts` indexe son cache par nom de fichier, et
-    // `<primitive>` reparente cet objet unique dans le groupe de la dernière
-    // pièce montée. La première perd son modèle mais garde son socle, son
+    // le rendu (`babylon/sculptures.ts`) indexe son cache par nom de fichier
+    // et rattache cet objet unique à la dernière pièce montée. La première perd son modèle mais garde son socle, son
     // collider et son cartel : rien ne plante, une pièce s'affiche juste vide.
     const fichiers = new Set<string>()
     // Deux pièces visant la même SALLE se posent toutes deux au centre exact

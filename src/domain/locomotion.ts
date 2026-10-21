@@ -4,7 +4,7 @@
  *
  * ── Pourquoi ce module existe ──
  *
- * Tout ce qui suit vivait dans le `useFrame` de `Player.tsx` : la gravité,
+ * Tout ce qui suit vivait dans la boucle d'image du joueur (aujourd'hui `babylon/visiteur.ts`) : la gravité,
  * l'intégration, le suivi de caméra. Aucune de ces lignes n'était testable sans
  * navigateur, sans monde physique et sans boucle de rendu — donc aucune ne
  * l'était. C'est ce qui a laissé passer le défaut ci-dessous pendant toute la

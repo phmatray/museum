@@ -171,7 +171,7 @@ const POLICES = [
     id: 'PT Sans',
     source: 'Google Fonts (ParaType)',
     licence: 'SIL OFL 1.1',
-    usage: 'cartels et noms de salle (<Text> troika/drei)',
+    usage: 'cartels et noms de salle (textes peints, src/babylon/textes.ts)',
   },
   {
     id: 'PT Serif',

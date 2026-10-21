@@ -234,7 +234,7 @@ export class Moteur {
   /**
    * Un hérisson froisse l'herbe en (x, y, z) ; rien s'il est trop loin pour
    * qu'on l'entende. `voix` : 0 ou 1, une par hérisson entendu (les deux plus
-   * proches, au choix de `FauneLayer`), chacune placée où il est.
+   * proches, au choix de `babylon/faune.ts`), chacune placée où il est.
    */
   froisser([x, y, z]: Vec, force = 1, voix = 0) {
     const [ox, , oz] = this.position

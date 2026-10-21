@@ -1,122 +1,14 @@
 // `defineConfig` vient de vitest et non de vite : c'est la seule signature qui
 // connaisse la clé `test`, que vite seul rejette au typage.
 import { configDefaults, defineConfig } from 'vitest/config'
-import react from '@vitejs/plugin-react'
 import fs from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import path from 'node:path'
 
 /**
- * Local Clock-compatible replacement for the THREE.Clock deprecation in r183.
- * @react-three/fiber uses Clock's `start`, `stop`, `getDelta`, `elapsedTime`,
- * and `oldTime` members, which Timer doesn't expose the same way, so we
- * substitute an inline object with the same surface that uses `performance.now`.
- */
-const CLOCK_REPLACEMENT = `(() => {
-  const startTime = performance.now();
-  return {
-    autoStart: true,
-    startTime,
-    oldTime: startTime,
-    elapsedTime: 0,
-    running: false,
-    start() {
-      this.startTime = performance.now();
-      this.oldTime = this.startTime;
-      this.elapsedTime = 0;
-      this.running = true;
-    },
-    stop() {
-      this.getElapsedTime();
-      this.running = false;
-      this.autoStart = false;
-    },
-    getElapsedTime() {
-      this.getDelta();
-      return this.elapsedTime;
-    },
-    getDelta() {
-      let diff = 0;
-      if (this.autoStart && !this.running) {
-        this.start();
-        return 0;
-      }
-      if (this.running) {
-        const now = performance.now();
-        diff = (now - this.oldTime) / 1000;
-        this.oldTime = now;
-        this.elapsedTime += diff;
-      }
-      return diff;
-    },
-  };
-})()`
-
-function transformSource(id: string, code: string): string | null {
-  // @react-three/fiber: replace `new THREE.Clock()` with a local replacement
-  // that mimics Clock's API without triggering three's deprecation warning.
-  if (
-    id.includes('@react-three/fiber') &&
-    /\.(mjs|js)$/.test(id) &&
-    code.includes('new THREE.Clock()')
-  ) {
-    return code.replace(/new THREE\.Clock\(\)/g, CLOCK_REPLACEMENT)
-  }
-
-  return null
-}
-
-/**
- * Rolldown plugin applied during Vite's dep pre-bundling step. Fixes an
- * upstream deprecation warning without touching node_modules on disk.
- */
-function upstreamDeprecationFixesRolldown() {
-  return {
-    name: 'upstream-deprecation-fixes',
-    transform(code: string, id: string) {
-      const transformed = transformSource(id, code)
-      if (transformed !== null && transformed !== code) {
-        return { code: transformed, map: null }
-      }
-      return null
-    },
-  }
-}
-
-/**
- * Précharge la 3D dès le HTML. `Musee3D` est un import dynamique : sans ces
- * liens, le navigateur ne le découvre qu'une fois l'accueil évalué, et la
- * première image du musée attendait un aller-retour de plus qu'avec un seul
- * gros fichier. Téléchargés en parallèle de l'accueil, évalués seulement après.
- */
-function prechargerLa3D() {
-  return {
-    name: 'precharger-la-3d',
-    apply: 'build' as const,
-    transformIndexHtml(html: string, ctx: { bundle?: Record<string, { type: string; name?: string; imports?: string[] }> }) {
-      const bundle = ctx.bundle
-      if (!bundle) return html
-      const entree = Object.keys(bundle).find((f) => bundle[f].type === 'chunk' && bundle[f].name === 'Musee3D')
-      if (!entree) return html
-      const vus = new Set<string>()
-      const visiter = (f: string) => {
-        if (vus.has(f) || !bundle[f]) return
-        vus.add(f)
-        for (const i of bundle[f].imports ?? []) visiter(i)
-      }
-      visiter(entree)
-      return {
-        html,
-        tags: [...vus].filter((f) => !html.includes(f)).map((f) => ({ tag: 'link', attrs: { rel: 'modulepreload', crossorigin: true, href: `${process.env.BASE_PATH ?? '/'}${f}` }, injectTo: 'head' as const })),
-      }
-    },
-  }
-}
-
-/**
  * Le journal de chantier (`docs/journal`) sous `/journal/` en dév, comme le
  * build le copie dans `dist/journal/` : la baraque du chantier y lit ses images
- * (`ChantierLayer`) et la carte d'étape y renvoie. Servi en place, sans dupliquer
+ * (`babylon/chantier.ts`) et la carte d'étape y renvoie. Servi en place, sans dupliquer
  * ses 12 Mo d'images dans `public/`.
  */
 function journalEnDev() {
@@ -141,42 +33,35 @@ export default defineConfig({
   // Sur GitHub Pages le site vit sous /<nom-du-depot>/, pas à la racine du
   // domaine. La CI passe BASE_PATH ; en local on reste à la racine.
   base: process.env.BASE_PATH ?? '/',
-  plugins: [react(), prechargerLa3D(), journalEnDev()],
+  plugins: [journalEnDev()],
   build: {
     rolldownOptions: {
       output: {
         // Des morceaux par bibliothèque, qui changent rarement : le cache du
-        // navigateur les garde d'une publication à l'autre, seul `app` bouge.
-        // L'accueil ne charge que React ; la 3D arrive ensuite (`Musee3D`).
+        // navigateur les garde d'une publication à l'autre, seul `index` bouge.
+        // Les shaders de Babylon (GLSL ou WGSL, selon le moteur) restent hors du
+        // groupe : Babylon les charge par import() paresseux, un fichier chacun.
+        // webxr-polyfill aussi : io/xr.ts ne le charge (import()) que pour une
+        // Cardboard sans WebXR natif ; dans `vendor`, chaque visiteur le préchargerait.
+        // Sans `includeDependenciesRecursively: false` : ce réglage lève la garantie d'ordre
+        // d'exécution, et un shader importé tel quel (le miroir, le velours) lisait alors
+        // `ShaderStore` avant son initialisation : le musée publié plantait au chargement.
         codeSplitting: {
-          includeDependenciesRecursively: false,
           groups: [
-            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler|zustand|use-sync-external-store|zod)[\\/]/, priority: 40 },
-            { name: 'postprocessing', test: /node_modules[\\/](postprocessing|@react-three[\\/]postprocessing|n8ao)[\\/]/, priority: 30 },
-            // Les chargeurs (glTF, Draco, KTX2) à part du cœur de three.
-            { name: 'three-addons', test: /node_modules[\\/]three[\\/]examples[\\/]/, priority: 25 },
-            { name: 'three', test: /node_modules[\\/]three[\\/]/, priority: 20 },
-            { name: 'r3f', test: /node_modules[\\/]/, priority: 10 },
+            { name: 'babylon', test: /node_modules[\\/]@babylonjs[\\/](?!core[\\/]Shaders)/, priority: 20 },
+            { name: 'vendor', test: /node_modules[\\/](zustand|zod|qrcode-generator)[\\/]/, priority: 10 },
           ],
         },
       },
     },
-    // three seul pèse ~700 ko minifié (180 ko gzip) et ne se découpe pas : c'est
-    // le plancher de la 3D. Le seuil par défaut (500 ko) avertirait à chaque build.
-    chunkSizeWarningLimit: 800,
-  },
-  optimizeDeps: {
-    // Découvert tard, derrière le `lazy` de Musee3D : le serveur de dév le
-    // pré-empaquetait en pleine page et l'import dynamique échouait (504).
-    include: ['three/examples/jsm/loaders/KTX2Loader.js'],
-    rolldownOptions: {
-      plugins: [upstreamDeprecationFixesRolldown()],
-    },
+    // Le cœur de Babylon pèse ~2,97 Mo minifié (725 ko gzip), importé d'un bloc par
+    // babylon/main.ts : c'est le plancher du musée. Le seuil par défaut (500 ko)
+    // avertirait à chaque build.
+    chunkSizeWarningLimit: 3000,
   },
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: [],
     // Les worktrees d'agents (.claude/worktrees/) contiennent une copie du dépôt :
     // sans cette exclusion, chaque suite lancée depuis la racine les rejouait.
     exclude: [...configDefaults.exclude, '.claude/**'],

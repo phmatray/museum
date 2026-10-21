@@ -12,11 +12,24 @@ body,
   overflow: hidden;
 }
 
+/* Les voix du musée (billet, réglages, cartels) et la surface sombre des encarts posés sur la scène. */
+:root {
+  --sans: 'Source Sans 3', 'Segoe UI', system-ui, sans-serif;
+  --serif: Marcellus, Georgia, serif;
+  --hud-fond: rgba(18, 16, 14, 0.86);
+  --hud-filet: rgba(255, 214, 150, 0.28);
+  --hud-texte: #f3efe6;
+  --hud-texte-2: #c9c2b4;
+  --hud-or: #ffd796;
+}
+
 body {
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--sans);
   background: #000;
   color: #fff;
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+::selection { background: #d1a54a; color: #1c2530; }

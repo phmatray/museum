@@ -1,0 +1,86 @@
+/* Le carton des réglages (STYLE de src/components/Reglages.tsx, recopié tel quel). */
+.reglages-bouton { display: grid; place-items: center; width: 38px; height: 38px; padding: 0; border-radius: 999px; cursor: pointer;
+  background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.25); color: #e6dfd2; backdrop-filter: blur(6px);
+  transition: background-color .15s, border-color .15s, color .15s; }
+.reglages-bouton:hover, .reglages-bouton[aria-expanded="true"] { background: rgba(18,16,14,.86); border-color: rgba(255,214,150,.55); color: #f3efe6; }
+.reglages-bouton svg { transition: rotate .4s cubic-bezier(.16,1,.3,1); }
+.reglages-bouton[aria-expanded="true"] svg { rotate: 60deg; }
+.reglages-bouton:focus-visible { outline: 2px solid #d1a54a; outline-offset: 3px; }
+
+.reglages { --papier: #f4ecda; --encre: #1c2530; --encre-2: #4a4f55; --or: #a97c26; --or-2: #d1a54a; --filet: rgba(28,37,48,.16);
+  position: fixed; z-index: 1002; right: 1rem; width: 340px; box-sizing: border-box; overflow: auto; overscroll-behavior: contain;
+  color: var(--encre); font: 400 15px/1.4 "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  background: linear-gradient(175deg, #f8f2e4 0%, var(--papier) 60%, #ece1c8 100%);
+  border-radius: 6px; box-shadow: 0 24px 60px -16px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.25);
+  animation: reglages-entree .28s cubic-bezier(.16,1,.3,1) both; }
+@keyframes reglages-entree { from { opacity: 0; transform: translateY(-6px); } }
+.reglages ::selection { background: var(--or-2); color: var(--encre); }
+.reglages header { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 16px 12px 20px; background: inherit; border-bottom: 2px dashed rgba(28,37,48,.22); }
+.reglages h2 { margin: 0; font: 400 24px/1 Marcellus, Georgia, serif; letter-spacing: .02em; }
+.reglages-fermer { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 4px; background: transparent; color: var(--encre); cursor: pointer; }
+.reglages-fermer:hover { background: rgba(28,37,48,.08); }
+.reglages section { padding: 12px 20px 14px; border-top: 1px solid var(--filet); display: grid; gap: 10px; }
+.reglages section:first-of-type { border-top: 0; }
+.reglages h3 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--encre-2); }
+.reglages-ligne { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; }
+.reglages-ligne > label, .reglages-ligne > span { flex: 1; }
+.reglages output, .reglages .valeur { font-weight: 600; font-variant-numeric: tabular-nums; min-width: 3.5em; text-align: right; }
+.reglages kbd { font: 600 11px/1 "Source Sans 3", system-ui, sans-serif; padding: 2px 5px; margin-left: 6px; border: 1px solid var(--filet); border-bottom-width: 2px; border-radius: 3px; background: rgba(255,255,255,.45); }
+.reglages-note { margin: 0; font-size: 12.5px; color: var(--encre-2); }
+.reglages-note code { font: 600 12px ui-monospace, monospace; }
+
+/* L'interrupteur : une case native, redessinée. */
+.reglages input[type="checkbox"] { appearance: none; flex: none; width: 40px; height: 24px; margin: 0; border-radius: 999px; cursor: pointer; position: relative;
+  background: rgba(28,37,48,.22); transition: background-color .18s; }
+.reglages input[type="checkbox"]::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%;
+  background: #fffaf0; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: translate .18s cubic-bezier(.16,1,.3,1); }
+.reglages input[type="checkbox"]:checked { background: var(--encre); }
+.reglages input[type="checkbox"]:checked::after { translate: 16px 0; background: var(--or-2); }
+
+/* La glissière. */
+.reglages input[type="range"] { appearance: none; width: 100%; height: 24px; margin: 0; background: transparent; cursor: pointer; accent-color: var(--or); }
+.reglages input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: rgba(28,37,48,.2); }
+.reglages input[type="range"]::-moz-range-track { height: 4px; border-radius: 2px; background: rgba(28,37,48,.2); }
+.reglages input[type="range"]::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--or); }
+.reglages input[type="range"]::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; margin-top: -7px; border-radius: 50%; background: var(--encre); border: 3px solid var(--papier); box-shadow: 0 0 0 1px var(--encre); }
+.reglages input[type="range"]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 50%; background: var(--encre); border: 3px solid var(--papier); box-shadow: 0 0 0 1px var(--encre); }
+
+/* Les choix exclusifs : des radios natives en boutons accolés. */
+.reglages fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+.reglages legend { padding: 0; margin-bottom: 6px; }
+.reglages-choix { display: flex; flex-wrap: wrap; border: 1px solid rgba(28,37,48,.35); border-radius: 4px; overflow: hidden; }
+.reglages-choix label { flex: 1 1 auto; position: relative; text-align: center; padding: 6px 10px; font-size: 14px; cursor: pointer;
+  border-left: 1px solid rgba(28,37,48,.2); transition: background-color .15s, color .15s; }
+.reglages-choix label:first-child { border-left: 0; }
+.reglages-choix label:hover { background: rgba(28,37,48,.07); }
+.reglages-choix input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.reglages-choix label:has(input:checked) { background: var(--encre); color: var(--papier); }
+
+.reglages select { font: inherit; color: var(--encre); background: rgba(255,255,255,.5); border: 1px solid rgba(28,37,48,.35); border-radius: 4px; padding: 4px 8px; min-height: 32px; cursor: pointer; }
+
+.reglages input:focus-visible, .reglages select:focus-visible, .reglages button:focus-visible, .reglages-choix label:has(input:focus-visible) { outline: 2px solid var(--or); outline-offset: 2px; }
+.reglages :disabled:not([type="radio"]), .reglages-choix:has(:disabled) { opacity: .45; cursor: not-allowed; }
+.reglages-choix:has(:disabled) label, .reglages-choix:has(:disabled) input { cursor: not-allowed; }
+
+.reglages footer { padding: 12px 20px 16px; border-top: 1px solid var(--filet); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.reglages-retablir { font: 600 14px/1 "Source Sans 3", system-ui, sans-serif; min-height: 36px; padding: 0 14px; border-radius: 4px; cursor: pointer;
+  background: transparent; color: var(--encre); border: 1px solid rgba(28,37,48,.45); }
+.reglages-retablir:hover { background: rgba(28,37,48,.07); }
+
+@media (max-width: 600px) {
+  .reglages { left: 0; right: 0; bottom: 0; top: auto !important; width: auto; max-height: 82vh !important; max-height: 82dvh !important; border-radius: 12px 12px 0 0;
+    padding-bottom: env(safe-area-inset-bottom); animation-name: reglages-monte; }
+  @keyframes reglages-monte { from { transform: translateY(100%); } }
+  .reglages-ligne { min-height: 40px; }
+  .reglages input[type="checkbox"] { width: 46px; height: 28px; }
+  .reglages input[type="checkbox"]::after { width: 22px; height: 22px; }
+  .reglages input[type="checkbox"]:checked::after { translate: 18px 0; }
+  .reglages-choix label { padding: 10px 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .reglages { animation: none; } .reglages-bouton svg { transition: none; } }
+
+/* Le groupe de BoutonSon.tsx : la roue puis le bouton du son, en haut à droite (top posé par le module). */
+.reglages-groupe { position: fixed; right: 1rem; z-index: 1001; display: flex; align-items: center; gap: 8px; }
+.reglages-groupe[hidden] { display: none; }
+@media (pointer: coarse) { .reglages kbd, .reglages [data-souris] { display: none; } }
