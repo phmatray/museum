@@ -3,96 +3,97 @@
  * jouée sur la toile 3D comme si elle y était projetée.
  *
  * YouTube ne se lit pas en texture (CORS, et ses conditions l'interdisent) : le
- * lecteur intégré (un iframe) est posé AU-DESSUS du canevas, déformé à chaque
- * image par une homographie (`domain/projection.ts`, en `matrix3d` CSS) pour
- * épouser exactement les quatre coins projetés de la toile. La visite continue
- * pendant la séance (`partie.seance`) : on marche, on s'assied, la projection suit,
- * et disparaît dès que la toile sort du champ.
+ * lecteur intégré (un iframe) est un `HtmlMesh` (@babylonjs/addons), posé SOUS le
+ * canevas et placé par le CSS 3D du `HtmlMeshRenderer` sur le plan de la toile.
+ * Le canevas le laisse voir par un trou : le masque du HtmlMesh, un plan juste
+ * devant la toile, écrit la profondeur et un alpha nul ; tout ce qui passe devant
+ * (fauteuils, têtes, balustrade) le recouvre. L'alpha traverse la chaîne HDR (AO,
+ * miroir, bloom, tons gardent l'alpha de la scène) et l'étalonnage (postTraitement.ts)
+ * en fait le trou du canevas (prémultiplié, comme le composite de la page).
+ * La visite continue pendant la séance (`partie.seance`) : on marche, on s'assied.
+ *
+ * Le masque du HtmlMesh d'origine coupe l'écriture de couleur : il laisse alors la
+ * couleur d'effacement (opaque) dans la cible HDR. Le nôtre écrit (0, 0, 0, 0), en
+ * alpha-test pour que le prepass garde sa profondeur et ses normales (AO, rayons).
  *
  * `lancer` vient d'un geste (touche, bouton) : il en faut un pour le son. `finir` :
  * Entrée de nouveau ou le bouton de la salle, la sortie de la salle (cinema.ts) ou la pause.
+ * Le lecteur ne prend pas le pointeur (la marche le garde) ; pas de VR (HtmlMesh n'y existe pas) : la séance s'y arrête.
  */
-import type { FreeCamera } from '@babylonjs/core/Cameras/freeCamera'
-import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector'
+import { HtmlMesh } from '@babylonjs/addons/htmlMesh/htmlMesh'
+import { HtmlMeshRenderer } from '@babylonjs/addons/htmlMesh/htmlMeshRenderer'
+import { Material } from '@babylonjs/core/Materials/material'
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
+import { Vector3 } from '@babylonjs/core/Maths/math.vector'
 import type { Scene } from '@babylonjs/core/scene'
 
 import { lecteur, type Seance } from '../domain/cinema.ts'
-import { matrice3d, type Point } from '../domain/projection.ts'
 import { partie } from './etat.ts'
 import { el } from './ui/dom.ts'
+import { greffer } from './greffe.ts'
 import './ui/seance.css'
 
 /** La toile : ses coins en monde, haut-gauche, haut-droit, bas-droit, bas-gauche (vus de la salle). */
 export type Coins = readonly [Vector3, Vector3, Vector3, Vector3]
 
-/** La taille de travail du lecteur (px) : grande pour un texte net, ramenée par la matrice. */
-const LARGEUR = 1600
+/** Le masque, devant la toile (vers la salle, +z) : sans ce décalage, toile et masque se disputent le même plan. */
+const DEVANT = 0.01
 
 export interface Seances {
   lancer(): void
   finir(): void
 }
 
+/** Le trou du canevas : profondeur écrite, couleur et alpha nuls. */
+function masque(scene: Scene): StandardMaterial {
+  const m = new StandardMaterial('seance:masque', scene)
+  m.disableLighting = true
+  m.backFaceCulling = false
+  m.transparencyMode = Material.MATERIAL_ALPHATEST
+  greffer(m, { nom: 'TrouSeance', code: (wgsl) => ({ fragment: { CUSTOM_FRAGMENT_BEFORE_FRAGCOLOR: wgsl ? 'color = vec4f(0.0);' : 'color = vec4(0.0);' } }) })
+  return m
+}
+
 export function monterSeance(
   scene: Scene,
-  camera: FreeCamera,
-  toile: HTMLCanvasElement,
-  racine: HTMLElement,
   coins: Coins,
   programme: Seance | null,
   effets: { debut(): void; fin(): void } = { debut() {}, fin() {} },
 ): Seances {
-  const rapport = Vector3.Distance(coins[0], coins[3]) / Vector3.Distance(coins[0], coins[1])
-  const hauteur = Math.round(LARGEUR * rapport)
-  const film = el('iframe', {
-    class: 'seance-film', width: LARGEUR, height: hauteur, title: programme ? `${programme.titre} — ${programme.chaine}` : 'Séance',
-    allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen', allowfullscreen: true, referrerpolicy: 'strict-origin-when-cross-origin',
-  })
-  film.style.width = `${LARGEUR}px`
-  film.style.height = `${hauteur}px`
-  const salle = el('div', { class: 'seance', hidden: true, role: 'dialog', 'aria-label': programme ? `Séance : ${programme.titre}` : 'Séance' }, film)
-  racine.append(salle)
+  const largeur = Vector3.Distance(coins[0], coins[1])
+  const hauteur = Vector3.Distance(coins[0], coins[3])
+  const centre = coins[0].add(coins[2]).scaleInPlace(0.5)
+  const titre = programme ? `${programme.titre} — ${programme.chaine}` : 'Séance'
+  let mat: StandardMaterial | null = null
+  let rendu: HtmlMeshRenderer | null = null
+  let toile: HtmlMesh | null = null
 
-  const ecran: Point[] = [[0, 0], [0, 0], [0, 0], [0, 0]]
-  const p = new Vector3()
-
-  const poser = () => {
-    const l = toile.clientWidth
-    const h = toile.clientHeight
-    const vue = camera.viewport.toGlobal(l, h)
-    const transformee = scene.getTransformMatrix()
-    for (let i = 0; i < 4; i++) {
-      Vector3.ProjectToRef(coins[i], Matrix.IdentityReadOnly, transformee, vue, p)
-      // Derrière l'œil (z hors de [0, 1]) : rien de juste à montrer.
-      if (p.z < 0 || p.z > 1) {
-        film.style.visibility = 'hidden'
-        return
-      }
-      ecran[i] = [p.x, p.y]
-    }
-    const m = matrice3d(LARGEUR, hauteur, ecran as [Point, Point, Point, Point])
-    film.style.visibility = m ? 'visible' : 'hidden'
-    if (m) film.style.transform = m
-  }
-  const suivre = scene.onAfterCameraRenderObservable
-
-  let observateur: ReturnType<typeof suivre.add> | null = null
   const finir = () => {
     if (!partie.getState().seance) return
-    film.src = 'about:blank'
-    salle.hidden = true
-    if (observateur) suivre.remove(observateur)
-    observateur = null
+    // Le maillage emporte l'iframe (la lecture s'arrête) ; le moteur CSS, ses conteneurs et son observateur.
+    toile?.dispose()
+    rendu?.dispose()
+    toile = rendu = null
     effets.fin()
     partie.setState({ seance: false })
   }
   const lancer = () => {
     if (!programme || partie.getState().seance || partie.getState().enVR) return
     partie.setState({ seance: true })
-    film.src = lecteur(programme.video)
-    salle.hidden = false
-    poser()
-    observateur = suivre.add(poser)
+    // ponytail: le moteur CSS n'existe que pendant la séance (il retrie le groupe 0 et suit la caméra à chaque image).
+    rendu = new HtmlMeshRenderer(scene)
+    toile = new HtmlMesh(scene, 'seance-toile', { captureOnPointerEnter: false })
+    toile.isPickable = false
+    toile.material?.dispose()
+    toile.material = mat ??= masque(scene)
+    toile.position.set(centre.x, centre.y, centre.z + DEVANT)
+    // Le plan regarde −z : retourné, il fait face à la salle (comme la toile, cinema.ts).
+    toile.rotation.y = Math.PI
+    const film = el('iframe', {
+      class: 'seance-film', src: lecteur(programme.video), title: titre,
+      allow: 'autoplay; encrypted-media; picture-in-picture; fullscreen', allowfullscreen: true, referrerpolicy: 'strict-origin-when-cross-origin',
+    })
+    toile.setContent(film, largeur, hauteur)
     effets.debut()
   }
   // La pause (Échap, le billet) ou la VR, qui reprend la caméra : la séance s'arrête.

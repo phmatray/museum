@@ -1,8 +1,5 @@
-/* La séance (seance.ts) : le lecteur posé sur la toile 3D par une homographie, au-dessus du canevas. */
-.seance { position: fixed; inset: 0; z-index: 900; pointer-events: none; overflow: hidden; }
-.seance[hidden] { display: none; }
+/* La séance (seance.ts) : le lecteur, un HtmlMesh sous le canevas, vu par le trou de la toile. */
 /* Projeté : un rien moins lumineux et saturé qu'un écran d'ordinateur, sans bord. */
-.seance-film { position: absolute; left: 0; top: 0; transform-origin: 0 0; border: 0; background: #000; pointer-events: auto;
-  filter: brightness(.92) saturate(.94) contrast(.97); backface-visibility: hidden; }
+.seance-film { display: block; border: 0; background: #000; filter: brightness(.92) saturate(.94) contrast(.97); }
 /* Pendant la séance, rien d'autre que la toile : le plan s'efface. */
-body:has(.seance:not([hidden])) .minimap { display: none; }
+body:has(.seance-film) .minimap { display: none; }

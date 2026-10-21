@@ -225,7 +225,7 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
     // Les visiteurs du musée (pnj.ts) : huit modèles, leurs actions cuites, jamais dans la carte d'ombre.
     monterPnj(scene, accrochage, () => camera.walker()).catch(signaler('visiteurs')),
     // Le cinéma du sous-sol (cinema.ts) : la salle, l'affiche, la séance projetée sur la toile.
-    monterCinema(scene, camera, toile, racine, base, { soleil, hemi }).catch(signaler('cinéma')),
+    monterCinema(scene, camera, racine, base, { soleil, hemi }).catch(signaler('cinéma')),
     apresUneImage(() => monterLierre(scene)).then(ombrer, signaler('lierre')),
     // Vague 4 : les rayons de la nef et la météo (jamais dans la carte d'ombre).
     Promise.resolve().then(() => monterRayons(scene)).catch(signaler('rayons')),

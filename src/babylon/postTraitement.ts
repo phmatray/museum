@@ -17,7 +17,9 @@
  *             (le ciel n'y écrit rien, le verre non plus) — pas de
  *             VolumetricLightScattering, qui redessine toute la scène
  *   Étalonnage la couleur de l'heure (etalonnage.ts), les rayons en SCREEN, puis la
- *             vignette après la courbe, en linéaire, et le sRGB exact en sortie
+ *             vignette après la courbe, en linéaire, et le sRGB exact en sortie ;
+ *             l'alpha de la scène sous 0,5 (le seul masque de la séance, seance.ts)
+ *             devient un trou du canevas (prémultiplié), par où se voit le lecteur
  *   TAA       l'image finie accumulée sur 8 décalages sous-pixel (TAARenderingPipeline), caméra
  *             immobile, historique borné au voisinage 3 × 3 ; aucun en qualité basse
  *   FXAA      en dernier : l'anticrénelage de la marche (le TAA s'efface quand la caméra bouge) ;
@@ -173,7 +175,8 @@ uniform float contraste;
 uniform float nuit;
 ${SRGB_GLSL}
 void main(void) {
-  vec3 brut = pow(texture2D(textureSampler, vUV).rgb, vec3(2.2));
+  vec4 scene = texture2D(textureSampler, vUV);
+  vec3 brut = pow(scene.rgb, vec3(2.2));
   ${vr ? '' : 'vec3 r = texture2D(rayons, vUV).rgb;\n  brut = clamp(1.0 - (1.0 - brut) * (1.0 - r), 0.0, 1.0);'}
   vec3 c = gain * brut + lift * (1.0 - brut);
   c = pow(max(c, 0.0), 1.0 / gamma);
@@ -185,7 +188,7 @@ void main(void) {
   float source = nuit * smoothstep(0.12, 0.45, max(brut.r, max(brut.g, brut.b)));
   c = mix(c, max(c, brut), source);
   c *= ${vr ? confort('confort') : vignette};
-  gl_FragColor = vec4(srgb(c), 1.0);
+  ${vr ? 'gl_FragColor = vec4(srgb(c), 1.0);' : 'float a = step(0.5, scene.a);\n  gl_FragColor = vec4(srgb(c) * a, a);'}
 }`
   ShaderStore.ShadersStoreWGSL[nom] = `
 varying vUV: vec2f;
@@ -201,7 +204,8 @@ uniform nuit: f32;
 ${SRGB_WGSL}
 @fragment
 fn main(input: FragmentInputs) -> FragmentOutputs {
-  var brut = pow(textureSample(textureSampler, textureSamplerSampler, input.vUV).rgb, vec3f(2.2));
+  let scene = textureSample(textureSampler, textureSamplerSampler, input.vUV);
+  var brut = pow(scene.rgb, vec3f(2.2));
   ${vr ? '' : 'let r = textureSample(rayons, rayonsSampler, input.vUV).rgb;\n  brut = clamp(1.0 - (1.0 - brut) * (1.0 - r), vec3f(0.0), vec3f(1.0));'}
   var c = uniforms.gain * brut + uniforms.lift * (1.0 - brut);
   c = pow(max(c, vec3f(0.0)), 1.0 / uniforms.gamma);
@@ -213,7 +217,7 @@ fn main(input: FragmentInputs) -> FragmentOutputs {
   let source = uniforms.nuit * smoothstep(0.12, 0.45, max(brut.r, max(brut.g, brut.b)));
   c = mix(c, max(c, brut), source);
   c *= ${(vr ? confort('uniforms.confort') : vignette).replaceAll('vec2(', 'vec2f(').replaceAll('vUV', 'input.vUV')};
-  fragmentOutputs.color = vec4f(srgb(c), 1.0);
+  ${vr ? 'fragmentOutputs.color = vec4f(srgb(c), 1.0);' : 'let a = step(0.5, scene.a);\n  fragmentOutputs.color = vec4f(srgb(c) * a, a);'}
 }`
 }
 etalonnage(false)
