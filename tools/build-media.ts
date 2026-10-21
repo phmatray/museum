@@ -440,7 +440,7 @@ async function processJob(job: Job, cache: CacheFile, force: boolean): Promise<O
     return { key: job.art.key, fp: job.fp, source: previous.source, cached: true, retry: false }
   }
 
-  let buffer: Buffer | null = null
+  let buffer: Buffer | null
   let source: Source = 'fallback'
   let retry = false
   let warning: string | undefined
