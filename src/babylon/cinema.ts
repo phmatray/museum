@@ -41,7 +41,7 @@ import {
   APPLIQUES, CABINE, CAISSON, COTE_PROMENOIR, ECRAN, ENCEINTES, LAMBRIS, LUMIERES_MARCHES,
   PLAFOND, RIDEAUX, SALLE, SCENE, SIEGES, SOL, SPOTS, dansLeFaisceau, siegeVise, solLeLongDesMurs,
 } from '../plan/cinema.ts'
-import { BLOC_GRADINS, GRADINS, MEUBLES_CABINE, PORTE_CABINE, PROMENOIR, SIEGES_LIBRES, SOL_CABINE, SPECTATEURS, TRAVERSE, VOLEES_CINEMA, type Siege } from '../plan/cinema.ts'
+import { BLOC_GRADINS, GRADINS, MEUBLES_CABINE, PORTE_CABINE, PROMENOIR, SALLE_CABINE, SIEGES_LIBRES, SOL_CABINE, SPECTATEURS, TRAVERSE, VOLEES_CINEMA, type Siege } from '../plan/cinema.ts'
 import { cabineOuverte, TAMPONS_CABINE } from '../domain/succes.ts'
 import { MUSEE } from '../plan/musee.ts'
 import { LINTEAU } from '../plan/portes.ts'
@@ -51,6 +51,7 @@ import { partie, VIVANTES } from './etat.ts'
 import { glbOuRien } from './glb.ts'
 import { monterSeance, type Coins } from './seance.ts'
 import { carnet, signaler } from './succes.ts'
+import { INT } from '../plan/svg.ts'
 import { BARRIERES } from './visiteur.ts'
 import { monterCabine, morceaux } from './cabine.ts'
 import { monterFoyer } from './foyer.ts'
@@ -581,6 +582,8 @@ export async function monterCinema(
   // Fermée avant ses tampons ; ouverte, on y contourne les meubles (à 30 cm près : le rayon du visiteur).
   const R = 0.3
   BARRIERES.push((w) => w.surface === dansLaCabine && (!ouverte() || MEUBLES_CABINE.some((m) => w.x > m.x - R && w.x < m.x + m.width + R && w.z > m.z - R && w.z < m.z + m.depth + R)))
+  // Fermée, la baie est un mur : on s'arrête au nu du mur, sans quoi la caméra (minZ 0,1) passe à travers le battant.
+  BARRIERES.push((w) => !ouverte() && Math.abs(w.y - COTE_PROMENOIR) < 0.5 && Math.abs(w.x - PORTE_CABINE.x) < PORTE_CABINE.width / 2 + R && w.z > SALLE_CABINE.z - INT - R)
   let dedans = false
   scene.onAfterRenderObservable.add(() => {
     const ici = camera.walker().surface === dansLaCabine
