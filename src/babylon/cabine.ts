@@ -36,6 +36,8 @@ export interface Cabine {
   ouvrir(oui: boolean): void
   /** La porte et sa plaque, vues de la salle : à éclairer par la salle. */
   porte: AbstractMesh[]
+  /** L'appareil photo oublié sur la table de rembobinage : où il est, et le prendre (il disparaît). */
+  appareil: { x: number; y: number; z: number; prendre(): void }
 }
 
 export function monterCabine(scene: Scene, lumieres: { soleil: DirectionalLight; hemi: HemisphericLight; dore: PBRMaterial }): Cabine {
@@ -118,6 +120,16 @@ export function monterCabine(scene: Scene, lumieres: { soleil: DirectionalLight;
   pave('cabine:table', t.width, 0.05, 0.7, mx, sol + 0.9, mz, bois)
   for (const [k, dx] of [-0.8, 0.8].entries()) pave(`cabine:table-pied${k}`, 0.05, 0.9, 0.6, mx + dx, sol + 0.45, mz, bois)
   for (const [k, [dx, dy]] of [[-0.4, 0], [-0.4, 0.04], [0.1, 0], [0.5, 0]].entries()) disque(`cabine:boite${k}`, 0.2, 0.035, mx + dx, sol + 0.945 + dy, mz, boite)
+  // L'appareil photo du projectionniste, au bout de la table : boîtier gainé de cuir, capot chromé, objectif.
+  const cuir = pbr(scene, 'cabine:cuir', new Color3(0.05, 0.04, 0.035), 0.7)
+  const [ax, ay, az] = [mx + 0.76, sol + 0.925, mz - 0.08]
+  const appareil = [
+    pave('cabine:appareil', 0.15, 0.085, 0.07, ax, ay + 0.0425, az, cuir),
+    pave('cabine:appareil-capot', 0.15, 0.022, 0.07, ax, ay + 0.096, az, chrome),
+    pave('cabine:appareil-viseur', 0.05, 0.024, 0.045, ax - 0.03, ay + 0.119, az, chrome),
+    disque('cabine:appareil-objectif', 0.028, 0.05, ax, ay + 0.045, az - 0.06, chrome, 'z'),
+    disque('cabine:appareil-verre', 0.02, 0.004, ax, ay + 0.045, az - 0.0855, verre, 'z'),
+  ]
   // L'étagère des bobines, au mur ouest.
   const e = MEUBLES_CABINE[3]
   const ez = e.z + e.depth / 2
@@ -192,6 +204,7 @@ export function monterCabine(scene: Scene, lumieres: { soleil: DirectionalLight;
   for (const m of porte) m.isPickable = false
   return {
     porte,
+    appareil: { x: ax, y: ay, z: az, prendre: () => { for (const m of appareil) m.setEnabled(false) } },
     ouvrir(oui) {
       // Ouverte vers l'intérieur de la cabine.
       gond.rotation.y = oui ? -Math.PI * 0.55 : 0

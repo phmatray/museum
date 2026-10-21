@@ -42,7 +42,7 @@ import {
   PLAFOND, RIDEAUX, SALLE, SCENE, SIEGES, SOL, SPOTS, dansLeFaisceau, siegeVise, solLeLongDesMurs,
 } from '../plan/cinema.ts'
 import { BLOC_GRADINS, GRADINS, MEUBLES_CABINE, PORTE_CABINE, PROMENOIR, SALLE_CABINE, SIEGES_LIBRES, SOL_CABINE, SPECTATEURS, TRAVERSE, VOLEES_CINEMA, type Siege } from '../plan/cinema.ts'
-import { cabineOuverte, TAMPONS_CABINE } from '../domain/succes.ts'
+import { cabineOuverte, photoOuverte, TAMPONS_CABINE } from '../domain/succes.ts'
 import { MUSEE } from '../plan/musee.ts'
 import { LINTEAU } from '../plan/portes.ts'
 import type { Arrivee } from '../plan/arrivee.ts'
@@ -502,7 +502,8 @@ export async function monterCinema(
     bSeance.hidden = !programme
     if (programme) bSeance.textContent = st.seance ? `${touche('Entrée')}arrêter la séance` : `${touche('Entrée')}voir « ${programme.titre} »`
     camera.getDirectionToRef(Vector3.Forward(true), regard)
-    vise = st.assis ? null : siegeVise(camera.position, regard, SIEGES_LIBRES) ?? voisin()
+    // De la cabine, on voit les fauteuils par la lucarne, sans pouvoir s'y asseoir (et E y prend l'appareil).
+    vise = st.assis || camera.walker().surface === `palier:${SOL_CABINE.id}` ? null : siegeVise(camera.position, regard, SIEGES_LIBRES) ?? voisin()
     bSiege.hidden = !st.assis && !vise
     bSiege.textContent = st.assis ? (doigt ? 'Avancez pour vous lever' : 'Z ou flèches : se lever') : `${touche('E')}s’asseoir (rang ${(vise?.rang ?? 0) + 1})`
     bSiege.disabled = st.assis
@@ -519,7 +520,7 @@ export async function monterCinema(
   bSeance.addEventListener('click', basculer)
   bSiege.addEventListener('click', () => vise && asseoir(vise))
   addEventListener('keydown', (e) => {
-    if (e.repeat || partie.getState().paused || !(dansLaSalle() || partie.getState().assis)) return
+    if (e.repeat || partie.getState().paused || partie.getState().photo || !(dansLaSalle() || partie.getState().assis)) return
     if (e.key === 'Enter') basculer()
     else if (e.code === 'KeyE' && vise) asseoir(vise)
   })
@@ -585,10 +586,27 @@ export async function monterCinema(
   // Fermée, la baie est un mur : on s'arrête au nu du mur, sans quoi la caméra (minZ 0,1) passe à travers le battant.
   BARRIERES.push((w) => !ouverte() && Math.abs(w.y - COTE_PROMENOIR) < 0.5 && Math.abs(w.x - PORTE_CABINE.x) < PORTE_CABINE.width / 2 + R && w.z > SALLE_CABINE.z - INT - R)
   let dedans = false
+  // L'appareil photo, sur la table de rembobinage : à portée de main, on le prend (E, ou le bouton) ; pris, il ouvre le mode photo.
+  const { appareil } = cabine
+  const pris = () => photoOuverte(carnet.getState().carnet)
+  if (pris()) appareil.prendre()
+  const bAppareil = el('button', { type: 'button' }, `${touche('E')}prendre l’appareil photo`)
+  const aPortee = el('div', { class: 'cinema-invitation', hidden: true }, bAppareil)
+  racine.append(aPortee)
+  const prendre = () => {
+    if (pris() || aPortee.hidden) return
+    signaler('appareil')
+    appareil.prendre()
+    aPortee.hidden = true
+  }
+  bAppareil.addEventListener('click', prendre)
+  addEventListener('keydown', (e) => { if (e.code === 'KeyE' && !e.repeat && !partie.getState().photo) prendre() })
   scene.onAfterRenderObservable.add(() => {
-    const ici = camera.walker().surface === dansLaCabine
+    const w = camera.walker()
+    const ici = w.surface === dansLaCabine
     if (ici && !dedans) signaler('cabine')
     dedans = ici
+    aPortee.hidden = !ici || pris() || partie.getState().paused || Math.hypot(w.x - appareil.x, w.z - appareil.z) > 1.4
   })
 
   // L'enseigne du hall, au-dessus de la descente (sous la volée ouest, face au sud) : la plaque sombre,

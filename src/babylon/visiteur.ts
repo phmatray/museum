@@ -37,7 +37,7 @@ import type { PorteVR } from './vr.ts'
 
 const OEIL = 1.62
 /** Radians par pixel, souris (multipliée par le réglage) et doigt (tel quel, comme three). */
-const SENSIBILITE = 0.002
+export const SENSIBILITE = 0.002
 /** Secondes d'arrêt au bout de chaque arrêt de la visite. */
 const PAUSE_VISITE = 4
 /** Vitesse de convergence du regard vers le cap de la visite, en s⁻¹. */
@@ -154,7 +154,7 @@ export function monterVisiteur(
 
   // Le regard à la souris verrouillée ; Échap (le verrou tombe) met en pause.
   addEventListener('mousemove', (e) => {
-    if (document.pointerLockElement !== toile) return
+    if (document.pointerLockElement !== toile || partie.getState().photo) return
     const { sensibilite, inverserY } = reglages.getState()
     regard -= e.movementX * SENSIBILITE * sensibilite
     pitch = borne(pitch - e.movementY * SENSIBILITE * sensibilite * (inverserY ? -1 : 1), Math.PI / 2)
@@ -207,7 +207,7 @@ export function monterVisiteur(
   const pouce = { forward: 0, strafe: 0 }
   scene.onBeforeRenderObservable.add(() => {
     // En pause, rien n'avance, pas même le cadenceur (les glissés du doigt attendent la reprise).
-    if (partie.getState().paused || !pret()) return
+    if (partie.getState().paused || partie.getState().photo || !pret()) return
     const dt = scene.getEngine().getDeltaTime() / 1000
     const { pas, reste: r } = cadencer(reste, dt)
     reste = r
