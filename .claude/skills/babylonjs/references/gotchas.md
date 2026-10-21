@@ -128,3 +128,9 @@ engine moves, and a stale "fact" here is as harmful as one remembered wrongly.
   directly read `ShaderStore` before its chunk initialised. Patch shaders at startup (`main.ts`),
   through `remplacer` (warns instead of throwing), and load the production bundle before publishing
   (`world-review/scripts/production.mjs`).
+
+## 9. `push(...grosTableau)` casse Safari
+
+JavaScriptCore plafonne les arguments d'un appel à ~65 000 (V8 en accepte bien plus) : `a.push(...positions)` sur une
+géométrie lève « Maximum call stack size exceeded » sur iPhone seulement (les allées du parc, 2026-10). Pour un
+tableau de sommets, une boucle `for (const v of g) a.push(v)` ; le spread reste bon pour une poignée d'éléments.

@@ -105,8 +105,9 @@ const joindre = (...gs: Geo[]): Geo => {
   const out: Geo = { positions: [], uvs: [], indices: [] }
   for (const g of gs) {
     const base = out.positions.length / 3
-    out.positions.push(...g.positions)
-    out.uvs!.push(...(g.uvs ?? []))
+    // Pas de push(...g) : Safari plafonne les arguments d'un appel (~65 000), le relief les dépasse.
+    for (const v of g.positions) out.positions.push(v)
+    for (const v of g.uvs ?? []) out.uvs!.push(v)
     for (const i of g.indices) out.indices.push(base + i)
   }
   return out
