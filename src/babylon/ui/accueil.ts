@@ -50,7 +50,7 @@ export function monterAccueil(racine: HTMLElement, toile: HTMLCanvasElement, o: 
   const heureTampon = el('span')
   const texteTampon = document.createTextNode('Composté')
   const tampon = el('div', { class: 'billet-tampon', 'aria-hidden': 'true' }, texteTampon, heureTampon)
-  const bEntrer = el('button', { type: 'button', class: 'billet-entrer', autofocus: true }, 'Composter et entrer')
+  const bEntrer = el('button', { type: 'button', class: 'billet-entrer' }, 'Composter et entrer')
   const bGuide = el('button', { type: 'button', class: 'billet-guide' }, 'Visite guidée')
   const bVR = el('button', { type: 'button', class: 'billet-guide', hidden: true })
   // Seulement en pause : le carnet de tampons de la visite en cours (ui/carnet.ts).
