@@ -3,7 +3,7 @@
  * par vue, pour juger à l'œil qu'un changement ne déplace rien.
  *
  *   node tools/comparer-captures.ts [http://localhost:5173/] [--dossier=<dossier>] [--vues=arrivee,escalier] [--avant=<dossier>] [--q=a=b&c=d]
- *   node tools/comparer-captures.ts [url] --lieu=x,z,y,yaw,pitch [--heure=HH:MM] [--q=…] [--taille=LxH] [--dossier=…] [--avant=…]
+ *   node tools/comparer-captures.ts [url] --lieu=x,z,y,yaw,pitch[;x,z,y,yaw,pitch…] [--nom=lieu] [--heure=HH:MM] [--q=…] [--taille=LxH] [--dossier=…] [--avant=…]
  *
  * Contre `npm run dev`, lancé à côté (le hook `__BABYLON__` n'existe qu'en DEV). Le visiteur
  * est posé par le plan lui-même (`surfaceAt` puis un `step` immobile pour la cote), importé dans la page.
@@ -11,8 +11,9 @@
  * permet de photographier une ancienne version (worktree détaché) avec ce même script.
  * Sortie : `<dossier>/<vue>.png`. Avec `--avant=<dossier>` (un jeu antérieur), l'écart absolu moyen
  * par vue (0-255, tous canaux) s'affiche en fin de course, et `<dossier>/<vue>.avant-apres.png` les met côte à côte.
- * `--lieu` remplace les vues par une seule, `lieu`, à cette pose (celle d'un bug signalé par le bouton 🐞,
- * `tools/signalement.ts`) ; `--q` porte alors sa météo.
+ * `--lieu` remplace les vues par une seule, `lieu` (ou `--nom`), à cette pose (celle d'un bug signalé par le bouton 🐞,
+ * `tools/signalement.ts`) ; `--q` porte alors sa météo. Plusieurs poses séparées par `;` (un trajet) donnent
+ * `<nom>-1` … `<nom>-n`, dans l'ordre.
  * ponytail : un outil d'œil, pas un test ; l'écart s'affiche, aucun seuil n'échoue.
  */
 import { existsSync, mkdirSync } from 'node:fs'
@@ -98,14 +99,15 @@ const VUES: Vue[] = [
   { nom: 'vr-oeuvre', heure: '15:00', q: 'meteo=clair&vr=cardboard', ui: 'vr', p: 'AspireStrapi' },
 ]
 const choisies = option('vues')?.split(',')
-const lieu = option('lieu')?.split(',').map(Number)
+const lieux = option('lieu')?.split(';').map((p) => p.split(',').map(Number))
+const nom = option('nom') ?? 'lieu'
 /** `--taille=1586x1204` : le cadrage du visiteur (un autre rapport d'aspect montre un autre champ) ; sinon 1280×720. */
 const [largeur, hauteur] = option('taille')?.split('x').map(Number) ?? [1280, 720]
 /** `--q=ciel=photo` : ajouté à l'adresse de chaque vue. */
 const enPlus = args.find((a) => a.startsWith('--q='))?.slice(4)
 const avant = option('avant')
-const vues: Vue[] = lieu
-  ? [{ nom: 'lieu', heure: option('heure') ?? '15:00', q: enPlus ?? 'meteo=clair', x: lieu[0], z: lieu[1], y: lieu[2], yaw: lieu[3], pitch: lieu[4] }]
+const vues: Vue[] = lieux
+  ? lieux.map(([x, z, y, yaw, pitch], i) => ({ nom: lieux.length > 1 ? `${nom}-${i + 1}` : nom, heure: option('heure') ?? '15:00', q: enPlus ?? 'meteo=clair', x, z, y, yaw, pitch }))
   : VUES.filter((v) => !choisies || choisies.includes(v.nom))
 const ecarts: Record<string, number | string>[] = []
 

@@ -7,7 +7,7 @@
 import { CreateScreenshotAsync } from '@babylonjs/core/Misc/screenshotTools'
 import type { Scene } from '@babylonjs/core/scene'
 
-import { requeteDeReprise } from '../../domain/signalement.ts'
+import { requeteDeReprise, type PoseTrajet } from '../../domain/signalement.ts'
 import { heureDemandee } from '../../domain/soleil.ts'
 import { partie, recherche, vivant } from '../etat.ts'
 import type { monterVisiteur } from '../visiteur.ts'
@@ -36,6 +36,19 @@ export function monterSignalement(scene: Scene, camera: ReturnType<typeof monter
   // Les touches du musée (M, R, C…) ne doivent pas réagir à la frappe de la note.
   dialogue.addEventListener('keydown', (e) => e.stopPropagation())
 
+  // Les 6 dernières secondes de marche, une pose toutes les 250 ms : un bug qui n'apparaît qu'en bougeant
+  // (un objet qui clignote dans l'escalier) se rejoue sur le trajet, pas sur la seule image finale.
+  const trajet: PoseTrajet[] = []
+  let derniere = 0
+  scene.onAfterRenderObservable.add(() => {
+    const t = performance.now()
+    if (t - derniere < 250 || dialogue.open) return
+    derniere = t
+    const w = camera.walker()
+    trajet.push({ x: w.x, z: w.z, y: w.y, yaw: camera.rotation.y, pitch: camera.rotation.x, t })
+    if (trajet.length > 24) trajet.shift()
+  })
+
   let constat: Record<string, unknown> = {}
   const ouvrir = async () => {
     if (dialogue.open) return
@@ -43,6 +56,7 @@ export function monterSignalement(scene: Scene, camera: ReturnType<typeof monter
     const image = await CreateScreenshotAsync(engine, camera, { precision: 1 })
     const d = heureDemandee(recherche(), new Date()) ?? new Date()
     const { meteo } = vivant.getState()
+    const maintenant = performance.now()
     constat = {
       image,
       adresse: location.href,
@@ -52,6 +66,7 @@ export function monterSignalement(scene: Scene, camera: ReturnType<typeof monter
       meteo,
       moteur: engine.isWebGPU ? 'WebGPU' : 'WebGL2',
       taille: [engine.getRenderWidth(), engine.getRenderHeight()],
+      trajet: trajet.map((p) => ({ ...p, t: Math.round(p.t - maintenant) / 1000 })),
     }
     apercu.src = image
     etat.textContent = ''

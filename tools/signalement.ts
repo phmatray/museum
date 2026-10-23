@@ -15,6 +15,8 @@ import { promisify } from 'node:util'
 
 import { z } from 'zod'
 
+import { echantillonner } from '../src/domain/signalement.ts'
+
 const executer = promisify(execFile)
 const git = async (cwd: string, ...args: string[]) => (await executer('git', args, { cwd })).stdout.trim()
 
@@ -28,6 +30,7 @@ const Constat = z.object({
   meteo: z.unknown(),
   moteur: z.string().max(20),
   taille: z.tuple([z.number(), z.number()]),
+  trajet: z.array(z.object({ x: z.number(), z: z.number(), y: z.number(), yaw: z.number(), pitch: z.number(), t: z.number() })).max(100).default([]),
 })
 type Constat = z.infer<typeof Constat>
 
@@ -42,7 +45,13 @@ export function consigne(id: string, c: Constat, l: Lieux): string {
   const r = (n: number) => +n.toFixed(3)
   const { x, z: zz, y, yaw, pitch, surface } = c.lieu
   const d = l.dossier
-  const capture = `node tools/comparer-captures.ts http://localhost:<port>/ --lieu=${r(x)},${r(zz)},${r(y)},${r(yaw)},${r(pitch)} --heure=${c.heure} --q='${c.q}' --taille=${c.taille.join('x')}`
+  const reglage = `--heure=${c.heure} --q='${c.q}' --taille=${c.taille.join('x')}`
+  const capture = `node tools/comparer-captures.ts http://localhost:<port>/ --lieu=${r(x)},${r(zz)},${r(y)},${r(yaw)},${r(pitch)} ${reglage}`
+  // Le trajet des dernières secondes, quelques points : un bug qui n'apparaît qu'en bougeant se cherche là.
+  const points = echantillonner(c.trajet)
+  const lieux = points.map((p) => [p.x, p.z, p.y, p.yaw, p.pitch].map(r).join(',')).join(';')
+  const trajet = points.length > 1 ? `node tools/comparer-captures.ts http://localhost:<port>/ --lieu='${lieux}' --nom=trajet ${reglage}` : null
+  const instants = points.map((p, i) => `trajet-${i + 1} à ${p.t.toFixed(1).replace('.', ',')} s`).join(', ')
   const chrome = process.platform === 'darwin' ? `\n   Sur ce Mac, si \`CHROME_PATH\` n'est pas posé : \`export CHROME_PATH="${CHROME_MAC}"\`.` : ''
   return `Tu corriges un bug visuel du musée, signalé depuis le musée lui-même (bouton 🐞 de \`npm run dev\`).
 Travaille seul jusqu'au bout : personne ne répondra à tes questions avant la fin.
@@ -53,7 +62,7 @@ Note du visiteur : « ${c.note} »
 
 - Sa capture : \`${d}/utilisateur.png\` (regarde-la d'abord ; rendu ${c.moteur}, ${c.taille.join('×')} px).
 - Sa pose : surface \`${surface}\`, x=${r(x)}, z=${r(zz)}, y=${r(y)}, yaw=${r(yaw)}, pitch=${r(pitch)} ; heure ${c.heure} ; requête \`${c.q}\`.
-- Adresse d'origine et relevé météo exact : \`${d}/signalement.json\`.
+- Adresse d'origine, relevé météo exact et trajet complet : \`${d}/signalement.json\`.${trajet ? `\n- Son trajet juste avant la capture (il marchait) : ${instants} (0 s : la capture).` : ''}
 - Le code servi : \`${l.racine}\`, au commit \`${l.sha}\`.${l.sale ? '\n- Attention : ce checkout avait des modifications non commitées, absentes de ce commit. Si le bug en dépend, dis-le dans le rapport.' : ''}
 
 Les captures et le rapport vont dans \`${d}/\`, jamais dans le worktree.
@@ -71,7 +80,10 @@ Les captures et le rapport vont dans \`${d}/\`, jamais dans le worktree.
    \`${capture} --dossier=${d}/avant\`
    Compare \`${d}/avant/lieu.png\` à la capture du visiteur : même vue et même cadrage, au GPU près.
    Si le bug n'y est pas, cherche ce qui manque (heure, météo, saison, moteur) jusqu'à le reproduire ; si tu n'y arrives pas,
-   arrête-toi là et explique-le dans le rapport (étape 6).
+   arrête-toi là et explique-le dans le rapport (étape 6).${trajet ? `
+   Le bug peut n'apparaître qu'en bougeant (un élément qui disparaît, clignote) : capture aussi le trajet, une image par point,
+   \`${trajet} --dossier=${d}/avant\`
+   Un élément présent sur un point et absent du suivant désigne ce qu'il faut chercher : ce qui décide de l'afficher à cette position.` : ''}
    Capture aussi deux ou trois vues voisines de \`VUES\` (\`tools/comparer-captures.ts\`), dans une commande à part sans \`--lieu\` ni \`--q\` :
    \`node tools/comparer-captures.ts http://localhost:<port>/ --vues=<vue>,<vue> --dossier=${d}/avant\`
 4. Trouve la cause racine, pas le symptôme, et corrige-la à la source en suivant CLAUDE.md (plan → fonctions dérivées,
