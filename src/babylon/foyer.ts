@@ -28,6 +28,7 @@ import { affiche, type Seance } from '../domain/cinema.ts'
 import { AFFICHES, COMPTOIR, FOYER, LAMBRIS, PLAFOND, SOL } from '../plan/cinema.ts'
 import { MUSEE } from '../plan/musee.ts'
 import { LINTEAU } from '../plan/portes.ts'
+import { spotsEncastres } from './eclairage.ts'
 import { droiteDe, eclatant, GRAS, repere, textesMsdf } from './msdf.ts'
 
 const CHAUD = new Color3(1, 0.8, 0.58)
@@ -307,14 +308,9 @@ export function monterFoyer(
   ], 0.3).catch((e: unknown) => console.warn('enseigne de sortie indisponible', e))
 
   // ── Les spots du plafond, et deux plafonniers chauds pour le foyer seul ──
-  const spot = garder(CreateBox('foyer:spots', { width: 0.12, height: 0.01, depth: 0.12 }, scene))
-  const halo = new StandardMaterial('foyer:spot', scene)
-  halo.disableLighting = true
-  halo.emissiveColor = new Color3(1, 0.85, 0.62)
-  spot.material = halo
-  const spots: number[] = []
-  for (const x of [19, 22.5, 26, 29.5]) for (const z of [6, 10]) spots.push(...Matrix.Translation(x, PLAFOND - FAUX_PLAFOND - 0.006, z).asArray())
-  spot.thinInstanceSetBuffer('matrix', new Float32Array(spots), 16)
+  const spots = spotsEncastres('foyer:spots', [19, 22.5, 26, 29.5].flatMap((x) => [6, 10].map((z): [number, number, number] => [x, PLAFOND - FAUX_PLAFOND - 0.004, z])), 0.07, new Color3(1, 0.85, 0.62), scene)
+  garder(spots.collerette)
+  garder(spots.lentille)
   lumieres.soleil.excludedMeshes.push(...foyer)
   lumieres.hemi.excludedMeshes.push(...foyer)
   for (const x of [20, 27.5]) {

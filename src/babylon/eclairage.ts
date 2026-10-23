@@ -36,6 +36,7 @@ import { Matrix, Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { CreateDisc } from '@babylonjs/core/Meshes/Builders/discBuilder'
 import { CreatePlane } from '@babylonjs/core/Meshes/Builders/planeBuilder'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
+import { VertexBuffer } from '@babylonjs/core/Buffers/buffer'
 import '@babylonjs/core/Meshes/thinInstanceMesh'
 import '@babylonjs/core/Shaders/ShadersInclude/pbrClusteredLightingFunctions'
 import '@babylonjs/core/ShadersWGSL/ShadersInclude/pbrClusteredLightingFunctions'
@@ -212,21 +213,51 @@ function monterHalos(scene: Scene, h: ReturnType<typeof halos>): void {
 /** Rapproche `v` de `cible` d'une part `k`, et s'y pose au millième : sinon la valeur n'y arrive jamais et chaque image la réécrit. */
 const approcher = (v: number, cible: number, k: number) => (Math.abs(cible - v) < 1e-3 ? cible : v + (cible - v) * k)
 
-/** Des disques lumineux (EclairageLayer) : PBR non éclairé, une thin instance par point ; `bas` tourne la face vers le sol. */
-function disques(nom: string, points: [number, number, number][], rayon: number, bas: boolean, couleur: Color3, scene: Scene): Mesh {
-  const d = CreateDisc(nom, { radius: rayon, tessellation: 16 }, scene)
+/**
+ * Des disques (EclairageLayer), une thin instance par point ; `bas` tourne la face vers le sol. Une couleur :
+ * un PBR non éclairé, qui luit ; une matière : la sienne.
+ */
+function disques(nom: string, points: [number, number, number][], rayon: number, bas: boolean, couleur: Color3 | PBRMaterial, scene: Scene, facettes = 16): Mesh {
+  const d = CreateDisc(nom, { radius: rayon, tessellation: facettes }, scene)
   // CreateDisc regarde −z : −π/2 autour de x le tourne vers le bas, +π/2 vers le haut.
   d.bakeTransformIntoVertices(Matrix.RotationX(bas ? -Math.PI / 2 : Math.PI / 2))
   const m = new Float32Array(16 * points.length)
   points.forEach(([x, y, z], i) => Matrix.Translation(x, y, z).copyToArray(m, 16 * i))
   d.thinInstanceSetBuffer('matrix', m, 16)
-  const mat = new PBRMaterial(nom, scene)
-  mat.unlit = true
-  mat.albedoColor = couleur
+  let mat = couleur
+  if (!(mat instanceof PBRMaterial)) {
+    mat = new PBRMaterial(nom, scene)
+    mat.unlit = true
+    mat.albedoColor = couleur as Color3
+  }
   mat.backFaceCulling = false
   d.material = mat
   d.isPickable = false
   return d
+}
+
+/**
+ * Des spots encastrés dans un plafond, vus d'en dessous : une collerette de métal ronde, éclairée par
+ * la pièce, et 2 mm plus bas la lentille, non éclairée, vive au centre et plus sourde au bord (couleurs
+ * aux sommets). Deux lots de thin instances. `points` : le centre de la collerette, sous le plafond.
+ */
+export function spotsEncastres(nom: string, points: [number, number, number][], rayon: number, couleur: Color3, scene: Scene): { collerette: Mesh; lentille: Mesh; verre: PBRMaterial } {
+  const metal = matiere(`${nom}:collerette`, scene, '#d9d3c8', 0.5)
+  metal.metallic = 0.3
+  const collerette = disques(`${nom}:collerette`, points, rayon, true, metal, scene, 24)
+  const r = rayon * 0.62
+  const lentille = disques(`${nom}:lentille`, points.map(([x, y, z]) => [x, y - 0.002, z]), r, true, couleur, scene, 24)
+  const verre = lentille.material as PBRMaterial
+  // La lentille passe devant la collerette, même de loin (2 mm ne suffisent pas au tampon de profondeur).
+  verre.zOffset = -2
+  const pos = lentille.getVerticesData('position')!
+  const teintes = new Float32Array((pos.length / 3) * 4)
+  for (let i = 0; i < pos.length / 3; i++) {
+    const k = 1 - 0.6 * Math.min(1, Math.hypot(pos[3 * i], pos[3 * i + 2]) / r)
+    teintes.set([k, k, k, 1], 4 * i)
+  }
+  lentille.setVerticesData(VertexBuffer.ColorKind, teintes)
+  return { collerette, lentille, verre }
 }
 
 export async function monterEclairage(
@@ -254,7 +285,7 @@ export async function monterEclairage(
   brancherLueurs(lanterneaux.map((l) => l.material!))
 
   // Les disques : spots 5 mm sous la dalle des balcons, projecteurs au ras du dallage (gris éteints).
-  disques('spots-balcons', SPOTS_BALCON.map(([x, y, z]) => [x, y + 0.015, z]), 0.055, true, BLANC_CHAUD, scene)
+  spotsEncastres('spots-balcons', SPOTS_BALCON.map(([x, y, z]) => [x, y + 0.016, z]), 0.08, BLANC_CHAUD, scene)
   const pf = disques('projecteurs-facade', PROJECTEURS_FACADE.map(([x, , z]) => [x, solDuParc(x, z) + 0.006, z]), 0.08, false, BLANC_CHAUD, scene)
   const verre = pf.material as PBRMaterial
   auCielMatiere(verre, (c) => (verre.albedoColor = BLANC_CHAUD.scale(Math.min(1, lueursDuJour(c.jour).facade / 5)).add(new Color3(0.04, 0.04, 0.04))))
