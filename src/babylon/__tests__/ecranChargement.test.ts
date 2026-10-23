@@ -11,14 +11,14 @@ describe('écran de chargement', () => {
   beforeEach(() => {
     vi.useFakeTimers()
     document.body.innerHTML = ''
-    chargement.setState({ faits: 0, total: 0, etape: 'chargement' })
+    chargement.setState({ faits: 0, total: 0, etape: 'chargement', attendus: [], octets: 0, shaders: 0, sondes: [0, 0] })
     partie.setState(INITIAL, true)
     delete (window as { __PRET__?: boolean }).__PRET__
     monterEcranChargement(document.body)
   })
   afterEach(() => vi.useRealTimers())
 
-  it('une barre de progression nommée, le compteur et l’étape', () => {
+  it('une barre de progression nommée, les chiffres, ce qu’on attend et l’étape', () => {
     const barre = document.querySelector('[role="progressbar"]')!
     expect(barre.getAttribute('aria-label')).toBe('Chargement du musée')
     expect(barre.getAttribute('aria-valuemin')).toBe('0')
@@ -26,10 +26,13 @@ describe('écran de chargement', () => {
     expect(ecran()!.getAttribute('aria-busy')).toBe('true')
     expect(ecran()!.textContent).toContain('Le musée s’installe')
     expect(document.querySelector('.compteur')!.textContent).toBe('…')
-    chargement.setState({ faits: 3, total: 5 })
-    expect(document.querySelector('.compteur')!.textContent).toBe('3 / 5')
-    chargement.setState({ etape: 'finition' })
+    chargement.setState({ faits: 3, total: 5, octets: 23e6, shaders: 312, attendus: ['jardin', 'cinéma'] })
+    expect(document.querySelector('.compteur')!.textContent).toBe('23 Mo · 312 shaders compilés')
+    expect(document.querySelector('.attente')!.textContent).toBe('Encore : jardin, cinéma')
+    chargement.setState({ etape: 'finition', sondes: [4, 12] })
     expect(ecran()!.textContent).toContain('Dernières retouches')
+    expect(document.querySelector('.compteur')!.textContent).toBe('reflets des salles 4 / 12 · 312 shaders compilés')
+    expect(document.querySelector('.attente')!.textContent).toBe('')
     vi.advanceTimersByTime(1000)
     expect(Number(barre.getAttribute('aria-valuenow'))).toBeGreaterThan(0)
   })

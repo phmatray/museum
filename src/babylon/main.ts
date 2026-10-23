@@ -103,6 +103,8 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   reserverLeMiroir()
   corrigerVeloursDesGrappes()
   const { engine, scene } = await creerSocle(toile)
+  // Les shaders compilés, comptés pour l'écran de chargement : c'est là que passe l'essentiel de l'attente.
+  const compile = engine.onAfterShaderCompilationObservable.add(() => chargement.setState((s) => ({ shaders: s.shaders + 1 })))
   // La qualité adaptative (qualite.ts) : la densité posée tout de suite, le moniteur au point prêt.
   const qualite = monterQualite(engine, scene, () => qualiteDemandee(recherche()))
 
@@ -110,7 +112,7 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   const [accrochage, cat] = await suivre(Promise.all([
     fetch(`${base}data/accrochage.json`).then((r) => r.json() as Promise<Accrochage>).catch(() => null),
     catalogue(base),
-  ]))
+  ]), 'catalogue')
   accrochageCharge = accrochage
   // L'état vivant (etat.ts) : le ciel toutes les 30 s, la météo tous les quarts d'heure ; METEO lissée à chaque image (intemperies.ts).
   demarrerCycle()
@@ -178,6 +180,8 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   // Le tri entre salles (visibilite.ts) : tôt, il prend chaque maillage qui arrive.
   const { lieuDe } = monterVisibilite(scene, camera, MUSEE)
   const signaler = (quoi: string) => (e: unknown) => console.error(`${quoi} indisponible`, e)
+  /** Une couche suivie par l'écran de chargement sous son nom, sa panne signalée sous le même. */
+  const couche = <T>(nom: string, p: Promise<T>, puis?: (v: T) => unknown) => suivre(p.then(puis, signaler(nom)), nom)
 
   // Les couches du bâtiment, sans les attendre. Les porteurs arrivés après la
   // première carte d'ombre la font redessiner.
@@ -195,52 +199,54 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
     return p
   }
   const couches = [
-    accrochage ? monterToiles(scene, accrochage, base).then(ombrer, signaler('toiles')) : null,
-    monterFacade(scene, MUSEE, base).then(ombrer, signaler('façade')),
-    monterPortes(scene, accrochage).then(ombrer, signaler('portes')),
-    monterNef(scene, generateur).catch(signaler('nef')),
-    monterEscalier(scene, atlas, generateur, marches).catch(signaler('escalier')),
+    accrochage ? couche('toiles', monterToiles(scene, accrochage, base), ombrer) : null,
+    couche('façade', monterFacade(scene, MUSEE, base), ombrer),
+    couche('portes', monterPortes(scene, accrochage), ombrer),
+    couche('nef', monterNef(scene, generateur)),
+    couche('escalier', monterEscalier(scene, atlas, generateur, marches)),
     // La lampe de la salle d'honneur et la SpotLight de l'éveil sont créées tout de suite : elles entrent dans la première compilation.
-    monterSalleHonneur(scene, atlas, generateur).catch(signaler('salle d’honneur')),
-    monterBatllo(scene, generateur).catch(signaler('baie Batlló')),
-    monterBelvedere(scene, generateur).catch(signaler('belvédère')),
-    monterEclairage(scene, accrochage, lanterneaux, visiteur).catch(signaler('éclairage')),
+    couche('salle d’honneur', monterSalleHonneur(scene, atlas, generateur)),
+    couche('baie Batlló', monterBatllo(scene, generateur)),
+    couche('belvédère', monterBelvedere(scene, generateur)),
+    couche('éclairage', monterEclairage(scene, accrochage, lanterneaux, visiteur)),
     // Vague 2 : l'intérieur.
-    monterMobilier(scene).then(meuble, signaler('mobilier')),
-    monterProps(scene, accrochage).then(meuble, signaler('props')),
-    monterVitrines(scene, base, visiteur).then(meuble, signaler('vitrines')),
-    monterSculptures(scene, base).then(meuble, signaler('sculptures')),
-    accrochage ? monterCartels(scene, accrochage, base).then(ombrer, signaler('cartels')) : null,
-    monterMosaique(scene, base).then(ombrer, signaler('mosaïque')),
-    monterDeparts(scene, accrochage, base).then(ombrer, signaler('départs')),
-    monterCloche(scene, base).then(ombrer, signaler('cloche')),
-    monterAteliers(scene, base).then(ombrer, signaler('ateliers')),
-    monterConstellation(scene, accrochage, base).catch(signaler('constellation')),
-    monterChantier(scene, base, camera).then(ombrer, signaler('chantier')),
+    couche('mobilier', monterMobilier(scene), meuble),
+    couche('objets', monterProps(scene, accrochage), meuble),
+    couche('vitrines', monterVitrines(scene, base, visiteur), meuble),
+    couche('sculptures', monterSculptures(scene, base), meuble),
+    accrochage ? couche('cartels', monterCartels(scene, accrochage, base), ombrer) : null,
+    couche('mosaïque', monterMosaique(scene, base), ombrer),
+    couche('tableau des départs', monterDeparts(scene, accrochage, base), ombrer),
+    couche('cloche', monterCloche(scene, base), ombrer),
+    couche('ateliers', monterAteliers(scene, base), ombrer),
+    couche('constellation', monterConstellation(scene, accrochage, base)),
+    couche('chantier', monterChantier(scene, base, camera), ombrer),
     // Vague 3 : le jardin. La faune et Bavette s'animent sans cesse : jamais dans la carte d'ombre (bavette.ts).
-    apresUneImage(() => monterRelief(scene, camera)).then(ombrer, signaler('relief')),
-    apresUneImage(() => monterEnceinte(scene)).then(ombrer, signaler('enceinte')),
-    apresUneImage(() => monterAllees(scene)).then(ombrer, signaler('allées')),
-    monterVegetation(scene).then(ombrer, signaler('végétation')),
-    apresUneImage(() => monterFeuilles(scene)).catch(signaler('feuilles mortes')),
-    monterJardin(scene).then(ombrer, signaler('jardin')),
-    monterRuisseau(scene).then(ombrer, signaler('ruisseau')),
-    monterFaune(scene, camera).catch(signaler('faune')),
-    monterBavette(scene, camera).catch(signaler('bavette')),
+    couche('relief', apresUneImage(() => monterRelief(scene, camera)), ombrer),
+    couche('enceinte', apresUneImage(() => monterEnceinte(scene)), ombrer),
+    couche('allées', apresUneImage(() => monterAllees(scene)), ombrer),
+    couche('végétation', monterVegetation(scene), ombrer),
+    couche('feuilles mortes', apresUneImage(() => monterFeuilles(scene))),
+    couche('jardin', monterJardin(scene), ombrer),
+    couche('ruisseau', monterRuisseau(scene), ombrer),
+    couche('faune', monterFaune(scene, camera)),
+    couche('bavette', monterBavette(scene, camera)),
     // Les visiteurs du musée (pnj.ts) : huit modèles, leurs actions cuites, jamais dans la carte d'ombre.
-    monterPnj(scene, accrochage, () => camera.walker()).catch(signaler('visiteurs')),
+    couche('visiteurs', monterPnj(scene, accrochage, () => camera.walker())),
     // Le cinéma du sous-sol (cinema.ts) : la salle, l'affiche, la séance projetée sur la toile.
-    monterCinema(scene, camera, racine, base, { soleil, hemi }).catch(signaler('cinéma')),
-    apresUneImage(() => monterLierre(scene)).then(ombrer, signaler('lierre')),
+    couche('cinéma', monterCinema(scene, camera, racine, base, { soleil, hemi })),
+    couche('lierre', apresUneImage(() => monterLierre(scene)), ombrer),
     // Vague 4 : les rayons de la nef et la météo (jamais dans la carte d'ombre).
-    Promise.resolve().then(() => monterRayons(scene)).catch(signaler('rayons')),
-    Promise.resolve().then(() => monterMeteo(scene, camera)).catch(signaler('météo')),
-    atlas.catch(() => {}),
-  ].map((p) => (p ? suivre<unknown>(p) : p))
+    couche('rayons de la nef', Promise.resolve().then(() => monterRayons(scene))),
+    couche('météo', Promise.resolve().then(() => monterMeteo(scene, camera))),
+    suivre(atlas.catch(() => {}), 'lumière précalculée'),
+  ]
   if (import.meta.env.DEV) {
     // Pour les mesures headless ; l'instrumentation remet le compteur d'appels à zéro à chaque image.
     const instr = new SceneInstrumentation(scene)
     ;(window as unknown as { __BABYLON__?: unknown }).__BABYLON__ = { engine, scene, camera, instr, reprendre: () => partie.setState({ paused: false }) }
+    // Le bouton 🐞 : un bug visuel envoyé à Claude, corrigé dans un worktree (ui/signalement.ts, tools/signalement.ts).
+    void import('./ui/signalement.ts').then((m) => m.monterSignalement(scene, camera))
   }
   engine.runRenderLoop(() => scene.render())
   // Tout arrivé et compilé : la carte d'ombre redessinée, les sondes prises, les matières figées
@@ -248,7 +254,7 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
   // suivante qui change une matière après coup la dégèle (`unfreeze`) ou s'ajoute à VIVANTES (etat.ts).
   await Promise.all(couches)
   monterContact(scene, meubles)
-  await suivre(cartesChargees())
+  await suivre(cartesChargees(), 'textures des matières')
   // Un lot vide pour l'instant (sujets au loin, `cacherAuLoin`) se compilerait sans ses instances : la variante
   // à instances (caméra et carte d'ombre) attendrait sa première apparition, en pleine marche (~200 ms à 43 m de la façade).
   for (const m of scene.meshes as Mesh[]) {
@@ -267,14 +273,17 @@ export async function demarrer(racine: HTMLElement): Promise<void> {
     const fin = reglages.subscribe(() => soleil.shadowEnabled && (fin(), fondre()))
   }
   reflets.rafraichir()
+  const capture = scene.onAfterRenderObservable.add(() => chargement.setState({ sondes: [reflets.nombre - reflets.restantes(), reflets.nombre] }))
   for (const m of scene.materials) if (!VIVANTES.has(m.name)) m.freeze()
   // Prêt une fois les sondes prises et 3 images dessinées : plus de rafale de compilation sous les pas.
   await reflets.prises()
+  scene.onAfterRenderObservable.remove(capture)
   await new Promise<void>((ok) => {
     let n = 0
     const o = scene.onAfterRenderObservable.add(() => { if (++n === 3) { scene.onAfterRenderObservable.remove(o); ok() } })
   })
   marquerPret()
+  engine.onAfterShaderCompilationObservable.remove(compile)
   // La qualité adaptative, seulement une fois prêt (les compilations du chargement fausseraient la mesure).
   qualite.demarrer()
 }

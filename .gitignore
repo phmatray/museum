@@ -82,6 +82,9 @@ public/assets/fonts/*
 # demande. Le depot est public, elles ne valent pas leur poids dans lhistorique.
 .captures/
 
+# Le constat d'un bug signalé par le bouton 🐞 (tools/signalement.ts), dans son worktree : captures, consigne, rapport.
+.signalement/
+
 # Kit tagout : worktrees et télémétrie locale
 .claude/worktrees/
 .worktrees/

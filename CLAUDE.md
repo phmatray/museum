@@ -108,7 +108,8 @@ accepted and ignored.
 - `postTraitement.ts`: HDR chain SSAO2 → bloom → tone mapping → god rays → grading → vignette → FXAA (creation order is
   chain order). `qualite.ts`: `setHardwareScalingLevel(1/d)` driven by a PerformanceMonitor-like monitor.
 - `etat.ts`: zustand/vanilla stores (`reglages`, `partie`, `vivant`: sky/weather/season, `son`, `catalogue`,
-  `recherche()`). `chargement.ts` + `ui/ecranChargement.ts`: the loading screen.
+  `recherche()`). `chargement.ts` + `ui/ecranChargement.ts`: the loading screen, which names what is still pending (a new layer goes
+  through `couche(nom, p)` in `main.ts`) and counts megabytes, compiled shaders and probes (`domain/chargement.ts`).
 - `ui/`: native DOM + CSS (accueil, carteEtape, dom `el`/`svg`/`observer`/`themeName`, ecranChargement, minimap,
   mobile, oeuvre, partage, reglages, visite). Text goes in `textContent`, never catalogue data in `innerHTML` (`dom.ts`).
 - NPCs: `plan/pnj.ts` decides where they go (a `Pilote` moves them); `plan/navigation.ts` derives their floor from
@@ -170,6 +171,10 @@ asset credits are declared in the `tools/fetch-assets.ts` manifest and regenerat
 - Dev-only hooks for headless captures and debugging: `window.__BABYLON__ = { engine, scene, camera, instr, reprendre() }`
   (`main.ts`, `instr` is a `SceneInstrumentation`), `window.__PRET__` (scene ready, `chargement.ts`),
   `window.__BAVETTE__`, `window.__FAUNE__`, `window.__TOUT_VOIR__` (disable culling).
+- Visual bug button (dev only): key B or the 🐞 button captures the view plus the visitor's exact pose and posts it to
+  `/__signalement` (`tools/signalement.ts`, a Vite plugin, localhost only), which opens a `bug/<id>` worktree and runs
+  `claude -p` with a prepared prompt: reproduce headless (`comparer-captures.ts --lieu=x,z,y,yaw,pitch --heure --q`),
+  fix, recapture with `--avant` (gap + `<vue>.avant-apres.png`), commit without pushing; the report is in `.signalement/`.
 - URL parameters force live state for screenshots: `?heure=HH:MM`, `?meteo=clair|pluie|neige|brouillard|orage`,
   `?saison=printemps|ete|automne|hiver`, `?ombres=0`, `?annonce=1`, `?gpu=0` (force WebGL2, to compare both paths), `?ciel=photo` (the old photo sky instead of the physical one),
   `?vr=cardboard` (the Cardboard polyfill on a desktop, to drive VR headless), `?qualite=haute|basse` (freezes the
