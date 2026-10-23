@@ -29,6 +29,8 @@ export type Zone = string
 
 /** Tolérance autour d'un volume, en mètres : un objet posé sur une cloison est des deux côtés. */
 const MARGE = 0.3
+/** Une tête au-dessus d'un sol (m) : l'œil, et un peu de marge. */
+const TETE = 2
 
 const dans = (r: Rect, x0: number, z0: number, x1: number, z1: number, m: number) =>
   x1 >= r.x - m && x0 <= r.x + r.width + m && z1 >= r.z - m && z0 <= r.z + r.depth + m
@@ -173,9 +175,14 @@ export function zonesDuVolume(
   niveaux.forEach((l, i) => {
     const bas = i === 0 ? -Infinity : l.elevation - marge
     const haut = i === niveaux.length - 1 ? Infinity : niveaux[i + 1].elevation + marge
-    if (max.y < bas || min.y > haut) return
-    for (const r of l.rooms)
+    if (max.y < bas) return
+    for (const r of l.rooms) {
+      // Une salle que traverse une volée montante (la cage de l'escalier du sous-sol) reste ouverte au-dessus
+      // de son niveau : l'œil qui monte la volée y est encore, jusqu'à une tête au-dessus de son arrivée.
+      const cage = plan.flights.filter((f) => Math.abs(f.bottom - l.elevation) < 1e-6 && overlapArea(f, r) > 1e-6).map((f) => f.top + TETE)
+      if (min.y > Math.max(haut, ...cage)) continue
       if (r.kind !== 'hall' && r.kind !== 'balcony' && dans(r, min.x, min.z, max.x, max.z, marge)) out.push(r.id)
+    }
   })
   if (dans(nef, min.x, min.z, max.x, max.z, marge)) out.push(NEF)
   // Strictement hors de l'emprise : une toile du mur de façade reste dans sa salle, le mur, lui, dépasse.
