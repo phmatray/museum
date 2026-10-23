@@ -12,3 +12,4 @@
 .signalement button[type=submit] { color: #f6f3ec; background: #1c2530; }
 .signalement button:disabled { opacity: .5; cursor: default; }
 .signalement-etat { margin: 10px 0 0; font-family: ui-monospace, monospace; font-size: 12px; overflow-wrap: anywhere; }
+.signalement-rendu .signalement-prompt { margin: 8px 0; font: 12px/1.4 ui-monospace, monospace; }

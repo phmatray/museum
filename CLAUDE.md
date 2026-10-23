@@ -172,9 +172,10 @@ asset credits are declared in the `tools/fetch-assets.ts` manifest and regenerat
   (`main.ts`, `instr` is a `SceneInstrumentation`), `window.__PRET__` (scene ready, `chargement.ts`),
   `window.__BAVETTE__`, `window.__FAUNE__`, `window.__TOUT_VOIR__` (disable culling).
 - Visual bug button (dev only): key B or the 🐞 button captures the view plus the visitor's exact pose and posts it to
-  `/__signalement` (`tools/signalement.ts`, a Vite plugin, localhost only), which opens a `bug/<id>` worktree and runs
-  `claude -p` with a prepared prompt: reproduce headless (`comparer-captures.ts --lieu=x,z,y,yaw,pitch --heure --q`),
-  fix, recapture with `--avant` (gap + `<vue>.avant-apres.png`), commit without pushing; the report is in `.signalement/`.
+  `/__signalement` (`tools/signalement.ts`, a Vite plugin, localhost only), which writes the report to
+  `.signalement/<id>/` and returns a prompt to copy into a Claude session of your choice (nothing is launched): work in a
+  `bug/<id>` worktree from the served sha, reproduce headless (`comparer-captures.ts --lieu=x,z,y,yaw,pitch --heure --q
+  --taille`), fix, recapture with `--avant` (gap + `<vue>.avant-apres.png`), commit without pushing.
 - URL parameters force live state for screenshots: `?heure=HH:MM`, `?meteo=clair|pluie|neige|brouillard|orage`,
   `?saison=printemps|ete|automne|hiver`, `?ombres=0`, `?annonce=1`, `?gpu=0` (force WebGL2, to compare both paths), `?ciel=photo` (the old photo sky instead of the physical one),
   `?vr=cardboard` (the Cardboard polyfill on a desktop, to drive VR headless), `?qualite=haute|basse` (freezes the

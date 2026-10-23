@@ -3,7 +3,7 @@
  * par vue, pour juger à l'œil qu'un changement ne déplace rien.
  *
  *   node tools/comparer-captures.ts [http://localhost:5173/] [--dossier=<dossier>] [--vues=arrivee,escalier] [--avant=<dossier>] [--q=a=b&c=d]
- *   node tools/comparer-captures.ts [url] --lieu=x,z,y,yaw,pitch [--heure=HH:MM] [--q=…] [--dossier=…] [--avant=…]
+ *   node tools/comparer-captures.ts [url] --lieu=x,z,y,yaw,pitch [--heure=HH:MM] [--q=…] [--taille=LxH] [--dossier=…] [--avant=…]
  *
  * Contre `npm run dev`, lancé à côté (le hook `__BABYLON__` n'existe qu'en DEV). Le visiteur
  * est posé par le plan lui-même (`surfaceAt` puis un `step` immobile pour la cote), importé dans la page.
@@ -99,6 +99,8 @@ const VUES: Vue[] = [
 ]
 const choisies = option('vues')?.split(',')
 const lieu = option('lieu')?.split(',').map(Number)
+/** `--taille=1586x1204` : le cadrage du visiteur (un autre rapport d'aspect montre un autre champ) ; sinon 1280×720. */
+const [largeur, hauteur] = option('taille')?.split('x').map(Number) ?? [1280, 720]
 /** `--q=ciel=photo` : ajouté à l'adresse de chaque vue. */
 const enPlus = args.find((a) => a.startsWith('--q='))?.slice(4)
 const avant = option('avant')
@@ -118,7 +120,7 @@ const navigateur = await puppeteer.launch({
 try {
   for (const vue of vues) {
     const page = await navigateur.newPage()
-    await page.setViewport(vue.mobile ? { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true } : { width: 1280, height: 720, deviceScaleFactor: 1 })
+    await page.setViewport(vue.mobile ? { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true } : { width: largeur, height: hauteur, deviceScaleFactor: 1 })
     if (vue.mobile) await page.emulateMediaFeatures([{ name: 'pointer', value: 'coarse' }]).catch(() => {})
     page.on('pageerror', (e) => console.error(`  ! ${vue.nom} : ${e instanceof Error ? e.message : e}`))
     page.on('console', (m) => { if (m.type() === 'error') console.error(`  ! ${vue.nom} : ${m.text()}`) })
