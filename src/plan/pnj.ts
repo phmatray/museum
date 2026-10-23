@@ -54,9 +54,16 @@ export interface Pilote {
   arreter(p: Pnj): void
 }
 
+/**
+ * Les modèles montrés (`public/assets/pnj/pnj-<n>.glb`, `tools/generer-pnj.ts`). maquettes.test.ts garde
+ * la liste : un modèle dont Meshy a raté le squelette (sa peau se déchire dès l'attente bras ballants) n'y
+ * entre pas, et doit être régénéré (`--seul=<n>`).
+ */
+export const MODELES_PNJ: readonly number[] = [0, 1, 2, 3, 4, 5, 6, 7]
+
 export interface Pnj {
   n: number
-  /** Le modèle (le GLB `pnj-<modele>`). */
+  /** Le rang du modèle dans `MODELES_PNJ`. */
   modele: number
   zone: Zone
   w: Pose

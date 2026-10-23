@@ -14,11 +14,11 @@ import '@babylonjs/core/Meshes/thinInstanceMesh'
 import type { Scene } from '@babylonjs/core/scene'
 
 import type { Siege } from '../plan/cinema.ts'
+import { MODELES_PNJ } from '../plan/pnj.ts'
 import { VIVANTES } from './etat.ts'
 import { glbOuRien } from './glb.ts'
 import { cuire } from './pnj.ts'
 
-const MODELES = 8
 const CADENCE = 30
 /** Le dos du spectateur, derrière le centre de la place (m) : contre le dossier du fauteuil (78 cm de fond). */
 const DOSSIER = 0.22
@@ -55,8 +55,8 @@ export function gabarit(maillage: Mesh, groupe: AnimationGroup): { dos: number; 
 
 /** Monte les spectateurs ; rend leurs maillages (à éclairer par la salle). */
 export async function monterSpectateurs(scene: Scene, sieges: readonly Siege[]): Promise<Mesh[]> {
-  const parModele = Array.from({ length: MODELES }, (_, n) => sieges.filter((_, i) => i % MODELES === n))
-  const conteneurs = await Promise.all(parModele.map((qui, n) => (qui.length ? glbOuRien(scene, `assets/pnj/pnj-${n}.glb`) : Promise.resolve(null))))
+  const parModele = MODELES_PNJ.map((_, n) => sieges.filter((_, i) => i % MODELES_PNJ.length === n))
+  const conteneurs = await Promise.all(parModele.map((qui, n) => (qui.length ? glbOuRien(scene, `assets/pnj/pnj-${MODELES_PNJ[n]}.glb`) : Promise.resolve(null))))
   const maillages: Mesh[] = []
   conteneurs.forEach((c, n) => {
     const qui = parModele[n]
