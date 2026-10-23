@@ -22,19 +22,21 @@ import { cuire } from './pnj.ts'
 const CADENCE = 30
 /** Le dos du spectateur, derrière le centre de la place (m) : contre le dossier du fauteuil (78 cm de fond). */
 const DOSSIER = 0.22
-/** Ce que la silhouette peut bouger (m) sans traverser un fauteuil : au-delà, la boucle s'arrête. */
-const TOLERANCE = 0.05
 const ECHANTILLONS = 40
 
 /**
- * La silhouette assise, mesurée sur le squelette (sur le processeur, une fois) : le dos et la part
- * de l'action qui reste dans le gabarit de la première image. Meshy place l'origine où il veut
- * (jusqu'à 80 cm devant le corps), et l'action allonge les jambes ou penche le buste en son milieu.
+ * La silhouette assise, mesurée sur le squelette (sur le processeur, une fois) : le dos (le z le plus
+ * en arrière de toute l'action) et le bassin en x. Meshy place l'origine où il veut : jusqu'à 80 cm
+ * devant le corps, et 17 à 20 cm à côté du bassin (le spectateur chevauchait l'accoudoir).
+ * L'action entière est jouée : elle penche le buste et allonge les jambes devant le fauteuil, où le rang
+ * laisse la place ; la couper la faisait sauter d'une image à l'autre en boucle.
  */
-export function gabarit(maillage: Mesh, groupe: AnimationGroup): { dos: number; part: number } {
+export function gabarit(maillage: Mesh, groupe: AnimationGroup): { dos: number; cote: number } {
   const avant = maillage.computeBonesUsingShaders
   maillage.computeBonesUsingShaders = false
-  const mesures: [number, number][] = []
+  const bassin = maillage.skeleton!.bones.find((b) => /hips|pelvis/i.test(b.name))
+  let dos = Infinity
+  let cote = 0
   for (let k = 0; k <= ECHANTILLONS; k++) {
     const f = groupe.from + ((groupe.to - groupe.from) * k) / ECHANTILLONS
     groupe.start(false, 1, f, f)
@@ -43,14 +45,13 @@ export function gabarit(maillage: Mesh, groupe: AnimationGroup): { dos: number; 
     maillage.skeleton!.prepare(true)
     maillage.refreshBoundingInfo({ applySkeleton: true, applyMorph: false })
     const b = maillage.getBoundingInfo().boundingBox
-    mesures.push([b.minimumWorld.z, b.maximumWorld.z])
+    dos = Math.min(dos, b.minimumWorld.z)
+    if (k === 0) cote = bassin ? Vector3.TransformCoordinates(bassin.getAbsolutePosition(), maillage.computeWorldMatrix(true)).x : (b.minimumWorld.x + b.maximumWorld.x) / 2
     groupe.stop()
   }
   maillage.computeBonesUsingShaders = avant
   maillage.refreshBoundingInfo()
-  const [z0, z1] = mesures[0]
-  const k = mesures.findIndex(([a, b]) => Math.abs(a - z0) > TOLERANCE || Math.abs(b - z1) > TOLERANCE)
-  return { dos: z0, part: k < 0 ? 1 : Math.max(1, k - 1) / ECHANTILLONS }
+  return { dos, cote }
 }
 
 /** Monte les spectateurs ; rend leurs maillages (à éclairer par la salle). */
@@ -65,7 +66,7 @@ export async function monterSpectateurs(scene: Scene, sieges: readonly Siege[]):
     const maillage = c.meshes.find((x): x is Mesh => x instanceof Mesh && !!x.skeleton)
     if (!maillage) return
     const assise = c.animationGroups.find((g) => /sit/i.test(g.name))
-    const { dos, part } = assise ? gabarit(maillage, assise) : { dos: 0, part: 1 }
+    const { dos, cote } = assise ? gabarit(maillage, assise) : { dos: 0, cote: 0 }
     const cuit = cuire(scene, maillage, c.animationGroups, { assis: /sit/i })
     for (const g of c.animationGroups) g.dispose()
     if (!cuit) return console.warn(`spectateur ${n} : pas d'action assise`)
@@ -83,14 +84,14 @@ export async function monterSpectateurs(scene: Scene, sieges: readonly Siege[]):
     const Wi = W.clone().invert()
     const matrices = new Float32Array(qui.length * 16)
     const actions = new Float32Array(qui.length * 4)
-    const [a, fin] = cuit.plages.assis
-    const b = a + Math.round((fin - a) * part)
-    // Le dos (z du modèle, qui regarde +z) contre le dossier : le demi-tour l'envoie derrière la place.
+    const [a, b] = cuit.plages.assis
+    // Le dos (z du modèle, qui regarde +z) contre le dossier, le bassin au milieu de la place :
+    // le demi-tour envoie l'un derrière la place, l'autre de l'autre côté.
     const recul = DOSSIER + dos
     const t = new Matrix()
     qui.forEach((s, i) => {
       // Face à l'écran (vers −z) : le modèle glTF regarde +z, un demi-tour.
-      Matrix.ComposeToRef(Vector3.OneReadOnly, Quaternion.RotationYawPitchRoll(Math.PI, 0, 0), new Vector3(s.x, s.y, s.z + recul), t)
+      Matrix.ComposeToRef(Vector3.OneReadOnly, Quaternion.RotationYawPitchRoll(Math.PI, 0, 0), new Vector3(s.x + cote, s.y, s.z + recul), t)
       W.multiply(t).multiply(Wi).copyToArray(matrices, i * 16)
       // Chacun à son rythme : un décalage dans l'action.
       actions.set([a, b, ((i * 37 + n * 11) % (b - a + 1)), CADENCE], i * 4)
