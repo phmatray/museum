@@ -31,10 +31,10 @@
     "taille": 1.6,
     "prompt": "Full-body elderly woman in her seventies visiting an art museum, long straight auburn hair, wearing a burgundy cardigan, a pleated plaid skirt and black loafers, with a small backpack. Realistic proportions, natural colours, neutral relaxed face, standing in a strict T-pose: arms straight out horizontally, palms facing down, fingers together, feet flat shoulder-width apart, nothing in the hands, clean game-ready character.",
     "taches": {
-      "apercu": "01a15aee-b922-75df-821e-3558c6cd9d25",
-      "texture": "01a15aef-684a-777b-8756-b8943ebd3b9e",
-      "squelette": "01a15aef-eea0-7497-a14a-5e829e0cf436",
-      "animation": "01a15b99-a45b-730c-89a5-8bf9ad8fc49b",
+      "apercu": "01a168a9-ca40-72d8-be10-98df461797d6",
+      "texture": "01a168aa-966b-71c5-871d-c5f46d64c2a3",
+      "squelette": "01a168ab-22d6-71ca-bd02-75184a0eccb7",
+      "animation": "01a168ab-6151-746d-936e-b7039ff03f61",
       "fichier": "pnj-2.glb"
     }
   },
@@ -44,10 +44,10 @@
     "taille": 1.72,
     "prompt": "Full-body elderly man in his seventies visiting an art museum, messy chestnut hair, wearing a striped breton shirt, dark blue jeans and white sneakers, with a small backpack. Realistic proportions, natural colours, neutral relaxed face, standing in a strict T-pose: arms straight out horizontally, palms facing down, fingers together, feet flat shoulder-width apart, nothing in the hands, clean game-ready character.",
     "taches": {
-      "apercu": "01a15aee-b91f-7060-b994-002a4397371b",
-      "texture": "01a15aef-8af6-751a-a5dc-8f77c1c8546e",
-      "squelette": "01a15aef-ee99-75de-aa41-cdbc45fc1bef",
-      "animation": "01a15b99-a451-7479-92d8-a567d0eade0e",
+      "apercu": "01a168a8-2d84-76be-89a2-46a80a795ed9",
+      "texture": "01a168a9-c56d-71e8-ac50-65a157782116",
+      "squelette": "01a168aa-589a-7786-96f2-2dea56827464",
+      "animation": "01a168aa-a60d-73c0-9044-b99269f72195",
       "fichier": "pnj-3.glb"
     }
   },

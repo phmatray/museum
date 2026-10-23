@@ -250,6 +250,6 @@ async function etirement(n: number, nom: RegExp): Promise<number> {
 }
 
 it('pnj-*.glb : seuls les modèles au squelette juste sont montrés (la peau tient, bras ballants)', async () => {
-  // Sain : 0,6 ‰ au plus ; pnj-2 (cou étiré) 5,6 ‰, pnj-3 (jean tiré par les mains) 2,1 ‰.
+  // Sain : 0,65 ‰ au plus ; les premiers pnj-2 (cou étiré) 5,6 ‰, pnj-3 (jean tiré par les mains) 2,1 ‰.
   for (let n = 0; n < 8; n++) expect((await etirement(n, /^idle/i)) < 0.0015, `pnj-${n}`).toBe(MODELES_PNJ.includes(n))
 })

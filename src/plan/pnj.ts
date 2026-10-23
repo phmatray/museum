@@ -55,12 +55,11 @@ export interface Pilote {
 }
 
 /**
- * Les modèles montrés (`public/assets/pnj/pnj-<n>.glb`, `tools/generer-pnj.ts`). Écartés : ceux dont
- * Meshy a raté le squelette, que leur peau trahit dès l'attente bras ballants (maquettes.test.ts) :
- * pnj-2 (tête et racines des bras mal posées : cou de girafe, épaules en portemanteau), pnj-3
- * (rigué bras le long du corps : son jean suit ses mains). À régénérer (`--seul=<n>`), puis à remettre ici.
+ * Les modèles montrés (`public/assets/pnj/pnj-<n>.glb`, `tools/generer-pnj.ts`). maquettes.test.ts garde
+ * la liste : un modèle dont Meshy a raté le squelette (sa peau se déchire dès l'attente bras ballants) n'y
+ * entre pas, et doit être régénéré (`--seul=<n>`).
  */
-export const MODELES_PNJ: readonly number[] = [0, 1, 4, 5, 6, 7]
+export const MODELES_PNJ: readonly number[] = [0, 1, 2, 3, 4, 5, 6, 7]
 
 export interface Pnj {
   n: number
