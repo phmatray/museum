@@ -2,12 +2,12 @@
  * Les visiteurs du musée (PNJ) : `plan/pnj.ts` décide où ils vont et ce qu'ils
  * font ; ici on les montre, au moindre coût.
  *
- * Huit modèles (`tools/generer-pnj.ts` : Meshy, garde-robe tirée au sort), chacun
+ * Les modèles de `MODELES_PNJ` (`tools/generer-pnj.ts` : Meshy, garde-robe tirée au sort), chacun
  * squelette + trois actions (marche, attente, regard). Pas de squelette animé
  * sur le CPU par PNJ : les actions sont CUITES dans une texture (« baked vertex
  * animation », doc Babylon) et chaque modèle est UN lot de thin instances,
  * un PNJ = une instance avec sa matrice et ses paramètres d'animation
- * (`bakedVertexAnimationSettingsInstanced`). Douze PNJ : huit appels de dessin,
+ * (`bakedVertexAnimationSettingsInstanced`). Douze PNJ : un appel de dessin par modèle,
  * plus un pour leurs taches de contact.
  *
  * La cuisson est faite ici, pas par `VertexAnimationBaker` : celui-ci fait
@@ -33,7 +33,7 @@ import type { Scene } from '@babylonjs/core/scene'
 
 import { MUSEE } from '../plan/musee.ts'
 import type { Accrochage } from '../plan/hang.ts'
-import { avancerPnj, monde, pnjInitiaux, type Activite, type Pnj } from '../plan/pnj.ts'
+import { avancerPnj, MODELES_PNJ, monde, pnjInitiaux, type Activite, type Pnj } from '../plan/pnj.ts'
 import { lieuxCalmes } from '../plan/promenade.ts'
 import { cuireEnArrierePlan, fouleDesPnj, navmesh } from './navigation.ts'
 import { matiereDeTache } from './contact.ts'
@@ -41,8 +41,7 @@ import { VIVANTES } from './etat.ts'
 import { glbOuRien } from './glb.ts'
 import { PARC } from './parc.ts'
 
-/** Combien de modèles (`public/assets/pnj/pnj-<n>.glb`) et de PNJ par zone. */
-const MODELES = 8
+/** Combien de PNJ par zone. */
 const COMBIEN = { musee: 8, jardin: 4 }
 /** Images par seconde de la cuisson (et de la lecture). */
 const CADENCE = 30
@@ -101,7 +100,7 @@ export function decalage(debut: number, fin: number, t: number, cadence = CADENC
 /** Monte les PNJ ; `visiteur` : où est le joueur (ils s'en écartent). Rend une promesse résolue une fois posés. */
 export async function monterPnj(scene: Scene, accrochage: Accrochage | null, visiteur: () => { x: number; y: number; z: number }): Promise<void> {
   const m = monde(MUSEE, accrochage, lieuxCalmes(MUSEE, PARC))
-  const pnj = pnjInitiaux(m, COMBIEN, MODELES, Math.floor(Math.random() * 2 ** 32))
+  const pnj = pnjInitiaux(m, COMBIEN, MODELES_PNJ.length, Math.floor(Math.random() * 2 ** 32))
   // Le navmesh, tiré du plan, cuit dans un worker pendant que les modèles se chargent.
   let msNavmesh = 0
   const plugin = (async () => {
@@ -111,7 +110,7 @@ export async function monterPnj(scene: Scene, accrochage: Accrochage | null, vis
     return p
   })()
   plugin.catch(() => {}) // sans modèle à montrer, personne ne l'attend : pas de rejet orphelin
-  const conteneurs = await Promise.all(Array.from({ length: MODELES }, (_, n) => glbOuRien(scene, `assets/pnj/pnj-${n}.glb`)))
+  const conteneurs = await Promise.all(MODELES_PNJ.map((f) => glbOuRien(scene, `assets/pnj/pnj-${f}.glb`)))
 
   /** Par modèle : le lot, son gestionnaire (sa texture, son temps), ses PNJ, ses tampons, ses plages d'actions. */
   const lots: { maillage: Mesh; monde: Matrix; inverse: Matrix; vat: BakedVertexAnimationManager; qui: Pnj[]; matrices: Float32Array; actions: Float32Array; plages: Record<Activite, [number, number]>; jouee: (Activite | null)[] }[] = []
@@ -121,16 +120,16 @@ export async function monterPnj(scene: Scene, accrochage: Accrochage | null, vis
     if (qui.length === 0) return
     c.addAllToScene()
     const maillage = c.meshes.find((x): x is Mesh => x instanceof Mesh && !!x.skeleton)
-    if (!maillage) return console.warn(`pnj-${n} : pas de maillage animé`)
+    if (!maillage) return console.warn(`pnj-${MODELES_PNJ[n]} : pas de maillage animé`)
     const cuit = cuire(scene, maillage, c.animationGroups)
-    if (!cuit) return console.warn(`pnj-${n} : actions manquantes`, c.animationGroups.map((g) => g.name))
+    if (!cuit) return console.warn(`pnj-${MODELES_PNJ[n]} : actions manquantes`, c.animationGroups.map((g) => g.name))
     // Les groupes du chargeur ne jouent plus jamais : tout passe par la texture.
     for (const g of c.animationGroups) g.dispose()
     const vat = new BakedVertexAnimationManager(scene)
     vat.texture = cuit.texture
     maillage.bakedVertexAnimationManager = vat
     for (const mat of c.materials) {
-      mat.name = `pnj-${n}`
+      mat.name = `pnj-${MODELES_PNJ[n]}`
       // Le temps de l'animation est lié à chaque image : la matière ne se fige pas.
       VIVANTES.add(mat.name)
     }

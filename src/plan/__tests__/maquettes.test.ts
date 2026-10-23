@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest'
 import { BAIE_BATLLO } from '../batllo'
 import { MOBILIER } from '../mobilier'
 import { MUSEE } from '../musee'
+import { MODELES_PNJ } from '../pnj'
 import { VOUTE } from '../plafonds'
 import { ARCHITRAVE, LINTEAU, PLINTHE } from '../portes'
 import { solDuParc } from '../relief'
@@ -199,4 +200,56 @@ it('plantes.glb : chaque cuve centrée sur son pivot et posée à y = 0 (props.t
     expect(Math.abs(b.min[2] + b.max[2]) / 2, nom).toBeLessThan(0.01)
     expect(Math.abs(b.min[1]), nom).toBeLessThan(0.01)
   }
+})
+
+/**
+ * La peau d'un PNJ dans l'action `nom`, posée par son squelette (skinning glTF sur le processeur, comme
+ * le shader : Σ poids · monde(os) · inverse de liaison) : la part des arêtes qui s'étirent au double
+ * (et plus d'un centimètre), au pire de onze images.
+ */
+async function etirement(n: number, nom: RegExp): Promise<number> {
+  const d = await lireGlb(`pnj/pnj-${n}.glb`)
+  const peau = d.getRoot().listSkins()[0]
+  const os = peau.listJoints()
+  const liaison = peau.getInverseBindMatrices()!
+  const prim = d.getRoot().listMeshes()[0].listPrimitives()[0]
+  const [P, J, W] = (['POSITION', 'JOINTS_0', 'WEIGHTS_0'] as const).map((a) => prim.getAttribute(a)!)
+  const repos = Array.from({ length: P.getCount() }, (_, i) => P.getElement(i, []))
+  const quoi = Array.from({ length: P.getCount() }, (_, i) => [J.getElement(i, []), W.getElement(i, [])])
+  const ix = prim.getIndices()!.getArray()!
+  const aretes: [number, number][] = []
+  for (let k = 0; k < ix.length; k += 3) aretes.push([ix[k], ix[k + 1]], [ix[k + 1], ix[k + 2]], [ix[k + 2], ix[k]])
+  const longueur = (p: number[][], [a, b]: [number, number]) => Math.hypot(p[a][0] - p[b][0], p[a][1] - p[b][1], p[a][2] - p[b][2])
+  const avant = aretes.map((e) => longueur(repos, e))
+  const fois = (a: ArrayLike<number>, b: ArrayLike<number>) => Array.from({ length: 16 }, (_, i) => [0, 1, 2, 3].reduce((s, k) => s + a[k * 4 + (i % 4)] * b[Math.floor(i / 4) * 4 + k], 0))
+  const action = d.getRoot().listAnimations().find((a) => nom.test(a.getName()))!
+  const fin = Math.max(...action.listSamplers().map((s) => s.getInput()!.getMax([])[0]))
+  let pire = 0
+  for (let f = 0; f <= 10; f++) {
+    const t = (fin * f) / 10
+    for (const c of action.listChannels()) {
+      const s = c.getSampler()!
+      const temps = s.getInput()!.getArray()!
+      const i = Math.max(1, temps.findIndex((x) => x >= t))
+      const u = Math.min(1, Math.max(0, (t - temps[i - 1]) / (temps[i] - temps[i - 1] || 1)))
+      const [a, b] = [i - 1, i].map((k) => s.getOutput()!.getElement(k, []))
+      const v = a.map((x, k) => x + (b[k] - x) * u)
+      const noeud = c.getTargetNode()!
+      if (c.getTargetPath() === 'rotation') noeud.setRotation(v.map((x) => x / Math.hypot(...v)) as [number, number, number, number])
+      else if (c.getTargetPath() === 'translation') noeud.setTranslation(v as [number, number, number])
+      else if (c.getTargetPath() === 'scale') noeud.setScale(v as [number, number, number])
+    }
+    const M = os.map((o, i) => fois(o.getWorldMatrix(), liaison.getElement(i, [])))
+    const pose = repos.map((p, i) => {
+      const [j, w] = quoi[i]
+      return [0, 1, 2].map((c) => w.reduce((s, wk, k) => s + wk * (M[j[k]][c] * p[0] + M[j[k]][4 + c] * p[1] + M[j[k]][8 + c] * p[2] + M[j[k]][12 + c]), 0))
+    })
+    pire = Math.max(pire, aretes.filter((e, i) => longueur(pose, e) > 2 * avant[i] + 0.01).length / aretes.length)
+  }
+  return pire
+}
+
+it('pnj-*.glb : seuls les modèles au squelette juste sont montrés (la peau tient, bras ballants)', async () => {
+  // Sain : 0,6 ‰ au plus ; pnj-2 (cou étiré) 5,6 ‰, pnj-3 (jean tiré par les mains) 2,1 ‰.
+  for (let n = 0; n < 8; n++) expect((await etirement(n, /^idle/i)) < 0.0015, `pnj-${n}`).toBe(MODELES_PNJ.includes(n))
 })
