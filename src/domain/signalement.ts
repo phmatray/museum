@@ -24,3 +24,20 @@ export function requeteDeReprise(recherche: string, meteo: Meteo, webgpu: boolea
   if (!webgpu && !p.has('gpu')) p.set('gpu', '0')
   return p.toString()
 }
+
+/** Une pose du visiteur sur son trajet : les pieds (`y`, le plancher), le regard, et `t` en secondes (0 : la capture, négatif avant). */
+export interface PoseTrajet { x: number; z: number; y: number; yaw: number; pitch: number; t: number }
+
+/** Deux poses qui se suivent sans que le visiteur ait bougé (5 cm, ~1°). */
+const immobile = (a: PoseTrajet, b: PoseTrajet) =>
+  Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) < 0.05 && Math.abs(a.yaw - b.yaw) < 0.02 && Math.abs(a.pitch - b.pitch) < 0.02
+
+/**
+ * `n` poses réparties sur le trajet, de la plus ancienne à la dernière : de quoi rejouer un bug qui n'apparaît
+ * qu'en bougeant. Un arrêt compte pour une seule pose ; un visiteur resté immobile n'a pas de trajet (une pose).
+ */
+export function echantillonner(trajet: PoseTrajet[], n = 5): PoseTrajet[] {
+  const distinctes = trajet.filter((p, i) => i === 0 || !immobile(p, trajet[i - 1]))
+  if (distinctes.length <= n) return distinctes
+  return Array.from({ length: n }, (_, i) => distinctes[Math.round((i * (distinctes.length - 1)) / (n - 1))])
+}
