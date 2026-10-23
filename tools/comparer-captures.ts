@@ -146,9 +146,12 @@ try {
         /* eslint-disable @typescript-eslint/no-explicit-any -- modules et hooks de la page, non typés ici */
         const w = globalThis as any
         const { MUSEE } = await import(`${racine}src/plan/musee.ts`)
-        const { surfaceAt } = await import(`${racine}src/plan/rules.ts`)
+        const { flightElevation, surfaceAt } = await import(`${racine}src/plan/rules.ts`)
         const { step } = await import(`${racine}src/plan/walk.ts`)
-        const surface = surfaceAt(MUSEE, v.x, v.z, v.y)
+        // Sur une volée (les poses du bouton 🐞 en viennent souvent) : celle sous le point, à sa hauteur.
+        const [x, z, y] = [v.x, v.z, v.y] as number[]
+        const volee = MUSEE.flights.find((f: any) => x >= f.x && x <= f.x + f.width && z >= f.z && z <= f.z + f.depth && Math.abs(flightElevation(f, x, z) - y) < 0.05)
+        const surface = surfaceAt(MUSEE, v.x, v.z, v.y) ?? (volee && `volee:${volee.id}`)
         if (!surface) return `aucune surface en (${v.x}, ${v.z}, ${v.y})`
         const marcheur = step(MUSEE, { level: 0, surface, x: v.x, z: v.z, y: v.y, yaw: v.yaw }, { forward: 0, strafe: 0, yaw: v.yaw }, 0.01)
         w.__BABYLON__.camera.placer({ ...marcheur, pitch: v.pitch })

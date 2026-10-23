@@ -28,6 +28,7 @@ import { Color3 } from '@babylonjs/core/Maths/math.color'
 import { Matrix, Quaternion, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import type { AbstractMesh } from '@babylonjs/core/Meshes/abstractMesh'
 import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder'
+import { CreateCylinder } from '@babylonjs/core/Meshes/Builders/cylinderBuilder'
 import { CreatePlane } from '@babylonjs/core/Meshes/Builders/planeBuilder'
 import { Mesh } from '@babylonjs/core/Meshes/mesh'
 import '@babylonjs/core/Meshes/thinInstanceMesh'
@@ -43,6 +44,7 @@ import {
 } from '../plan/cinema.ts'
 import { BLOC_GRADINS, GRADINS, MEUBLES_CABINE, PORTE_CABINE, PROMENOIR, SALLE_CABINE, SIEGES_LIBRES, SOL_CABINE, SPECTATEURS, TRAVERSE, VOLEES_CINEMA, type Siege } from '../plan/cinema.ts'
 import { cabineOuverte, photoOuverte, TAMPONS_CABINE } from '../domain/succes.ts'
+import { SOUS_BALCON } from '../plan/eclairage.ts'
 import { MUSEE } from '../plan/musee.ts'
 import { LINTEAU } from '../plan/portes.ts'
 import type { Arrivee } from '../plan/arrivee.ts'
@@ -609,18 +611,28 @@ export async function monterCinema(
     aPortee.hidden = !ici || pris() || partie.getState().paused || Math.hypot(w.x - appareil.x, w.z - appareil.z) > 1.4
   })
 
-  // L'enseigne du hall, au-dessus de la descente (sous la volée ouest, face au sud) : la plaque sombre,
-  // le lettrage en MSDF 5 mm devant, centré.
+  // L'enseigne du hall, au-dessus de la descente (sous la volée ouest, face au sud) : un caisson sombre
+  // de 4 cm, pendu à la sous-face du balcon par deux tiges de laiton, le lettrage en MSDF 5 mm devant, centré.
+  // Un caisson, pas un plan : vu de l'escalier, son dos cache le lettrage au lieu de le montrer à l'envers.
   const plaque = new StandardMaterial('cinema:enseigne', scene)
   plaque.disableLighting = true
   plaque.emissiveColor = Color3.FromHexString('#120405').toLinearSpace()
   plaque.diffuseColor = Color3.Black()
   plaque.specularColor = Color3.Black()
-  const panneau = CreatePlane('cinema:enseigne', { width: 1.8, height: 0.45 }, scene)
-  panneau.position.set(17.5, 2.75, 20.06)
-  panneau.rotation.y = Math.PI
+  const [ex, ey, ez, eh, ep] = [17.5, 2.75, 20.06, 0.45, 0.04]
+  const panneau = CreateBox('cinema:enseigne', { width: 1.8, height: eh, depth: ep }, scene)
+  panneau.position.set(ex, ey, ez - ep / 2)
   panneau.material = plaque
   panneau.isPickable = false
+  const tige = ey + eh / 2
+  const tiges = Mesh.MergeMeshes([-0.7, 0.7].map((dx) => {
+    const t = CreateCylinder('cinema:enseigne-tige', { diameter: 0.016, height: SOUS_BALCON - tige, tessellation: 8 }, scene)
+    t.position.set(ex + dx, (tige + SOUS_BALCON) / 2, ez - ep / 2)
+    return t
+  }), true)!
+  tiges.name = 'cinema:enseigne-tiges'
+  tiges.material = dore
+  tiges.isPickable = false
   void textesMsdf(scene, 'marcellus', eclatant('#ffcf8a'), [{ texte: 'CINÉMA ↓', matrice: repere([17.5, 2.75, 20.065], droiteDe(0, 1), [0, 1, 0], 0.225) }], GRAS)
     .catch((e: unknown) => console.warn('enseigne du cinéma indisponible', e))
 }
