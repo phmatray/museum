@@ -87,7 +87,7 @@ export function monterSignalement(scene: Scene, camera: ReturnType<typeof monter
       const r = await fetch('/__signalement', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...constat, note: note.value }) })
       const j = await r.json()
       if (!r.ok) throw new Error(j.erreur ?? r.statusText)
-      etat.textContent = `Constat rangé dans ${j.dossier}. Colle ce prompt dans la session Claude de ton choix :`
+      etat.textContent = `Constat rangé dans ${j.dossier}. Colle ce prompt dans une session Claude du dépôt :`
       prompt.value = j.prompt
       rendu.hidden = false
       note.value = ''

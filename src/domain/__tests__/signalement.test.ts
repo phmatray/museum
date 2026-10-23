@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import { CLAIR } from '../meteo'
-import { echantillonner, nomDeMeteo, requeteDeReprise } from '../signalement'
+import { echantillonner, nomDeMeteo, promptDuConstat, requeteDeReprise, vuesDuConstat } from '../signalement'
 
 describe('requeteDeReprise', () => {
   it('écarte la pose et l’heure, garde les autres forçages', () => {
@@ -36,5 +36,28 @@ describe('echantillonner', () => {
   })
   it('un arrêt au milieu compte pour une pose', () => {
     expect(echantillonner([pose(0, -3), pose(1, -2), pose(1, -1.5), pose(1, -1), pose(2, 0)]).map((p) => p.x)).toEqual([0, 1, 2])
+  })
+})
+
+describe('vuesDuConstat', () => {
+  const pose = (x: number, t: number) => ({ x, z: 0, y: 0, yaw: 0, pitch: 0, t })
+  const lieu = { surface: 'volee:volee-sous-sol', x: 9, z: 0, y: -1, yaw: 0, pitch: 0 }
+  it('immobile : la pose seule, sur sa surface', () => {
+    expect(vuesDuConstat(lieu, [pose(9, -1), pose(9, 0)])).toEqual([{ nom: 'lieu', ...lieu }])
+  })
+  it('en marche : la pose, puis le trajet dans l’ordre, sans le temps', () => {
+    const vues = vuesDuConstat(lieu, [pose(0, -3), pose(1, -2), pose(2, -1)])
+    expect(vues.map((v) => v.nom)).toEqual(['lieu', 'trajet-1', 'trajet-2', 'trajet-3'])
+    expect(vues[2]).toEqual({ nom: 'trajet-2', x: 1, z: 0, y: 0, yaw: 0, pitch: 0 })
+  })
+})
+
+describe('promptDuConstat', () => {
+  it('commence par la commande du skill, et dit où trouver le constat', () => {
+    const p = promptDuConstat('261023153316', 'les spots', '/m/.signalement/261023153316', '/m/.claude/worktrees/recette')
+    expect(p.split('\n')[0]).toBe('/signalement 261023153316')
+    expect(p).toContain('« les spots »')
+    expect(p).toContain('/m/.signalement/261023153316/signalement.json')
+    expect(p).toContain('/m/.claude/worktrees/recette/.claude/skills/signalement/SKILL.md')
   })
 })
