@@ -131,7 +131,7 @@ export function monterReflets(
   plan: Plan,
   visiteur: () => Walker,
   ciel: { dome: AbstractMesh; charge(): boolean } | null,
-): { rafraichir(): void; prises(): Promise<void> } {
+): { rafraichir(): void; prises(): Promise<void>; nombre: number; restantes(): number } {
   const positions = sondes(plan)
   const toutes = ['ciel', ...positions.keys()]
   const niveaux = new Map(plan.levels.map((l) => [l.id, l]))
@@ -278,5 +278,11 @@ export function monterReflets(
   })
 
   /** `prises()` : résolue à la première image où toutes les sondes demandées sont prises. */
-  return { rafraichir: reprendre, prises: () => new Promise<void>((r) => attentes.push(r)) }
+  return {
+    rafraichir: reprendre,
+    prises: () => new Promise<void>((r) => attentes.push(r)),
+    // L'avancée des captures, pour l'écran de chargement : toutes les sondes, et celles encore en file ou en cours.
+    nombre: toutes.length,
+    restantes: () => file.length + (enCours ? 1 : 0),
+  }
 }

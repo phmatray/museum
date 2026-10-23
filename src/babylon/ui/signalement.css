@@ -1,0 +1,14 @@
+/* Outil de dév (signalement.ts) : sobre, hors de la charte du musée exprès. */
+.signaler { position: fixed; left: 12px; bottom: 12px; z-index: 1700; width: 40px; height: 40px; border: 0; border-radius: 50%;
+  background: rgba(20,24,30,.7); font-size: 20px; cursor: pointer; }
+.signaler:hover { background: rgba(20,24,30,.9); }
+.signalement { margin: auto; width: min(640px, calc(100vw - 32px)); padding: 20px; border: 0; border-radius: 6px; color: #1c2530; background: #f6f3ec; font: 400 14px/1.45 var(--sans, sans-serif); }
+.signalement::backdrop { background: rgba(12,15,20,.5); }
+.signalement h2 { margin: 0 0 12px; font: 600 18px/1.2 var(--sans, sans-serif); }
+.signalement img { display: block; width: 100%; border-radius: 3px; }
+.signalement textarea { box-sizing: border-box; width: 100%; margin: 12px 0; padding: 8px; border: 1px solid #b9b2a3; border-radius: 4px; color: #1c2530; background: #fff; font: inherit; resize: vertical; }
+.signalement-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.signalement button { padding: 8px 14px; border: 1px solid #1c2530; border-radius: 4px; color: #1c2530; background: transparent; font: inherit; cursor: pointer; }
+.signalement button[type=submit] { color: #f6f3ec; background: #1c2530; }
+.signalement button:disabled { opacity: .5; cursor: default; }
+.signalement-etat { margin: 10px 0 0; font-family: ui-monospace, monospace; font-size: 12px; overflow-wrap: anywhere; }

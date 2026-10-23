@@ -3,13 +3,16 @@
  * par vue, pour juger à l'œil qu'un changement ne déplace rien.
  *
  *   node tools/comparer-captures.ts [http://localhost:5173/] [--dossier=<dossier>] [--vues=arrivee,escalier] [--avant=<dossier>] [--q=a=b&c=d]
+ *   node tools/comparer-captures.ts [url] --lieu=x,z,y,yaw,pitch [--heure=HH:MM] [--q=…] [--dossier=…] [--avant=…]
  *
  * Contre `npm run dev`, lancé à côté (le hook `__BABYLON__` n'existe qu'en DEV). Le visiteur
  * est posé par le plan lui-même (`surfaceAt` puis un `step` immobile pour la cote), importé dans la page.
  * L'adresse garde `&moteur=babylon` : ignoré aujourd'hui, requis avant la bascule (vague 7), ce qui
  * permet de photographier une ancienne version (worktree détaché) avec ce même script.
  * Sortie : `<dossier>/<vue>.png`. Avec `--avant=<dossier>` (un jeu antérieur), l'écart absolu moyen
- * par vue (0-255, tous canaux) s'affiche en fin de course.
+ * par vue (0-255, tous canaux) s'affiche en fin de course, et `<dossier>/<vue>.avant-apres.png` les met côte à côte.
+ * `--lieu` remplace les vues par une seule, `lieu`, à cette pose (celle d'un bug signalé par le bouton 🐞,
+ * `tools/signalement.ts`) ; `--q` porte alors sa météo.
  * ponytail : un outil d'œil, pas un test ; l'écart s'affiche, aucun seuil n'échoue.
  */
 import { existsSync, mkdirSync } from 'node:fs'
@@ -95,9 +98,13 @@ const VUES: Vue[] = [
   { nom: 'vr-oeuvre', heure: '15:00', q: 'meteo=clair&vr=cardboard', ui: 'vr', p: 'AspireStrapi' },
 ]
 const choisies = option('vues')?.split(',')
+const lieu = option('lieu')?.split(',').map(Number)
 /** `--q=ciel=photo` : ajouté à l'adresse de chaque vue. */
 const enPlus = args.find((a) => a.startsWith('--q='))?.slice(4)
 const avant = option('avant')
+const vues: Vue[] = lieu
+  ? [{ nom: 'lieu', heure: option('heure') ?? '15:00', q: enPlus ?? 'meteo=clair', x: lieu[0], z: lieu[1], y: lieu[2], yaw: lieu[3], pitch: lieu[4] }]
+  : VUES.filter((v) => !choisies || choisies.includes(v.nom))
 const ecarts: Record<string, number | string>[] = []
 
 const navigateur = await puppeteer.launch({
@@ -105,10 +112,11 @@ const navigateur = await puppeteer.launch({
   headless: true,
   // Une machine chargée (plusieurs navigateurs à la fois) : une capture peut prendre des minutes.
   protocolTimeout: 600_000,
-  args: ['--enable-gpu', '--ignore-gpu-blocklist', '--use-angle=gl', '--enable-unsafe-webgpu'],
+  // ANGLE sur GL : Chromium sous Linux. Sur macOS, ce drapeau ôte WebGL ; son défaut (Metal) suffit.
+  args: ['--enable-gpu', '--ignore-gpu-blocklist', ...(process.platform === 'darwin' ? [] : ['--use-angle=gl']), '--enable-unsafe-webgpu'],
 })
 try {
-  for (const vue of VUES.filter((v) => !choisies || choisies.includes(v.nom))) {
+  for (const vue of vues) {
     const page = await navigateur.newPage()
     await page.setViewport(vue.mobile ? { width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true } : { width: 1280, height: 720, deviceScaleFactor: 1 })
     if (vue.mobile) await page.emulateMediaFeatures([{ name: 'pointer', value: 'coarse' }]).catch(() => {})
@@ -196,4 +204,8 @@ async function comparer(nom: string, chemin: string) {
   let somme = 0
   for (let i = 0; i < a.data.length; i++) somme += Math.abs(a.data[i] - b.data[i])
   ecarts.push({ vue: nom, écart: +(somme / a.data.length).toFixed(2) })
+  const { width: l, height: h } = a.info
+  await sharp({ create: { width: 2 * l, height: h, channels: 3, background: '#000' } })
+    .composite([{ input: reference, left: 0, top: 0 }, { input: chemin, left: l, top: 0 }])
+    .png().toFile(join(dossier, `${nom}.avant-apres.png`))
 }

@@ -9,7 +9,7 @@
  * verrouille le pointeur l'escamote aussi.
  */
 import config from '../../../museum.config.json'
-import { avancer, chargement, marquerPret } from '../chargement.ts'
+import { avancer, chargement, detailDuChargement, marquerPret } from '../chargement.ts'
 import { mouvementReduit, partie } from '../etat.ts'
 import { el, observer, svg } from './dom.ts'
 import './ecranChargement.css'
@@ -32,6 +32,31 @@ function totalAttendu(): number {
     return TOTAL_PAR_DEFAUT
   }
 }
+/** Le poids du dernier chargement complet : « 23 / 62 Mo » plutôt que « 23 Mo » dès la seconde visite. */
+const CLE_OCTETS = 'musee:octets-chargement'
+function octetsAttendus(): number {
+  try {
+    return Number(localStorage.getItem(CLE_OCTETS)) || 0
+  } catch {
+    return 0
+  }
+}
+
+/** Les octets reçus (ressources déjà là comprises), versés dans `chargement.octets`. Rend de quoi arrêter. */
+function compterOctets(): () => void {
+  if (typeof PerformanceObserver === 'undefined') return () => {}
+  let octets = 0
+  const o = new PerformanceObserver((liste) => {
+    for (const e of liste.getEntries() as PerformanceResourceTiming[]) octets += e.encodedBodySize
+    chargement.setState({ octets })
+  })
+  try {
+    o.observe({ type: 'resource', buffered: true })
+  } catch {
+    // Navigateur sans Resource Timing observable : l'écran se passe des mégaoctets.
+  }
+  return () => o.disconnect()
+}
 
 export function monterEcranChargement(racine: HTMLElement): void {
   const calme = mouvementReduit()
@@ -42,6 +67,8 @@ export function monterEcranChargement(racine: HTMLElement): void {
   const remplie = el('div')
   const barre = el('div', { role: 'progressbar', 'aria-label': 'Chargement du musée', 'aria-valuemin': 0, 'aria-valuemax': 100, 'aria-valuenow': 0 }, remplie)
   const compteur = el('p', { class: 'compteur' })
+  const attente = el('p', { class: 'attente' })
+  const poids = octetsAttendus()
   const ecran = el(
     'div',
     { 'data-museum-overlay': 'chargement', 'aria-busy': 'true', style: calme ? 'transition:none' : null },
@@ -64,6 +91,7 @@ export function monterEcranChargement(racine: HTMLElement): void {
     etape,
     barre,
     compteur,
+    attente,
   )
   racine.append(ecran)
 
@@ -85,7 +113,7 @@ export function monterEcranChargement(racine: HTMLElement): void {
   })
 
   let patience: ReturnType<typeof setTimeout> | undefined
-  const fins: (() => void)[] = []
+  const fins: (() => void)[] = [compterOctets()]
   const partir = () => {
     parti = true
     ecran.remove()
@@ -96,7 +124,6 @@ export function monterEcranChargement(racine: HTMLElement): void {
     observer(chargement, (s) => [s.faits, s.total, s.etape], ([faits, total, e]) => {
       const pret = e === 'pret'
       etape.textContent = e === 'chargement' ? 'Le musée s’installe' : 'Dernières retouches'
-      compteur.textContent = total === 0 ? '…' : `${Math.min(faits as number, total as number)} / ${total}`
       ecran.setAttribute('aria-busy', String(!pret))
       clearTimeout(patience)
       if (!pret) {
@@ -108,10 +135,19 @@ export function monterEcranChargement(racine: HTMLElement): void {
       }
       try {
         localStorage.setItem(CLE_TOTAL, String(total))
+        localStorage.setItem(CLE_OCTETS, String(chargement.getState().octets))
       } catch {
         // Stockage refusé (navigation privée) : la prochaine fois, l'ordre de grandeur.
       }
       setTimeout(partir, calme ? 0 : FONDU)
+    }),
+  )
+  // Ce qui se passe, en clair : les mégaoctets, les shaders, les reflets, et ce qu'on attend encore par son nom.
+  fins.push(
+    observer(chargement, (s) => s, (s) => {
+      const d = detailDuChargement(s, poids)
+      compteur.textContent = d.chiffres
+      attente.textContent = d.attente
     }),
   )
   // Escamoté hors pause ou pointeur verrouillé ; il revient si la pause revient avant le départ.

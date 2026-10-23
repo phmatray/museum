@@ -40,3 +40,5 @@
 }
 [data-museum-overlay='chargement'] [role='progressbar'] > div { height: 100%; width: 0; background: #d1a54a; }
 [data-museum-overlay='chargement'] .compteur { margin: 0; font-size: 0.75rem; opacity: 0.55; font-variant-numeric: tabular-nums; }
+/* Ce qu'on attend encore : une ligne réservée, pour que rien ne saute quand elle se vide. */
+[data-museum-overlay='chargement'] .attente { margin: -0.8rem 0 0; min-height: 1.2em; max-width: min(420px, 90vw); font-size: 0.75rem; opacity: 0.4; }

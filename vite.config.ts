@@ -5,6 +5,8 @@ import fs from 'node:fs'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import path from 'node:path'
 
+import { signalementEnDev } from './tools/signalement.ts'
+
 /**
  * Le journal de chantier (`docs/journal`) sous `/journal/` en dév, comme le
  * build le copie dans `dist/journal/` : la baraque du chantier y lit ses images
@@ -33,7 +35,7 @@ export default defineConfig({
   // Sur GitHub Pages le site vit sous /<nom-du-depot>/, pas à la racine du
   // domaine. La CI passe BASE_PATH ; en local on reste à la racine.
   base: process.env.BASE_PATH ?? '/',
-  plugins: [journalEnDev()],
+  plugins: [journalEnDev(), signalementEnDev()],
   // Le worker du navmesh (babylon/navmesh.worker.ts) charge Recast par import() : un module ES.
   worker: { format: 'es' },
   build: {
