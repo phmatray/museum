@@ -52,8 +52,11 @@ const DIAMETRE_TACHE = 0.9
 
 interface Cuisson { texture: RawTexture; plages: Record<Activite, [number, number]> }
 
-/** Cuit les actions du modèle dans une texture de matrices d'os (format du shader `bakedVertexAnimation`). */
-export function cuire<A extends string = Activite>(scene: Scene, maillage: Mesh, groupes: AnimationGroup[], actions: Record<A, RegExp> = ACTIONS as Record<A, RegExp>): (Omit<Cuisson, 'plages'> & { plages: Record<A, [number, number]> }) | null {
+/**
+ * Cuit les actions du modèle dans une texture de matrices d'os (format du shader `bakedVertexAnimation`).
+ * `retouche` : appelée à chaque image, la pose de l'action posée, avant la lecture des os (les spectateurs y redressent leurs tibias).
+ */
+export function cuire<A extends string = Activite>(scene: Scene, maillage: Mesh, groupes: AnimationGroup[], actions: Record<A, RegExp> = ACTIONS as Record<A, RegExp>, retouche?: () => void): (Omit<Cuisson, 'plages'> & { plages: Record<A, [number, number]> }) | null {
   const squelette = maillage.skeleton
   if (!squelette) return null
   const parFrame = (squelette.bones.length + 1) * 16
@@ -73,6 +76,7 @@ export function cuire<A extends string = Activite>(scene: Scene, maillage: Mesh,
     const debut = ligne
     for (let f = 0; f < images[i]; f++) {
       g!.goToFrame(g!.from + ((g!.to - g!.from) * f) / images[i])
+      retouche?.()
       squelette.prepare(true)
       donnees.set(squelette.getTransformMatrices(maillage), ligne * parFrame)
       ligne++
