@@ -229,8 +229,10 @@ export async function monterCinema(
   ecranMat.diffuseColor = Color3.Black()
   ecranMat.specularColor = Color3.Black()
   ecranMat.disableLighting = true
-  ecranMat.emissiveTexture = afficheSur(scene, programme)
-  ecranMat.emissiveColor = new Color3(0.5, 0.5, 0.5)
+  // L'éclat par le niveau de la carte : la couleur émissive s'y ajouterait (voile gris).
+  const afficheEcran = afficheSur(scene, programme)
+  afficheEcran.level = 1
+  ecranMat.emissiveTexture = afficheEcran
   VIVANTES.add(ecranMat.name)
   const VEILLEUSE = new Color3(1, 0.62, 0.3)
   const veilleuse = new StandardMaterial('cinema:veilleuse', scene)
@@ -438,7 +440,7 @@ export async function monterCinema(
     const jour = 1 - n
     for (const l of lampes) l.intensity = 4 * (0.08 + 0.92 * jour)
     SPOT.scaleToRef(0.05 + 0.95 * jour, halo.emissiveColor)
-    ecranMat.emissiveColor.set(0.5 * jour, 0.5 * jour, 0.5 * jour)
+    afficheEcran.level = jour
     VEILLEUSE.scaleToRef(0.5 + 0.9 * n, veilleuse.emissiveColor)
     VEILLEUSE.scaleToRef(0.15 + 0.75 * n, filet.emissiveColor)
     reflet.intensity = 2 * n

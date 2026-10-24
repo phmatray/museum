@@ -66,8 +66,9 @@ export function lumineuse(nom: string, scene: Scene, l: number, h: number, dessi
   m.disableLighting = true
   m.diffuseColor = Color3.Black()
   m.specularColor = Color3.Black()
+  // La couleur émissive s'AJOUTE à la carte (un voile gris uniforme) : l'éclat passe par le niveau de la carte.
+  t.level = eclat
   m.emissiveTexture = t
-  m.emissiveColor = new Color3(eclat, eclat, eclat)
   return m
 }
 
@@ -280,7 +281,7 @@ export function monterFoyer(
         t.update()
       }
       image.src = affiche(f.video, 'hqdefault')
-    }, 0.5)
+    }, 1)
     garder(plan(`foyer:affiche${i}`, scene, a.largeur, a.hauteur, a.x, a.y, z0 + 0.045, '+z')).material = m
   })
 
