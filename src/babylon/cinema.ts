@@ -56,6 +56,7 @@ import { carnet, signaler } from './succes.ts'
 import { INT } from '../plan/svg.ts'
 import { BARRIERES } from './visiteur.ts'
 import { monterCabine, morceaux } from './cabine.ts'
+import { spotsEncastres } from './eclairage.ts'
 import { monterFoyer } from './foyer.ts'
 import { corpsQuiTient, droiteDe, eclatant, GRAS, policeMsdf, repere, textesMsdf } from './msdf.ts'
 import { monterSpectateurs } from './spectateurs.ts'
@@ -285,12 +286,10 @@ export async function monterCinema(
   for (let i = 1; i < nX; i++) poutres.push(...Matrix.Compose(new Vector3(0.18, 0.28, SALLE.depth - 0.3), Quaternion.Identity(), new Vector3(SALLE.x + (i * SALLE.width) / nX, PLAFOND - 0.17, SALLE.z + SALLE.depth / 2)).toArray())
   for (let j = 1; j < nZ; j++) poutres.push(...Matrix.Compose(new Vector3(SALLE.width - 0.3, 0.28, 0.18), Quaternion.Identity(), new Vector3(SALLE.x + SALLE.width / 2, PLAFOND - 0.17, SALLE.z + (j * SALLE.depth) / nZ)).toArray())
   poutre.thinInstanceSetBuffer('matrix', new Float32Array(poutres), 16)
-  const spot = garder(CreateBox('cinema:spots', { width: 0.09, height: 0.01, depth: 0.09 }, scene))
-  const halo = new StandardMaterial('cinema:spot', scene)
-  halo.disableLighting = true
-  halo.emissiveColor = new Color3(0.75, 0.6, 0.42)
-  spot.material = halo
-  spot.thinInstanceSetBuffer('matrix', translations(SPOTS.map((s) => [s.x, PLAFOND - 0.05, s.z])), 16)
+  const spots = spotsEncastres('cinema:spots', SPOTS.map((s): [number, number, number] => [s.x, PLAFOND - 0.034, s.z]), 0.055, new Color3(0.75, 0.6, 0.42), scene)
+  garder(spots.collerette)
+  garder(spots.lentille)
+  const halo = spots.verre
 
   // ── Les rangs des gradins : le plancher de chaque rang, du sol à son dessus (la traverse a sa dalle) ──
   const rangs = garder(CreateBox('cinema:rangs', { size: 1 }, scene))
@@ -427,7 +426,7 @@ export async function monterCinema(
   reflet.includedOnlyMeshes = salle
 
   // ── Le gradateur : `sombre` va de 0 (salle allumée) à 1 (séance) en GRADATEUR secondes ──
-  const SPOT = halo.emissiveColor.clone()
+  const SPOT = halo.albedoColor.clone()
   for (const m of [halo, veilleuse, filet, lumiereObjectif]) VIVANTES.add(m.name)
   // L'ambiance de la sonde de la salle (spéculaire) éclaire le velours quelles que soient les lampes : elle baisse avec elles.
   const ambiances = [...new Set(salle.map((m) => m.material).filter((m): m is PBRMaterial => m instanceof PBRMaterial))]
@@ -439,7 +438,7 @@ export async function monterCinema(
     const n = doux(sombre)
     const jour = 1 - n
     for (const l of lampes) l.intensity = 4 * (0.08 + 0.92 * jour)
-    SPOT.scaleToRef(0.05 + 0.95 * jour, halo.emissiveColor)
+    SPOT.scaleToRef(0.05 + 0.95 * jour, halo.albedoColor)
     afficheEcran.level = jour
     VEILLEUSE.scaleToRef(0.5 + 0.9 * n, veilleuse.emissiveColor)
     VEILLEUSE.scaleToRef(0.15 + 0.75 * n, filet.emissiveColor)
