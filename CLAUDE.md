@@ -172,11 +172,13 @@ asset credits are declared in the `tools/fetch-assets.ts` manifest and regenerat
   (`main.ts`, `instr` is a `SceneInstrumentation`), `window.__PRET__` (scene ready, `chargement.ts`),
   `window.__BAVETTE__`, `window.__FAUNE__`, `window.__TOUT_VOIR__` (disable culling).
 - Visual bug button (dev only): key B or the 🐞 button captures the view plus the visitor's exact pose and posts it to
-  `/__signalement` (`tools/signalement.ts`, a Vite plugin, localhost only), which writes the report to
-  `.signalement/<id>/` and returns a prompt to copy into a Claude session of your choice (nothing is launched): work in a
-  `bug/<id>` worktree from the served sha, reproduce headless (`comparer-captures.ts --lieu=x,z,y,yaw,pitch --heure --q
-  --taille`, plus the last seconds of walking as `--lieu='a;b;…' --nom=trajet` for bugs that only show while moving),
-  fix, recapture with `--avant` (gap + `<vue>.avant-apres.png`), commit without pushing.
+  `/__signalement` (`tools/signalement.ts`, a Vite plugin, localhost only), which writes the report to the main
+  checkout's `.signalement/<id>/` (whichever worktree serves; `signalement.json` also records the served root and sha)
+  and returns a short prompt, `/signalement <id>`, to paste into a Claude session (nothing is launched). The procedure is
+  the project skill `.claude/skills/signalement/SKILL.md`: `tools/preparer-signalement.ts <id>` makes the `bug/<id>`
+  worktree from the served sha (deps and ignored assets copied, a free port), `comparer-captures.ts --signalement=<id>
+  [--apres]` replays the pose and the last seconds of walking into `avant/`/`apres/` (gap + `<vue>.avant-apres.png`),
+  then fix, report, commit without pushing, and serve the fix on :5173 from the `recette` worktree.
 - URL parameters force live state for screenshots: `?heure=HH:MM`, `?meteo=clair|pluie|neige|brouillard|orage`,
   `?saison=printemps|ete|automne|hiver`, `?ombres=0`, `?annonce=1`, `?gpu=0` (force WebGL2, to compare both paths), `?ciel=photo` (the old photo sky instead of the physical one),
   `?vr=cardboard` (the Cardboard polyfill on a desktop, to drive VR headless), `?qualite=haute|basse` (freezes the

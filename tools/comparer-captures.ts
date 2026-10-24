@@ -14,25 +14,40 @@
  * `--lieu` remplace les vues par une seule, `lieu` (ou `--nom`), à cette pose (celle d'un bug signalé par le bouton 🐞,
  * `tools/signalement.ts`) ; `--q` porte alors sa météo. Plusieurs poses séparées par `;` (un trajet) donnent
  * `<nom>-1` … `<nom>-n`, dans l'ordre.
+ *
+ *   node tools/comparer-captures.ts <url> --signalement=<id> [--apres] [--vues=a,b]
+ *
+ * Un constat du bouton 🐞 (`.signalement/<id>/` du checkout principal) : sa pose (`lieu`, sur sa surface, une volée
+ * aussi) et son trajet (`trajet-1` … `trajet-n`) à son heure, sa météo et son cadrage, dans `<constat>/avant`, ou
+ * `<constat>/apres` comparé à `avant` avec `--apres`. Avec `--vues`, ces vues de `VUES` dans le même dossier (les voisines).
  * ponytail : un outil d'œil, pas un test ; l'écart s'affiche, aucun seuil n'échoue.
  */
-import { existsSync, mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import puppeteer from 'puppeteer-core'
 import sharp from 'sharp'
 
+import { vuesDuConstat } from '../src/domain/signalement.ts'
+import { racinePrincipale } from './signalement.ts'
+
 const args = process.argv.slice(2)
 const option = (nom: string) => args.find((a) => a.startsWith(`--${nom}=`))?.split('=')[1]
 const base = args.find((a) => !a.startsWith('--')) ?? 'http://localhost:5173/'
-const dossier = option('dossier') ?? join(tmpdir(), 'comparaison')
+const idConstat = option('signalement')
+const constatDir = idConstat && join(racinePrincipale(process.cwd()), '.signalement', idConstat)
+const constat = constatDir ? JSON.parse(readFileSync(join(constatDir, 'signalement.json'), 'utf8')) : null
+const apres = args.includes('--apres')
+const dossier = option('dossier') ?? (constatDir ? join(constatDir, apres ? 'apres' : 'avant') : join(tmpdir(), 'comparaison'))
 mkdirSync(dossier, { recursive: true })
 
 /** Un point de vue : yaw 0 regarde le nord (−z), π/2 l'ouest ; `y` est le plancher cherché. Sans `x`, l'arrivée de l'adresse. */
 interface Vue {
   /** `q` : le reste de l'adresse (`meteo=pluie&saison=hiver`) ; sans lui, `meteo=clair`. */
   nom: string; heure: string; q?: string; x?: number; z?: number; y?: number; yaw?: number; pitch?: number; p?: string
+  /** La surface du visiteur (`volee:…`, `-1:cinema`) quand on la connaît : sinon cherchée par le plan. */
+  surface?: string
   /** Bavette posée en (x, z), tournée vers `yaw`, l'action `anim` figée à 0,4 s (`__BAVETTE__`). */
   bavette?: { x: number; z: number; yaw: number; anim: string }
   /** L'interface (vague 5) : `chargement` capturé tôt, `accueil` sans reprendre, `visite` par le bouton du billet,
@@ -102,11 +117,13 @@ const choisies = option('vues')?.split(',')
 const lieux = option('lieu')?.split(';').map((p) => p.split(',').map(Number))
 const nom = option('nom') ?? 'lieu'
 /** `--taille=1586x1204` : le cadrage du visiteur (un autre rapport d'aspect montre un autre champ) ; sinon 1280×720. */
-const [largeur, hauteur] = option('taille')?.split('x').map(Number) ?? [1280, 720]
+const [largeur, hauteur] = option('taille')?.split('x').map(Number) ?? (constat && !choisies ? constat.taille : [1280, 720])
 /** `--q=ciel=photo` : ajouté à l'adresse de chaque vue. */
 const enPlus = args.find((a) => a.startsWith('--q='))?.slice(4)
-const avant = option('avant')
-const vues: Vue[] = lieux
+const avant = option('avant') ?? (constatDir && apres ? join(constatDir, 'avant') : undefined)
+const vues: Vue[] = constat && !choisies
+  ? vuesDuConstat(constat.lieu, constat.trajet).map((v) => ({ ...v, heure: constat.heure, q: constat.q }))
+  : lieux
   ? lieux.map(([x, z, y, yaw, pitch], i) => ({ nom: lieux.length > 1 ? `${nom}-${i + 1}` : nom, heure: option('heure') ?? '15:00', q: enPlus ?? 'meteo=clair', x, z, y, yaw, pitch }))
   : VUES.filter((v) => !choisies || choisies.includes(v.nom))
 const ecarts: Record<string, number | string>[] = []
@@ -151,7 +168,7 @@ try {
         // Sur une volée (les poses du bouton 🐞 en viennent souvent) : celle sous le point, à sa hauteur.
         const [x, z, y] = [v.x, v.z, v.y] as number[]
         const volee = MUSEE.flights.find((f: any) => x >= f.x && x <= f.x + f.width && z >= f.z && z <= f.z + f.depth && Math.abs(flightElevation(f, x, z) - y) < 0.05)
-        const surface = surfaceAt(MUSEE, v.x, v.z, v.y) ?? (volee && `volee:${volee.id}`)
+        const surface = v.surface ?? surfaceAt(MUSEE, x, z, y) ?? (volee && `volee:${volee.id}`)
         if (!surface) return `aucune surface en (${v.x}, ${v.z}, ${v.y})`
         const marcheur = step(MUSEE, { level: 0, surface, x: v.x, z: v.z, y: v.y, yaw: v.yaw }, { forward: 0, strafe: 0, yaw: v.yaw }, 0.01)
         w.__BABYLON__.camera.placer({ ...marcheur, pitch: v.pitch })
